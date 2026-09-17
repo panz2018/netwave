@@ -1,35 +1,9 @@
 schema: spec-driven
 
 context: |
-  # 语言约定
-  - OpenSpec 工件（proposal/spec/design/tasks）与 Plan/ 文档：全部用中文（zh）。
-  - 代码注释与代码内文档（rustdoc / docstring / JSDoc / 行内注释）：全部用英文（en）。
-  - OpenSpec 结构性标题与 SHALL/MUST 关键词保持英文。
-
-  # 项目宪法（约束摘要）
-  完整 rationale 见 Plan/constitution.md，此处仅列对每个 change 生效的硬约束：
-  - 数据布局：核心数据永远是 (nfreq, nports, nports) 交错复数扁平 f64，与 scikit-rf
-    Network.s 逐字节相同；改布局=修宪，四端(core/python/node/wasm)同一 PR 同步。
-  - 域无关：核心类型不出现 rf 前缀；z0 是端口属性，禁止硬编码 50Ω。
-  - 零拷贝：绑定层禁止逐元素搬运复数对象。
-  - 性能：50MB s4p 解析 < 100ms（memmap2 + rayon），criterion 进 CI。
-  - 数值真值：期望值来自 skrf golden / 教科书闭式解 / 物理不变量，禁止自证。
-  - 容差：只在 testdata/manifest.json 定义，测试从 manifest 读取。
-  - 主 CI 不跑 Python：skrf 仅在离线 gen_golden.py 出现，golden 进 git。
-
-  # 权威术语源（定义与算法说明的唯一出处）
-  - 术语定义权威源（先查术语表，再按其行号路由精读原书/规范，禁止自造定义）：
-    - /config/GitHub/knowledge/RF/S-Parameters for Signal Integrity (2020)/术语表.md
-      （导航：同目录 SKILL.md；书正文 Markdown/Markdown.md 约 23,400 行）
-    - /config/GitHub/knowledge/RF/Touchstone File Format Specification/术语表.md
-      （导航：同目录 SKILL.md；正文 touchstone_ver2_1.md 约 1,650 行）
-  - rustdoc / 注释引用术语时标注出处（如 "book 术语表 §mixed-mode"），
-    让不懂 RF 的读者能顺出处看懂。
-  - 已知约定冲突：mixed-mode 模量定义两源不同——书用 V_D=(Vp-Vn)/√2，
-    Touchstone 规范用 V_D=Vi-Vj（无根号）。实现 mixed-mode 前必须在 spec 中
-    显式选定约定并登记。
-  - 行号自检：引用行号前先 wc -l 核对源文件行数（约 23,400 / 1,650）；
-    不符则行号已漂移，按 SKILL.md 改进协议重建后再引用。
+  全部硬约束（数据布局/TDD/容差/z0/性能/零拷贝/语言约定/权威术语源）的唯一真相源
+  是 Plan/constitution.md，agent 行为准则见仓库根 AGENTS.md。动手前先读，禁止绕过。
+  本文件只保留 OpenSpec 工件专属规则（见 rules）。
 
 # Per-artifact rules
 rules:

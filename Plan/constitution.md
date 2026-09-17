@@ -60,10 +60,16 @@
 - **语言约定**：代码注释与代码内文档（rustdoc / docstring / JSDoc / 行内注释）一律**英文**；
   OpenSpec 工件（proposal/spec/design/tasks）与 `Plan/` 文档一律**中文**。OpenSpec 结构标题与
   SHALL/MUST 关键词保持英文。
+- **单一真相源**：本宪法是全部硬约束的唯一正文。`AGENTS.md` 只放通用行为准则（Karpathy 四原则）
+  与指向本文件的指针，**不得重述铁律正文**；`openspec/config.yaml` 的 context 同样只放指针与
+  OpenSpec 工件专属规则（rules）。改铁律只改本文件一处。
 - 修宪记录追加到本文件末尾的「修订历史」。
 
 ## 修订历史
 
+- v1.3（2026-09-17）：元规则新增「单一真相源」——AGENTS.md 只放通用行为准则与指针，
+  不得重述铁律正文；config.yaml context 改指针。配套：新建仓库根 `AGENTS.md`（四原则壳），
+  `openspec/config.yaml` context 由约束摘要改为三行指针。
 - v1.2（2026-09-16）：元规则新增「语言约定」——代码注释/代码内文档用英文，OpenSpec 工件与
   `Plan/` 文档用中文。同步写入 `openspec/config.yaml` 的 context。
 - v1.1（2026-09-16）：铁律一轴顺序由 `(nports, nports, nfreq)` 改为 `(nfreq, nports, nports)`，
