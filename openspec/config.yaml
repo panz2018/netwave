@@ -1,0 +1,41 @@
+schema: spec-driven
+
+context: |
+  Language: zh
+  All artifacts must be written in zh.
+  Keep OpenSpec structural headings and SHALL/MUST keywords in English.
+
+  # 项目宪法（约束摘要）
+  完整 rationale 见 Plan/constitution.md，此处仅列对每个 change 生效的硬约束：
+  - 数据布局：核心数据永远是 (nfreq, nports, nports) 交错复数扁平 f64，与 scikit-rf
+    Network.s 逐字节相同；改布局=修宪，四端(core/python/node/wasm)同一 PR 同步。
+  - 域无关：核心类型不出现 rf 前缀；z0 是端口属性，禁止硬编码 50Ω。
+  - 零拷贝：绑定层禁止逐元素搬运复数对象。
+  - 性能：50MB s4p 解析 < 100ms（memmap2 + rayon），criterion 进 CI。
+  - 数值真值：期望值来自 skrf golden / 教科书闭式解 / 物理不变量，禁止自证。
+  - 容差：只在 testdata/manifest.json 定义，测试从 manifest 读取。
+  - 主 CI 不跑 Python：skrf 仅在离线 gen_golden.py 出现，golden 进 git。
+
+# Per-artifact rules
+rules:
+  proposal:
+    - 必须包含 "Non-goals" 段，明确本次不做什么
+    - 引用受影响的铁律编号（若有）
+  spec:
+    - 每条 Requirement 必须可测，附容差（引用 manifest key，不写死数值）
+    - 数值需求必须指明独立真值来源（skrf golden / 闭式解 / 物理不变量）
+  tasks:
+    - 每个数值实现任务前必须先有一条会失败的测试（red 先于 green）
+    - 跨端改动必须包含 L4 跨绑定对拍任务
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
