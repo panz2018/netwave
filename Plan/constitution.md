@@ -66,9 +66,10 @@
 - **教学式文档与类型标注**：每个公开函数/结构体/类必须有 docs（rustdoc / docstring / JSDoc），
   跨模块逻辑与非直观实现必须有行内注释，目标是**不懂 RF 的读者仅凭代码内文档即可看懂程序
   为何如此编写**：
-  - 术语与公式取自权威术语源，注明出处（书名+章节）：
-    `S-Parameters for Signal Integrity (2020)` 与 `Touchstone File Format Specification`，
-    位于 `/config/GitHub/knowledge/RF/` 下（各目录内 `术语表.md` 带行号路由）。
+  - 术语定义与公式**直接写进 docs**（自包含）：编写时以权威术语源为准——
+    `S-Parameters for Signal Integrity (2020)` 与 `Touchstone File Format Specification`
+    （位于 `/config/GitHub/knowledge/RF/`，各目录内 `术语表.md` 带行号路由）——
+    但**不得以"见某书某章"代替内容**；读者没有这些书，必须把定义/公式总结成文档正文本身。
   - 算法处须写明：公式来源、近似/适用条件、容差依据（引用 manifest key）。
   - 文风：清楚、可读、简洁——解释"为什么"，不复述代码在做什么；宁少勿滥。
   - 全部公开 API 必须有完整静态类型标注（Rust 天然强制；Python 绑定必须全量 type hints，
@@ -79,8 +80,9 @@
 ## 修订历史
 
 - v1.4（2026-09-17）：元规则新增「教学式文档与类型标注」——公开 API 必须有自解释 docs
-  （术语/公式取自权威术语源并注明出处，解释为何如此编写，清楚可读简洁）+
-  完整静态类型标注（Python 全量 type hints，TS 禁无差别 `any`）。
+  （术语/公式**直接写成文档正文**，权威术语源仅作编写依据，禁止"见某书某章"式引用，
+  解释为何如此编写，清楚可读简洁）+ 完整静态类型标注（Python 全量 type hints，
+  TS 禁无差别 `any`）。
 - v1.3（2026-09-17）：元规则新增「单一真相源」——AGENTS.md 只放通用行为准则与指针，
   不得重述铁律正文；config.yaml context 改指针。配套：新建仓库根 `AGENTS.md`（四原则壳），
   `openspec/config.yaml` context 由约束摘要改为三行指针。
