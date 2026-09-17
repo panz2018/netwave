@@ -57,10 +57,15 @@
 
 - 本宪法优先级高于一切临时决定；spec / plan / tasks 与本宪法冲突时，**改 spec，不改宪法**（除非走正式修宪流程）。
 - 每条铁律都应**可验证**：铁律二/三/六由 CI 强制，铁律一/四/五由 code-review 的 Standards 轴强制。
+- **语言约定**：代码注释与代码内文档（rustdoc / docstring / JSDoc / 行内注释）一律**英文**；
+  OpenSpec 工件（proposal/spec/design/tasks）与 `Plan/` 文档一律**中文**。OpenSpec 结构标题与
+  SHALL/MUST 关键词保持英文。
 - 修宪记录追加到本文件末尾的「修订历史」。
 
 ## 修订历史
 
+- v1.2（2026-09-16）：元规则新增「语言约定」——代码注释/代码内文档用英文，OpenSpec 工件与
+  `Plan/` 文档用中文。同步写入 `openspec/config.yaml` 的 context。
 - v1.1（2026-09-16）：铁律一轴顺序由 `(nports, nports, nfreq)` 改为 `(nfreq, nports, nports)`，
   与 skrf `Network.s` 逐字节对齐，删除"转换约定"（转换退化为恒等 reinterpret）。
   理由：流式解析无转置、热路径矩阵连续、rayon 沿大轴负载均衡。四端布局同步。

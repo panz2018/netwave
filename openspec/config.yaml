@@ -1,9 +1,10 @@
 schema: spec-driven
 
 context: |
-  Language: zh
-  All artifacts must be written in zh.
-  Keep OpenSpec structural headings and SHALL/MUST keywords in English.
+  # 语言约定
+  - OpenSpec 工件（proposal/spec/design/tasks）与 Plan/ 文档：全部用中文（zh）。
+  - 代码注释与代码内文档（rustdoc / docstring / JSDoc / 行内注释）：全部用英文（en）。
+  - OpenSpec 结构性标题与 SHALL/MUST 关键词保持英文。
 
   # 项目宪法（约束摘要）
   完整 rationale 见 Plan/constitution.md，此处仅列对每个 change 生效的硬约束：
