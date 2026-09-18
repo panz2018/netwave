@@ -17,7 +17,7 @@ rules:
       为编写依据，定义直接写入 spec 正文（自包含），禁止"见某书某章"式引用，不得自造定义
   tasks:
     - 每个数值实现任务前必须先有一条会失败的测试（red 先于 green）
-    - 跨端改动必须包含 L4 跨绑定对拍任务
+    - 跨端改动必须包含 cross-binding 跨绑定对拍任务
     - 数值实现任务的验收标准须包含"docs 达到教学式标准（宪法元规则）"
 
 # Per-operation guidance (optional)

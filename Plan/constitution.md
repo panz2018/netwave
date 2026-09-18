@@ -30,11 +30,11 @@
 
 ## 铁律三：容差集中在 manifest，精度分层是契约
 
-- 所有数值容差**只在 `testdata/manifest.json` 定义**（含 `l1_l2_tol` 键，收纳 L1/L2 测试的
-  默认容差），测试代码从 manifest 读取。禁止在 `core/tests`、`python/tests`、`node/tests`
+- 所有数值容差**只在 `testdata/manifest.json` 定义**（含 `core_tol` 键，收纳 unit/property
+  层测试的默认容差），测试代码从 manifest 读取。禁止在 `core/tests`、`python/tests`、`node/tests`
   里各写各的 `1e-9`。三端读同一容差，精度标准不漂移。
 - **精度分层契约**——浮点末位误差不可消除，"何时允许 bit 级断言"在此钉死：
-  ① **bit 级断言只允许出现在同机同架构的 L4 原生三端互比**（core/python/node 加载同一份
+  ① **bit 级断言只允许出现在同机同架构的 cross-binding 原生三端互比**（core/python/node 加载同一份
      编译产物，指令序列相同，结果逐 bit 相同是可证明的；绑定层的 stride/转置/字节序错误
      是天文数字级偏差，bit 级断言正是抓这种胶水 bug 的）；
   ② **一切跨平台/跨实现的比较必须走 manifest 容差**（golden 在不同 CPU 上重读、
@@ -44,7 +44,7 @@
   ③ **Touchstone 写出→读回是 bit 级**：写出契约为 shortest-roundtrip 格式化
      （ryu 类算法——能读回原值的最短十进制表示，往返无损可证明）。
      定长 15 位做不到 bit 级，旧"≥15 位有效数字"表述作废。
-- 默认量级（详见《测试规划.md》§6）：解析变换往返 1e-12、级联 1e-11、FFT 时域 1e-9。
+- 默认量级（详见[测试规划·精度标准](测试规划.md#精度标准)）：解析变换往返 1e-12、级联 1e-11、FFT 时域 1e-9。
 - 放宽任何容差都要在 manifest 里注明原因（如"wasm FFT 浮点差异"）。
 
 ## 铁律四：skrf 是 oracle，但主 CI 不跑 Python
@@ -63,7 +63,7 @@
 ## 铁律六：大文件性能是立项理由，必须守住
 
 - 50MB s4p 解析 < 100ms 是底线（memmap2 + rayon，原生端 Python/Node；
-  浏览器 wasm 单线程回退场景单独定标，见总体计划 §2.3）。
+  浏览器 wasm 单线程回退场景单独定标，见[总体计划·大文件](总体计划.md#大文件)）。
 - criterion 基准进 CI，显著劣化（>20%）即失败。
 - "先实现再优化"对 netwave 不成立——大文件卡死正是重写它的动机。
 
@@ -92,6 +92,11 @@
 - 修宪记录追加到本文件末尾的「修订历史」。
 
 ## 修订历史
+
+- v1.6（2026-09-17）：测试分层去编号——废除 L1–L4，改用 unit / property / golden /
+  cross-binding（见[测试规划·测试分层总览](测试规划.md#测试分层总览)）；manifest 键
+  `l1_l2_tol` 改名 `core_tol`（纯改名不改语义）。铁律三正文同步。全 Plan/ 文档的
+  "§X.Y"式章节引用改为 Markdown 标题跳转链接；修正总体计划 3.2/3.3 章节顺序错位。
 
 - v1.5（2026-09-17）：铁律三重写为「精度分层契约」——bit 级断言限同机同架构 L4 原生三端；
   跨平台/跨实现（含 wasm）走 manifest 相对容差；Touchstone 写出契约定为 shortest-roundtrip
