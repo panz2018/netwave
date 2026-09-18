@@ -42,7 +42,8 @@
   改标题或增删章节后，必须跑链接校验（Python 模拟 slug 规则，逐一验证
   文件存在 + 锚点匹配，断链当场暴露）。
 - **每次改动后必须跑两项检查**（在仓库根目录，均退出码 0 才算完成）：
-  `markdownlint-cli2`（格式，配置在 `.markdownlint-cli2.jsonc`，可加 `--fix`
-  自动修复）和 `python3 scripts/check_links.py`（链接）。
-  `.claude/` 下的第三方生成文件不受本仓库格式约束，已在配置中忽略。
+  `markdownlint-cli2`（格式，规则在 `.markdownlint.jsonc`——VS Code 扩展与
+  CLI 共用，可加 `--fix` 自动修复）和 `python3 scripts/check_links.py`（链接）。
+  `.claude/` 下的第三方生成文件不受本仓库格式约束，已在
+  `.markdownlint-cli2.jsonc` 中忽略。
 - 历史文档（宪法修订历史）里的旧式引用**不改写**——历史记录保持原样。
