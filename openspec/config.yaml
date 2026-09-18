@@ -1,0 +1,33 @@
+schema: spec-driven
+
+context: |
+  全部硬约束（数据布局/TDD/容差/z0/性能/零拷贝/语言约定/权威术语源）的唯一真相源
+  是 Plan/constitution.md，agent 行为准则见仓库根 AGENTS.md。动手前先读，禁止绕过。
+  本文件只保留 OpenSpec 工件专属规则（见 rules）。
+
+# Per-artifact rules
+rules:
+  proposal:
+    - 必须包含 "Non-goals" 段，明确本次不做什么
+    - 引用受影响的铁律编号（若有）
+  spec:
+    - 每条 Requirement 必须可测，附容差（引用 manifest key，不写死数值）
+    - 数值需求必须指明独立真值来源（skrf golden / 闭式解 / 物理不变量）
+    - 涉及 RF 术语时，以权威术语表（knowledge/RF 下 S-Parameters 书 / Touchstone 规范）
+      为编写依据，定义直接写入 spec 正文（自包含），禁止"见某书某章"式引用，不得自造定义
+  tasks:
+    - 每个数值实现任务前必须先有一条会失败的测试（red 先于 green）
+    - 跨端改动必须包含 cross-binding 跨绑定对拍任务
+    - 数值实现任务的验收标准须包含"docs 达到教学式标准（宪法元规则）"
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing

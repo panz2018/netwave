@@ -1,0 +1,10 @@
+// markdownlint 规则 — VS Code 扩展与 markdownlint-cli2 共用的唯一配置
+// （扩展只读 .markdownlint.jsonc；CLI 会把它与 .markdownlint-cli2.jsonc 合并）
+{
+  // 中文正文行宽无法按 80 列断行，关闭
+  "MD013": false,
+  // 表格紧凑风格 |---|---| 与 spaced 风格均可，不强制统一
+  "MD060": false,
+  // 允许 inline HTML（mermaid 等场景备用）
+  "MD033": false
+}
