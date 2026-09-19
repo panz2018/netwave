@@ -68,10 +68,24 @@
 - criterion 基准进 CI，显著劣化（>20%）即失败。
 - "先实现再优化"对 netwave 不成立——大文件卡死正是重写它的动机。
 
+## 铁律七：测试覆盖率 100% 是硬约束
+
+- 四端（core / python / node / wasm）产码**行覆盖率必须 100%**，CI 低于 100% 即失败；
+  unit 层零豁免。
+- 唯一例外是**结构性不可达代码**（`unreachable!()`、平台专属分支、防御性 error 转换），
+  必须逐条显式标注豁免并写明理由——Rust `#[coverage(off)]`、Python `# pragma: no cover`、
+  TS/JS `/* istanbul ignore next */`；禁止整文件/整目录批量豁免。
+- **100% 是下限不是目标**：执行到 ≠ 断言对。数值正确性仍由 golden / property /
+  cross-binding 三层负责（见[测试规划·测试分层总览](测试规划.md#测试分层总览)），
+  覆盖率只兜底"没有代码没被测试碰过"。
+- CI 强制：`cargo llvm-cov`（lines/regions/functions 100%）、
+  `pytest-cov --cov-fail-under=100`、vitest `branches: 100`
+  （工具与门槛见[测试规划·覆盖率与工具](测试规划.md#覆盖率与工具)）。
+
 ## 元规则
 
 - 本宪法优先级高于一切临时决定；spec / plan / tasks 与本宪法冲突时，**改 spec，不改宪法**（除非走正式修宪流程）。
-- 每条铁律都应**可验证**：铁律二/三/六由 CI 强制，铁律一/四/五由 code-review 的 Standards 轴强制。
+- 每条铁律都应**可验证**：铁律二/三/六/七由 CI 强制，铁律一/四/五由 code-review 的 Standards 轴强制。
 - **语言约定**：代码注释与代码内文档（rustdoc / docstring / JSDoc / 行内注释）一律**英文**；
   OpenSpec 工件（proposal/spec/design/tasks）与 `Plan/` 文档一律**中文**。OpenSpec 结构标题与
   SHALL/MUST 关键词保持英文。
@@ -93,6 +107,10 @@
 - 修宪记录追加到本文件末尾的「修订历史」。
 
 ## 修订历史
+
+- v1.7（2026-09-19）：新增铁律七「测试覆盖率 100% 是硬约束」——四端产码行覆盖 100%、
+  unit 零豁免、不可达代码逐条标注豁免；由 CI 强制。`测试规划·覆盖率与工具` 改为细则与
+  工具门槛（原 core >90% 底线作废，以本铁律为准）。
 
 - v1.6（2026-09-17）：测试分层去编号——废除 L1–L4，改用 unit / property / golden /
   cross-binding（见[测试规划·测试分层总览](测试规划.md#测试分层总览)）；manifest 键
