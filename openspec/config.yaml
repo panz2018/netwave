@@ -10,7 +10,7 @@ rules:
   proposal:
     - 必须包含 "Non-goals" 段，明确本次不做什么
     - 引用受影响的铁律编号（若有）
-  spec:
+  specs:
     - 每条 Requirement 必须可测，附容差（引用 manifest key，不写死数值）
     - 数值需求必须指明独立真值来源（skrf golden / 闭式解 / 物理不变量）
     - 涉及 RF 术语时，以权威术语表（knowledge/RF 下 S-Parameters 书 / Touchstone 规范）
