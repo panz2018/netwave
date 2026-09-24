@@ -86,7 +86,7 @@ README 只放"怎么跑"并链回去。
 ## 落地顺序
 
 1. 根 `README.md`
-2. `core/README.md`
+2. `core/README.md`（✅ 2026-09-24 已落地）
 3. `typescript/README.md`（含 native/wasm 分节）
 4. `python/README.md`
 5. `testdata/README.md` + `scripts/README.md`
