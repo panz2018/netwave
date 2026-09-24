@@ -1,0 +1,4 @@
+packages:
+  - typescript
+allowBuilds:
+  esbuild: true

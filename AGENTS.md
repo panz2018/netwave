@@ -25,11 +25,29 @@
 
 琐碎改动（改错别字、一行明显修复）自行判断，不必全套流程。
 
+## 终端命令规范（防卡死）
+
+- **一次一条命令**：禁止 `a && b && c` 串多个慢命令（install/build/首次
+  运行工具链），慢在哪一步必须看得见。
+- **全部加 timeout**：联网/构建命令 `timeout 300 <cmd>`；纯本地快命令
+  `timeout 60 <cmd>`。超时即报告并拆分排查，不原地干等。
+- **首次联网操作预告**：`pnpm install`、`uv sync`（下载 Python）、
+  `wasm-pack build`、`cargo` 首次拉 crate 均可能数分钟，执行前说明预计耗时。
+- corepack 命令必须带 `COREPACK_ENABLE_DOWNLOAD_PROMPT=0`（否则交互卡死）。
+
 ## 项目铁律（动手前必读，此处不重述）
 
 - **[Plan/constitution.md](Plan/constitution.md)** — netwave 全部硬约束的唯一真相源
   （数据布局 / 精度分层 / TDD / 容差 manifest / z0 端口属性 / 性能底线 / 零拷贝 / 语言约定 / 权威术语源）
 - OpenSpec 工作流见 [Plan/开发流程.md](Plan/开发流程.md)；`/opsx:*` 命令会自动注入约束指针（[openspec/config.yaml](openspec/config.yaml)）
+
+## Plan/ 生命周期
+
+- Plan/ 只放**未执行**任务；执行完且结论吸收进 `openspec/specs/`、
+  各 README 或 constitution 后**删除该文件**。
+- 终态：Plan/ 清空删除，`openspec/` 为唯一事实源
+  （constitution 届时迁入 `openspec/project.md`）。
+- 新改进想法一律先落 Plan/ 新 md，不在对话里口头遗留。
 
 ## 文档书写规范（改 Plan/ 或任何 Markdown 必须遵守）
 

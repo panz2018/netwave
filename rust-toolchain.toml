@@ -1,0 +1,3 @@
+[toolchain]
+channel = "stable"
+# 当前钉 stable = 1.98.1；升版走 OpenSpec 变更（见 workspace-layout spec「版本底线」）

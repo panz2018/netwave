@@ -2,8 +2,9 @@
 // 运行：markdownlint-cli2（仓库根目录，无参数即检查全部 *.md）
 {
   "globs": ["**/*.md"],
-  // .claude/ 为第三方生成的 skill 文件，不适用本仓库格式规范
-  "ignores": ["node_modules/**", ".git/**", ".claude/**"],
+  // .claude/ 为第三方生成的 skill 文件；node_modules/.venv/target 为依赖产物
+  // （含嵌套路径，故用 **/ 前缀），均不适用本仓库格式规范
+  "ignores": ["**/node_modules/**", "**/.venv/**", "**/target/**", "**/target-wasm/**", ".git/**", ".claude/**"],
   "config": {
     // 中文正文行宽无法按 80 列断行，关闭
     "MD013": false,

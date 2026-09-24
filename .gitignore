@@ -1,0 +1,9 @@
+target/
+node_modules/
+dist/
+.venv/
+__pycache__/
+coverage/
+*.profraw
+.DS_Store
+.cross-tmp/
