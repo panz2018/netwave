@@ -17,22 +17,14 @@
 - 快速上手（顶层命令，每条一行）：`pnpm install`、
   `cargo test --workspace`、`pnpm -C typescript build:native`、
   `pnpm -C typescript build:wasm`、`python3 scripts/cross_compare.py .cross-tmp`
+- workspace 覆盖率门禁（自 core README 迁入）：
+  `cargo llvm-cov --workspace --fail-under-lines 100`
+  `--ignore-filename-regex '(python|typescript/(native|wasm))/src/lib\.rs'`
 - 环境坑：uv venv + `LD_LIBRARY_PATH`/`PYO3_PYTHON`/`VIRTUAL_ENV` 三件套；
   corepack `COREPACK_ENABLE_DOWNLOAD_PROMPT=0`；沙箱 cwd 漂移用绝对路径
 - 文档地图：铁律 → [constitution.md](constitution.md)、
   流程 → [开发流程.md](开发流程.md)、各端细节 → 各子 README
 - 链接校验纪律：改任何 md 后跑 `markdownlint-cli2` + `check_links.py`
-
-### `core/README.md`
-
-- 目的：唯一数值真相源，所有绑定薄到只做搬运
-  （引用 [constitution·铁律一](constitution.md#铁律一数据布局是契约不是实现细节)）
-- 命令：`cargo test -p netwave`、`cargo llvm-cov`（含
-  `--ignore-filename-regex` 完整命令）、
-  `cargo run -p netwave --example dump .cross-tmp`、clippy/fmt
-- 实现细节：`fill_pattern` 输出布局（re/im 交错 f64、`(nfreq,nports)`
-  寻址）、`(re,im)` 元组约定、覆盖率 100% 无豁免（铁律七）
-- 注意：core 改动后必须重建三个绑定产物再跑对拍
 
 ### `python/README.md`
 
@@ -86,9 +78,8 @@ README 只放"怎么跑"并链回去。
 ## 落地顺序
 
 1. 根 `README.md`
-2. `core/README.md`（✅ 2026-09-24 已落地）
-3. `typescript/README.md`（含 native/wasm 分节）
-4. `python/README.md`
-5. `testdata/README.md` + `scripts/README.md`
-6. 瘦身 Plan 三文档并加指针
-7. `markdownlint-cli2` + `python3 scripts/check_links.py` 全绿收尾
+2. `typescript/README.md`（含 native/wasm 分节）
+3. `python/README.md`
+4. `testdata/README.md` + `scripts/README.md`
+5. 瘦身 Plan 三文档并加指针
+6. `npx markdownlint-cli2 "**/*.md"` + `python3 scripts/check_links.py` 全绿收尾

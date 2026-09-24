@@ -27,28 +27,14 @@ cargo build                 # debug build
 cargo fmt                   # format
 cargo clippy -- -D warnings # lint, warnings are errors
 cargo test                  # all tests
-cargo bench               # criterion benchmarks
-```
-
-Coverage (100% line coverage is a hard floor, no exemptions —
-constitution rule 7). Run from the repo root:
-
-```bash
-cargo llvm-cov --workspace --fail-under-lines 100 \
-  --ignore-filename-regex '(python|typescript/(native|wasm))/src/lib\.rs'
+cargo bench                 # criterion benchmarks
+cargo llvm-cov -p netwave --fail-under-lines 100  # crate-scoped coverage gate
 ```
 
 Cross-binding dump (core side of the four-way comparison):
 
 ```bash
 cargo run -q -p netwave --example dump .cross-tmp
-```
-
-Before committing (from the repo root, both must exit 0):
-
-```bash
-npx markdownlint-cli2 "**/*.md"
-python3 scripts/check_links.py
 ```
 
 ## Implementation notes
@@ -78,11 +64,3 @@ python3 scripts/check_links.py
   currently no coverage exemptions in this crate.
 - `publish = false`: the crate is not released standalone; its version
   moves with the workspace.
-
-## Related docs
-
-- Hard constraints: [Plan/constitution.md](../Plan/constitution.md)
-- Testing strategy and cross-binding rules:
-  [Plan/测试规划.md](../Plan/测试规划.md)
-- Phase-0 retro items pending writeback:
-  [Plan/阶段0复盘回写.md](../Plan/阶段0复盘回写.md)

@@ -41,6 +41,13 @@
   （数据布局 / 精度分层 / TDD / 容差 manifest / z0 端口属性 / 性能底线 / 零拷贝 / 语言约定 / 权威术语源）
 - OpenSpec 工作流见 [Plan/开发流程.md](Plan/开发流程.md)；`/opsx:*` 命令会自动注入约束指针（[openspec/config.yaml](openspec/config.yaml)）
 
+## 文档语言与阅读入口
+
+- **语言**：仅 `openspec/` 与 `Plan/` 用中文；其余一切（README、docs、
+  代码注释、rustdoc、docstring、JSDoc、commit message）用英文。
+- **动手前先读所在子项目的 README.md**：编译/测试/部署命令与实现细节、
+  坑（Gotchas）以各子 README 为唯一存放处，顶层只留指针不重述。
+
 ## Plan/ 生命周期
 
 - Plan/ 只放**未执行**任务；执行完且结论吸收进 `openspec/specs/`、
@@ -48,6 +55,9 @@
 - 终态：Plan/ 清空删除，`openspec/` 为唯一事实源
   （constitution 届时迁入 `openspec/project.md`）。
 - 新改进想法一律先落 Plan/ 新 md，不在对话里口头遗留。
+- 复盘结论按类型归位：流程坑 → [Plan/开发流程.md](Plan/开发流程.md)；
+  命令/实现坑 → 对应子项目 README 的 Gotchas 节；硬约束 → constitution。
+  README 不设独立"复盘"章节，只沉淀结论。
 
 ## 文档书写规范（改 Plan/ 或任何 Markdown 必须遵守）
 
@@ -60,8 +70,10 @@
   改标题或增删章节后，必须跑链接校验（Python 模拟 slug 规则，逐一验证
   文件存在 + 锚点匹配，断链当场暴露）。
 - **每次改动后必须跑两项检查**（在仓库根目录，均退出码 0 才算完成）：
-  `markdownlint-cli2`（格式，规则在 `.markdownlint.jsonc`——VS Code 扩展与
-  CLI 共用，可加 `--fix` 自动修复）和 `python3 scripts/check_links.py`（链接）。
+  `npx markdownlint-cli2 "**/*.md"`（格式，规则在 `.markdownlint.jsonc`——
+  VS Code 扩展与 CLI 共用，可加 `--fix` 自动修复；glob 必须带引号防 shell
+  展开）和 `python3 scripts/check_links.py`（链接，纯标准库，系统 python3
+  即可，无需 venv）。
   `.claude/` 下的第三方生成文件不受本仓库格式约束，已在
   `.markdownlint-cli2.jsonc` 中忽略。
 - 历史文档（宪法修订历史）里的旧式引用**不改写**——历史记录保持原样。
