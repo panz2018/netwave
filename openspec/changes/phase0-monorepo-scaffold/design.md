@@ -29,10 +29,11 @@ core/src/lib.rs
   用 `PyArray::from_vec`（所有权转移进 ndarray）返回；"写回 core 可见"的
   验证方式：同一 ndarray 二次传回 Rust 函数 `sum_first_element(arr:
   &Readonly<PyArray<Complex64,_>>)` 读回——内存从未拷贝，视图即数据。
-  - 说明：PyO3 侧让 Python 长期持有、Rust 同时保留的"双活视图"需要
-    `PyArray::from_borrowed_data` + cleanup 回调，属阶段 6 深水区；阶段 0
-    用所有权转移（from_vec）即可证明零拷贝语义（owndata=False 的
-    from_raw 变体可后置）。**假设记录**：阶段 0 的"写回 core 可见"以
+  - 说明：**实施决策修订（2026-09-22）**：经用户确认"直接实现最终的目标"，
+    阶段 0 即落借用终态——`PyArray3::borrow_from_array` + frozen `Owner`
+    pyclass 挂 base object（numpy 0.25 无 `from_borrowed_data`，
+    `borrow_from_array` 为其等价替代），ndarray `owndata=False`，Python
+    改写直接落进 core 内存。**假设记录**：阶段 0 的"写回 core 可见"以
     "Python 改写 → 传回 Rust 读回一致"为验收形态。
 - `pyproject.toml`：name=`netwave`，requires-python=">=3.10"（底线；开发/CI
   钉 3.14，`.python-version` 进 git，abi3 一个 wheel 覆盖 3.10–3.14），
@@ -125,8 +126,11 @@ typescript/
   从线性内存读回。
   - wasm 内存增长（memory.grow）会 detach 旧视图——阶段 0 缓冲固定小尺寸，
     不触发增长；失效强制机制属阶段 6。
-- `wasm-pack build --target bundler`（browser 条件产物）+
-  `--target nodejs`（vitest 跑往返用）；阶段 0 不做浏览器实测。
+- `wasm-pack build --target web`（browser 条件产物；2026-09-23 实施决策修订：
+  原计划 bundler+nodejs 双 target，但 bundler 胶水含裸 wasm import，vitest
+  （node）无法加载，阶段 0 又不做浏览器实测——web 胶水在浏览器（fetch）与
+  node（vitest）双环境均可加载，单 target 覆盖两端，壳只维护一份）；
+  阶段 0 不做浏览器实测。
 - 多线程 wasm（阶段 3）：core rayon 代码不变，加 wthreads 适配 +
   `+atomics,+bulk-memory,+mutable-globals` 编译 flag；JS Worker 池胶水由
   wasm-bindgen/wthreads 自动生成；无 COOP/COEP 自动单线程回退。
