@@ -11,8 +11,9 @@ fn main() -> std::io::Result<()> {
     // Complex64 = #[repr(C)] {re: f64, im: f64}; write the whole block as
     // a little-endian f64 sequence.
     let bytes: &[u8] = unsafe { std::slice::from_raw_parts(v.as_ptr() as *const u8, v.len() * 16) };
-    let mut f = std::fs::File::create(format!("{out}/core.bin"))?;
+    let path = std::path::Path::new(&out).join("core.bin");
+    let mut f = std::fs::File::create(&path)?;
     f.write_all(bytes)?;
-    println!("dumped core.bin");
+    println!("dumped {}", std::fs::canonicalize(&path)?.display());
     Ok(())
 }

@@ -33,7 +33,10 @@ cargo bench                 # criterion benchmarks
 cargo llvm-cov -p netwave --fail-under-lines 100  # crate-scoped coverage gate
 ```
 
-Cross-binding dump (core side of the four-way comparison):
+Cross-binding dump (core side of the four-way comparison) — run from the
+**repo root**, so the output lands in the shared `.cross-tmp/` that all
+four dumps write to (a relative path here would create `core/.cross-tmp/`
+and the comparison would not find it):
 
 ```bash
 cargo run -q -p netwave --example dump .cross-tmp

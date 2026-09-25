@@ -43,12 +43,10 @@ uv run --project python python scripts/dump_py.py .cross-tmp
 
 ## Implementation notes
 
-- **Zero-copy via base object**: core allocates, a `#[pyclass(frozen)]
-  Owner` holds the buffer and is attached as the returned ndarray's
+- **Zero-copy via base object**: core allocates, a `#[pyclass(frozen)] Owner` holds the buffer and is attached as the returned ndarray's
   `base`. The array has `owndata=False`; Python writes land directly in
   core memory, and the Owner drops (freeing it) only after the array is
-  collected. `test_fill_pattern_view_zero_copy` asserts `owndata is
-  False` so a silent regression to copying fails loudly.
+  collected. `test_fill_pattern_view_zero_copy` asserts `owndata is False` so a silent regression to copying fails loudly.
 - **`read_element` returns `(float, float)`**: a plain tuple, not a
   complex — keeps the roundtrip proof free of any conversion layer.
 - **`python_relative: 0.0` tolerance** (in
