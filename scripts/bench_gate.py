@@ -22,7 +22,7 @@ def main() -> int:
     found = False
     for est in root.glob("*/change/estimates.json"):
         found = True
-        mean = json.loads(est.read_text())["mean"]["point_estimate"]
+        mean = json.loads(est.read_text(encoding="utf-8"))["mean"]["point_estimate"]
         name = est.parents[1].name
         if mean > threshold:
             print(f"BENCH REGRESSION: {name} +{mean:.1%} > {threshold:.0%}")

@@ -17,7 +17,11 @@ NFREQ, NPORTS = 2, 2
 
 # Tolerance manifest (rule 3): python reads back the exact same f64 bits it
 # wrote (same memory, no arithmetic), so the relative tolerance is 0.
-MANIFEST = json.loads((Path(__file__).parents[2] / "testdata/manifest.json").read_text())
+# encoding="utf-8" is mandatory: the manifest carries CJK notes and
+# Windows' default cp1252 would raise UnicodeDecodeError.
+MANIFEST = json.loads(
+    (Path(__file__).parents[2] / "testdata/manifest.json").read_text(encoding="utf-8")
+)
 PY_TOL = MANIFEST["core_tol"]["python_relative"]
 
 

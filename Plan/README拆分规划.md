@@ -80,7 +80,7 @@ README 只放"怎么跑"并链回去。
 ## 落地顺序
 
 1. 根 `README.md`
-2. `typescript/README.md`（含 native/wasm 分节）
+2. ~~`typescript/README.md`~~ ✅（2026-09-25，native/wasm 分节合并写）
 3. ~~`python/README.md`~~ ✅（2026-09-25）
 4. ~~`testdata/README.md`~~ ✅（2026-09-25）~~`scripts/README.md`~~ ✅（2026-09-25）
 5. 瘦身 Plan 三文档并加指针
