@@ -119,6 +119,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
+      # maturin compiles the crate: ubuntu/macos runners ship rust
+      # preinstalled, windows does not — install it explicitly.
+      - uses: dtolnay/rust-toolchain@stable
       # pinned full tag: setup-uv publishes no floating major tag (v10)
       - uses: astral-sh/setup-uv@v10.2.0
         with:
