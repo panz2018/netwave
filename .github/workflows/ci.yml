@@ -14,9 +14,10 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  # 五格构建矩阵（macOS 仅 Apple Silicon，放弃 Intel x64）
-  build:
-    name: build (${{ matrix.target }})
+  # Rust matrix: four platforms (macOS only Apple Silicon, Intel x64
+  # dropped). One job per language/toolchain; platforms expand inside.
+  rust:
+    name: rust (${{ matrix.target }})
     strategy:
       fail-fast: false
       matrix:
@@ -112,13 +113,24 @@ jobs:
       - name: internal links + anchors
         run: python3 scripts/check_links.py
 
-  # Python 双版本格（底线 3.10 + 最新 3.14）
+  # Python matrix: ubuntu runs the floor (3.10) + latest (3.14);
+  # windows/macos run latest only — the point there is the platform ABI
+  # (.so/.pyd/.dylib + zero-copy base object), not the version spread.
   python:
-    runs-on: ubuntu-latest
+    name: python (${{ matrix.os }}, ${{ matrix.python-version }})
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.14"]
+        include:
+          - os: ubuntu-latest
+            python-version: "3.10"
+          - os: ubuntu-latest
+            python-version: "3.14"
+          - os: windows-latest
+            python-version: "3.14"
+          - os: macos-latest
+            python-version: "3.14"
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
       # pinned full tag: setup-uv publishes no floating major tag (v10)
