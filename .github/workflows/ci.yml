@@ -13,9 +13,12 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
 
+# Jobs are ordered cheap-first: docs (seconds) -> rust -> python ->
+# bench (most expensive). One job per language/toolchain; platforms
+# expand inside each job.
 jobs:
-  # Rust matrix: four platforms (macOS only Apple Silicon, Intel x64
-  # dropped). One job per language/toolchain; platforms expand inside.
+  # Docs gate: markdown format + internal link/anchor integrity
+  # (same two checks AGENTS.md requires locally on every md edit).
   docs:
     runs-on: ubuntu-latest
     steps:
@@ -28,9 +31,8 @@ jobs:
       - name: internal links + anchors
         run: python3 scripts/check_links.py
 
-  # Python matrix: ubuntu runs the floor (3.10) + latest (3.14);
-  # windows/macos run latest only — the point there is the platform ABI
-  # (.so/.pyd/.dylib + zero-copy base object), not the version spread.
+  # Rust matrix: four platforms (macOS only Apple Silicon, Intel x64
+  # dropped).
   rust:
     name: rust (${{ matrix.target }})
     strategy:
@@ -97,7 +99,9 @@ jobs:
           cargo llvm-cov --workspace --fail-under-lines 100 \
             --ignore-filename-regex '(python|typescript/(native|wasm))/src/lib\.rs'
 
-  # criterion baseline: regressions >20% fail (ci-matrix spec)
+  # Python matrix: ubuntu runs the floor (3.10) + latest (3.14);
+  # windows/macos run latest only — the point there is the platform ABI
+  # (.so/.pyd/.dylib + zero-copy base object), not the version spread.
   python:
     name: python (${{ matrix.os }}, ${{ matrix.python-version }})
     strategy:
@@ -131,14 +135,24 @@ jobs:
           uv run ruff check .
           uv run ruff format --check .
 
-  # --- node job disabled until typescript manual review lands (2026-09-24) ---
-  # # Node 双版本格（底线 22 + 最新 26）
+  # --- node job disabled until typescript manual review lands (2026-09-24).
+  # When re-enabled, keep it between python and bench. ---
+  # # Node 双版本格（底线 22 + 最新 26）+ windows/macos 最新单格
   # node:
-  #   runs-on: ubuntu-latest
+  #   name: node (${{ matrix.os }}, ${{ matrix.node-version }})
   #   strategy:
   #     fail-fast: false
   #     matrix:
-  #       node-version: ["22", "26"]
+  #       include:
+  #         - os: ubuntu-latest
+  #           node-version: "22"
+  #         - os: ubuntu-latest
+  #           node-version: "26"
+  #         - os: windows-latest
+  #           node-version: "26"
+  #         - os: macos-latest
+  #           node-version: "26"
+  #   runs-on: ${{ matrix.os }}
   #   steps:
   #     - uses: actions/checkout@v7
   #     - uses: pnpm/action-setup@v6
@@ -169,6 +183,7 @@ jobs:
   #         python3 scripts/cross_compare.py .cross-tmp --tamper=python
   #         python3 scripts/cross_compare.py .cross-tmp --tamper=wasm
 
+  # criterion baseline: regressions >20% fail (ci-matrix spec)
   bench:
     runs-on: ubuntu-latest
     steps:
@@ -184,6 +199,3 @@ jobs:
           cargo bench --bench scaffold -- --save-baseline=ci
           # Fail if current regressed >20% against the saved baseline.
           python3 scripts/bench_gate.py target/criterion
-
-  # Docs gate: markdown format + internal link/anchor integrity
-  # (same two checks AGENTS.md requires locally on every md edit).
