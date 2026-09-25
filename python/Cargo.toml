@@ -1,0 +1,18 @@
+[package]
+name = "netwave-python"
+version = "0.0.1"
+edition = "2024"
+rust-version = "1.98"
+publish = false
+
+[lib]
+name = "netwave"
+# cdylib only: an rlib would emit an unhashed libnetwave.rlib that
+# collides with core's libnetwave-<hash>.rlib on the doc-test search
+# path (E0464).
+crate-type = ["cdylib"]
+
+[dependencies]
+netwave = { path = "../core" }
+pyo3 = { version = "0.29", features = ["abi3-py310"] }
+numpy = "0.29"

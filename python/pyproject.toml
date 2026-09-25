@@ -1,0 +1,19 @@
+[build-system]
+requires = ["maturin>=1.7"]
+build-backend = "maturin"
+
+[project]
+name = "netwave"
+version = "0.0.1"
+description = "Network scattering-parameter math (PyO3 bindings, scaffold phase 0)"
+requires-python = ">=3.10"
+license = "MIT"
+dependencies = ["numpy>=2.0"]
+
+[dependency-groups]
+dev = ["maturin>=1.7", "pytest>=8", "pytest-cov>=5"]
+
+[tool.maturin]
+features = ["pyo3/extension-module"]
+# Ship the type-hint stub inside the wheel (task 3.2).
+include = [{ path = "src/netwave.pyi", format = "wheel" }]
