@@ -1,6 +1,9 @@
 [workspace]
 resolver = "2"
-members = ["core", "python", "typescript/native", "typescript/wasm"]
+# Non-core members disabled until their manual review lands (2026-09-25):
+# their directories are still untracked, so CI checkout breaks without this.
+# Re-add "python", "typescript/native", "typescript/wasm" after review.
+members = ["core"] # , "python", "typescript/native", "typescript/wasm"]
 
 # Release profile: LTO for wasm binary size (spec: zero-copy-roundtrip).
 [profile.release]
