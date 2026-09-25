@@ -45,8 +45,9 @@
   `test:native` / `test:wasm`（两套 vitest config，100% 阈值）
 - 实现细节（坑最密集）：napi 零拷贝 Buffer 与 capacity 陷阱、CLI 旗标漂移、
   wasm web-target 选型、`{module_or_path: bytes}` init 形态、
-  `wasm-opt = false` 沙箱限制、worker 内存不可 transfer、
-  壳文件体系与 `publish_shell.mjs` 重写规则
+  wasm-opt 用 `scripts/install_binaryen.sh` 动态装 GitHub latest
+  （不钉版本；wasm-pack 内置的钉在老版 117 必须 PATH 覆盖）、
+  worker 内存不可 transfer、壳文件体系与 `publish_shell.mjs` 重写规则
   （逐条见 [阶段0复盘回写.md](阶段0复盘回写.md)）
 - 注意：JSON 丢负零 → 对拍 dump 用 `.bin`
 
@@ -58,7 +59,8 @@
 ### `scripts/README.md`（短）
 
 - 每个脚本一行：用途 + 调用方式（`cross_compare.py <dir> [--tamper=<end>]`
-  的 tamper 语义、`bench_gate.py` 阈值来源）
+  的 tamper 语义、`bench_gate.py` 阈值来源、`install_binaryen.sh`
+  动态安装 wasm-opt 最新版——本地与 CI 共用）
 
 ## Plan/ 瘦身对照
 

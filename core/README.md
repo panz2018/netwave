@@ -64,5 +64,9 @@ cargo run -q -p netwave --example dump .cross-tmp
 - **`#[coverage(off)]` is nightly-only** — do not add it; the stable
   toolchain pinned in `rust-toolchain.toml` will not compile. There are
   currently no coverage exemptions in this crate.
+- **Real benchmarks must use `black_box`** around inputs and outputs,
+  otherwise the optimizer folds the measured code away and the numbers
+  are fake. `scaffold_noop` is a deliberate no-op and unaffected; apply
+  this when phase-2 real benchmarks land.
 - `publish = false`: the crate is not released standalone; its version
   moves with the workspace.
