@@ -16,6 +16,21 @@ env:
 jobs:
   # Rust matrix: four platforms (macOS only Apple Silicon, Intel x64
   # dropped). One job per language/toolchain; platforms expand inside.
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - name: markdownlint (rules in .markdownlint-cli2.jsonc)
+        run: npx --yes markdownlint-cli2 "**/*.md"
+      - name: internal links + anchors
+        run: python3 scripts/check_links.py
+
+  # Python matrix: ubuntu runs the floor (3.10) + latest (3.14);
+  # windows/macos run latest only — the point there is the platform ABI
+  # (.so/.pyd/.dylib + zero-copy base object), not the version spread.
   rust:
     name: rust (${{ matrix.target }})
     strategy:
@@ -83,39 +98,6 @@ jobs:
             --ignore-filename-regex '(python|typescript/(native|wasm))/src/lib\.rs'
 
   # criterion baseline: regressions >20% fail (ci-matrix spec)
-  bench:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
-      - name: bench vs previous baseline
-        run: |
-          # Compare against the default 'base' baseline if one exists
-          # (first run has none -> no comparison data, gate passes).
-          # Cross-commit persistence (cache or committed baseline) is a
-          # phase-2 task; until then this only measures run-to-run noise.
-          cargo bench --bench scaffold -- --baseline-lenient=base || true
-          cargo bench --bench scaffold -- --save-baseline=ci
-          # Fail if current regressed >20% against the saved baseline.
-          python3 scripts/bench_gate.py target/criterion
-
-  # Docs gate: markdown format + internal link/anchor integrity
-  # (same two checks AGENTS.md requires locally on every md edit).
-  docs:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-node@v7
-        with:
-          node-version: 26
-      - name: markdownlint (rules in .markdownlint-cli2.jsonc)
-        run: npx --yes markdownlint-cli2 "**/*.md"
-      - name: internal links + anchors
-        run: python3 scripts/check_links.py
-
-  # Python matrix: ubuntu runs the floor (3.10) + latest (3.14);
-  # windows/macos run latest only — the point there is the platform ABI
-  # (.so/.pyd/.dylib + zero-copy base object), not the version spread.
   python:
     name: python (${{ matrix.os }}, ${{ matrix.python-version }})
     strategy:
@@ -186,3 +168,22 @@ jobs:
   #         python3 scripts/cross_compare.py .cross-tmp
   #         python3 scripts/cross_compare.py .cross-tmp --tamper=python
   #         python3 scripts/cross_compare.py .cross-tmp --tamper=wasm
+
+  bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - name: bench vs previous baseline
+        run: |
+          # Compare against the default 'base' baseline if one exists
+          # (first run has none -> no comparison data, gate passes).
+          # Cross-commit persistence (cache or committed baseline) is a
+          # phase-2 task; until then this only measures run-to-run noise.
+          cargo bench --bench scaffold -- --baseline-lenient=base || true
+          cargo bench --bench scaffold -- --save-baseline=ci
+          # Fail if current regressed >20% against the saved baseline.
+          python3 scripts/bench_gate.py target/criterion
+
+  # Docs gate: markdown format + internal link/anchor integrity
+  # (same two checks AGENTS.md requires locally on every md edit).
