@@ -81,7 +81,7 @@ README 只放"怎么跑"并链回去。
 
 1. 根 `README.md`
 2. `typescript/README.md`（含 native/wasm 分节）
-3. `python/README.md`
-4. `testdata/README.md` + `scripts/README.md`
+3. ~~`python/README.md`~~ ✅（2026-09-25）
+4. ~~`testdata/README.md`~~ ✅（2026-09-25）+ `scripts/README.md`（待）
 5. 瘦身 Plan 三文档并加指针
 6. `npx markdownlint-cli2 "**/*.md"` + `python3 scripts/check_links.py` 全绿收尾
