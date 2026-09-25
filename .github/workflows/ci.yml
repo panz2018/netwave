@@ -98,30 +98,29 @@ jobs:
           # Fail if current regressed >20% against the saved baseline.
           python3 scripts/bench_gate.py target/criterion
 
-  # --- python job disabled until python manual review lands (2026-09-24) ---
-  # # Python 双版本格（底线 3.10 + 最新 3.14）
-  # python:
-  #   runs-on: ubuntu-latest
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       python-version: ["3.10", "3.14"]
-  #   steps:
-  #     - uses: actions/checkout@v7
-  #     - uses: astral-sh/setup-uv@v10
-  #       with:
-  #         python-version: ${{ matrix.python-version }}
-  #     - name: sync + build + test
-  #       working-directory: python
-  #       run: |
-  #         uv sync
-  #         uv run maturin develop
-  #         uv run pytest --cov=netwave --cov-fail-under=100
-  #     - name: ruff (lint + format)
-  #       working-directory: python
-  #       run: |
-  #         uv run ruff check .
-  #         uv run ruff format --check .
+  # Python 双版本格（底线 3.10 + 最新 3.14）
+  python:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.14"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: sync + build + test
+        working-directory: python
+        run: |
+          uv sync
+          uv run maturin develop
+          uv run pytest --cov=netwave --cov-fail-under=100
+      - name: ruff (lint + format)
+        working-directory: python
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
 
   # --- node job disabled until typescript manual review lands (2026-09-24) ---
   # # Node 双版本格（底线 22 + 最新 26）
