@@ -98,6 +98,20 @@ jobs:
           # Fail if current regressed >20% against the saved baseline.
           python3 scripts/bench_gate.py target/criterion
 
+  # Docs gate: markdown format + internal link/anchor integrity
+  # (same two checks AGENTS.md requires locally on every md edit).
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+      - name: markdownlint (rules in .markdownlint-cli2.jsonc)
+        run: npx --yes markdownlint-cli2 "**/*.md"
+      - name: internal links + anchors
+        run: python3 scripts/check_links.py
+
   # Python 双版本格（底线 3.10 + 最新 3.14）
   python:
     runs-on: ubuntu-latest

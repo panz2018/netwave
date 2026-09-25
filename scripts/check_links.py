@@ -63,7 +63,8 @@ def main() -> int:
                 if in_code:
                     continue
                 # strip inline-code spans: links there are format templates,
-                # not real links (e.g. ``[标题名](文件.md#锚点)`` in AGENTS.md)
+                # not real links (AGENTS.md documents the link syntax inside
+                # backticks, so those must not be resolved)
                 line = re.sub(r"`+[^`]*`+", "", line)
                 for text, target in LINK.findall(line):
                     if target.startswith("http"):
