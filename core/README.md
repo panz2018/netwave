@@ -24,8 +24,10 @@ Run from this directory (or add `-p netwave` from the repo root).
 
 ```bash
 cargo build                 # debug build
-cargo fmt                   # format
+cargo fmt --check           # format check only (what CI runs)
+cargo fmt                   # auto-fix formatting
 cargo clippy -- -D warnings # lint, warnings are errors
+cargo clippy --fix --allow-dirty  # auto-fix lint suggestions (review the diff!)
 cargo test                  # all tests
 cargo bench                 # criterion benchmarks
 cargo llvm-cov -p netwave --fail-under-lines 100  # crate-scoped coverage gate

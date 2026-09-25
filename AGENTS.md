@@ -35,6 +35,16 @@
   `wasm-pack build`、`cargo` 首次拉 crate 均可能数分钟，执行前说明预计耗时。
 - corepack 命令必须带 `COREPACK_ENABLE_DOWNLOAD_PROMPT=0`（否则交互卡死）。
 
+## 依赖版本策略
+
+- **默认用最新版**：新增或升级依赖时直接钉最新（含间接依赖，
+  `cargo update` / `pnpm outdated` 定期体检）；项目早期升级成本最低。
+- **最新版有 bug 才回退**：仅当最新版导致构建/测试失败且确认是上游
+  bug（非本项目用法问题）时，回退到次新版（`--precise`），并在
+  所在子项目 README 的 Gotchas 记录回退原因与跟踪的上游 issue。
+- **配对依赖一起升**：pyo3↔numpy、napi↔napi-derive 等必须同 major 联动，
+  升级后必跑四端对拍确认数值不变。
+
 ## 项目铁律（动手前必读，此处不重述）
 
 - **[Plan/constitution.md](Plan/constitution.md)** — netwave 全部硬约束的唯一真相源
