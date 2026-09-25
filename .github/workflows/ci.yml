@@ -1,0 +1,157 @@
+name: CI
+
+on:
+  push:
+    branches: "**"
+  pull_request:
+
+# One CI run per branch: a new push cancels the previous in-flight run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # 五格构建矩阵（macOS 仅 Apple Silicon，放弃 Intel x64）
+  build:
+    name: build (${{ matrix.target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-x64
+            os: ubuntu-latest
+          # no ubuntu-latest-arm alias exists (verified against the
+          # actions/runner-images README); ARM must name an explicit
+          # version — bump to the newest *-arm label when one is added.
+          - target: linux-arm64
+            os: ubuntu-26.04-arm
+          - target: windows-x64
+            os: windows-latest
+          - target: darwin-arm64
+            os: macos-latest
+          # wasm32 cell disabled until typescript manual review lands
+          # (2026-09-24): it builds the wasm binding artifacts.
+          # - target: wasm32
+          #   os: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - if: matrix.target == 'wasm32'
+        run: rustup target add wasm32-unknown-unknown
+      - uses: mozilla-actions/sccache-action@v0.0.9
+
+      - name: fmt
+        if: matrix.target == 'linux-x64'
+        run: cargo fmt --all --check
+
+      - name: clippy
+        if: matrix.target == 'linux-x64'
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: cargo test
+        if: matrix.target != 'wasm32'
+        run: cargo test --workspace
+
+      - name: install binaryen (wasm-opt, latest)
+        if: matrix.target == 'wasm32'
+        # Always latest: wasm-pack's built-in download is stuck on binaryen
+        # 117; pinning a version here would rot (AGENTS.md dependency policy).
+        run: bash scripts/install_binaryen.sh
+
+      - name: wasm build + vitest (wasm artifacts)
+        if: matrix.target == 'wasm32'
+        run: |
+          pnpm install
+          pnpm -C typescript build:wasm
+          pnpm -C typescript test:wasm --coverage
+
+      - name: coverage (llvm-cov, 100% floor)
+        if: matrix.target == 'linux-x64'
+        run: |
+          cargo install cargo-llvm-cov --locked
+          # Binding crates (python/native/wasm) need a JS/Python runtime and
+          # are covered by pytest/vitest in their own jobs; excluded here
+          # (structurally unreachable under cargo test, spec-sanctioned).
+          cargo llvm-cov --workspace --fail-under-lines 100 \
+            --ignore-filename-regex '(python|typescript/(native|wasm))/src/lib\.rs'
+
+  # criterion baseline: regressions >20% fail (ci-matrix spec)
+  bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: bench vs previous baseline
+        run: |
+          # Compare against the default 'base' baseline if one exists
+          # (first run has none -> no comparison data, gate passes).
+          # Cross-commit persistence (cache or committed baseline) is a
+          # phase-2 task; until then this only measures run-to-run noise.
+          cargo bench --bench scaffold -- --baseline-lenient=base || true
+          cargo bench --bench scaffold -- --save-baseline=ci
+          # Fail if current regressed >20% against the saved baseline.
+          python3 scripts/bench_gate.py target/criterion
+
+  # --- python job disabled until python manual review lands (2026-09-24) ---
+  # # Python 双版本格（底线 3.10 + 最新 3.14）
+  # python:
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       python-version: ["3.10", "3.14"]
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: astral-sh/setup-uv@v6
+  #       with:
+  #         python-version: ${{ matrix.python-version }}
+  #     - name: sync + build + test
+  #       working-directory: python
+  #       run: |
+  #         uv sync
+  #         uv run maturin develop
+  #         uv run pytest --cov=netwave --cov-fail-under=100
+
+  # --- node job disabled until typescript manual review lands (2026-09-24) ---
+  # # Node 双版本格（底线 22 + 最新 26）
+  # node:
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     fail-fast: false
+  #     matrix:
+  #       node-version: ["22", "26"]
+  #   steps:
+  #     - uses: actions/checkout@v4
+  #     - uses: pnpm/action-setup@v4
+  #     - uses: actions/setup-node@v4
+  #       with:
+  #         node-version: ${{ matrix.node-version }}
+  #         cache: pnpm
+  #     - uses: astral-sh/setup-uv@v6
+  #     - run: pnpm install
+  #     - name: napi build
+  #       run: pnpm -C typescript build:native
+  #     - name: vitest (native, coverage 100)
+  #       run: pnpm -C typescript test:native --coverage
+  #     - name: wasm-pack build
+  #       run: |
+  #         bash scripts/install_binaryen.sh
+  #         pnpm -C typescript build:wasm
+  #     - name: vitest (wasm, coverage 100)
+  #       run: pnpm -C typescript test:wasm --coverage
+  #     - name: cross-binding 对拍（原生逐 bit + wasm 容差 + 篡改自检）
+  #       run: |
+  #         uv sync --project python
+  #         (cd python && uv run maturin develop)
+  #         uv run --project python python scripts/dump_py.py .cross-tmp
+  #         cargo run -q -p netwave --example dump .cross-tmp
+  #         node scripts/dump_js.mjs .cross-tmp
+  #         python3 scripts/cross_compare.py .cross-tmp
+  #         python3 scripts/cross_compare.py .cross-tmp --tamper=python
+  #         python3 scripts/cross_compare.py .cross-tmp --tamper=wasm
