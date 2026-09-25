@@ -117,6 +117,11 @@ jobs:
   #         uv sync
   #         uv run maturin develop
   #         uv run pytest --cov=netwave --cov-fail-under=100
+  #     - name: ruff (lint + format)
+  #       working-directory: python
+  #       run: |
+  #         uv run ruff check .
+  #         uv run ruff format --check .
 
   # --- node job disabled until typescript manual review lands (2026-09-24) ---
   # # Node 双版本格（底线 22 + 最新 26）
