@@ -83,10 +83,12 @@ node scripts/dump_js.mjs .cross-tmp
 - **shell files**: `src/` shells import `"../dist/..."` (tests run against
   src/); `publish_shell.mjs` rewrites to `"./..."` when copying into `dist/`.
   Edit `src/`, never hand-edit `dist/`.
-- **npm platform packages**: `optionalDependencies` maps `netwave-{os}-{arch}`
-  names to per-platform packages (linux-x64-gnu, linux-arm64-gnu,
-  win32-x64-msvc, darwin-arm64) — the directory name `typescript/` and the
-  published package name `netwave` are deliberately decoupled.
+- **npm platform packages**: the `netwave-{os}-{arch}` split packages
+  (linux-x64-gnu, linux-arm64-gnu, win32-x64-msvc, darwin-arm64) are
+  created **at publish time** — phase-0 must not list them in
+  `optionalDependencies` (unpublished names break CI frozen-lockfile
+  install). The directory name `typescript/` and the published package name
+  `netwave` are deliberately decoupled.
 
 ## Gotchas
 

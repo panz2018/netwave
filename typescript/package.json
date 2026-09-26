@@ -33,12 +33,6 @@
     "test:wasm": "vitest run --config vitest.wasm.config.ts",
     "cross-dump": "node ../scripts/dump_js.mjs ../.cross-tmp"
   },
-  "optionalDependencies": {
-    "netwave-darwin-arm64": "0.0.1",
-    "netwave-linux-arm64-gnu": "0.0.1",
-    "netwave-linux-x64-gnu": "0.0.1",
-    "netwave-win32-x64-msvc": "0.0.1"
-  },
   "devDependencies": {
     "@napi-rs/cli": "^3.10.5",
     "@types/node": "^26.6.2",
