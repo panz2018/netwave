@@ -24,7 +24,7 @@
   corepack `COREPACK_ENABLE_DOWNLOAD_PROMPT=0`；沙箱 cwd 漂移用绝对路径
 - 文档地图：铁律 → [constitution.md](constitution.md)、
   流程 → [开发流程.md](开发流程.md)、各端细节 → 各子 README
-- 链接校验纪律：改任何 md 后跑 `markdownlint-cli2` + `check_links.py`
+- 链接校验纪律：改任何 md 后跑 `markdownlint-cli2` + `check_md.py`
 
 ### `python/README.md`
 
@@ -64,12 +64,12 @@
 
 ## Plan/ 瘦身对照
 
-| Plan 文档 | 拆走 | 保留 |
-|---|---|---|
-| [开发流程.md](开发流程.md) | 工具链状态表里的绑定级细节（napi 旗标、wasm-pack 参数、E0464、corepack 交互坑）→ 各 README；技能地图每行加"细节见 X README"指针 | 核心循环、复盘三问、何时简化、技能×阶段表 |
-| [总体计划.md](总体计划.md) | `Python 环境管理：uv`、`Node.js 包管理：pnpm` 的操作细节 → 对应 README（留一句决策+指针）；`目录名与发布名解耦` 的 npm 包名映射表 → `typescript/README.md` | 项目定位、语言选型理由、数据布局决策、Monorepo 结构、路线图、License 策略 |
-| [测试规划.md](测试规划.md) | `三端 runner` 的各端调用命令 → 各 README；覆盖率工具的具体命令行 → core/typescript README | 测试分层、golden 契约、manifest schema、容差标准、cross-binding 规则 |
-| [功能覆盖规划.md](功能覆盖规划.md) | 基本不拆（纯范围规划，无命令细节） | 全部 |
+| Plan 文档                          | 拆走                                                                                                                                                       | 保留                                                                      |
+| ---------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
+| [开发流程.md](开发流程.md)         | 工具链状态表里的绑定级细节（napi 旗标、wasm-pack 参数、E0464、corepack 交互坑）→ 各 README；技能地图每行加"细节见 X README"指针                            | 核心循环、复盘三问、何时简化、技能×阶段表                                 |
+| [总体计划.md](总体计划.md)         | `Python 环境管理：uv`、`Node.js 包管理：pnpm` 的操作细节 → 对应 README（留一句决策+指针）；`目录名与发布名解耦` 的 npm 包名映射表 → `typescript/README.md` | 项目定位、语言选型理由、数据布局决策、Monorepo 结构、路线图、License 策略 |
+| [测试规划.md](测试规划.md)         | `三端 runner` 的各端调用命令 → 各 README；覆盖率工具的具体命令行 → core/typescript README                                                                  | 测试分层、golden 契约、manifest schema、容差标准、cross-binding 规则      |
+| [功能覆盖规划.md](功能覆盖规划.md) | 基本不拆（纯范围规划，无命令细节）                                                                                                                         | 全部                                                                      |
 
 ## 红线
 
@@ -84,4 +84,4 @@ README 只放"怎么跑"并链回去。
 3. ~~`python/README.md`~~ ✅（2026-09-25）
 4. ~~`testdata/README.md`~~ ✅（2026-09-25）~~`scripts/README.md`~~ ✅（2026-09-25）
 5. 瘦身 Plan 三文档并加指针
-6. `npx markdownlint-cli2 "**/*.md"` + `python3 scripts/check_links.py` 全绿收尾
+6. `npx markdownlint-cli2 "**/*.md"` + `python3 scripts/check_md.py` 全绿收尾
