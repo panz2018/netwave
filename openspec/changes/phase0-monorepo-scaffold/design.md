@@ -3,8 +3,9 @@
 ## 总体思路
 
 阶段 0 的唯一技术风险点是**三绑定零拷贝机制能否走通**，其余是机械脚手架。
-设计围绕一个最小载体：core 的 `fill_pattern(nfreq, nports) ->
-Vec<Complex64>`（实为返回自有缓冲的所有权包装），三绑定各自把这块内存以
+设计围绕一个最小载体：core 的
+`fill_pattern(nfreq, nports) -> Vec<Complex64>`（实为返回自有缓冲的所有权包装），
+三绑定各自把这块内存以
 视图形式交给宿主语言，测试改写视图后经 core 回读。
 
 ## core 临时 API
@@ -27,8 +28,8 @@ core/src/lib.rs
 
 - `python/src/lib.rs`：`fill_pattern_py` 在 Rust 侧分配 `Vec<Complex64>`，
   用 `PyArray::from_vec`（所有权转移进 ndarray）返回；"写回 core 可见"的
-  验证方式：同一 ndarray 二次传回 Rust 函数 `sum_first_element(arr:
-  &Readonly<PyArray<Complex64,_>>)` 读回——内存从未拷贝，视图即数据。
+  验证方式：同一 ndarray 二次传回 Rust 函数
+  `sum_first_element(arr: &Readonly<PyArray<Complex64,_>>)` 读回——内存从未拷贝，视图即数据。
   - 说明：**实施决策修订（2026-09-22）**：经用户确认"直接实现最终的目标"，
     阶段 0 即落借用终态——`PyArray3::borrow_from_array` + frozen `Owner`
     pyclass 挂 base object（numpy 0.25 无 `from_borrowed_data`，

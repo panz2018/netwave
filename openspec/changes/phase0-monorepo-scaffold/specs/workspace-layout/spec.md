@@ -57,9 +57,9 @@ MSRV = 当前 stable（1.98，升版走 OpenSpec 变更）；Python ≥3.10、Nu
 （abi3 一个 wheel 覆盖 3.10–3.14）；Node ≥22（最旧在支持期 LTS，Node 20 已
 2026-04 EOL）。开发版本用当前 latest stable：Python 3.14（`.python-version`
 进 git）、Node 26；CI 版本矩阵见 ci-matrix spec。
-包管理器版本 MUST 钉死：根 `package.json` 含 `"packageManager":
-"pnpm@<exact>"`；`python/` 含 `pyproject.toml` 与 `uv.lock` 且 maturin 为 dev
-dependency。
+包管理器版本 MUST 钉死：根 `package.json` 含
+`"packageManager": "pnpm@<exact>"`；`python/` 含 `pyproject.toml` 与 `uv.lock`
+且 maturin 为 dev dependency。
 
 #### Scenario: 底线版本可校验
 
