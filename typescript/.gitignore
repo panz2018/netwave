@@ -1,0 +1,8 @@
+# Build outputs and caches for this directory. Duplicated from root
+# .gitignore on purpose: if the root ignore or the layout ever changes,
+# this directory keeps its own protection against committing artifacts.
+node_modules/
+dist/
+coverage/
+target/
+target-wasm/
