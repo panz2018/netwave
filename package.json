@@ -3,6 +3,8 @@
   "private": true,
   "packageManager": "pnpm@12.5.1",
   "scripts": {
+    "check": "pnpm check:md && pnpm check:ts && pnpm check:rs && pnpm check:py",
+    "fix": "pnpm fix:md && pnpm fix:ts && pnpm fix:rs && pnpm fix:py",
     "check:md": "markdownlint-cli2 \"**/*.md\" && prettier --check \"**/*.md\" && python3 scripts/check_md.py",
     "fix:md": "prettier --write \"**/*.md\" && markdownlint-cli2 \"**/*.md\" --fix",
     "check:ts": "biome check . && pnpm -C typescript tsc --noEmit",

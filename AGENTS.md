@@ -86,9 +86,10 @@
   类型门禁，聚合为 `pnpm check:ts` / `pnpm fix:ts`；Markdown 归 Prettier；
   两者作用域不重叠。`.claude/` 下的第三方生成文件不受本仓库格式约束，已在
   `.markdownlint-cli2.jsonc` 中忽略。
-- **四组对称命令（根 package.json 为唯一定义处，本文只列名字）**：
+- **对称命令（根 package.json 为唯一定义处，本文只列名字）**：聚合
+  `check`/`fix`（跑全部语言）+ 按语言四组
   `check:md`/`fix:md`、`check:ts`/`fix:ts`、`check:rs`/`fix:rs`、
   `check:py`/`fix:py`——`check:` 只报告，`fix:` 会改文件；具体子命令与旗标
-  以根 `package.json` 的 `scripts` 为准，改命令只改那里；本地开发改完代码跑
-  对应 `fix:` + `check:`，CI 只跑 `check:`。
+  以根 `package.json` 的 `scripts` 为准，改命令只改那里。日常节奏：改完代码
+  `pnpm fix` → `pnpm check`；提交前 CI 跑的就是同一条 `pnpm check`。
 - 历史文档（宪法修订历史）里的旧式引用**不改写**——历史记录保持原样。
