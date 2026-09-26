@@ -1,0 +1,41 @@
+{
+  // Local schema shipped inside the @biomejs/biome package: resolves
+  // offline, no remote-fetch trust prompt. Bump together with the dep.
+  "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
+  // Single tool for JS/TS/JSON lint+format across the whole repo
+  // (decided 2026-09-25, replaces ESLint+Prettier-for-JS; Markdown is
+  // Prettier's job, see .prettierrc.json).
+  "files": {
+    "ignoreUnknown": true,
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/target",
+      "!**/target-wasm",
+      "!**/dist",
+      "!**/coverage",
+      "!**/.venv",
+      "!**/.claude",
+      "!**/pnpm-lock.yaml"
+    ]
+  },
+  "formatter": {
+    "enabled": true,
+    "indentStyle": "space",
+    "indentWidth": 2,
+    "lineWidth": 100
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": true
+    }
+  },
+  "javascript": {
+    "formatter": {
+      // Match the existing shell style: double quotes, semicolons.
+      "quoteStyle": "double",
+      "semicolons": "always"
+    }
+  }
+}

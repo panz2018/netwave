@@ -1,8 +1,22 @@
 // markdownlint 规则 — VS Code 扩展与 markdownlint-cli2 共用的唯一配置
 // （扩展只读 .markdownlint.jsonc；CLI 会把它与 .markdownlint-cli2.jsonc 合并）
+//
+// 分工（2026-09-25 拍板）：Markdown 的 **格式** 归 Prettier
+// （proseWrap=always，见 .prettierrc.json）；markdownlint 只留
+// **内容性** 规则（标题结构、链接语法、代码块语言标注等）。
+// 与 Prettier 输出冲突的规则一律关闭，避免两个工具互相打架。
 {
-  // 中文正文行宽无法按 80 列断行，关闭
+  // 行宽由 Prettier proseWrap=always 保证（中文不断行另说）
   "MD013": false,
+  // 列表符号风格归 Prettier（统一为 -）
+  "MD004": false,
+  // 有序列表编号风格归 Prettier
+  "MD029": false,
+  // 列表/标题/代码块前后空行归 Prettier 管理
+  "MD022": false,
+  "MD031": false,
+  "MD032": false,
+  "MD041": false,
   // 表格紧凑风格 |---|---| 与 spaced 风格均可，不强制统一
   "MD060": false,
   // 允许 inline HTML（mermaid 等场景备用）

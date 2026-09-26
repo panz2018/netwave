@@ -4,10 +4,24 @@
   "globs": ["**/*.md"],
   // .claude/ 为第三方生成的 skill 文件；node_modules/.venv/target 为依赖产物
   // （含嵌套路径，故用 **/ 前缀），均不适用本仓库格式规范
-  "ignores": ["**/node_modules/**", "**/.venv/**", "**/target/**", "**/target-wasm/**", ".git/**", ".claude/**"],
+  "ignores": [
+    "**/node_modules/**",
+    "**/.venv/**",
+    "**/target/**",
+    "**/target-wasm/**",
+    ".git/**",
+    ".claude/**"
+  ],
   "config": {
-    // 中文正文行宽无法按 80 列断行，关闭
+    // 格式归 Prettier（见 .prettierrc.json），此处只留内容性规则；
+    // 与 Prettier 冲突的规则在 .markdownlint.jsonc 中关闭（两处同步）
     "MD013": false,
+    "MD004": false,
+    "MD029": false,
+    "MD022": false,
+    "MD031": false,
+    "MD032": false,
+    "MD041": false,
     // 表格紧凑风格 |---|---| 与 spaced 风格均可，不强制统一
     "MD060": false,
     // 允许 inline HTML（mermaid 等场景备用）
