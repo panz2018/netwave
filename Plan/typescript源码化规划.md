@@ -65,6 +65,19 @@ tsdown 产物清单：`index.node.mjs` / `index.node.cjs` / `index.browser.mjs` 
    `prettier --check "**/*.md"`、`tsc --noEmit`、markdownlint、check_md 全绿。
 1. 壳改写为 TS 源码（`types.ts` 收编 `index.d.ts` 契约）→
    验证：`tsc --noEmit` 通过、vitest 直接测 `.ts` 全绿。
+   - **一并解决现存 test typing 问题（2026-09-26 记录）**：`typescript/test/`
+     下**全部**测试文件都有同类问题——凡解构 `fillPattern` 返回值处编辑器报
+     TS2339（`buffer`、`byteOffset`、`length` 不存在于 `object` 类型），
+     `test/wasm/wasm.roundtrip.test.ts`、`test/native/native.roundtrip.test.ts`、
+     `test/wasm/worker.test.ts` 等无一幸免——根因是 wasm-bindgen 把
+     `js_sys::Object` 映射为裸 `object`（napi glue 同样无类型），类型在
+     `.mjs`/`.cjs` 无类型壳边界丢失；CI 绿只因
+     `checkJs: false` + `exclude: ["test"]` 双重豁免。源码化后 `src/` 为
+     typed TS、返回类型标注 `NetwaveBuffer`，报错自然消失；届时把 `test/`
+     移回 tsconfig include、翻开 `checkJs`，让 test 进类型门禁（验证：
+     `tsc --noEmit` 含 test 全绿）。过渡期若需消编辑器报错，可在壳的
+     `@returns` JSDoc 引用 `import("./index.d.ts").NetwaveBuffer`，但源码化
+     时随 JSDoc 一并删除，不留双份。
 2. 接入 tsdown，输出 esm（node/browser 分 target）、cjs 与 dts；
    napi/wasm glue 保持 external → 验证：`dist/` 产物与旧壳 exports
    逐一对齐（`exports.test.ts` 扩展断言）。
