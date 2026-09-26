@@ -38,18 +38,18 @@ pnpm test:native --coverage # native coverage gate (src/ only, 100% required)
 pnpm test:wasm --coverage   # wasm coverage gate (src/ only, 100% required);
                             # HTML report in coverage/; exemptions need
                             # /* v8 ignore start/stop */ + reason comment
-cargo fmt --manifest-path native/Cargo.toml --check
-                            # + same for wasm/Cargo.toml: this directory has no
-                            # Cargo.toml and native/ + wasm/ are workspace
-                            # -excluded until manual review lands, so -p does not
-                            # resolve — always pass --manifest-path here
-cargo clippy --manifest-path native/Cargo.toml -- -D warnings
-                            # + same for wasm/Cargo.toml; warnings are errors
 ```
 
-JS/TS lint+format and the `tsc` type gate are owned by root-level
-`pnpm check:ts` / `pnpm fix:ts` (Biome config: root `biome.json`); Markdown by
-`pnpm check:md` / `pnpm fix:md` — see root [AGENTS.md](../AGENTS.md).
+Lint/format/typecheck run from the repo root (both crates are workspace
+members — member dirs must NOT keep their own `Cargo.lock`, the root lockfile
+is authoritative):
+
+```bash
+pnpm check:rs             # cargo fmt + clippy (all workspace members)
+pnpm fix:rs               # auto-fix Rust formatting + clippy
+pnpm check:ts             # Biome + tsc --noEmit
+pnpm fix:ts               # Biome auto-fix
+```
 
 Cross-binding dump (node + wasm ends; run from the repo root):
 
