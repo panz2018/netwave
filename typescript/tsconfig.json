@@ -1,0 +1,25 @@
+{
+  // Shared by vitest, tsdown and `tsc --noEmit` (CI type gate).
+  // checkJs stays off until the TS rewrite lands
+  // (Plan/typescript源码化规划.md): the .mjs/.cjs shells are untyped JS
+  // and would flood the gate with implicit-any. Flip checkJs to true
+  // together with the .ts conversion.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "allowJs": true,
+    "checkJs": false,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node"]
+  },
+  // test/ is excluded from the gate until the TS rewrite lands: the
+  // suites import the untyped .mjs shells (implicit any) and mock the
+  // Worker global. Both resolve once src/ becomes typed TS.
+  "include": ["src/**/*.ts", "*.ts"],
+  "exclude": ["test"]
+}

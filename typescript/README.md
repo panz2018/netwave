@@ -16,7 +16,8 @@ Current stage: phase-0 scaffold (`fillPattern` / `readElement` roundtrip).
 - `dist/` — build output; the only published directory (`files: ["dist"]`)
 - `scripts/publish_shell.mjs` — copies shells to `dist/` and rewrites
   `"../dist/` → `"./` so the published package is self-contained
-- `test/` — vitest suites (native/wasm/worker/exports)
+- `test/native/` + `test/wasm/` — vitest suites split by platform; the two
+  configs glob `test/native/**` / `test/wasm/**`, so new tests just drop in
 - `vitest.native.config.ts` / `vitest.wasm.config.ts` — two configs, both with
   100% coverage thresholds
 
