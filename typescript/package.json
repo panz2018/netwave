@@ -1,0 +1,49 @@
+{
+  "name": "netwave",
+  "version": "0.0.1",
+  "description": "Network scattering-parameter math for node + browser (single package, exports conditions)",
+  "type": "module",
+  "license": "MIT",
+  "engines": {
+    "node": ">=22"
+  },
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "node": {
+        "import": "./dist/index.node.mjs",
+        "require": "./dist/index.node.cjs"
+      },
+      "browser": "./dist/index.browser.mjs",
+      "default": "./dist/index.browser.mjs"
+    },
+    "./standalone": "./dist/standalone.js",
+    "./worker": "./dist/netwave.worker.js"
+  },
+  "scripts": {
+    "build:native": "napi build --platform --release --manifest-path native/Cargo.toml --js index.node.generated.mjs -o dist --format esm && napi build --platform --release --manifest-path native/Cargo.toml --js index.node.generated.cjs -o dist --format commonjs && node scripts/publish_shell.mjs",
+    "build:native:debug": "napi build --platform --manifest-path native/Cargo.toml --js index.node.generated.mjs -o dist --format esm && napi build --platform --manifest-path native/Cargo.toml --js index.node.generated.cjs -o dist --format commonjs && node scripts/publish_shell.mjs",
+    "build:wasm": "CARGO_TARGET_DIR=../target-wasm wasm-pack build wasm --target web --out-dir ../dist/wasm-web",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "test:native": "vitest run --config vitest.native.config.ts",
+    "test:wasm": "vitest run --config vitest.wasm.config.ts",
+    "cross-dump": "node ../scripts/dump_js.mjs ../.cross-tmp"
+  },
+  "optionalDependencies": {
+    "netwave-darwin-arm64": "0.0.1",
+    "netwave-linux-arm64-gnu": "0.0.1",
+    "netwave-linux-x64-gnu": "0.0.1",
+    "netwave-win32-x64-msvc": "0.0.1"
+  },
+  "devDependencies": {
+    "@napi-rs/cli": "^3",
+    "@types/node": "^26.6.2",
+    "@vitest/coverage-v8": "^3",
+    "typescript": "^7.0.2",
+    "vitest": "^3"
+  }
+}
