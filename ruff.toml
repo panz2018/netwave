@@ -1,0 +1,11 @@
+# Single source of truth for Python lint+format (ruff), covering ALL
+# Python in the repo: python/ (binding + tests) and scripts/ (tooling).
+# ruff discovers this by walking up from each file — running `ruff check`
+# from python/ or the repo root behaves identically. Driven by root
+# `pnpm check:py` / `pnpm fix:py` (ruff itself comes from the python/ uv env).
+line-length = 100
+target-version = "py310"
+
+[lint]
+# pycodestyle + pyflakes + isort + bugbear-style defaults.
+select = ["E", "F", "I", "UP", "B"]

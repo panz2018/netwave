@@ -9,6 +9,7 @@ dropped, CJK kept. Run from repo root after editing any Markdown:
 Exit code 1 on any broken link. Skips code blocks (links there do not
 render) and http(s) URLs.
 """
+
 import os
 import re
 import sys
@@ -72,11 +73,7 @@ def main() -> int:
                     path, _, anchor = target.partition("#")
                     if path.startswith("~"):
                         path = os.path.expanduser(path)
-                    tgt = (
-                        os.path.normpath(os.path.join(os.path.dirname(f), path))
-                        if path
-                        else f
-                    )
+                    tgt = os.path.normpath(os.path.join(os.path.dirname(f), path)) if path else f
                     if not os.path.exists(tgt):
                         print(f"BROKEN FILE  {f}:{i} [{text}]({target})")
                         bad += 1
