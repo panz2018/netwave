@@ -13,14 +13,6 @@ dependencies = ["numpy>=2.0"]
 [dependency-groups]
 dev = ["maturin>=1.7", "pytest>=8", "pytest-cov>=5", "ruff>=0.12"]
 
-[tool.ruff]
-line-length = 100
-target-version = "py310"
-
-[tool.ruff.lint]
-# pycodestyle + pyflakes + isort + bugbear-style defaults.
-select = ["E", "F", "I", "UP", "B"]
-
 [tool.maturin]
 features = ["pyo3/extension-module"]
 # Ship the type-hint stub inside the wheel (task 3.2).

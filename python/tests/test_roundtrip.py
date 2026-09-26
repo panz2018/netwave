@@ -9,9 +9,8 @@ Tolerances come from testdata/manifest.json — never hardcoded per test
 import json
 from pathlib import Path
 
-import numpy as np
-
 import netwave
+import numpy as np
 
 NFREQ, NPORTS = 2, 2
 
