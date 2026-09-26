@@ -30,8 +30,13 @@ pnpm build:native           # release: napi esm + commonjs two passes + publish_
 pnpm build:native:debug     # same pipeline without --release (fast local iteration)
 pnpm build:wasm             # web target (wasm-pack defaults to release), CARGO_TARGET_DIR=../target-wasm
 pnpm typecheck              # tsc --noEmit type gate (tsconfig.json)
+pnpm test                   # all 4 suites, no coverage (quick smoke)
 pnpm test:native            # vitest native (CI adds --coverage, 100% floor)
 pnpm test:wasm              # vitest wasm  (CI adds --coverage, 100% floor)
+pnpm test:native --coverage # native coverage gate (src/ only, 100% required)
+pnpm test:wasm --coverage   # wasm coverage gate (src/ only, 100% required);
+                            # HTML report in coverage/; exemptions need
+                            # /* v8 ignore start/stop */ + reason comment
 cargo fmt --manifest-path native/Cargo.toml --check
                             # + same for wasm/Cargo.toml: this directory has no
                             # Cargo.toml and native/ + wasm/ are workspace
