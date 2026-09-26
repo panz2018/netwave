@@ -1,13 +1,21 @@
 #!/usr/bin/env python3
-"""Validate markdown links: files exist and anchors match headings.
+"""Validate markdown: links, anchors, and inline-code spans.
 
 Anchor slugs follow GitHub's rule: lowercase, spaces -> '-', punctuation
 dropped, CJK kept. Run from repo root after editing any Markdown:
 
-    python3 scripts/check_links.py
+    python3 scripts/check_md.py
 
-Exit code 1 on any broken link. Skips code blocks (links there do not
+Exit code 1 on any violation. Skips code blocks (links there do not
 render) and http(s) URLs.
+
+Checks:
+- BROKEN FILE / BAD ANCHOR: link targets and heading anchors.
+- OPEN CODE SPAN: a line with an odd number of backticks opens a code
+  span that is never closed on the same line. Cross-line spans make
+  Prettier drop the continuation line's indentation (it must not add
+  spaces inside code content) and render badly on GitHub; close the
+  span on one line instead.
 """
 
 import os
@@ -63,6 +71,11 @@ def main() -> int:
                     continue
                 if in_code:
                     continue
+                # unclosed inline-code span: odd backtick count outside
+                # fences (see module docstring for why this matters)
+                if line.count("`") % 2 == 1:
+                    print(f"OPEN CODE SPAN {f}:{i} {line.rstrip()[:70]}")
+                    bad += 1
                 # strip inline-code spans: links there are format templates,
                 # not real links (AGENTS.md documents the link syntax inside
                 # backticks, so those must not be resolved)
