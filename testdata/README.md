@@ -30,12 +30,12 @@ test time.
 
 ## Who generates, who consumes
 
-| Role | Path | Notes |
-|---|---|---|
+| Role     | Path                                   | Notes                         |
+| -------- | -------------------------------------- | ----------------------------- |
 | generate | `gen_golden.py` (phase 1, offline, uv) | only place Python + skrf runs |
-| consume | `core/tests/golden.rs` | `std::fs::read` → `&[f64]` |
-| consume | `python/tests/` | `np.fromfile(dtype='<c16')` |
-| consume | `typescript/` vitest | `new Float64Array(buf)` |
+| consume  | `core/tests/golden.rs`                 | `std::fs::read` → `&[f64]`    |
+| consume  | `python/tests/`                        | `np.fromfile(dtype='<c16')`   |
+| consume  | `typescript/` vitest                   | `new Float64Array(buf)`       |
 
 Comparison rule and cross-binding tiers (native bit-exact, wasm
 relative) are defined in
