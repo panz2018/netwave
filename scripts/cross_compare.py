@@ -38,8 +38,12 @@ def bits(x: float) -> int:
 def verdict(tamper, msg: str) -> int:
     """Normal mode: a mismatch fails. Tamper mode: detecting the injected
     mismatch (printing the failure) means the self-check passes."""
-    print(msg)
-    return 0 if tamper else 1
+    if tamper:
+        print(f"  mismatch detected (expected under tamper={tamper}): {msg}")
+        print(f"SELF-CHECK PASS: tamper={tamper} detected by comparator")
+        return 0
+    print(f"FAIL: {msg}")
+    return 1
 
 
 def main() -> int:
@@ -57,27 +61,30 @@ def main() -> int:
     tol = json.loads(manifest.read_text(encoding="utf-8"))["core_tol"]["relative"]
 
     ends = {name: load_f64s(root, name) for name in ENDS}
+    n = len(ends["core"])
+    print(f"comparing {n} f64 across {len(ENDS)} ends: {', '.join(ENDS)}")
     if tamper:
         ends[tamper][0] += tol * 2  # fake-golden self-check: perturbation above tolerance
+        print(f"tamper injected: {tamper}.bin[0] += {tol * 2:g}")
 
     ref = ends["core"]
     # Native ends: bit-exact.
     for name in ("python", "node"):
         for i, (a, b) in enumerate(zip(ref, ends[name], strict=True)):
             if bits(a) != bits(b):
-                return verdict(tamper, f"FAIL bit-exact: core vs {name} idx {i}: {a!r} vs {b!r}")
+                return verdict(tamper, f"bit-exact core vs {name} idx {i}: {a!r} vs {b!r}")
     # wasm: relative tolerance.
     for i, (a, b) in enumerate(zip(ref, ends["wasm"], strict=True)):
         denom = abs(a) if a != 0 else 1.0
         if abs(a - b) / denom >= tol:
-            return verdict(tamper, f"FAIL tol: core vs wasm idx {i}: {a!r} vs {b!r}")
+            return verdict(tamper, f"tol core vs wasm idx {i}: {a!r} vs {b!r}")
     if tamper:
         # Unreachable when the perturbation works: the loops above must have
         # returned FAIL first. Reaching here means the comparator is blind
         # (tautology) — a hard failure, never a pass.
         print(f"SELF-CHECK FAIL: tamper={tamper} not detected (tautology!)")
         return 1
-    print("cross-binding OK")
+    print("CROSS-BINDING PASS: core==python==node bit-exact, wasm within tol")
     return 0
 
 
