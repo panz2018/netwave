@@ -109,6 +109,9 @@ jobs:
         run: |
           pnpm install
           pnpm -C typescript build:wasm
+          # Diagnostics: vitest resolves ../dist/wasm-web/netwave_wasm.js;
+          # list it so a missing-artifact failure names what build:wasm left.
+          ls -la typescript/dist/wasm-web
           pnpm -C typescript test:wasm --coverage
 
   # Python matrix: ubuntu runs the floor (3.10) + latest (3.14);

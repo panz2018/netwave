@@ -36,17 +36,35 @@ curl -fL --retry 3 --retry-all-errors --progress-bar -o "$tmp/binaryen.tar.gz" "
 say "download done ($(du -h "$tmp/binaryen.tar.gz" | cut -f1)), extracting..."
 tar xzf "$tmp/binaryen.tar.gz" -C "$tmp"
 
+# Install the WHOLE tree (bin + lib), not just the bin files: the
+# wasm-opt binary dlopen's libbinaryen.dylib/.dll via RUNPATH
+# $ORIGIN/../lib. Copying only bin/ into ~/.local/bin breaks that
+# relative path — macOS aborts with SIGABRT (exit 134, dyld:
+# libbinaryen.dylib not found) and Windows fails to load
+# binaryen.dll. Keeping the tree intact preserves $ORIGIN/../lib on
+# every platform; executables are symlinked into ~/.local/bin (real
+# copies on Windows, where symlinks need privileges).
+prefix="$HOME/.local/opt/binaryen"
 bindir="$HOME/.local/bin"
-mkdir -p "$bindir"
-say "installing to ${bindir}..."
-# Visible to this shell too (GITHUB_PATH only affects later steps;
-# Windows runners lack ~/.local/bin on PATH by default).
-export PATH="$bindir:$PATH"
-cp "$tmp/binaryen-${tag}/bin/"* "$bindir/"
+rm -rf "$prefix"
+mkdir -p "$prefix" "$bindir"
+say "installing to ${prefix}..."
+mv "$tmp/binaryen-${tag}"/* "$prefix/"
+for f in "$prefix"/bin/*; do
+  name=$(basename "$f")
+  rm -f "$bindir/$name"
+  ln -s "$f" "$bindir/$name" 2>/dev/null || cp "$f" "$bindir/$name"
+done
 chmod +x "$bindir"/wasm-opt*
-say "installed binaryen ${tag} -> $bindir"
+# Visible to this shell too (GITHUB_PATH only affects later steps).
+# $prefix/bin goes on PATH as well: on Windows the copied
+# wasm-opt.exe needs binaryen.dll next to it, and PATH is where
+# wasm-pack looks for wasm-opt.
+export PATH="$bindir:$prefix/bin:$PATH"
+say "installed binaryen ${tag} -> $prefix"
 wasm-opt --version
 
 if [ -n "${GITHUB_PATH:-}" ]; then
   echo "$bindir" >> "$GITHUB_PATH"
+  echo "$prefix/bin" >> "$GITHUB_PATH"
 fi
