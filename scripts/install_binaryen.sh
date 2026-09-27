@@ -15,7 +15,7 @@ say() { echo "[install_binaryen] $*"; }
 
 say "querying latest release tag..."
 tag=$(curl -fsSL https://api.github.com/repos/WebAssembly/binaryen/releases/latest \
-  | grep -oP '"tag_name":\s*"\K[^"]+')
+  | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)
 say "latest tag: ${tag}"
 arch=$(uname -m)
 os=$(uname -s)
@@ -39,6 +39,9 @@ tar xzf "$tmp/binaryen.tar.gz" -C "$tmp"
 bindir="$HOME/.local/bin"
 mkdir -p "$bindir"
 say "installing to ${bindir}..."
+# Visible to this shell too (GITHUB_PATH only affects later steps;
+# Windows runners lack ~/.local/bin on PATH by default).
+export PATH="$bindir:$PATH"
 cp "$tmp/binaryen-${tag}/bin/"* "$bindir/"
 chmod +x "$bindir"/wasm-opt*
 say "installed binaryen ${tag} -> $bindir"

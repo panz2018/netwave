@@ -14,7 +14,7 @@ say() { echo "[install_wasm_pack] $*"; }
 
 say "querying latest release tag..."
 tag=$(curl -fsSL https://api.github.com/repos/wasm-bindgen/wasm-pack/releases/latest \
-  | grep -oP '"tag_name":\s*"\K[^"]+')
+  | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)
 say "latest tag: ${tag}"
 os=$(uname -s)
 arch=$(uname -m)
@@ -38,6 +38,10 @@ tar xzf "$tmp/wasm-pack.tar.gz" -C "$tmp"
 bindir="$HOME/.local/bin"
 mkdir -p "$bindir"
 say "installing to ${bindir}..."
+# Make the freshly installed binary visible to *this* shell too: CI's
+# GITHUB_PATH only applies to later steps, and Windows runners do not
+# have ~/.local/bin on PATH by default.
+export PATH="$bindir:$PATH"
 # Windows ships wasm-pack.exe; cp keeps the name as-is on other platforms.
 cp "$tmp/wasm-pack-${tag}-${plat}/"wasm-pack* "$bindir/"
 chmod +x "$bindir"/wasm-pack*

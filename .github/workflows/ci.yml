@@ -84,6 +84,10 @@ jobs:
         # cover all matrix targets (was missing entirely -> exit 127).
         run: bash scripts/install_wasm_pack.sh
 
+      # rust job had no pnpm -> `pnpm install` exit 127 in this cell.
+      - if: matrix.target == 'wasm32'
+        uses: pnpm/action-setup@v6
+
       - name: wasm build + vitest (wasm artifacts)
         if: matrix.target == 'wasm32'
         run: |
