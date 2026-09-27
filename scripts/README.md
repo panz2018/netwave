@@ -18,7 +18,10 @@ orchestration.
 
 ## Notes
 
-- **Dump output is raw little-endian f64, re/im interleaved** — the same layout
+- **One-command pipeline**: `pnpm check:cross` (repo root) runs all four
+  per-end dumps into `.cross-tmp/` then `cross_compare.py`. Requires the
+  native/wasm artifacts to be freshly built first: run `build:native` and
+  `build:wasm` in `typescript/`, and `maturin develop` in `python/`.
   contract as everywhere else (constitution rule 1). Binary, not JSON: JSON
   writes `-0` as `0` and loses the sign bit. Per-end dumps live in their
   subprojects: `cargo run -p netwave --example dump .cross-tmp`,
