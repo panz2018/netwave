@@ -68,8 +68,8 @@ node typescript/scripts/dump.mjs .cross-tmp
   `--manifest-path` (not `--cargo-cwd`), `--format commonjs` (not `cjs`).
   Re-check after every napi upgrade.
 - **wasm target = `web`**, not `bundler`: bundler glue cannot be loaded under
-  node/vitest; web glue works on both ends. Long-term constraint pending
-  decision (see Plan/阶段0复盘回写.md).
+  node/vitest; web glue works on both ends. Whether this stays long-term is
+  an open decision (tracked in Plan/).
 - **wasm init takes `{ module_or_path: bytes }`**: node has no
   `fetch("file:...")`; the string/URL init form is deprecated.
 - **`js_sys::WebAssembly::Memory`**: `js_sys::Memory` does not exist.

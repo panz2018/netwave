@@ -50,19 +50,14 @@ jobs:
         include:
           - target: linux-x64
             os: ubuntu-latest
-          # no ubuntu-latest-arm alias exists (verified against the
-          # actions/runner-images README); ARM must name an explicit
-          # version — bump to the newest *-arm label when one is added.
           - target: linux-arm64
             os: ubuntu-26.04-arm
           - target: windows-x64
             os: windows-latest
           - target: darwin-arm64
             os: macos-latest
-          # wasm32 cell disabled until typescript manual review lands
-          # (2026-09-24): it builds the wasm binding artifacts.
-          # - target: wasm32
-          #   os: ubuntu-latest
+          - target: wasm32
+            os: ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
