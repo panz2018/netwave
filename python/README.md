@@ -19,7 +19,7 @@ model in phase 2.
 
 Run from this directory. Environment setup (venv, `PYO3_PYTHON`,
 `LD_LIBRARY_PATH`) is injected by `.vscode/settings.json`; outside VS Code see
-the root README.
+[CONTRIBUTING.md](../CONTRIBUTING.md).
 
 ```bash
 uv sync                           # create/refresh .venv from uv.lock

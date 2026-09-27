@@ -57,7 +57,9 @@
   message）用英文。
 - **动手前先读所在子项目的 README.md**：编译/测试/部署命令与实现细节、坑（Gotchas）以各子 README 为唯一存放处，顶层只留指针不重述。
 - **作用域纪律**：子项目 README 只放**本目录作用域**的命令与细节；workspace/根级命令（如
-  `cargo llvm-cov --workspace`、markdownlint、链接校验）只放根 README，禁止下沉到子 README。
+  `cargo llvm-cov --workspace`、markdownlint、链接校验）只放根文档——面向用户的放
+  根 README，面向开发的（门禁命令、环境坑、文档地图）放根 CONTRIBUTING.md——
+  禁止下沉到子 README。
 
 ## Plan/ 生命周期
 

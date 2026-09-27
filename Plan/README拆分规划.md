@@ -7,24 +7,22 @@
 
 ## 新建 README 清单
 
-### 根 `README.md`
+### 根 `README.md` + 根 `CONTRIBUTING.md`（2026-09-26 落地时拆分）
 
-- 项目是什么：网络散射参数（S 参数）计算库，Rust core +
-  Python/Node/WASM 三绑定，对标 skrf（从
-  [总体计划·项目定位](总体计划.md#项目定位) 压缩为一段）
-- 仓库结构图：`core/ python/ typescript/ testdata/ scripts/ Plan/ openspec/`
-  各一行说明
-- 快速上手（顶层命令，每条一行）：`pnpm install`、
-  `cargo test --workspace`、`pnpm -C typescript build:native`、
-  `pnpm -C typescript build:wasm`、`python3 scripts/cross_compare.py .cross-tmp`
-- workspace 覆盖率门禁（自 core README 迁入）：
+- **README 面向用户**：项目是什么（网络散射参数（S 参数）计算库，Rust core +
+  Python/Node/WASM 三绑定，对标 skrf——从
+  [总体计划·项目定位](总体计划.md#项目定位) 压缩为一段）；仓库结构图只列
+  可发布产物目录（`core/ python/ typescript/ testdata/`）；License；
+  指向 CONTRIBUTING 的指针。**不放**开发命令/门禁/环境坑/文档地图。
+- **CONTRIBUTING 面向开发者**：快速上手（顶层开发命令）、质量门禁
+  （`pnpm check` 四组、workspace 覆盖率门禁
   `cargo llvm-cov --workspace --fail-under-lines 100`
-  `--ignore-filename-regex '(python|typescript/(native|wasm))/src/lib\.rs'`
-- 环境坑：uv venv + `LD_LIBRARY_PATH`/`PYO3_PYTHON`/`VIRTUAL_ENV` 三件套；
-  corepack `COREPACK_ENABLE_DOWNLOAD_PROMPT=0`；沙箱 cwd 漂移用绝对路径
-- 文档地图：铁律 → [constitution.md](constitution.md)、
-  流程 → [开发流程.md](开发流程.md)、各端细节 → 各子 README
-- 链接校验纪律：改任何 md 后跑 `markdownlint-cli2` + `check_md.py`
+  `--ignore-filename-regex '(python|typescript/(native|wasm))/src/lib\.rs'`、
+  `pnpm check:cross` 对拍+自检）、环境坑（uv venv 三件套、
+  corepack `COREPACK_ENABLE_DOWNLOAD_PROMPT=0`、nvm 全局包）、
+  文档地图（铁律 → [constitution.md](constitution.md)、
+  流程 → [开发流程.md](开发流程.md)、各端细节 → 各子 README）。
+- 链接校验纪律：改任何 md 后跑 `pnpm check:md`
 
 ### `python/README.md`
 
@@ -79,7 +77,7 @@ README 只放"怎么跑"并链回去。
 
 ## 落地顺序
 
-1. 根 `README.md`
+1. ~~根 `README.md`~~ ✅（2026-09-26）
 2. ~~`typescript/README.md`~~ ✅（2026-09-25，native/wasm 分节合并写）
 3. ~~`python/README.md`~~ ✅（2026-09-25）
 4. ~~`testdata/README.md`~~ ✅（2026-09-25）~~`scripts/README.md`~~ ✅（2026-09-25）
