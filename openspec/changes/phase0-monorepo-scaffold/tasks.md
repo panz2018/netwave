@@ -96,7 +96,10 @@
 - [x] 7.3 node/wasm job（node 双版本格 22/26）：pnpm install → napi build /
       wasm-pack build（均在 `typescript/`）→ vitest coverage lines 100 →
       cross-binding 对拍步骤
-- [ ] 验证：推 PR 五格全绿；故意加一行未测代码确认覆盖率 job 红
+- [x] 验证：推 PR 五格全绿；故意加一行未测代码确认覆盖率 job 红
+      （2026-09-27 实测：`test/coverage-gate` 分支加未测 `coverage_gate_probe`
+      → run 36304682759 仅 `rust (linux-x64)` 的 llvm-cov step 红，其余 17 格
+      绿；探针已删除。基线全绿 = init@1ed1984 run 36303969040）
 
 ## 8. 收尾
 

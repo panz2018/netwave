@@ -38,10 +38,3 @@ pub fn fill_pattern(nfreq: usize, nports: usize) -> Vec<Complex64> {
         })
         .collect()
 }
-
-/// TEMPORARY coverage-gate probe (task 7.1): never called by any test,
-/// so llvm-cov must drop below the 100% floor and fail the coverage job.
-/// Delete this function once the gate is confirmed red.
-pub fn coverage_gate_probe() -> u32 {
-    1 + 1
-}
