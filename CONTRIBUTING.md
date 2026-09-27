@@ -46,6 +46,17 @@ pnpm check:cross                  # four-end dump + compare
 - **nvm global packages** (local machines): `npm install -g` CLIs live under
   the Node version that installed them; after `nvm use` a command can
   "disappear" — reinstall or use `nvm install X --reinstall-packages-from=Y`.
+- **GitHub Actions on Windows**: installer scripts run under git-bash but
+  later steps default to pwsh — `GITHUB_PATH` entries must be native paths
+  (`cygpath -w`), and `GITHUB_PATH` only affects _later_ steps, so an
+  installer and the command that uses its binary cannot share one step.
+- **binaryen layout**: `wasm-opt` resolves `libbinaryen.dylib`/`.dll` via
+  RUNPATH `$ORIGIN/../lib`; install the release tree intact
+  (`~/.local/opt/binaryen`), never copy `bin/` alone (macOS SIGABRT).
+- **anonymous api.github.com** is capped at 60 req/h per shared runner IP;
+  steps querying release tags must pass the workflow `GITHUB_TOKEN`
+  (5000 req/h). Also: YAML flow mappings `{ k: ${{ ... }} }` break on the
+  `}}` — use block style for `env:` with expressions.
 
 ## Documentation map
 

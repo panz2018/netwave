@@ -106,4 +106,7 @@
 - [x] 8.1 `pnpm check:md`（markdownlint-cli2 + prettier +
       `python3 scripts/check_md.py`，脚本已自 `check_links.py` 更名）通过
 - [x] 8.2 code-review 双轴（Standards：铁律一/四/六/七；Spec：三份 delta spec）
-- [ ] 8.3 `/opsx:sync` → `/opsx:archive`，复盘三问回写文档
+- [x] 8.3 `/opsx:sync` → `/opsx:archive`，复盘三问回写文档
+      （复盘：第 1 问回写 CONTRIBUTING Gotchas——Windows GITHUB_PATH 原生
+      路径/step 隔离、binaryen 整树安装、API 限流带 token、YAML flow 映射
+      `${{ }}` 断链；第 2/3 问无偏差）
