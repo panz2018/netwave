@@ -10,13 +10,15 @@ making bit-exact comparison impossible.
 Rules (zero-copy-roundtrip spec):
   - the three native ends (core/python/node) match bit-exactly
   - wasm within relative tolerance < manifest core_tol
-  - fake-golden self-check (--tamper=<end>): a tampered end MUST be
-    detected (anti-tautology)
+  - anti-tautology self-check: every run perturbs an in-memory copy of
+    each non-reference end and requires the comparator to detect it
+    (undetected -> fail); .bin files on disk are never modified
 
-Usage: python3 scripts/cross_compare.py <dir> [--tamper=<end>]
+Usage: python3 scripts/cross_compare.py <dir>
 """
 
 import json
+import random
 import struct
 import sys
 from pathlib import Path
@@ -35,27 +37,28 @@ def bits(x: float) -> int:
     return struct.unpack("<Q", struct.pack("<d", x))[0]
 
 
-def verdict(tamper, msg: str) -> int:
-    """Normal mode: a mismatch fails. Tamper mode: detecting the injected
-    mismatch (printing the failure) means the self-check passes."""
-    if tamper:
-        print(f"  mismatch detected (expected under tamper={tamper}): {msg}")
-        print(f"SELF-CHECK PASS: tamper={tamper} detected by comparator")
-        return 0
-    print(f"FAIL: {msg}")
-    return 1
+def compare(ref: list, ends: dict, tol: float):
+    """Return None when consistent, else (end, idx, message). Shared by the
+    real comparison and the anti-tautology self-check so both exercise the
+    exact same decision path."""
+    # Native ends: bit-exact.
+    for name in ("python", "node"):
+        for i, (a, b) in enumerate(zip(ref, ends[name], strict=True)):
+            if bits(a) != bits(b):
+                return (name, i, f"bit-exact core vs {name} idx {i}: {a!r} vs {b!r}")
+    # wasm: relative tolerance.
+    for i, (a, b) in enumerate(zip(ref, ends["wasm"], strict=True)):
+        denom = abs(a) if a != 0 else 1.0
+        if abs(a - b) / denom >= tol:
+            return ("wasm", i, f"tol core vs wasm idx {i}: {a!r} vs {b!r}")
+    return None
 
 
 def main() -> int:
-    tamper = next(
-        (a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--tamper=")),
-        None,
-    )
-    args = [a for a in sys.argv[1:] if not a.startswith("--tamper=")]
-    if not args:
+    if len(sys.argv) < 2:
         print(__doc__, file=sys.stderr)
         return 2
-    root = Path(args[0])
+    root = Path(sys.argv[1])
     # encoding="utf-8": manifest carries CJK notes; Windows cp1252 default fails
     manifest = root.parent / "testdata/manifest.json"
     tol = json.loads(manifest.read_text(encoding="utf-8"))["core_tol"]["relative"]
@@ -63,28 +66,39 @@ def main() -> int:
     ends = {name: load_f64s(root, name) for name in ENDS}
     n = len(ends["core"])
     print(f"comparing {n} f64 across {len(ENDS)} ends: {', '.join(ENDS)}")
-    if tamper:
-        ends[tamper][0] += tol * 2  # fake-golden self-check: perturbation above tolerance
-        print(f"tamper injected: {tamper}.bin[0] += {tol * 2:g}")
 
-    ref = ends["core"]
-    # Native ends: bit-exact.
-    for name in ("python", "node"):
-        for i, (a, b) in enumerate(zip(ref, ends[name], strict=True)):
-            if bits(a) != bits(b):
-                return verdict(tamper, f"bit-exact core vs {name} idx {i}: {a!r} vs {b!r}")
-    # wasm: relative tolerance.
-    for i, (a, b) in enumerate(zip(ref, ends["wasm"], strict=True)):
-        denom = abs(a) if a != 0 else 1.0
-        if abs(a - b) / denom >= tol:
-            return verdict(tamper, f"tol core vs wasm idx {i}: {a!r} vs {b!r}")
-    if tamper:
-        # Unreachable when the perturbation works: the loops above must have
-        # returned FAIL first. Reaching here means the comparator is blind
-        # (tautology) — a hard failure, never a pass.
-        print(f"SELF-CHECK FAIL: tamper={tamper} not detected (tautology!)")
+    result = compare(ends["core"], ends, tol)
+    if result is not None:
+        print(f"FAIL: {result[2]}")
         return 1
     print("CROSS-BINDING PASS: core==python==node bit-exact, wasm within tol")
+
+    # Anti-tautology self-check: perturb an in-memory copy of each
+    # non-reference end at a RANDOM index and require detection AT THE
+    # INJECTED END AND INDEX (proves each .bin participates, the comparator
+    # is not blind, scans beyond element 0, and localizes mismatches
+    # correctly — detecting them elsewhere would mean the perturbation was
+    # not what tripped it). core is never a target: tampering the reference
+    # is indistinguishable from tampering any native end.
+    for name in ("python", "node", "wasm"):
+        idx = random.randrange(n)
+        tampered = {k: list(v) for k, v in ends.items()}
+        # Scale the perturbation to the element's magnitude so it exceeds
+        # the RELATIVE tolerance at any index (a fixed tol*2 would hide
+        # under the threshold for elements with |value| > 2).
+        v = tampered[name][idx]
+        tampered[name][idx] = v + (abs(v) if v != 0 else 1.0) * tol * 2
+        result = compare(ends["core"], tampered, tol)
+        if result is None:
+            print(f"SELF-CHECK FAIL: tamper={name} not detected (tautology!)")
+            return 1
+        if result[0] != name or result[1] != idx:
+            print(
+                f"SELF-CHECK FAIL: tamper={name} idx {idx}, but comparator "
+                f"localized it to {result[0]} idx {result[1]}"
+            )
+            return 1
+        print(f"SELF-CHECK PASS: tamper={name} idx {idx} detected at the injected end and index")
     return 0
 
 

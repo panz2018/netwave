@@ -27,10 +27,12 @@ orchestration.
   subprojects: `cargo run -p netwave --example dump .cross-tmp`,
   `uv run --project python python python/scripts/dump.py .cross-tmp`,
   `node typescript/scripts/dump.mjs .cross-tmp` (node + wasm in one run).
-- **`cross_compare.py --tamper=<end>`** injects a corruption into one end's dump
-  and asserts the comparison _detects_ it (anti-tautology self-check). Normal
-  mode: any mismatch fails. Comparison tiers (native bit-exact, wasm relative
-  tolerance) are defined in [`../Plan/测试规划.md`](../Plan/测试规划.md).
+- **`cross_compare.py` self-checks itself**: after a passing comparison it
+  perturbs an in-memory copy of each non-reference end (python/node/wasm) and
+  requires the comparator to detect every perturbation (anti-tautology;
+  `.bin` files on disk are never modified. Comparison tiers (native bit-exact,
+  wasm relative tolerance) are defined in
+  [`../Plan/测试规划.md`](../Plan/测试规划.md).
 - **`bench_gate.py` threshold** defaults to 0.20 (20%), from the ci-matrix spec;
   pass a second argument to override.
 - **`install_binaryen.sh` deliberately does not pin a version** — wasm-pack's
