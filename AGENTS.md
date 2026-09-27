@@ -47,7 +47,8 @@
 - **[openspec/specs/project-governance/spec.md](openspec/specs/project-governance/spec.md)** —
   netwave 全部硬约束的唯一真相源（数据布局 / 精度分层 / TDD / 容差 manifest /
   z0 端口属性 / 性能底线 / 零拷贝 / 语言约定 / 权威术语源）
-- OpenSpec 工作流见 [Plan/开发流程.md](Plan/开发流程.md)；`/opsx:*`
+- OpenSpec 开发工作流（六步循环、技能地图、工具链状态）见
+  [CONTRIBUTING.md](CONTRIBUTING.md)；`/opsx:*`
   命令会自动注入约束指针（[openspec/config.yaml](openspec/config.yaml)）
 
 ## 文档语言与阅读入口
@@ -69,7 +70,7 @@
   `openspec/specs/project-governance/`）。
 - 新改进想法一律先落 Plan/ 新 md，不在对话里口头遗留。
 - 复盘结论按类型归位：流程坑 →
-  [Plan/开发流程.md](Plan/开发流程.md)；命令/实现坑 → 对应子项目 README 的 Gotchas 节；硬约束 →
+  [CONTRIBUTING.md](CONTRIBUTING.md)（Development workflow）；命令/实现坑 → 对应子项目 README 的 Gotchas 节；硬约束 →
   governance spec（`openspec/specs/project-governance/`）。README 不设独立"复盘"章节，只沉淀结论。
 
 ## 文档书写规范（改 Plan/ 或任何 Markdown 必须遵守）

@@ -38,9 +38,9 @@ test time.
 | consume  | `typescript/` vitest                   | `new Float64Array(buf)`       |
 
 Comparison rule and cross-binding tiers (native bit-exact, wasm
-relative) are defined in
-[`../Plan/测试规划.md`](../Plan/测试规划.md) — this README only points
-there, never restates.
+relative) are defined in the governance spec rule 3
+([project-governance spec](../openspec/specs/project-governance/spec.md))
+— this README only points there, never restates.
 
 ## Gotchas
 

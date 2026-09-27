@@ -58,19 +58,71 @@ pnpm check:cross                  # four-end dump + compare
   (5000 req/h). Also: YAML flow mappings `{ k: ${{ ... }} }` break on the
   `}}` — use block style for `env:` with expressions.
 
+## Development workflow
+
+Every core module (Touchstone / Network / Circuit / Frequency and their
+sub-features) runs the same six-step loop:
+
+```text
+grill ──► spec ──► red ──► green ──► review ──► retro
+```
+
+- **grill**: surface ambiguities before writing code (port ranges, complex
+  z0, edge cases, perf targets); decisions land in the change's
+  `proposal.md` / `design.md`. No code in this step.
+- **spec**: one module = one OpenSpec change (`/opsx:propose` generates
+  proposal/specs/design/tasks). Every requirement must be testable, with
+  tolerances referencing manifest keys, never hardcoded. `/opsx:sync` then
+  `/opsx:archive` when done.
+- **red**: write the failing test first and watch it fail (governance spec
+  rule 2). Expected values come from independent oracles — skrf golden,
+  closed-form solutions, physical invariants — never from the code under
+  test.
+- **green**: minimal code to pass, one vertical slice at a time; port
+  skrf's proven algorithms, don't reinvent them.
+- **review**: two-axis review before merge — Standards (governance spec
+  rules + code smells) × Spec (fidelity to spec.md). Cross-binding changes
+  additionally run `pnpm check:cross`. CI green is mandatory.
+- **retro**: at archive time answer three questions — new tool gotchas or
+  version drift? doc ambiguity or better pattern? tolerance/test-practice
+  drift? — and write answers back into this file, child READMEs or the
+  governance spec directly (no separate issue lists).
+
+### When to simplify
+
+| Scenario                | Simplification                                          |
+| ----------------------- | ------------------------------------------------------- |
+| Docs/comments/constants | skip red/green; edit + review                           |
+| Bug fix                 | full loop; red = a failing repro test first             |
+| Throwaway prototype     | no tests, but code never reaches main; findings → spec |
+| Pure binding glue       | skip unit/property; keep the cross-binding compare      |
+
+### Toolchain status (verified 2026-09-27)
+
+| Tool                                                                                                                           | Status                                                                                              |
+| ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| OpenSpec CLI 1.13.1                                                                                                            | npm global under nvm v26; run`openspec update` in each initialized project after a CLI upgrade    |
+| pnpm 12.5.1                                                                                                                    | corepack-managed; prefix`COREPACK_ENABLE_DOWNLOAD_PROMPT=0`                                       |
+| uv 0.12.13                                                                                                                     | standalone install; Python envs per[python/README.md](python/README.md)                              |
+| Rust 1.98.1 (rustup)                                                                                                           | `~/.cargo/bin`; `wasm32-unknown-unknown` target installed                                       |
+| wasm-pack 0.15.0                                                                                                               | CI installs via[scripts/install_wasm_pack.sh](scripts/install_wasm_pack.sh)                          |
+| cargo-llvm-cov / clippy / fmt / criterion                                                                                      | gate commands in Quality gates above                                                                |
+| Harness skills (tdd, code-review, diagnosing-bugs, grilling, codebase-design, domain-modeling, prototype, research) + ponytail | installed under`~/.claude/skills/`                                                                |
+| RF terminology routing                                                                                                         | two book SKILL.md under`~/GitHub/knowledge/RF/` (consult while writing; docs stay self-contained) |
+
 ## Documentation map
 
-Permanent docs only. Planning documents (roadmap, test strategy, workflow)
-live under `Plan/` temporarily and are absorbed into `openspec/` as changes
-land — they are deliberately not linked here (Plan/ is deleted at the end of
-its lifecycle; see [AGENTS.md](AGENTS.md)).
+Permanent docs only. Planning documents (roadmap, test strategy) live under
+`Plan/` temporarily and are absorbed into `openspec/` as changes land — they
+are deliberately not linked here (Plan/ is deleted at the end of its
+lifecycle; see [AGENTS.md](AGENTS.md)).
 
-| Topic                          | Where                                            |
-| ------------------------------ | ------------------------------------------------ |
-| Rust core details              | [core/README.md](core/README.md)                 |
-| Python binding details         | [python/README.md](python/README.md)             |
-| Node/wasm binding details      | [typescript/README.md](typescript/README.md)     |
-| Golden data & manifest schema  | [testdata/README.md](testdata/README.md)         |
-| Workspace scripts              | [scripts/README.md](scripts/README.md)           |
-| Agent working rules            | [AGENTS.md](AGENTS.md)                           |
+| Topic                          | Where                                              |
+| ------------------------------ | -------------------------------------------------- |
+| Rust core details              | [core/README.md](core/README.md)                    |
+| Python binding details         | [python/README.md](python/README.md)                |
+| Node/wasm binding details      | [typescript/README.md](typescript/README.md)        |
+| Golden data & manifest schema  | [testdata/README.md](testdata/README.md)            |
+| Workspace scripts              | [scripts/README.md](scripts/README.md)              |
+| Agent working rules            | [AGENTS.md](AGENTS.md)                              |
 | Specs (future source of truth) | `openspec/specs/` (populated as changes archive) |
