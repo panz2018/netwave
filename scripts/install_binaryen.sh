@@ -65,6 +65,11 @@ say "installed binaryen ${tag} -> $prefix"
 wasm-opt --version
 
 if [ -n "${GITHUB_PATH:-}" ]; then
-  echo "$bindir" >> "$GITHUB_PATH"
-  echo "$prefix/bin" >> "$GITHUB_PATH"
+  # GITHUB_PATH is consumed by later steps running in the *default*
+  # Windows shell (pwsh), which cannot resolve MSYS paths like
+  # /c/Users/... — convert to native form (cygpath exists only on
+  # Windows; elsewhere it is a no-op passthrough).
+  npath() { command -v cygpath >/dev/null 2>&1 && cygpath -w "$1" || echo "$1"; }
+  echo "$(npath "$bindir")" >> "$GITHUB_PATH"
+  echo "$(npath "$prefix/bin")" >> "$GITHUB_PATH"
 fi

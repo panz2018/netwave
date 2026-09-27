@@ -106,6 +106,8 @@ jobs:
         run: bash scripts/install_wasm_pack.sh
       - uses: pnpm/action-setup@v6
       - name: wasm build + vitest (wasm artifacts)
+        # bash: keeps `ls -la` working on Windows (pwsh has no -la).
+        shell: bash
         run: |
           pnpm install
           pnpm -C typescript build:wasm
@@ -181,12 +183,16 @@ jobs:
         run: pnpm -C typescript build:native
       - name: vitest (native, coverage 100)
         run: pnpm -C typescript test:native --coverage
-      - name: wasm-pack build
+      - name: install wasm toolchain
+        # Own step: the installers append to GITHUB_PATH, which only
+        # takes effect for *later* steps — build:wasm must not share
+        # this step (its PATH export dies with the bash subprocess).
         run: |
           rustup target add wasm32-unknown-unknown
           bash scripts/install_wasm_pack.sh
           bash scripts/install_binaryen.sh
-          pnpm -C typescript build:wasm
+      - name: wasm-pack build
+        run: pnpm -C typescript build:wasm
       - name: vitest (wasm, coverage 100)
         run: pnpm -C typescript test:wasm --coverage
       - name: cross-binding 对拍（原生逐 bit + wasm 容差 + 篡改自检）
