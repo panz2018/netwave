@@ -69,11 +69,17 @@ jobs:
       - name: cargo test
         run: cargo test --workspace
 
-  # wasm: browser is the project's primary target -> first-class job, zero
-  # conditionals. Builds for wasm32 and runs the wasm vitest suite.
-  # Per-OS wasm *test* coverage also exists in the node job (all 4 OSes).
+  # wasm: browser is the primary target -> first-class job, zero
+  # conditionals, full OS matrix: wasm codegen differs per host toolchain,
+  # so build + vitest run on every platform (installer scripts cover
+  # linux/macOS/windows).
   wasm:
-    runs-on: ubuntu-latest
+    name: wasm (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-26.04-arm, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
