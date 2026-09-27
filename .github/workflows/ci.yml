@@ -169,9 +169,6 @@ jobs:
       - name: vitest (native, coverage 100)
         run: pnpm -C typescript test:native --coverage
       - name: wasm-pack build
-        # wasm-pack was never installed here -> exit 127 on first real run
-        # after re-enabling the node job; binaryen script now covers
-        # linux + macOS.
         run: |
           bash scripts/install_wasm_pack.sh
           bash scripts/install_binaryen.sh
