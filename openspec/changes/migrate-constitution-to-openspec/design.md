@@ -25,8 +25,8 @@
    形态（CI 命令 / code-review 轴），与现有三个 spec 风格一致。
 3. **修订历史原样迁入 spec 末尾**：历史记录不改写（AGENTS.md 明文），
    作为 spec 的 `## 修订历史` 节保留，标题层级降为 `##`。
-4. **代码注释只改指向措辞**：`constitution rule N` → `governance spec
-rule N`；铁律编号（一~七）是名字不是位置，保留。
+4. **代码注释只改指向措辞**：`constitution rule N` →
+   `governance spec rule N`；铁律编号（一~七）是名字不是位置，保留。
 5. **config.yaml rules 保留**：工件专属规则与 spec 正文分工不变，
    context 指针改指新位置。
 

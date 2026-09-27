@@ -111,8 +111,8 @@ unit 层零豁免。唯一例外为结构性不可达代码（`unreachable!()`�
 `#[coverage(off)]`、Python `# pragma: no cover`、TS/JS
 `/* v8 ignore start/stop */`），MUST NOT 整文件/整目录批量豁免。100% 是下限
 不是目标：数值正确性由 golden/property/cross-binding 三层负责。CI 强制：
-`cargo llvm-cov`、`pytest-cov --cov-fail-under=100`、vitest `lines/branches:
-100`。
+`cargo llvm-cov`、`pytest-cov --cov-fail-under=100`、
+vitest `lines/branches: 100`。
 
 #### Scenario: 未测代码即红
 
@@ -143,8 +143,9 @@ spec/plan/tasks，不改铁律（修铁律走独立最高级变更并评估三�
 每个公开函数/结构体/类 MUST 有 docs（rustdoc/docstring/JSDoc），跨模块逻辑
 与非直观实现 MUST 有行内注释，目标：不懂 RF 的读者仅凭代码内文档即可看懂
 程序为何如此编写。术语定义与公式 MUST 直接写进 docs（自包含）——编写以
-权威术语源（`/config/GitHub/knowledge/RF/` 下 `S-Parameters for Signal
-Integrity (2020)` 与 `Touchstone File Format Specification`）为准，但 MUST
+权威术语源（`/config/GitHub/knowledge/RF/` 下
+《S-Parameters for Signal Integrity (2020)》与
+《Touchstone File Format Specification》）为准，但 MUST
 NOT 以"见某书某章"代替内容。算法处 MUST 写明公式来源、近似/适用条件、
 容差依据（引用 manifest key）。全部公开 API MUST 有完整静态类型标注（Python
 全量 type hints 过 mypy/pyright；TS 禁无差别 `any`）。
