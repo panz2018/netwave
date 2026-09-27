@@ -134,54 +134,52 @@ jobs:
           uv run maturin develop
           uv run pytest --cov=netwave --cov-fail-under=100
 
-  # --- node job disabled until typescript manual review lands (2026-09-24).
-  # When re-enabled, keep it between python and bench. ---
-  # # Node 双版本格（底线 22 + 最新 26）+ windows/macos 最新单格
-  # node:
-  #   name: node (${{ matrix.os }}, ${{ matrix.node-version }})
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       include:
-  #         - os: ubuntu-latest
-  #           node-version: "22"
-  #         - os: ubuntu-latest
-  #           node-version: "26"
-  #         - os: windows-latest
-  #           node-version: "26"
-  #         - os: macos-latest
-  #           node-version: "26"
-  #   runs-on: ${{ matrix.os }}
-  #   steps:
-  #     - uses: actions/checkout@v7
-  #     - uses: dtolnay/rust-toolchain@stable  # required on windows
-  #     - uses: pnpm/action-setup@v6
-  #     - uses: actions/setup-node@v7
-  #       with:
-  #         node-version: ${{ matrix.node-version }}
-  #         cache: pnpm
-  #     - uses: astral-sh/setup-uv@v10.2.0
-  #     - run: pnpm install
-  #     - name: napi build
-  #       run: pnpm -C typescript build:native
-  #     - name: vitest (native, coverage 100)
-  #       run: pnpm -C typescript test:native --coverage
-  #     - name: wasm-pack build
-  #       run: |
-  #         bash scripts/install_binaryen.sh
-  #         pnpm -C typescript build:wasm
-  #     - name: vitest (wasm, coverage 100)
-  #       run: pnpm -C typescript test:wasm --coverage
-  #     - name: cross-binding 对拍（原生逐 bit + wasm 容差 + 篡改自检）
-  #       run: |
-  #         uv sync --project python
-  #         (cd python && uv run maturin develop)
-  #         uv run --project python python python/scripts/dump.py .cross-tmp
-  #         cargo run -q -p netwave --example dump .cross-tmp
-  #         node typescript/scripts/dump.mjs .cross-tmp
-  #         python3 scripts/cross_compare.py .cross-tmp
-  #         python3 scripts/cross_compare.py .cross-tmp --tamper=python
-  #         python3 scripts/cross_compare.py .cross-tmp --tamper=wasm
+  # Node matrix: ubuntu runs the floor (22) + latest (26);
+  # windows/macos run latest only — the point there is the platform ABI
+  # (.node addon + napi external zero-copy), not the version spread.
+  # Re-enabled 2026-09-26 after the typescript manual review landed.
+  node:
+    name: node (${{ matrix.os }}, ${{ matrix.node-version }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            node-version: "22"
+          - os: ubuntu-latest
+            node-version: "26"
+          - os: windows-latest
+            node-version: "26"
+          - os: macos-latest
+            node-version: "26"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable # required on windows
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+      - uses: astral-sh/setup-uv@v10.2.0
+      - run: pnpm install
+      - name: napi build
+        run: pnpm -C typescript build:native
+      - name: vitest (native, coverage 100)
+        run: pnpm -C typescript test:native --coverage
+      - name: wasm-pack build
+        run: |
+          bash scripts/install_binaryen.sh
+          pnpm -C typescript build:wasm
+      - name: vitest (wasm, coverage 100)
+        run: pnpm -C typescript test:wasm --coverage
+      - name: cross-binding 对拍（原生逐 bit + wasm 容差 + 篡改自检）
+        run: |
+          uv sync --project python
+          (cd python && uv run maturin develop)
+          # check:cross includes the built-in anti-tautology self-check
+          # (perturbs each non-reference end in memory, requires detection)
+          pnpm check:cross
 
   # criterion baseline: regressions >20% fail (ci-matrix spec)
   bench:
