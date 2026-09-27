@@ -44,7 +44,7 @@ Cross-binding dump (python side of the four-way comparison; run from the repo
 root):
 
 ```bash
-uv run --project python python scripts/dump_py.py .cross-tmp
+uv run --project python python python/scripts/dump.py .cross-tmp
 ```
 
 ## Implementation notes

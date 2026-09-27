@@ -30,7 +30,7 @@
 
 - 目的：numpy 零拷贝视图绑定（pyo3 + numpy crate）
 - 命令：`uv sync --project python`、`uv run maturin develop`（改 core 后必跑）、
-  `uv run pytest`、`scripts/dump_py.py`
+  `uv run pytest`、`python/scripts/dump.py`
 - 实现细节：`crate-type = ["cdylib"]` 防 E0464 的机制展开；
   `read_element` 返回 `(float, float)`；`netwave.pyi` stub 随 wheel 发布；
   `python_relative: 0.0` 逐 bit 容差依据

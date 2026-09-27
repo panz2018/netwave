@@ -22,7 +22,7 @@ for (const name of shells) {
 }
 // Public consumer types (overwrite the napi-generated low-level d.ts).
 copyFileSync(join("src", "index.d.ts"), join("dist", "index.d.ts"));
-// Full paths, matching dump_py.py / dump_js.mjs output format
+// Full paths, matching the per-end dump scripts' output format
 // ("dumped <absolute path>", one per line).
 for (const name of [...shells, "index.d.ts"]) {
   console.log(`dumped ${resolve(join("dist", name))}`);

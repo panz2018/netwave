@@ -15,7 +15,9 @@ data model in phase 2.
 - `src/lib.rs` — public API + the interleaved complex layout contract
 - `tests/` — integration tests (the API has no unit tests besides these; TDD
   applies to every future verb)
-- `examples/dump.rs` — cross-binding dump: writes `.cross-tmp/core.bin`
+- `scripts/dump.rs` — cross-binding dump: writes `.cross-tmp/core.bin`
+  (declared as `[[example]]` in `Cargo.toml`; cargo only auto-discovers
+  `examples/`)
 - `benches/scaffold.rs` — criterion benchmarks feeding the bench gate
 
 ## Commands

@@ -176,9 +176,9 @@ jobs:
   #       run: |
   #         uv sync --project python
   #         (cd python && uv run maturin develop)
-  #         uv run --project python python scripts/dump_py.py .cross-tmp
+  #         uv run --project python python python/scripts/dump.py .cross-tmp
   #         cargo run -q -p netwave --example dump .cross-tmp
-  #         node scripts/dump_js.mjs .cross-tmp
+  #         node typescript/scripts/dump.mjs .cross-tmp
   #         python3 scripts/cross_compare.py .cross-tmp
   #         python3 scripts/cross_compare.py .cross-tmp --tamper=python
   #         python3 scripts/cross_compare.py .cross-tmp --tamper=wasm

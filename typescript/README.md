@@ -54,7 +54,7 @@ pnpm fix:ts               # Biome auto-fix
 Cross-binding dump (node + wasm ends; run from the repo root):
 
 ```bash
-node scripts/dump_js.mjs .cross-tmp
+node typescript/scripts/dump.mjs .cross-tmp
 ```
 
 ## Implementation notes

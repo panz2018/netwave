@@ -2,7 +2,7 @@
 <out>/python.bin — raw little-endian f64 bytes, re/im interleaved.
 
 Binary rather than JSON: JSON writes -0 as 0 and loses the sign bit.
-Usage: uv run python scripts/dump_py.py <out_dir>
+Usage (from repo root): uv run --project python python python/scripts/dump.py <out_dir>
 """
 
 import sys

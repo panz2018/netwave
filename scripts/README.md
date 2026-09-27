@@ -1,25 +1,29 @@
 # netwave scripts
 
-Repo-level tools: cross-binding comparison, CI gates, and toolchain helpers. Not
-part of any published package — if a script only serves one crate, it belongs in
-that crate instead (see `core/examples/dump.rs`).
+Workspace-level tools only: cross-binding comparison (consumes the four
+per-end dumps), CI gates, and toolchain helpers. Not part of any published
+package. A dump that serves a single subproject lives in that subproject's
+`scripts/` (`core/scripts/dump.rs`, `python/scripts/dump.py`,
+`typescript/scripts/dump.mjs`); this directory keeps only the cross-cutting
+orchestration.
 
 ## Scripts
 
-| Script                | Purpose                                                                            | Usage (from repo root)                                         |
-| --------------------- | ---------------------------------------------------------------------------------- | -------------------------------------------------------------- |
-| `dump_py.py`          | cross-binding dump, python end: writes `<out>/python.bin`                          | `uv run --project python python scripts/dump_py.py .cross-tmp` |
-| `dump_js.mjs`         | cross-binding dump, node + wasm ends: writes `<out>/node.bin` and `<out>/wasm.bin` | `node scripts/dump_js.mjs .cross-tmp`                          |
-| `cross_compare.py`    | compares the four dumps per the zero-copy-roundtrip spec                           | `python3 scripts/cross_compare.py .cross-tmp`                  |
-| `bench_gate.py`       | criterion regression gate: fails on >20% mean regression                           | `python3 scripts/bench_gate.py target/criterion [threshold]`   |
-| `install_binaryen.sh` | installs `wasm-opt` from GitHub **latest** (never pinned; local + CI share it)     | `bash scripts/install_binaryen.sh`                             |
-| `check_md.py`         | markdown checker: links/anchors + cross-line code-span detection                   | `python3 scripts/check_md.py`                                  |
+| Script                | Purpose                                                                        | Usage (from repo root)                                       |
+| --------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------ |
+| `cross_compare.py`    | compares the four dumps per the zero-copy-roundtrip spec                       | `python3 scripts/cross_compare.py .cross-tmp`                |
+| `bench_gate.py`       | criterion regression gate: fails on >20% mean regression                       | `python3 scripts/bench_gate.py target/criterion [threshold]` |
+| `install_binaryen.sh` | installs `wasm-opt` from GitHub **latest** (never pinned; local + CI share it) | `bash scripts/install_binaryen.sh`                           |
+| `check_md.py`         | markdown checker: links/anchors + cross-line code-span detection               | `python3 scripts/check_md.py`                                |
 
 ## Notes
 
 - **Dump output is raw little-endian f64, re/im interleaved** — the same layout
   contract as everywhere else (constitution rule 1). Binary, not JSON: JSON
-  writes `-0` as `0` and loses the sign bit.
+  writes `-0` as `0` and loses the sign bit. Per-end dumps live in their
+  subprojects: `cargo run -p netwave --example dump .cross-tmp`,
+  `uv run --project python python python/scripts/dump.py .cross-tmp`,
+  `node typescript/scripts/dump.mjs .cross-tmp` (node + wasm in one run).
 - **`cross_compare.py --tamper=<end>`** injects a corruption into one end's dump
   and asserts the comparison _detects_ it (anti-tautology self-check). Normal
   mode: any mismatch fails. Comparison tiers (native bit-exact, wasm relative

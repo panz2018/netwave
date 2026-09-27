@@ -15,3 +15,9 @@ criterion = { version = "0.8", features = ["html_reports"] }
 [[bench]]
 name = "scaffold"
 harness = false
+
+# dump lives in scripts/ (scoped tooling), cargo only auto-discovers
+# examples/ so the path must be declared explicitly.
+[[example]]
+name = "dump"
+path = "scripts/dump.rs"

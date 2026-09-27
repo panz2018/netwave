@@ -1,7 +1,8 @@
 //! cross-binding dump (core side): emit the (2,2) roundtrip values to
 //! <out>/core.bin — raw little-endian f64 bytes, re/im interleaved.
 //! Binary rather than JSON: JSON writes -0 as 0 and loses the sign bit.
-//! Usage: cargo run -p netwave --example dump <out_dir>
+//! Usage: cargo run -p netwave --example dump <out_dir> (declared in
+//! core/Cargo.toml [[example]] with path = "scripts/dump.rs")
 use std::io::Write;
 
 fn main() -> std::io::Result<()> {
