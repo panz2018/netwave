@@ -57,6 +57,58 @@ pnpm check:cross                  # four-end dump + compare
   steps querying release tags must pass the workflow `GITHUB_TOKEN`
   (5000 req/h). Also: YAML flow mappings `{ k: ${{ ... }} }` break on the
   `}}` — use block style for `env:` with expressions.
+- **manifest reads need explicit `encoding="utf-8"`**: `testdata/manifest.json`
+  carries CJK notes; Windows' cp1252 default raises `UnicodeDecodeError`.
+  Applies to every `read_text()` / `open()` in tests and scripts.
+
+## Anti-rework checklist (phase-0 review lessons)
+
+Each item below was a human-caught correction during phase 0; the goal is to
+catch it before the review, not during. Before presenting any change for
+human review, self-verify against this list:
+
+- **CI: never iterate by pushing.** Simulate every matrix cell locally first
+  (`bash -euo pipefail` + `shellcheck` on installer scripts; run each step's
+  command verbatim). Known cross-platform traps hit in phase 0: Windows
+  runner default shell is pwsh (not git-bash), macOS `grep` has no `-P`,
+  `GITHUB_PATH` is native-path and next-step-only, YAML flow mappings break
+  on `${{ }}`.
+- **Never disable a gate or matrix cell to get green.** Fix the failing cell
+  instead (phase-0 history: commented-out jobs / `if:`-skipped platforms /
+  dropped wasm cells were all re-enabled after review). Coverage stays folded
+  into the rust job as an if-gated step — a separate job reinstalled the
+  whole toolchain for no reason.
+- **Prove every gate can fail.** New gates get a negative test: an
+  intentionally-uncovered probe to confirm `--fail-under-lines` goes red; a
+  random-index tamper to confirm `cross_compare` detects it at the exact
+  injected end and index (undetected tamper = hard failure, not a warning).
+- **Verify commands exist before telling anyone to run them.** Phase 0
+  suggested `openspec validate`, which is not a CLI subcommand. Run the
+  command yourself, or quote `--help` output.
+- **Default to latest dependencies; pin only as a documented fallback**
+  (policy in [AGENTS.md](AGENTS.md)). Hardcoding a downloaded release number
+  silently rots; use dynamic-latest installers (with retry) and record any
+  `--precise` rollback + upstream issue in the child README's Gotchas.
+  Paired deps (pyo3↔numpy, napi↔napi-derive) upgrade together, then rerun
+  `pnpm check:cross`.
+- **Output must name absolute paths.** Any script that writes a dump prints
+  the full file path, not just "dumped bin".
+- **Use the public surface in tests/examples** (e.g. the async `toY`
+  contract: sync `_toY` computes in core, `async toY` wraps it and offloads
+  to a worker only above the size threshold) — no `_` escape hatches in
+  user-facing code or `dump_js`.
+- **Docs: one fact, one home; then grep for the stale copy.** After changing
+  a command, rename, or toolchain fact, grep all `.md` for the old form and
+  update every occurrence (`409b057`/`4f5a9bd` fixed stale descriptions and
+  four stale facts in archived tasks). Keep commands in the owning
+  directory's README only; run `pnpm check:md` after every md edit.
+- **Keep the toolchain status table current without being asked**: after
+  verifying any tool install/upgrade, update the table in this file in the
+  same change.
+- **Binding glue stays glue.** No computation in py/ts shells — they call
+  core's Rust functions; naming follows the api-contract spec (e.g.
+  `f_scaled`, not invented synonyms). No unpublished platform placeholder
+  packages in the workspace or CI.
 
 ## Development workflow
 
