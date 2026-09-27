@@ -31,7 +31,7 @@ url="https://github.com/wasm-bindgen/wasm-pack/releases/download/${tag}/wasm-pac
 say "downloading ${url}"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
-curl -fL --progress-bar -o "$tmp/wasm-pack.tar.gz" "$url"
+curl -fL --retry 3 --retry-all-errors --progress-bar -o "$tmp/wasm-pack.tar.gz" "$url"
 say "download done ($(du -h "$tmp/wasm-pack.tar.gz" | cut -f1)), extracting..."
 tar xzf "$tmp/wasm-pack.tar.gz" -C "$tmp"
 

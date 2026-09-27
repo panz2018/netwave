@@ -32,7 +32,7 @@ url="https://github.com/WebAssembly/binaryen/releases/download/${tag}/binaryen-$
 say "downloading ${url}"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
-curl -fL --progress-bar -o "$tmp/binaryen.tar.gz" "$url"
+curl -fL --retry 3 --retry-all-errors --progress-bar -o "$tmp/binaryen.tar.gz" "$url"
 say "download done ($(du -h "$tmp/binaryen.tar.gz" | cut -f1)), extracting..."
 tar xzf "$tmp/binaryen.tar.gz" -C "$tmp"
 

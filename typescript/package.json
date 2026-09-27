@@ -26,7 +26,7 @@
   "scripts": {
     "build:native": "napi build --platform --release --manifest-path native/Cargo.toml --js index.node.generated.mjs -o dist --format esm && napi build --platform --release --manifest-path native/Cargo.toml --js index.node.generated.cjs -o dist --format commonjs && node scripts/publish_shell.mjs",
     "build:native:debug": "napi build --platform --manifest-path native/Cargo.toml --js index.node.generated.mjs -o dist --format esm && napi build --platform --manifest-path native/Cargo.toml --js index.node.generated.cjs -o dist --format commonjs && node scripts/publish_shell.mjs",
-    "build:wasm": "CARGO_TARGET_DIR=../target-wasm wasm-pack build wasm --target web --out-dir ../dist/wasm-web",
+    "build:wasm": "cross-env CARGO_TARGET_DIR=../target-wasm wasm-pack build wasm --target web --out-dir ../dist/wasm-web",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
     "test:native": "vitest run --config vitest.native.config.ts",
@@ -37,6 +37,7 @@
     "@napi-rs/cli": "^3.10.5",
     "@types/node": "^26.6.2",
     "@vitest/coverage-v8": "^5",
+    "cross-env": "^10.1.0",
     "typescript": "^7.0.2",
     "vitest": "^5"
   }
