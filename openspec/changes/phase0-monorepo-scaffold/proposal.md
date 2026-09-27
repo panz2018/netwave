@@ -57,7 +57,7 @@ world 与 CI 矩阵，后续每个功能变更都无处落地，零拷贝这一�
 - `workspace-layout`: monorepo 目录结构、workspace 清单、发布名解耦与版本底线。
 - `zero-copy-roundtrip`: 四端零拷贝 buffer 往返验证契约（视图可写、core 可见、
   布局逐字节为交错复数 f64）。
-- `ci-matrix`: 三平台五格 CI 矩阵与质量闸门（clippy/fmt/criterion/覆盖率）。
+- `ci-matrix`: 五格（linux-x64/arm64、windows-x64、darwin-arm64、wasm32）CI 矩阵与质量闸门（clippy/fmt/criterion/覆盖率）。
 
 ### Modified Capabilities
 

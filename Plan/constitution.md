@@ -74,7 +74,7 @@
   unit 层零豁免。
 - 唯一例外是**结构性不可达代码**（`unreachable!()`、平台专属分支、防御性 error 转换），
   必须逐条显式标注豁免并写明理由——Rust `#[coverage(off)]`、Python `# pragma: no cover`、
-  TS/JS `/* istanbul ignore next */`；禁止整文件/整目录批量豁免。
+  TS/JS `/* v8 ignore start/stop */`（vitest v8 provider）；禁止整文件/整目录批量豁免。
 - **100% 是下限不是目标**：执行到 ≠ 断言对。数值正确性仍由 golden / property /
   cross-binding 三层负责（见[测试规划·测试分层总览](测试规划.md#测试分层总览)），
   覆盖率只兜底"没有代码没被测试碰过"。

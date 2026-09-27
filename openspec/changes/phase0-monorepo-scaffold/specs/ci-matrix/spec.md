@@ -2,7 +2,7 @@
 
 ## Purpose
 
-定义阶段 0 的 CI 质量闸门：三平台五格构建矩阵、lint/格式/基准/覆盖率门槛，
+定义阶段 0 的 CI 质量闸门：五格构建矩阵、lint/格式/基准/覆盖率门槛，
 保证任何平台的构建断裂与质量劣化在 PR 上即时暴露。
 
 ## ADDED Requirements
@@ -62,7 +62,7 @@ CI MUST 启用覆盖率采集并使 100% 行覆盖门槛从第一天生效：Rus
 Python 用 `pytest-cov --cov-fail-under=100`（阶段 0 python 侧仅胶水则豁免项
 逐条标注），Node/wasm 用 vitest coverage `lines: 100` 阈值写进配置。
 结构性不可达代码 MUST 逐条标注豁免（`#[coverage(off)]` /
-`# pragma: no cover` / `/* istanbul ignore next */`）并附理由。
+`# pragma: no cover` / `/* v8 ignore start/stop */`，vitest v8 provider）并附理由。
 
 #### Scenario: 空 crate 即 100%
 
