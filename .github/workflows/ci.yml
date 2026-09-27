@@ -100,9 +100,15 @@ jobs:
       - name: install binaryen (wasm-opt, latest)
         # Always latest: wasm-pack's built-in download is stuck on binaryen
         # 117; pinning a version here would rot (AGENTS.md dependency policy).
+        # GITHUB_TOKEN: authenticated API calls (runners share IPs; the
+        # anonymous 60 req/h quota gets exhausted by parallel jobs).
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/install_binaryen.sh
       - name: install wasm-pack (latest official binary)
         # cargo install compiles for minutes; official prebuilt tarballs.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/install_wasm_pack.sh
       - uses: pnpm/action-setup@v6
       - name: wasm build + vitest (wasm artifacts)
@@ -187,6 +193,9 @@ jobs:
         # Own step: the installers append to GITHUB_PATH, which only
         # takes effect for *later* steps — build:wasm must not share
         # this step (its PATH export dies with the bash subprocess).
+        # GITHUB_TOKEN: authenticated API calls (see wasm job).
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           rustup target add wasm32-unknown-unknown
           bash scripts/install_wasm_pack.sh

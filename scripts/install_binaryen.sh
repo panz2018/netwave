@@ -14,8 +14,18 @@ set -euo pipefail
 say() { echo "[install_binaryen] $*"; }
 
 say "querying latest release tag..."
-tag=$(curl -fsSL https://api.github.com/repos/WebAssembly/binaryen/releases/latest \
-  | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)
+# Unauthenticated api.github.com is rate-limited to 60 req/h per IP —
+# GitHub-hosted runners share IPs, so parallel jobs hit 403. In CI,
+# export GITHUB_TOKEN (the workflow's built-in token, 5000 req/h) on
+# the step that runs this script.
+if [ -n "${GITHUB_TOKEN:-}" ]; then
+  tag=$(curl -fsSL -H "Authorization: Bearer $GITHUB_TOKEN" \
+    https://api.github.com/repos/WebAssembly/binaryen/releases/latest \
+    | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)
+else
+  tag=$(curl -fsSL https://api.github.com/repos/WebAssembly/binaryen/releases/latest \
+    | sed -n 's/.*"tag_name": *"\([^"]*\)".*/\1/p' | head -1)
+fi
 say "latest tag: ${tag}"
 arch=$(uname -m)
 os=$(uname -s)
