@@ -14,12 +14,16 @@ set -euo pipefail
 tag=$(curl -fsSL https://api.github.com/repos/WebAssembly/binaryen/releases/latest \
   | grep -oP '"tag_name":\s*"\K[^"]+')
 arch=$(uname -m)
-case "$arch" in
-  x86_64) barch="x86_64" ;;
-  aarch64) barch="aarch64" ;;
-  *) echo "unsupported arch: $arch" >&2; exit 1 ;;
+os=$(uname -s)
+case "$os:$arch" in
+  Linux:x86_64) plat="x86_64-linux" ;;
+  Linux:aarch64) plat="aarch64-linux" ;;
+  Darwin:x86_64) plat="x86_64-macos" ;;
+  Darwin:arm64) plat="arm64-macos" ;;
+  MINGW*:x86_64|MSYS*:x86_64) plat="x86_64-windows" ;;
+  *) echo "unsupported platform: $os/$arch" >&2; exit 1 ;;
 esac
-url="https://github.com/WebAssembly/binaryen/releases/download/${tag}/binaryen-${tag}-${barch}-linux.tar.gz"
+url="https://github.com/WebAssembly/binaryen/releases/download/${tag}/binaryen-${tag}-${plat}.tar.gz"
 
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT

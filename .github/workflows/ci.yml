@@ -78,6 +78,12 @@ jobs:
         # 117; pinning a version here would rot (AGENTS.md dependency policy).
         run: bash scripts/install_binaryen.sh
 
+      - name: install wasm-pack (latest official binary)
+        if: matrix.target == 'wasm32'
+        # cargo install compiles for minutes; official prebuilt tarballs
+        # cover all matrix targets (was missing entirely -> exit 127).
+        run: bash scripts/install_wasm_pack.sh
+
       - name: wasm build + vitest (wasm artifacts)
         if: matrix.target == 'wasm32'
         run: |
@@ -163,7 +169,11 @@ jobs:
       - name: vitest (native, coverage 100)
         run: pnpm -C typescript test:native --coverage
       - name: wasm-pack build
+        # wasm-pack was never installed here -> exit 127 on first real run
+        # after re-enabling the node job; binaryen script now covers
+        # linux + macOS.
         run: |
+          bash scripts/install_wasm_pack.sh
           bash scripts/install_binaryen.sh
           pnpm -C typescript build:wasm
       - name: vitest (wasm, coverage 100)
