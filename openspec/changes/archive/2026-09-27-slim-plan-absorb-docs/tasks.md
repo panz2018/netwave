@@ -12,7 +12,7 @@ red/green"简化路径）；验收 = `pnpm check:md` + `openspec validate` 全�
 
 ## 2. 开发流程迁入 CONTRIBUTING.md
 
-- [ ] 2.1 在根 `CONTRIBUTING.md` 新增 "Development workflow" 章节（英文）：
+- [x] 2.1 在根 `CONTRIBUTING.md` 新增 "Development workflow" 章节（英文）：
       六步循环（grill→spec→red→green→review→复盘）、何时简化表、技能地图与
       工具链状态表（版本按当前实测：OpenSpec 1.13.1 / pnpm 12.5.1 / uv 0.12.13 /
       wasm-pack 0.15.0 / rustc 1.98.1 / node v26.4.0）
