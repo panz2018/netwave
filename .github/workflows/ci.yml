@@ -13,9 +13,10 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
 
-# Jobs are ordered cheap-first: docs (seconds) -> rust -> python ->
-# bench (most expensive). One job per language/toolchain; platforms
-# expand inside each job.
+# Jobs are ordered cheap-first: docs (seconds) -> rust -> wasm ->
+# coverage -> python -> node -> bench (most expensive). One job per
+# language/toolchain; platforms expand inside each job. No step-level
+# `if` anywhere: cells that share no steps get their own job instead.
 jobs:
   # Lint gate: every language's lint+format+type check, delegated to the
   # root package.json check:* scripts — the single source of truth for
@@ -40,8 +41,10 @@ jobs:
           pnpm install
           pnpm check
 
-  # Rust matrix: four platforms (macOS only Apple Silicon, Intel x64
-  # dropped).
+  # Rust matrix: native platforms only (macOS only Apple Silicon, Intel x64
+  # dropped). wasm32 lives in its own `wasm` job below: it shares no step
+  # with the native cells (no cargo test; needs wasm target + wasm-pack +
+  # pnpm), so keeping it here meant an `if` on nearly every step.
   rust:
     name: rust (${{ matrix.target }})
     strategy:
@@ -56,47 +59,48 @@ jobs:
             os: windows-latest
           - target: darwin-arm64
             os: macos-latest
-          - target: wasm32
-            os: ubuntu-latest
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v7
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-      - if: matrix.target == 'wasm32'
-        run: rustup target add wasm32-unknown-unknown
       - uses: mozilla-actions/sccache-action@v0.0.11
-
       - name: cargo test
-        if: matrix.target != 'wasm32'
         run: cargo test --workspace
 
+  # wasm: browser is the project's primary target -> first-class job, zero
+  # conditionals. Builds for wasm32 and runs the wasm vitest suite.
+  # Per-OS wasm *test* coverage also exists in the node job (all 4 OSes).
+  wasm:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          target: wasm32-unknown-unknown
       - name: install binaryen (wasm-opt, latest)
-        if: matrix.target == 'wasm32'
         # Always latest: wasm-pack's built-in download is stuck on binaryen
         # 117; pinning a version here would rot (AGENTS.md dependency policy).
         run: bash scripts/install_binaryen.sh
-
       - name: install wasm-pack (latest official binary)
-        if: matrix.target == 'wasm32'
-        # cargo install compiles for minutes; official prebuilt tarballs
-        # cover all matrix targets (was missing entirely -> exit 127).
+        # cargo install compiles for minutes; official prebuilt tarballs.
         run: bash scripts/install_wasm_pack.sh
-
-      # rust job had no pnpm -> `pnpm install` exit 127 in this cell.
-      - if: matrix.target == 'wasm32'
-        uses: pnpm/action-setup@v6
-
+      - uses: pnpm/action-setup@v6
       - name: wasm build + vitest (wasm artifacts)
-        if: matrix.target == 'wasm32'
         run: |
           pnpm install
           pnpm -C typescript build:wasm
           pnpm -C typescript test:wasm --coverage
 
-      - name: coverage (llvm-cov, 100% floor)
-        if: matrix.target == 'linux-x64'
+  # Coverage gate: single ubuntu cell, own job so the rust matrix stays
+  # if-free.
+  coverage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - name: llvm-cov (100% floor)
         run: |
           cargo install cargo-llvm-cov --locked
           # Binding crates (python/native/wasm) need a JS/Python runtime and
