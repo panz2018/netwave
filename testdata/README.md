@@ -7,8 +7,8 @@ test time.
 
 ## Files
 
-- `manifest.json` — the single tolerance + case contract (constitution
-  rule: tolerances live only here)
+- `manifest.json` — the single tolerance + case contract (governance spec
+  rule 3: tolerances live only here)
 - `LICENSE-NOTES.md` — provenance and licenses of borrowed samples
 - `golden/` — skrf-generated expected outputs (added in phase 1;
   phase 0 has the manifest only)
@@ -26,7 +26,7 @@ test time.
   values).
 - Binary format contract: every `.bin` is raw little-endian f64 pairs
   `[re, im, re, im, ...]`, byte-identical to numpy `complex128` / C
-  `double _Complex` (constitution rule 1).
+  `double _Complex` (governance spec rule 1).
 
 ## Who generates, who consumes
 
@@ -47,4 +47,4 @@ there, never restates.
 - **Never hand-edit `golden/*.bin`** — regenerate with `gen_golden.py`
   and review the diff.
 - **Never hardcode tolerances in tests** — read them from
-  `manifest.json` (constitution rule 3).
+  `manifest.json` (governance spec rule 3).

@@ -1,9 +1,9 @@
 """Zero-copy roundtrip test (RED first: binding raises → red).
 
 Expected values are computed independently by a closed-form formula
-(constitution rule 2). Layout contract: see the zero-copy-roundtrip spec.
+(governance spec rule 2). Layout contract: see the zero-copy-roundtrip spec.
 Tolerances come from testdata/manifest.json — never hardcoded per test
-(constitution rule 3).
+(governance spec rule 3).
 """
 
 import json

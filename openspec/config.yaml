@@ -2,8 +2,8 @@ schema: spec-driven
 
 context: |
   全部硬约束（数据布局/TDD/容差/z0/性能/零拷贝/语言约定/权威术语源）的唯一真相源
-  是 Plan/constitution.md，agent 行为准则见仓库根 AGENTS.md。动手前先读，禁止绕过。
-  本文件只保留 OpenSpec 工件专属规则（见 rules）。
+  是 openspec/specs/project-governance/spec.md，agent 行为准则见仓库根 AGENTS.md。
+  动手前先读，禁止绕过。本文件只保留 OpenSpec 工件专属规则（见 rules）。
 
 # Per-artifact rules
 rules:

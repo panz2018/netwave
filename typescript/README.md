@@ -3,7 +3,8 @@
 Single package, dual delivery: `node` resolves to the napi native addon,
 `browser` to the WASM build — dispatched by `exports` conditions in
 `package.json`. Both are thin transports over the Rust core (`../core`); they
-never recompute values (constitution rule: bindings only move memory).
+never recompute values (governance spec rule: bindings only move memory; see
+[`openspec/specs/project-governance/spec.md`](../openspec/specs/project-governance/spec.md)).
 
 Current stage: phase-0 scaffold (`fillPattern` / `readElement` roundtrip).
 

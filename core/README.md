@@ -3,7 +3,8 @@
 The Rust core crate (`netwave`): the single source of truth for all
 scattering-parameter math. The Python, Node (napi) and WASM bindings are
 deliberately thin transports over this crate — they must never recompute values
-(constitution rule: bindings only move memory).
+(governance spec rule: bindings only move memory; see
+[`openspec/specs/project-governance/spec.md`](../openspec/specs/project-governance/spec.md)).
 
 Current stage: phase-0 scaffold. The only public verb is `fill_pattern`, a
 predictable-pattern allocator whose sole purpose is to give the bindings real
@@ -46,7 +47,7 @@ cargo run -q -p netwave --example dump .cross-tmp
 
 ## Implementation notes
 
-- **Interleaved complex layout** (constitution rule 1): network data is an
+- **Interleaved complex layout** (governance spec rule 1): network data is an
   `(nfreq, nports, nports)` sequence of `Complex<f64>`, stored as
   `[re, im, re, im, ...]`. `num_complex::Complex<f64>` is `#[repr(C)]` and
   byte-identical to numpy `complex128` / C `double _Complex` — this is what lets
@@ -54,7 +55,7 @@ cargo run -q -p netwave --example dump .cross-tmp
 - **`fill_pattern` pattern**: `re = f*100 + p*10 + q`, `im = -re`. Every element
   is unique and sign-checkable, so any misalignment, silent copy or byte-order
   error breaks the pattern.
-- **No tautology** (constitution rule 2): tests must compute expected values
+- **No tautology** (governance spec rule 2): tests must compute expected values
   independently with the same closed-form formula — never reuse `fill_pattern`
   output as ground truth.
 

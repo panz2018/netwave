@@ -2,7 +2,7 @@
 //! implementation yet → compile failure is red).
 //!
 //! Expected values are computed independently by a closed-form formula in
-//! the test (constitution rule 2: never derive expectations from core's
+//! the test (governance spec rule 2: never derive expectations from core's
 //! output). Layout contract (rule 1): (nfreq, nports, nports) interleaved
 //! complex f64, re before im.
 

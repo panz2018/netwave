@@ -1,6 +1,6 @@
 //! netwave core (scaffold phase 0).
 //!
-//! # Interleaved complex layout (constitution rule 1)
+//! # Interleaved complex layout (governance spec rule 1)
 //!
 //! Network data in memory is a sequence of `(nfreq, nports, nports)`
 //! complex matrices. Each complex number is stored as complex128,
@@ -27,7 +27,7 @@ use num_complex::Complex64;
 /// and sign-checkable (`re>0`, `im<0`), so any misalignment, copy, or
 /// byte-order error breaks the pattern. Expected values MUST be computed
 /// independently by the caller (test) using the same closed-form formula —
-/// never reuse this function's output as ground truth (constitution rule 2:
+/// never reuse this function's output as ground truth (governance spec rule 2:
 /// avoid tautology).
 pub fn fill_pattern(nfreq: usize, nports: usize) -> Vec<Complex64> {
     (0..nfreq)

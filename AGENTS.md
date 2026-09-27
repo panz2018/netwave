@@ -44,7 +44,7 @@
 
 ## 项目铁律（动手前必读，此处不重述）
 
-- **[Plan/constitution.md](Plan/constitution.md)** —
+- **[openspec/specs/project-governance/spec.md](openspec/specs/project-governance/spec.md)** —
   netwave 全部硬约束的唯一真相源（数据布局 / 精度分层 / TDD / 容差 manifest /
   z0 端口属性 / 性能底线 / 零拷贝 / 语言约定 / 权威术语源）
 - OpenSpec 工作流见 [Plan/开发流程.md](Plan/开发流程.md)；`/opsx:*`
@@ -64,13 +64,13 @@
 ## Plan/ 生命周期
 
 - Plan/ 只放**未执行**任务；执行完且结论吸收进
-  `openspec/specs/`、各 README 或 constitution 后**删除该文件**。
-- 终态：Plan/ 清空删除，`openspec/` 为唯一事实源（constitution 届时迁入
-  `openspec/project.md`）。
+  `openspec/specs/`、各 README 或 governance spec 后**删除该文件**。
+- 终态：Plan/ 清空删除，`openspec/` 为唯一事实源（constitution 已迁入
+  `openspec/specs/project-governance/`）。
 - 新改进想法一律先落 Plan/ 新 md，不在对话里口头遗留。
 - 复盘结论按类型归位：流程坑 →
   [Plan/开发流程.md](Plan/开发流程.md)；命令/实现坑 → 对应子项目 README 的 Gotchas 节；硬约束 →
-  constitution。README 不设独立"复盘"章节，只沉淀结论。
+  governance spec（`openspec/specs/project-governance/`）。README 不设独立"复盘"章节，只沉淀结论。
 
 ## 文档书写规范（改 Plan/ 或任何 Markdown 必须遵守）
 

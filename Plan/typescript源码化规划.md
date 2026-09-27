@@ -104,7 +104,7 @@ bundler glue 在 node/vitest 不可加载）。往长看两条路线：
 决定时机：本规划执行到步骤 2（接入 tsdown）时一并拍板——打包器选型与
 wasm target 形态是同一个决策的两面（tsdown 对两种 glue 都能 external
 处理，但 browser 壳的 exports 分发策略取决于 target 形态）。拍板后：
-长期 web → 升格进 constitution；转 bundler → 本规划补迁移步骤。
+长期 web → 升格进 governance spec；转 bundler → 本规划补迁移步骤。
 
 ## 风险与保留意见
 
