@@ -9,12 +9,13 @@ orchestration.
 
 ## Scripts
 
-| Script                | Purpose                                                                        | Usage (from repo root)                                       |
-| --------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------ |
-| `cross_compare.py`    | compares the four dumps per the zero-copy-roundtrip spec                       | `python3 scripts/cross_compare.py .cross-tmp`                |
-| `bench_gate.py`       | criterion regression gate: fails on >20% mean regression                       | `python3 scripts/bench_gate.py target/criterion [threshold]` |
-| `install_binaryen.sh` | installs `wasm-opt` from GitHub **latest** (never pinned; local + CI share it) | `bash scripts/install_binaryen.sh`                           |
-| `check_md.py`         | markdown checker: links/anchors + cross-line code-span detection               | `python3 scripts/check_md.py`                                |
+| Script                 | Purpose                                                                                                                   | Usage (from repo root)                                       |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
+| `cross_compare.py`     | compares the four dumps per the zero-copy-roundtrip spec                                                                  | `python3 scripts/cross_compare.py .cross-tmp`                |
+| `bench_gate.py`        | criterion regression gate: fails on >20% mean regression                                                                  | `python3 scripts/bench_gate.py target/criterion [threshold]` |
+| `install_binaryen.sh`  | installs `wasm-opt` from GitHub **latest** (never pinned; local + CI share it)                                            | `bash scripts/install_binaryen.sh`                           |
+| `install_wasm_pack.sh` | installs `wasm-pack` from GitHub **latest** official prebuilt tarballs (linux/macOS/windows; faster than `cargo install`) | `bash scripts/install_wasm_pack.sh`                          |
+| `check_md.py`          | markdown checker: links/anchors + cross-line code-span detection                                                          | `python3 scripts/check_md.py`                                |
 
 ## Notes
 
