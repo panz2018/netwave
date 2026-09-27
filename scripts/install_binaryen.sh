@@ -11,8 +11,12 @@
 # In CI, the install dir is also appended to $GITHUB_PATH when present.
 set -euo pipefail
 
+say() { echo "[install_binaryen] $*"; }
+
+say "querying latest release tag..."
 tag=$(curl -fsSL https://api.github.com/repos/WebAssembly/binaryen/releases/latest \
   | grep -oP '"tag_name":\s*"\K[^"]+')
+say "latest tag: ${tag}"
 arch=$(uname -m)
 os=$(uname -s)
 case "$os:$arch" in
@@ -25,16 +29,19 @@ case "$os:$arch" in
 esac
 url="https://github.com/WebAssembly/binaryen/releases/download/${tag}/binaryen-${tag}-${plat}.tar.gz"
 
+say "downloading ${url}"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
-curl -fsSL -o "$tmp/binaryen.tar.gz" "$url"
+curl -fL --progress-bar -o "$tmp/binaryen.tar.gz" "$url"
+say "download done ($(du -h "$tmp/binaryen.tar.gz" | cut -f1)), extracting..."
 tar xzf "$tmp/binaryen.tar.gz" -C "$tmp"
 
 bindir="$HOME/.local/bin"
 mkdir -p "$bindir"
+say "installing to ${bindir}..."
 cp "$tmp/binaryen-${tag}/bin/"* "$bindir/"
 chmod +x "$bindir"/wasm-opt*
-echo "installed binaryen ${tag} -> $bindir"
+say "installed binaryen ${tag} -> $bindir"
 wasm-opt --version
 
 if [ -n "${GITHUB_PATH:-}" ]; then

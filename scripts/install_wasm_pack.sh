@@ -10,8 +10,12 @@
 # In CI, the install dir is also appended to $GITHUB_PATH when present.
 set -euo pipefail
 
+say() { echo "[install_wasm_pack] $*"; }
+
+say "querying latest release tag..."
 tag=$(curl -fsSL https://api.github.com/repos/wasm-bindgen/wasm-pack/releases/latest \
   | grep -oP '"tag_name":\s*"\K[^"]+')
+say "latest tag: ${tag}"
 os=$(uname -s)
 arch=$(uname -m)
 case "$os:$arch" in
@@ -24,17 +28,20 @@ case "$os:$arch" in
 esac
 url="https://github.com/wasm-bindgen/wasm-pack/releases/download/${tag}/wasm-pack-${tag}-${plat}.tar.gz"
 
+say "downloading ${url}"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
-curl -fsSL -o "$tmp/wasm-pack.tar.gz" "$url"
+curl -fL --progress-bar -o "$tmp/wasm-pack.tar.gz" "$url"
+say "download done ($(du -h "$tmp/wasm-pack.tar.gz" | cut -f1)), extracting..."
 tar xzf "$tmp/wasm-pack.tar.gz" -C "$tmp"
 
 bindir="$HOME/.local/bin"
 mkdir -p "$bindir"
+say "installing to ${bindir}..."
 # Windows ships wasm-pack.exe; cp keeps the name as-is on other platforms.
 cp "$tmp/wasm-pack-${tag}-${plat}/"wasm-pack* "$bindir/"
 chmod +x "$bindir"/wasm-pack*
-echo "installed wasm-pack ${tag} (${plat}) -> $bindir"
+say "installed wasm-pack ${tag} (${plat}) -> $bindir"
 "$bindir/wasm-pack" --version || "$bindir/wasm-pack.exe" --version
 
 if [ -n "${GITHUB_PATH:-}" ]; then
