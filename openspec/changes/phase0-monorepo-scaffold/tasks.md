@@ -73,14 +73,18 @@
       `await readElement` 读回一致 → 断言两路数值一致；vitest 看到红
 - [x] 5.2 [GREEN] `typescript/wasm/src/lib.rs`：wasm-bindgen `fill_pattern`
       （线性内存 + offset/length）+ `readElement`；
-      `wasm-pack build --target nodejs` → vitest 绿
+      `wasm-pack build --target web`（实施改定：bundler/nodejs glue 在
+      vitest 不可加载，web glue 两端通用，见 design.md）→ vitest 绿
 - [x] 验证：wasm 覆盖率 lines 100 通过
 
 ## 6. cross-binding 对拍
 
-- [x] 6.1 四端各输出 `(nfreq=2,nports=2)` 往返结果为 JSON/二进制到约定路径，
+- [x] 6.1 四端各输出 `(nfreq=2,nports=2)` 往返结果为二进制 `.bin`
+      （实施改定：`JSON.stringify(-0)` 丢符号位，禁用 JSON）到 `.cross-tmp/`，
       CI 单 job 内比对：原生三端逐 bit 一致、wasm 相对容差（manifest `core_tol`）
-- [x] 6.2 假 golden 自检：故意篡改一端输出，对拍脚本必须失败（防 tautology）
+- [x] 6.2 假 golden 自检：故意篡改一端输出，对拍脚本必须失败（防 tautology）。
+      实施升级：每次运行自动篡改（随机下标 + 按元素量级缩放扰动），
+      并断言精确定位到注入端+下标，无需手动 `--tamper`
 
 ## 7. CI
 
@@ -96,6 +100,7 @@
 
 ## 8. 收尾
 
-- [x] 8.1 `markdownlint-cli2` + `python3 scripts/check_links.py` 通过
+- [x] 8.1 `pnpm check:md`（markdownlint-cli2 + prettier +
+      `python3 scripts/check_md.py`，脚本已自 `check_links.py` 更名）通过
 - [x] 8.2 code-review 双轴（Standards：铁律一/四/六/七；Spec：三份 delta spec）
 - [ ] 8.3 `/opsx:sync` → `/opsx:archive`，复盘三问回写文档
