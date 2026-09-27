@@ -72,8 +72,11 @@ def main() -> int:
         if abs(a - b) / denom >= tol:
             return verdict(tamper, f"FAIL tol: core vs wasm idx {i}: {a!r} vs {b!r}")
     if tamper:
-        msg = f"SELF-CHECK FAIL: tamper={tamper} not detected (tautology!)"
-        return verdict(tamper, msg)
+        # Unreachable when the perturbation works: the loops above must have
+        # returned FAIL first. Reaching here means the comparator is blind
+        # (tautology) — a hard failure, never a pass.
+        print(f"SELF-CHECK FAIL: tamper={tamper} not detected (tautology!)")
+        return 1
     print("cross-binding OK")
     return 0
 
