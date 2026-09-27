@@ -14,9 +14,10 @@ env:
   CARGO_TERM_COLOR: always
 
 # Jobs are ordered cheap-first: docs (seconds) -> rust -> wasm ->
-# coverage -> python -> node -> bench (most expensive). One job per
-# language/toolchain; platforms expand inside each job. No step-level
-# `if` anywhere: cells that share no steps get their own job instead.
+# python -> node -> bench (most expensive). One job per language/
+# toolchain; platforms expand inside each job. A step that only applies
+# to one matrix cell uses a step-level `if` — cheaper than a separate
+# job (no extra runner spin-up, checkout or toolchain install).
 jobs:
   # Lint gate: every language's lint+format+type check, delegated to the
   # root package.json check:* scripts — the single source of truth for
@@ -68,6 +69,17 @@ jobs:
       - uses: mozilla-actions/sccache-action@v0.0.11
       - name: cargo test
         run: cargo test --workspace
+      - name: llvm-cov (100% floor, ubuntu x64 only)
+        # Single cell: llvm-cov is weak on Windows/MSVC, and coverage of
+        # the same code + tests is host-comparable. Binding crates
+        # (python, typescript native/wasm) need a JS/Python runtime and
+        # are covered by pytest/vitest in their own jobs (spec-sanctioned
+        # exclusion, structurally unreachable under cargo test).
+        if: matrix.target == 'linux-x64'
+        run: |
+          cargo install cargo-llvm-cov --locked
+          cargo llvm-cov --workspace --fail-under-lines 100 \
+            --ignore-filename-regex '(python|typescript/(native|wasm))/src/lib\.rs'
 
   # wasm: browser is the primary target -> first-class job, zero
   # conditionals, full OS matrix: wasm codegen differs per host toolchain,
@@ -98,22 +110,6 @@ jobs:
           pnpm install
           pnpm -C typescript build:wasm
           pnpm -C typescript test:wasm --coverage
-
-  # Coverage gate: single ubuntu cell, own job so the rust matrix stays
-  # if-free.
-  coverage:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v7
-      - uses: dtolnay/rust-toolchain@stable
-      - name: llvm-cov (100% floor)
-        run: |
-          cargo install cargo-llvm-cov --locked
-          # Binding crates (python/native/wasm) need a JS/Python runtime and
-          # are covered by pytest/vitest in their own jobs; excluded here
-          # (structurally unreachable under cargo test, spec-sanctioned).
-          cargo llvm-cov --workspace --fail-under-lines 100 \
-            --ignore-filename-regex '(python|typescript/(native|wasm))/src/lib\.rs'
 
   # Python matrix: ubuntu runs the floor (3.10) + latest (3.14);
   # windows/macos run latest only — the point there is the platform ABI
