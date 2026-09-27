@@ -88,6 +88,24 @@ tsdown 产物清单：`index.node.mjs` / `index.node.cjs` / `index.browser.mjs` 
 5. 更新 [typescript/README.md](../typescript/README.md)
    的 Commands 与 Gotchas；本文件按 Plan 生命周期吸收进 spec/README 后删除。
 
+## 待拍板：wasm target 形态（web vs bundler，留到详细架构规划时定）
+
+阶段 0 临时选了 `--target web`（理由：同一产物喂 vitest 与浏览器，
+bundler glue 在 node/vitest 不可加载）。往长看两条路线：
+
+- **长期 web**：浏览器优先定位的自然体现——`<script type="module">` +
+  显式 `init()` 零构建直接嵌入，单产物单测试线，GitHub Pages 部署最简。
+  代价：npm bundler 用户需自管 `.wasm` 路径与 init，不如 bundler 地道。
+- **转 bundler（或双形态）**：npm 浏览器包正统形态，用户的
+  Vite/webpack 自动处理 `.wasm` 解析与 tree-shaking；`exports` 条件分发
+  （node=napi / browser=bundler-glue）最地道。代价：多一条构建与测试线，
+  需另维 standalone 产物给无构建场景。
+
+决定时机：本规划执行到步骤 2（接入 tsdown）时一并拍板——打包器选型与
+wasm target 形态是同一个决策的两面（tsdown 对两种 glue 都能 external
+处理，但 browser 壳的 exports 分发策略取决于 target 形态）。拍板后：
+长期 web → 升格进 constitution；转 bundler → 本规划补迁移步骤。
+
 ## 风险与保留意见
 
 - wasm 路径：打包器的 wasm 源码集成（compile/preserve 等模式）一律不启用，保持 wasm-pack
@@ -96,4 +114,5 @@ tsdown 产物清单：`index.node.mjs` / `index.node.cjs` / `index.browser.mjs` 
   [typescript/README.md](../typescript/README.md) 的Implementation
   notes）会重踩。
 - CI
-  node 格子（当前注释禁用，待 typescript 人工审核恢复）届时需同步加入打包步骤。
+  node 格子与 rust job wasm32 格已于 2026-09-26 恢复；源码化后打包步骤
+  需同步加进两处（node job 的 build 步骤换为 tsdown 产物）。

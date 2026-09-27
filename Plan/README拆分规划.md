@@ -46,7 +46,7 @@
   wasm-opt 用 `scripts/install_binaryen.sh` 动态装 GitHub latest
   （不钉版本；wasm-pack 内置的钉在老版 117 必须 PATH 覆盖）、
   worker 内存不可 transfer、壳文件体系与 `publish_shell.mjs` 重写规则
-  （逐条见 [阶段0复盘回写.md](阶段0复盘回写.md)）
+  （逐条已沉淀 `typescript/README.md` Implementation notes 与 Gotchas）
 - 注意：JSON 丢负零 → 对拍 dump 用 `.bin`
 
 ### `testdata/README.md`（短）
