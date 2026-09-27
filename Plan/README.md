@@ -24,3 +24,5 @@
   [openspec/specs/project-governance/spec.md](../openspec/specs/project-governance/spec.md)。
 - ~~开发流程.md~~ — 已迁入 [CONTRIBUTING.md](../CONTRIBUTING.md) "Development
   workflow" 章节并删除（2026-09-27，change `slim-plan-absorb-docs`）。
+- `api-contract` 能力已同步进 [openspec/specs/api-contract/spec.md](../openspec/specs/api-contract/spec.md)
+  （2026-09-27）。

@@ -90,23 +90,23 @@ grill ──► spec ──► red ──► green ──► review ──► re
 
 ### When to simplify
 
-| Scenario                | Simplification                                          |
-| ----------------------- | ------------------------------------------------------- |
-| Docs/comments/constants | skip red/green; edit + review                           |
-| Bug fix                 | full loop; red = a failing repro test first             |
+| Scenario                | Simplification                                         |
+| ----------------------- | ------------------------------------------------------ |
+| Docs/comments/constants | skip red/green; edit + review                          |
+| Bug fix                 | full loop; red = a failing repro test first            |
 | Throwaway prototype     | no tests, but code never reaches main; findings → spec |
-| Pure binding glue       | skip unit/property; keep the cross-binding compare      |
+| Pure binding glue       | skip unit/property; keep the cross-binding compare     |
 
 ### Toolchain status (verified 2026-09-27)
 
-| Tool                                                                                                                           | Status                                                                                              |
-| ------------------------------------------------------------------------------------------------------------------------------ | --------------------------------------------------------------------------------------------------- |
+| Tool                                                                                                                           | Status                                                                                            |
+| ------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------- |
 | OpenSpec CLI 1.13.1                                                                                                            | npm global under nvm v26; run`openspec update` in each initialized project after a CLI upgrade    |
 | pnpm 12.5.1                                                                                                                    | corepack-managed; prefix`COREPACK_ENABLE_DOWNLOAD_PROMPT=0`                                       |
-| uv 0.12.13                                                                                                                     | standalone install; Python envs per[python/README.md](python/README.md)                              |
-| Rust 1.98.1 (rustup)                                                                                                           | `~/.cargo/bin`; `wasm32-unknown-unknown` target installed                                       |
-| wasm-pack 0.15.0                                                                                                               | CI installs via[scripts/install_wasm_pack.sh](scripts/install_wasm_pack.sh)                          |
-| cargo-llvm-cov / clippy / fmt / criterion                                                                                      | gate commands in Quality gates above                                                                |
+| uv 0.12.13                                                                                                                     | standalone install; Python envs per[python/README.md](python/README.md)                           |
+| Rust 1.98.1 (rustup)                                                                                                           | `~/.cargo/bin`; `wasm32-unknown-unknown` target installed                                         |
+| wasm-pack 0.15.0                                                                                                               | CI installs via[scripts/install_wasm_pack.sh](scripts/install_wasm_pack.sh)                       |
+| cargo-llvm-cov / clippy / fmt / criterion                                                                                      | gate commands in Quality gates above                                                              |
 | Harness skills (tdd, code-review, diagnosing-bugs, grilling, codebase-design, domain-modeling, prototype, research) + ponytail | installed under`~/.claude/skills/`                                                                |
 | RF terminology routing                                                                                                         | two book SKILL.md under`~/GitHub/knowledge/RF/` (consult while writing; docs stay self-contained) |
 
@@ -117,12 +117,12 @@ Permanent docs only. Planning documents (roadmap, test strategy) live under
 are deliberately not linked here (Plan/ is deleted at the end of its
 lifecycle; see [AGENTS.md](AGENTS.md)).
 
-| Topic                          | Where                                              |
-| ------------------------------ | -------------------------------------------------- |
-| Rust core details              | [core/README.md](core/README.md)                    |
-| Python binding details         | [python/README.md](python/README.md)                |
-| Node/wasm binding details      | [typescript/README.md](typescript/README.md)        |
-| Golden data & manifest schema  | [testdata/README.md](testdata/README.md)            |
-| Workspace scripts              | [scripts/README.md](scripts/README.md)              |
-| Agent working rules            | [AGENTS.md](AGENTS.md)                              |
+| Topic                          | Where                                            |
+| ------------------------------ | ------------------------------------------------ |
+| Rust core details              | [core/README.md](core/README.md)                 |
+| Python binding details         | [python/README.md](python/README.md)             |
+| Node/wasm binding details      | [typescript/README.md](typescript/README.md)     |
+| Golden data & manifest schema  | [testdata/README.md](testdata/README.md)         |
+| Workspace scripts              | [scripts/README.md](scripts/README.md)           |
+| Agent working rules            | [AGENTS.md](AGENTS.md)                           |
 | Specs (future source of truth) | `openspec/specs/` (populated as changes archive) |
