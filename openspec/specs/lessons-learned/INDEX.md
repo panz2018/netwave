@@ -33,3 +33,6 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-025 | typescript | 覆盖率豁免 `v8 ignore` 逐条附理由                              |
 | LL-026 | typescript | 容器 machine-id 须 32 位十六进制                               |
 | LL-027 | testdata   | dump 一律二进制 .bin 小端 f64                                  |
+| LL-028 | docs       | archive 自带 sync，手动 sync 后须去重                          |
+
+       |

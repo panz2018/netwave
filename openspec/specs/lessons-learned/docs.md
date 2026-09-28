@@ -26,3 +26,11 @@
 - 犯过：Windows cp1252 读含中文 manifest 抛 `UnicodeDecodeError`（`89e28f2`）
 - 规则：所有 `read_text()`/`open()` 显式 `encoding="utf-8"`
 - 复发检测：可门禁化——grep `read_text()`/`open(` 无 encoding 即红
+
+### LL-028 sync 后 archive 会重复追加 delta
+
+- 犯过：手动 sync 后再跑 `openspec archive`，CLI 二次应用 delta，
+  governance spec 出现重复需求块（MD024 红，2026-09-27）
+- 规则：sync 与 archive 只选其一应用 delta；archive 自带 sync，手动
+  sync 过则归档后必须 diff 主 spec 去重
+- 复发检测：可门禁化——`pnpm check:md` MD024 重复标题即红（已生效）
