@@ -36,9 +36,9 @@ AI 检索 MUST 先扫 INDEX 再按需打开对应 scope 文件。每条条目 MU
 
 ### Requirement: 被纠正即登记
 
-AI 被人工纠正的当轮 MUST 登记：先在 ledger.md 检索同类条目——已有则该轮
-回复 MUST 引用编号并说明未遵守的原因；没有则 MUST 新增 LL-NNN 条目。登记
-MUST NOT 推迟到归档 retro。
+AI 被人工纠正的当轮 MUST 登记：先在账本（扫 INDEX.md 后开对应 scope 分片）
+检索同类条目——已有则该轮回复 MUST 引用编号并说明未遵守的原因；没有则 MUST
+新增 LL-NNN 条目到对应分片并同步 INDEX.md。登记 MUST NOT 推迟到归档 retro。
 
 #### Scenario: 同类纠正命中旧条目
 
@@ -48,13 +48,14 @@ MUST NOT 推迟到归档 retro。
 #### Scenario: 新错误即时入账
 
 - **WHEN** 人工指出的问题无同类条目
-- **THEN** 当轮 ledger.md 出现新 LL 条目（含四要素），不等待归档
+- **THEN** 当轮账本对应 scope 分片出现新 LL 条目（含四要素）且 INDEX 同步，
+  不等待归档
 
 ### Requirement: review 第三轴 Lessons
 
 code-review MUST 由两轴扩为三轴：Standards × Spec × Lessons。Lessons 轴
-MUST 逐条对照 ledger.md 检查本次改动是否命中既有条目；命中即打回，并按
-"复发检测方式"验证修复。
+MUST 逐条对照账本（INDEX + 相关 scope 分片）检查本次改动是否命中既有条目；
+命中即打回，并按"复发检测方式"验证修复。
 
 #### Scenario: 命中旧错即打回
 
