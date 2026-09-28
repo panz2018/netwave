@@ -23,11 +23,13 @@ rules:
 # Per-operation guidance (optional)
 # Add advisory guidance for how apply and archive work should be conducted.
 # This is separate from artifact rules above.
-# Example:
-#   operations:
-#     apply:
-#       guidance:
-#         - Keep test summaries concise
-#     archive:
-#       guidance:
-#         - Summarize the archive outcome before finishing
+operations:
+  apply:
+    guidance:
+      - 本次 change 若吸收了 Plan/ 中某文档（或其章节）的结论，apply 完成时
+        删除该文件（或章节）并跑 pnpm check:md
+  archive:
+    guidance:
+      - 归档前必须执行 Plan/ 瘦身检查：grep Plan/ 中与本 change 相关的条目，
+        已完成的删除文件、与主 spec 冲突的当场修正并指出；Plan/ 只留未执行
+        任务，终态是整目录删除（追溯靠 git log）
