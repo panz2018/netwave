@@ -26,10 +26,12 @@ rules:
 operations:
   apply:
     guidance:
-      - 本次 change 若吸收了 Plan/ 中某文档（或其章节）的结论，apply 完成时
-        删除该文件（或章节）并跑 pnpm check:md
+      - 本次 change 完成的任务/定案的结论，其在 Plan/ 中的对应章节必须
+        当场删除（不留已完成的规划文字），只保留未执行或待改善的任务；
+        删后跑 pnpm check:md
   archive:
     guidance:
       - 归档前必须执行 Plan/ 瘦身检查：grep Plan/ 中与本 change 相关的条目，
-        已完成的删除文件、与主 spec 冲突的当场修正并指出；Plan/ 只留未执行
-        任务，终态是整目录删除（追溯靠 git log）
+        已完成/已定案的章节一律删除（结论已在主 spec，Plan/ 不留存）、
+        与主 spec 冲突的当场指出；Plan/ 只留未执行任务，终态是整目录删除
+        （追溯靠 git log）
