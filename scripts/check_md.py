@@ -66,9 +66,13 @@ def main() -> int:
     cache: dict[str, set[str]] = {}
     bad = 0
     child_readmes = {
-        os.path.normpath(p) for p in
-        ("core/README.md", "python/README.md", "typescript/README.md",
-         "testdata/README.md")
+        os.path.normpath(p)
+        for p in (
+            "core/README.md",
+            "python/README.md",
+            "typescript/README.md",
+            "testdata/README.md",
+        )
     }
     ledger_heading = re.compile(r"^#{1,6} .*(Implementation notes|Gotchas)")
     for f in files:
@@ -112,8 +116,7 @@ def main() -> int:
                     # LL gate: never link into archived change proposals
                     # (documents inside the archive may cross-link freely —
                     # archived history is frozen and self-contained)
-                    if ("openspec/changes/archive/" in tgt.replace("\\", "/")
-                            and not in_archive):
+                    if "openspec/changes/archive/" in tgt.replace("\\", "/") and not in_archive:
                         print(f"ARCHIVE LINK {f}:{i} [{text}]({target})")
                         bad += 1
                         continue

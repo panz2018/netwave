@@ -3,7 +3,7 @@
   "private": true,
   "packageManager": "pnpm@12.5.1",
   "scripts": {
-    "check": "pnpm check:md && pnpm check:ts && pnpm check:rs && pnpm check:py",
+    "check": "pnpm check:md && pnpm check:ts && pnpm check:rs && pnpm check:py && pnpm check:meta",
     "fix": "pnpm fix:md && pnpm fix:ts && pnpm fix:rs && pnpm fix:py",
     "check:md": "markdownlint-cli2 \"**/*.md\" && prettier --check \"**/*.md\" && python3 scripts/check_md.py",
     "fix:md": "prettier --write \"**/*.md\" && markdownlint-cli2 \"**/*.md\" --fix",
@@ -13,7 +13,8 @@
     "fix:rs": "cargo fmt --all && cargo clippy --workspace --all-targets --fix --allow-dirty -- -D warnings",
     "check:py": "uv run --project python ruff check python/ scripts/ && uv run --project python ruff format --check python/ scripts/",
     "fix:py": "uv run --project python ruff check --fix python/ scripts/ && uv run --project python ruff format python/ scripts/",
-    "check:cross": "cargo run -q -p netwave --example dump .cross-tmp && uv run --project python python python/scripts/dump.py .cross-tmp && node typescript/scripts/dump.mjs .cross-tmp && python3 scripts/cross_compare.py .cross-tmp"
+    "check:cross": "cargo run -q -p netwave --example dump .cross-tmp && uv run --project python python python/scripts/dump.py .cross-tmp && node typescript/scripts/dump.mjs .cross-tmp && python3 scripts/cross_compare.py .cross-tmp",
+    "check:meta": "python3 scripts/check_license.py"
   },
   "devDependencies": {
     "@biomejs/biome": "^2",

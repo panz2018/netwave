@@ -63,8 +63,7 @@
 - **语言**：仅 `openspec/` 与 `Plan/`
   用中文；其余一切（README、docs、代码注释、rustdoc、docstring、JSDoc、commit
   message）用英文。
-- **动手前先读所在子项目的 README.md**：只含本目录编译/测试/部署命令；坑与实现细节唯一存于 lessons-learned 账本，README 不重述。
-- **作用域纪律**：子项目 README 只放**本目录作用域**的命令与细节；workspace/根级命令（如
+- **动手前先读所在子项目的 README.md**：只含本目录编译/测试/部署命令；坑与实现细节唯一存于 lessons-learned 账本，README 不重述。- **参考第三方前先查账本许可表**（lessons-learned docs 分片）：GPL 源只读思想不开代码（宪法 知识产权合规）。- **作用域纪律**：子项目 README 只放**本目录作用域**的命令与细节；workspace/根级命令（如
   `cargo llvm-cov --workspace`、markdownlint、链接校验）只放根文档——面向用户的放
   根 README，面向开发的（门禁命令、环境坑、文档地图）放根 CONTRIBUTING.md——
   禁止下沉到子 README。

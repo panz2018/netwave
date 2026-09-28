@@ -7,7 +7,9 @@ name = "netwave"
 version = "0.0.1"
 description = "Network scattering-parameter math (PyO3 bindings, scaffold phase 0)"
 requires-python = ">=3.10"
-license = "MIT"
+license = "MIT OR Apache-2.0"
+# license full texts live at repo root; maturin bundles them at wheel
+# build time (phase 1) via the sdist, not by path here.
 dependencies = ["numpy>=2.0"]
 
 [dependency-groups]

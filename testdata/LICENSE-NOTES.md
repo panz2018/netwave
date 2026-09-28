@@ -1,3 +1,23 @@
-# 第三方数据许可说明（占位）
+# Third-party data license notes
 
-阶段 0 仅建骨架。golden 测试数据（skrf 生成）与许可登记属阶段 1。
+Registration table for every file under `testdata/` (spec:
+`license-compliance` — testdata 逐文件登记). Unregistered files MUST NOT
+enter this directory.
+
+Rules:
+
+- `copied` = third-party file copied verbatim; its in-file `!` copyright
+  comment MUST be preserved.
+- `generated` = produced by this project's own scripts; if a third-party
+  tool was used (e.g. scikit-rf), register the tool and its version.
+- Demo/built-in example data MUST be self-produced (netwave output or
+  hand-written values) — never taken from scikit-rf or SignalIntegrity
+  output.
+- Sources are addressed by permanent URLs only; local paths MUST NOT
+  appear in this table.
+
+## Registry
+
+| File                                        | Source URL | Upstream version | copied/generated | License |
+| ------------------------------------------- | ---------- | ---------------- | ---------------- | ------- |
+| _(none yet — golden data lands in phase 1)_ |            |                  |                  |         |

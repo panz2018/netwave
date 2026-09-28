@@ -31,5 +31,20 @@ Building from source or contributing? See
 
 ## License
 
-Rust core and bindings: MIT OR Apache-2.0. `testdata/` has separate terms —
-see [testdata/LICENSE-NOTES.md](testdata/LICENSE-NOTES.md).
+Licensed under either of MIT or Apache-2.0, at your option. Full texts:
+[LICENSE-MIT](LICENSE-MIT), [LICENSE-APACHE](LICENSE-APACHE). The software
+is provided "as is", without warranty of any kind. `testdata/` has
+separate terms — see [testdata/LICENSE-NOTES.md](testdata/LICENSE-NOTES.md).
+
+Touchstone® is a registered trademark of Amphenol Corporation (formerly
+Agilent Technologies).
+
+## References
+
+- scikit-rf (BSD-3-Clause) — <https://github.com/scikit-rf/scikit-rf>
+- SignalIntegrity (GPL-3.0-or-later; algorithms referenced only, no code
+  copied) — <https://github.com/Nubis-Communications/SignalIntegrity>
+- Touchstone® File Format Specification v2.1 (IBIS Open Forum) —
+  <https://ibis.org/touchstone_ver2.1/touchstone_ver2_1.pdf>
+- P. J. Pupalaikis, _S-Parameters for Signal Integrity_, Cambridge
+  University Press, 2020 — <https://doi.org/10.1017/9781108784863>

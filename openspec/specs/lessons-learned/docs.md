@@ -34,3 +34,18 @@
 - 规则：sync 与 archive 只选其一应用 delta；archive 自带 sync，手动
   sync 过则归档后必须 diff 主 spec 去重
 - 复发检测：可门禁化——`pnpm check:md` MD024 重复标题即红（已生效）
+
+### LL-029 第三方许可表与 GPL 红线
+
+- 犯过：无（预防性登记，2026-09-27 license-compliance）
+- 规则：参考第三方前先查本表——scikit-rf BSD-3-Clause
+  (<https://github.com/scikit-rf/scikit-rf>) 可抄代码但声明随分发；
+  SignalIntegrity GPL-3.0-or-later
+  (<https://github.com/Nubis-Communications/SignalIntegrity>) **禁抄代码/
+  禁逐行翻译，只读思想**；Touchstone spec v2.1 IBIS 条款
+  (<https://ibis.org/touchstone_ver2.1/touchstone_ver2_1.pdf>) 实现自由、
+  全文勿入仓；《S-Parameters for Signal Integrity》CUP 全版权
+  (<https://doi.org/10.1017/9781108784863>) 禁复制原文/图表。借鉴实现
+  MUST 在 rustdoc 标注出处
+- 复发检测：元数据一致性已门禁化 `pnpm check:meta`；GPL 混入检测待阶段
+  1/2 立项；review Lessons 轴对照本表
