@@ -16,6 +16,11 @@ Checks:
   Prettier drop the continuation line's indentation (it must not add
   spaces inside code content) and render badly on GitHub; close the
   span on one line instead.
+- LEDGER SECTION: child READMEs (core/python/typescript/testdata) must
+  not carry "Implementation notes" / "Gotchas" headings — those live in
+  the lessons-learned ledger (openspec/specs/lessons-learned/). LL gate.
+- ARCHIVE LINK: no document may link into openspec/changes/archive/ —
+  archived proposals are historical; link the live spec instead. LL gate.
 """
 
 import os
@@ -60,9 +65,18 @@ def main() -> int:
     )
     cache: dict[str, set[str]] = {}
     bad = 0
+    child_readmes = {
+        os.path.normpath(p) for p in
+        ("core/README.md", "python/README.md", "typescript/README.md",
+         "testdata/README.md")
+    }
+    ledger_heading = re.compile(r"^#{1,6} .*(Implementation notes|Gotchas)")
     for f in files:
         if "/.git/" in f or "node_modules" in f:
             continue
+        norm = os.path.normpath(f)
+        in_archive = "openspec/changes/archive/" in norm.replace("\\", "/")
+        is_child_readme = norm in child_readmes
         in_code = False
         with open(f, encoding="utf-8") as fh:
             for i, line in enumerate(fh, 1):
@@ -71,6 +85,10 @@ def main() -> int:
                     continue
                 if in_code:
                     continue
+                # LL gate: child READMEs must not carry notes/gotchas
+                if is_child_readme and ledger_heading.match(line):
+                    print(f"LEDGER SECTION {f}:{i} {line.rstrip()[:70]}")
+                    bad += 1
                 # unclosed inline-code span: odd backtick count outside
                 # fences (see module docstring for why this matters)
                 if line.count("`") % 2 == 1:
@@ -89,6 +107,14 @@ def main() -> int:
                     tgt = os.path.normpath(os.path.join(os.path.dirname(f), path)) if path else f
                     if not os.path.exists(tgt):
                         print(f"BROKEN FILE  {f}:{i} [{text}]({target})")
+                        bad += 1
+                        continue
+                    # LL gate: never link into archived change proposals
+                    # (documents inside the archive may cross-link freely —
+                    # archived history is frozen and self-contained)
+                    if ("openspec/changes/archive/" in tgt.replace("\\", "/")
+                            and not in_archive):
+                        print(f"ARCHIVE LINK {f}:{i} [{text}]({target})")
                         bad += 1
                         continue
                     if anchor:

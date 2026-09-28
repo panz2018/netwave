@@ -44,34 +44,3 @@ comparison would not find it):
 ```bash
 cargo run -q -p netwave --example dump .cross-tmp
 ```
-
-## Implementation notes
-
-- **Interleaved complex layout** (governance spec rule 1): network data is an
-  `(nfreq, nports, nports)` sequence of `Complex<f64>`, stored as
-  `[re, im, re, im, ...]`. `num_complex::Complex<f64>` is `#[repr(C)]` and
-  byte-identical to numpy `complex128` / C `double _Complex` — this is what lets
-  all four bindings share one buffer with zero copies.
-- **`fill_pattern` pattern**: `re = f*100 + p*10 + q`, `im = -re`. Every element
-  is unique and sign-checkable, so any misalignment, silent copy or byte-order
-  error breaks the pattern.
-- **No tautology** (governance spec rule 2): tests must compute expected values
-  independently with the same closed-form formula — never reuse `fill_pattern`
-  output as ground truth.
-
-## Gotchas
-
-- **Rebuild all bindings after touching core.** Run `maturin develop` (python),
-  `pnpm -C typescript build:native` and `build:wasm` before any cross-binding
-  comparison, otherwise you compare against stale artifacts.
-- **Dumps must be binary `.bin`** (little-endian f64): `JSON.stringify(-0)`
-  emits `"0"` and loses the sign bit, making bit-exact comparison impossible.
-- **`#[coverage(off)]` is nightly-only** — do not add it; the stable toolchain
-  pinned in `rust-toolchain.toml` will not compile. There are currently no
-  coverage exemptions in this crate.
-- **Real benchmarks must use `black_box`** around inputs and outputs, otherwise
-  the optimizer folds the measured code away and the numbers are fake.
-  `scaffold_noop` is a deliberate no-op and unaffected; apply this when phase-2
-  real benchmarks land.
-- `publish = false`: the crate is not released standalone; its version moves
-  with the workspace.

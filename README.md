@@ -29,15 +29,6 @@ phase 2.
 Building from source or contributing? See
 [CONTRIBUTING.md](CONTRIBUTING.md).
 
-## Repository layout
-
-```text
-core/         Rust core crate — the single source of truth for all math
-python/       PyO3 binding (numpy zero-copy views, maturin wheel)
-typescript/   Single package, dual publish: napi native (node) + wasm (browser)
-testdata/     Golden data + tolerance manifest (the cross-binding contract)
-```
-
 ## License
 
 Rust core and bindings: MIT OR Apache-2.0. `testdata/` has separate terms —

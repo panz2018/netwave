@@ -41,10 +41,3 @@ Comparison rule and cross-binding tiers (native bit-exact, wasm
 relative) are defined in the governance spec rule 3
 ([project-governance spec](../openspec/specs/project-governance/spec.md))
 — this README only points there, never restates.
-
-## Gotchas
-
-- **Never hand-edit `golden/*.bin`** — regenerate with `gen_golden.py`
-  and review the diff.
-- **Never hardcode tolerances in tests** — read them from
-  `manifest.json` (governance spec rule 3).

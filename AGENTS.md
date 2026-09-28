@@ -42,6 +42,13 @@
 - **最新版有 bug 才回退**：仅当最新版导致构建/测试失败且确认是上游bug（非本项目用法问题）时，回退到次新版（`--precise`），并在所在子项目 README 的 Gotchas 记录回退原因与跟踪的上游 issue。
 - **配对依赖一起升**：pyo3↔numpy、napi↔napi-derive 等必须同 major 联动，升级后必跑四端对拍确认数值不变。
 
+## 反思铁律（防复发，机制见 lessons-learned spec）
+
+- 动手前扫 [openspec/specs/lessons-learned/INDEX.md](openspec/specs/lessons-learned/INDEX.md)，命中再开对应 scope 分片。
+- 被人工纠正当轮登记：命中旧条目=引用编号并说明未遵守原因；无=新增 LL 到对应分片+INDEX。不拖到归档。
+- review 三轴：Standards × Spec × Lessons（逐条对照账本，命中即打回）。
+- 可门禁化的 LL 落进 `pnpm check`，文字规则退役。
+
 ## 项目铁律（动手前必读，此处不重述）
 
 - **[openspec/specs/project-governance/spec.md](openspec/specs/project-governance/spec.md)** —
@@ -56,7 +63,7 @@
 - **语言**：仅 `openspec/` 与 `Plan/`
   用中文；其余一切（README、docs、代码注释、rustdoc、docstring、JSDoc、commit
   message）用英文。
-- **动手前先读所在子项目的 README.md**：编译/测试/部署命令与实现细节、坑（Gotchas）以各子 README 为唯一存放处，顶层只留指针不重述。
+- **动手前先读所在子项目的 README.md**：只含本目录编译/测试/部署命令；坑与实现细节唯一存于 lessons-learned 账本，README 不重述。
 - **作用域纪律**：子项目 README 只放**本目录作用域**的命令与细节；workspace/根级命令（如
   `cargo llvm-cov --workspace`、markdownlint、链接校验）只放根文档——面向用户的放
   根 README，面向开发的（门禁命令、环境坑、文档地图）放根 CONTRIBUTING.md——
@@ -69,15 +76,15 @@
 - 终态：Plan/ 清空删除，`openspec/` 为唯一事实源（constitution 已迁入
   `openspec/specs/project-governance/`）。
 - 新改进想法一律先落 Plan/ 新 md，不在对话里口头遗留。
-- 复盘结论按类型归位：流程坑 →
-  [CONTRIBUTING.md](CONTRIBUTING.md)（Development workflow）；命令/实现坑 → 对应子项目 README 的 Gotchas 节；硬约束 →
-  governance spec（`openspec/specs/project-governance/`）。README 不设独立"复盘"章节，只沉淀结论。
+- 复盘结论按类型归位：坑/纠正/实现决策 → lessons-learned 账本（对应 scope 分片+INDEX）；流程机制 → CONTRIBUTING（Development workflow）；硬约束 → governance spec。README 与子 README 不设"复盘/Gotchas"章节。
+- **文档地图（内容分配清单，增删只改本节）**：契约级决定→governance spec；行为准则+本地图→AGENTS.md；坑/纠正/实现决策→lessons-learned 账本；人类开发命令与目录 layout→CONTRIBUTING；本目录命令→子 README；用户视角→根 README；历史→git log（文档不留存）。
 
 ## 文档书写规范（改 Plan/ 或任何 Markdown 必须遵守）
 
 - **标题不带章节序号**：位置数字会进 GitHub 锚点，章节重排即全仓断链。例外：概念编号保留（铁律一~七、阶段 0-8——它们是名字，不是位置）。
 - **引用一律用标题跳转链接**（反引号内为格式模板）：`[标题名](文件.md#锚点)`
   禁止 `§X.Y`、禁止"见第 N 节"、禁止裸数字章节引用。
+- **只链相关**：只链接与本文主题直接相关的现存文档；禁止因历史原因保留指向已归档/已删除/无关文档的链接。
 - **代码块内不放链接**（不渲染）：块内注释写"见下方说明"，链接放块外正文。
 - **锚点 slug 规则**：标题转小写、空格→`-`、标点删除、中文保留。改标题或增删章节后，必须跑链接校验（Python 模拟 slug 规则，逐一验证文件存在 + 锚点匹配，断链当场暴露）。
 - **每次改动后必须跑 markdown 检查**：`pnpm check:md`（仓库根，退出码 0 才算

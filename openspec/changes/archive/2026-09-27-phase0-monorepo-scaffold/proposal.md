@@ -70,7 +70,7 @@ world 与 CI 矩阵，后续每个功能变更都无处落地，零拷贝这一�
 - 新增根文件：`Cargo.toml`、`Cargo.lock`、`pnpm-workspace.yaml`、`package.json`、
   `.gitignore`。
 - 依赖：Rust crate `pyo3`/`numpy`/`napi`+`napi-derive`/`wasm-bindgen`/`criterion`；
-  工具链已核实就位（见 [CONTRIBUTING.md · Toolchain status](../../../../CONTRIBUTING.md#toolchain-status-verified-2026-09-27)）。
+  工具链已核实就位（见 [CONTRIBUTING.md · Toolchain](../../../../CONTRIBUTING.md#toolchain-task--tool)）。
 - 受影响铁律：铁律一（数据布局是往返验证的契约）、铁律四（主 CI 零 Python 依赖）、
   铁律六（criterion 空基准进 CI）、铁律七（覆盖率 100% 门槛生效）。
 

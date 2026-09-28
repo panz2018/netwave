@@ -47,34 +47,3 @@ root):
 ```bash
 uv run --project python python python/scripts/dump.py .cross-tmp
 ```
-
-## Implementation notes
-
-- **Zero-copy via base object**: core allocates, a `#[pyclass(frozen)] Owner`
-  holds the buffer and is attached as the returned ndarray's `base`. The array
-  has `owndata=False`; Python writes land directly in core memory, and the Owner
-  drops (freeing it) only after the array is collected.
-  `test_fill_pattern_view_zero_copy` asserts `owndata is False` so a silent
-  regression to copying fails loudly.
-- **`read_element` returns `(float, float)`**: a plain tuple, not a complex —
-  keeps the roundtrip proof free of any conversion layer.
-- **`python_relative: 0.0` tolerance** (in
-  [`../testdata/manifest.json`](../testdata/manifest.json)): the roundtrip path
-  performs no arithmetic — numpy views the same f64 bits Rust wrote — so any
-  deviation is a bug, hence bit-exact.
-- **`netwave.pyi` ships in the wheel**: maturin only packages `.so`/`.py` by
-  default, so `[tool.maturin] include` adds the stub explicitly; without it,
-  installed users lose type hints (the `.so` is opaque to mypy/pyright).
-- **`[lib] name = "netwave"`** (same as the core crate) is deliberate: it is the
-  Python `import` name.
-- **`crate-type = ["cdylib"]`** avoids E0464: without it cargo also builds an
-  rlib named `netwave`, which collides with the core crate's hash-named rlib in
-  the same target dir. cdylib-only removes the clash.
-
-## Gotchas
-
-- **Rebuild after touching core**: always `uv run maturin develop` before
-  `pytest` or any cross-binding comparison, otherwise you test stale artifacts.
-- **Dumps are binary `.bin`** (little-endian f64): JSON loses the sign of `-0`,
-  making bit-exact comparison impossible. Contract:
-  [`../testdata/README.md`](../testdata/README.md).
