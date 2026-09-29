@@ -1,4 +1,4 @@
-# typescript 源码化规划（工具链已拍板 2026-09-25，源码改写未执行）
+# typescript 源码化规划（工具链已拍板 2026-09-25，worker 常驻架构已定案 2026-09-29，源码改写未执行）
 
 ## 背景与动机
 
@@ -56,6 +56,43 @@ tsdown 产物清单：`index.node.mjs` / `index.node.cjs` / `index.browser.mjs` 
 `index.d.ts` / `standalone.js`（IIFE，HTML `<script>` 直接导入）/
 `netwave.worker.js`。
 
+## worker 常驻架构（方案一，2026-09-29 定案）
+
+无 SharedArrayBuffer 环境（GitHub Pages 无 COOP/COEP）下跨线程消息传递的渐近
+最优：数据仅经显式 `upload` transfer 进入 worker 一次，之后命令移动、数据不动。
+以下契约级定案随 worker 实现 change 同步进主 spec（见执行步骤第 6 条），本次
+主 spec 不动：
+
+- **数据权威在常驻 worker 的 wasm 内**：全部数据、状态、计算常驻单个 Web
+  Worker 内的 wasm 实例；主线程不持有 wasm 实例、不持有数据副本——无双实例、
+  无双份数据，不存在权威歧义。
+- **单点所有权，移动仅经显式 transfer**：`upload` 显式 transfer 托管输入，
+  托管后驻留 worker 反复可用；普通计算动词不静默消耗输入（`upload` 后主线程
+  视图 detached 是规范强制，非可选）。
+- **结果一律 transfer 传出、worker 不留副本**：结果 buffer 新分配、所有权移交
+  主线程，transfer 出去的 buffer 在 worker 侧自动消失。
+- **计算与元数据读取一律异步进 worker**：`shape`/`frequency` 等元数据同样在
+  worker 内读取、搭结果消息便车回传；主线程从已 resolve 的返回值同步读
+  描述符（描述符随结果回传，不算数据副本）。
+- **`_` 同步逃生口两端不对称**：浏览器端 `_` 前缀同步计算函数废止（主线程无
+  wasm，同步计算无处发生，不加 deprecated，随实现落地删除）；node 端保留 `_`
+  同步函数（napi core 在进程内，同步直通永远可行，私有面不污染公开 API）。
+  公开 API 两端一致：全 async。
+- **worker 常驻至页面关闭**：由库的 async 壳托管长生命周期 worker；worker 异常
+  终止（浏览器 OOM 等）数据丢失为**已接受行为**，API 不承诺恢复，不引入
+  IndexedDB（复杂度超出收益）。
+- **Worker 池未来再讨论**：前置门槛 = 数据分片归属（数据驻留与池化冲突），
+  阶段 3 实现时决定单 worker 或池。
+- **standalone.js 形态**：内部自起常驻 worker，Pages / `<script type="module">`
+  用户依旧零配置。
+- **阶段 3 真浏览器测试线**：vitest browser mode + playwright provider + 仅
+  Chromium（同一套测试代码与 `pnpm test` 入口，真 worker/真 transfer/真
+  detach 只有真浏览器能验证）；不引入 `@playwright/test`（纯计算库无 UI E2E
+  需求），多浏览器矩阵待浏览器特异 bug 出现再加。
+- **LL-001 分流废止**："小数据不起 Worker、直接同步 resolve"随本方案废止——
+  所有计算不管大小全进常驻 worker（每次 ~1ms 消息往返，公开面本就全 async，
+  用户无感）。
+
 ## 执行步骤
 
 0. （已落地 2026-09-25）接入 `typescript/tsconfig.json`
@@ -81,30 +118,40 @@ tsdown 产物清单：`index.node.mjs` / `index.node.cjs` / `index.browser.mjs` 
 2. 接入 tsdown，输出 esm（node/browser 分 target）、cjs 与 dts；
    napi/wasm glue 保持 external → 验证：`dist/` 产物与旧壳 exports
    逐一对齐（`exports.test.ts` 扩展断言）。
+   - **tsdown × TypeScript 7 验证结论（2026-09-29 实测，tsdown 0.23.0 /
+     rolldown 1.2.11）**：bundle 路径全绿（4 壳一次出，external 生效；旗标
+     `external` 已弃用，正式接入用 `deps.neverBundle`）；**dts × TS7 不兼容**
+     ——tsgo 对任意入口（含最小 `.ts`）均不生成 dts，tsdown 自身告警
+     "TypeScript 7.0 … experimental"；**回退方案已验证可行**：钉
+     `typescript@6`（现 `^6.0.3`）后 dts 正常生成，且 esm 格式产物名为
+     `.d.mts`——正式接入时 `exports.types` 需对齐 `.d.mts`（或双出）。源码化
+     步骤 1（壳改 `.ts`）后重测 TS7 dts，兼容则升回 7。
 3. 测试入口切到源码；覆盖率 `/* v8 ignore */` 逐条保留理由 → 验证：`test:native`
    / `test:wasm` 覆盖率仍 100%。
 4. 跨绑定对拍回归（`scripts/cross_compare.py`
    四端）→ 验证：逐 bit + 容差 + 篡改自检全绿。
 5. 更新 [typescript/README.md](../typescript/README.md)
    的 Commands 与 Gotchas；本文件按 Plan 生命周期吸收进 spec/README 后删除。
+6. 主 spec 修订随 worker 实现 change 同步（本规划不动主 spec）：governance
+   spec 升格"单点所有权 + 移动仅经显式 transfer + 常驻 worker 为数据权威 +
+   主线程无 wasm"；zero-copy-roundtrip spec 第 1/2/6 条按
+   [worker 常驻架构](#worker-常驻架构方案一2026-09-29-定案) 节改写（分流废止、
+   浏览器 `_` 废止、元数据搭结果便车）→ 验证：实现 change 归档时主 spec 含
+   上述条款，`openspec validate` 绿。
 
-## 待拍板：wasm target 形态（web vs bundler，留到详细架构规划时定）
+## wasm target 形态（已定案：长期 web，2026-09-29）
 
-阶段 0 临时选了 `--target web`（理由：同一产物喂 vitest 与浏览器，
-bundler glue 在 node/vitest 不可加载）。往长看两条路线：
+`--target web` 为长期形态：单产物喂 vitest / 浏览器 / GitHub Pages，
+`<script type="module">` + 显式 `init()` 零构建直接嵌入；bundler glue 在
+node/vitest 不可加载（账本 LL-017），转 bundler 需另维构建线 + 测试线 +
+standalone，收益当前为零。
 
-- **长期 web**：浏览器优先定位的自然体现——`<script type="module">` +
-  显式 `init()` 零构建直接嵌入，单产物单测试线，GitHub Pages 部署最简。
-  代价：npm bundler 用户需自管 `.wasm` 路径与 init，不如 bundler 地道。
-- **转 bundler（或双形态）**：npm 浏览器包正统形态，用户的
-  Vite/webpack 自动处理 `.wasm` 解析与 tree-shaking；`exports` 条件分发
-  （node=napi / browser=bundler-glue）最地道。代价：多一条构建与测试线，
-  需另维 standalone 产物给无构建场景。
-
-决定时机：本规划执行到步骤 2（接入 tsdown）时一并拍板——打包器选型与
-wasm target 形态是同一个决策的两面（tsdown 对两种 glue 都能 external
-处理，但 browser 壳的 exports 分发策略取决于 target 形态）。拍板后：
-长期 web → 升格进 governance spec；转 bundler → 本规划补迁移步骤。
+已知代价：npm bundler（Vite/webpack）用户需自管 `.wasm` 落位——web glue 的
+运行时 `fetch` 对打包器是黑盒，`.wasm` 不进对方模块图，用户须拷进 public 目录
+或 `init()` 传自有 URL（README 文档级说明，非不能用）。待真实 npm bundler 用户
+需求出现，增量加 `--target bundler` 构建 + `exports.browser` 条件分发——纯加法、
+非破坏性，其余用户不受影响。定案随 worker 实现 change 落地后升格进 governance
+spec（见执行步骤第 6 条）。
 
 ## 风险与保留意见
 
