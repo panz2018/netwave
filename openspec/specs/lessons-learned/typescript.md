@@ -4,12 +4,12 @@
 
 ### LL-001 同步/异步 toY 契约
 
-- 犯过：把 `toY` 实现成独立计算路径，偏离契约（session 2026-09-19）
+- 犯过：把 `toY` 实现成独立计算路径，偏离契约
 - 规则：同步 `_toY` 调 core 计算；`async toY` 内部包装 `_toY`，仅超阈值走
   worker；`expect(_toY(x)).toEqual(await toY(x))`
 - 复发检测：vitest 双路一致性断言
-- **2026-09-29 修订**："小数据不起 worker"分流随 worker 常驻架构（定案
-  2026-09-29，见 `Plan/typescript源码化规划.md`）废止——所有计算不管大小
+- **修订**："小数据不起 worker"分流随 worker 常驻架构（见
+  `Plan/typescript源码化规划.md`）废止——所有计算不管大小
   全进常驻 worker；
   浏览器端 `_` 同步计算逃生口废止（主线程无 wasm），node 端保留 `_`（napi
   core 在进程内）；双路一致性断言改为 worker 往返 vs `_toY`（仅 node）
@@ -61,7 +61,7 @@
 ### LL-030 主线程 wasm 实例退役（worker 常驻架构）
 
 - 犯过：脚手架期壳在主线程 init wasm 与 worker 双实例并存，主线程可持数据副本，
-  权威歧义（2026-09-28/29 讨论纠正，session worker 常驻架构定案）
+  权威歧义（worker 常驻架构定案时纠正）
 - 规则：浏览器端数据/状态/计算全常驻单个 worker 内 wasm，主线程不 init wasm、
   不持数据副本；元数据搭结果便车回传，主线程只从返回值同步读描述符；实现时
   旧壳双实例模式不得回流
@@ -72,7 +72,7 @@
 ### LL-031 同步元数据读取改异步
 
 - 犯过：契约曾定"属性/元数据（`shape`/`frequency`）保持同步"，主线程无 wasm 后
-  不成立（2026-09-29 纠正）
+  不成立（worker 常驻架构定案时纠正）
 - 规则：计算与元数据一律异步进 worker；已 resolve 结果描述符上的元数据可同步
   读；worker 异常终止数据丢失为已接受行为，不引入 IndexedDB 恢复
 - 复发检测：api-contract 类型面元数据访问器全为 `Promise`（node 端 `_` 除外）

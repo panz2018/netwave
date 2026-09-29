@@ -2,7 +2,7 @@
 
 ## Why
 
-2026-09-28/29 讨论定案：浏览器端数据、状态与计算全部常驻单个 Web Worker 内的
+讨论定案：浏览器端数据、状态与计算全部常驻单个 Web Worker 内的
 wasm 实例（worker 常驻架构），主线程不再持有 wasm 实例与数据副本——这是无
 SharedArrayBuffer 环境（GitHub Pages 无 COOP/COEP）下跨线程消息传递的渐近最优：
 数据仅经显式 `upload` transfer 进入 worker 一次，之后命令移动、数据不动。

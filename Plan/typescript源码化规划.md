@@ -1,4 +1,4 @@
-# typescript 源码化规划（工具链已拍板 2026-09-25，worker 常驻架构已定案 2026-09-29，源码改写未执行）
+# typescript 源码化规划（工具链已定案，worker 常驻架构已定案，源码改写未执行）
 
 ## 背景与动机
 
@@ -10,8 +10,7 @@
 - CJS 壳（`index.node.cjs`）是 ESM 壳的手工翻译版——正是打包器要解决的"多格式输出"痛点。
 - 目标是让 TS 消费者拿到真正的类型与可维护源码，所以不能只有壳文件，需要 TS 源码。
 
-2026-09-25 评估过
-[Rslib](https://rslib.rs/)（web-infra-dev/rslib）：在"无 TS 源码"的前提下不需要它；一旦源码化，它的 ESM+CJS+`dts`
+评估过 [Rslib](https://rslib.rs/)（web-infra-dev/rslib）：在"无 TS 源码"的前提下不需要它；一旦源码化，它的 ESM+CJS+`dts`
 一次输出、`target: node/web` 分壳、Worker 语法原生识别就真正对上了。
 
 ## 目标结构
@@ -37,16 +36,16 @@ src/
   描述符、await 后重建视图）不受影响——打包只碰 JS 壳，不碰 `.node`/`.wasm`
   二进制路径。
 
-## 工具选型（2026-09-25 已拍板）
+## 工具选型（已定案）
 
-| 环节                        | 定稿                                                                                                                   | 理由                                                                                                            |
-| --------------------------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| 包管理                      | pnpm（不动）                                                                                                           | workspace 主场，已定                                                                                            |
-| 测试/覆盖率                 | Vitest（不动，100% 阈值）                                                                                              | wasm/ESM 场景唯一顺手                                                                                           |
-| lint+format (JS/TS/JSON)    | **Biome**（全仓库）                                                                                                    | 单二进制替代 ESLint+Prettier 三件套；薄壳用不上插件生态；与 Rust 工具气质一致                                   |
-| format (Markdown)           | **Prettier `proseWrap: "preserve"`**（全仓库 `*.md`，忽略 `.claude/`；2026-09-26 由 `always` 改回：中文+行内代码碎断） | 统一列表/标题结构、不重排段落换行；markdownlint 关掉与 Prettier 冲突的规则只留内容性规则                        |
-| 打包                        | **tsdown**（Rslib 降备选）                                                                                             | 只需"TS→ESM+CJS+dts+IIFE + external glue"，Rslib 差异化能力（MF/样式/wasm 源码集成）全用不上，tsdown 配置量最小 |
-| `.node`/`.wasm` 二进制+glue | napi build / wasm-pack（不动，external）                                                                               | 打包器不介入二进制管线                                                                                          |
+| 环节                        | 定稿                                                                   | 理由                                                                                                                        |
+| --------------------------- | ---------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| 包管理                      | pnpm（不动）                                                           | workspace 主场，已定                                                                                                        |
+| 测试/覆盖率                 | Vitest（不动，100% 阈值）                                              | wasm/ESM 场景唯一顺手                                                                                                       |
+| lint+format (JS/TS/JSON)    | **Biome**（全仓库）                                                    | 单二进制替代 ESLint+Prettier 三件套；薄壳用不上插件生态；与 Rust 工具气质一致                                               |
+| format (Markdown)           | **Prettier `proseWrap: "preserve"`**（全仓库 `*.md`，忽略 `.claude/`） | 统一列表/标题结构、不重排段落换行（中文+行内代码下 `always` 会碎断）；markdownlint 关掉与 Prettier 冲突的规则只留内容性规则 |
+| 打包                        | **tsdown**（Rslib 降备选）                                             | 只需"TS→ESM+CJS+dts+IIFE + external glue"，Rslib 差异化能力（MF/样式/wasm 源码集成）全用不上，tsdown 配置量最小             |
+| `.node`/`.wasm` 二进制+glue | napi build / wasm-pack（不动，external）                               | 打包器不介入二进制管线                                                                                                      |
 
 **CJS 去留（已拍板：保留）**：`build:native` 本就跑两遍 napi 各出 ESM/CJS
 glue，tsdown `format: ["esm","cjs"]` 顺手出 CJS，成本近零；Jest 默认 CJS、老工具
@@ -56,7 +55,7 @@ tsdown 产物清单：`index.node.mjs` / `index.node.cjs` / `index.browser.mjs` 
 `index.d.ts` / `standalone.js`（IIFE，HTML `<script>` 直接导入）/
 `netwave.worker.js`。
 
-## worker 常驻架构（2026-09-29 定案）
+## worker 常驻架构（已定案）
 
 无 SharedArrayBuffer 环境（GitHub Pages 无 COOP/COEP）下跨线程消息传递的渐近
 最优：数据仅经显式 `upload` transfer 进入 worker 一次，之后命令移动、数据不动。
@@ -95,14 +94,14 @@ tsdown 产物清单：`index.node.mjs` / `index.node.cjs` / `index.browser.mjs` 
 
 ## 执行步骤
 
-0. （已落地 2026-09-25）接入 `typescript/tsconfig.json`
+0. （已落地）接入 `typescript/tsconfig.json`
    （strict+allowJs+noEmit）、根 `biome.jsonc`、根 `.prettierrc.json`
    （proseWrap preserve，只管 `*.md`）、markdownlint 关冲突规则、
    CI 加 biome/prettier/tsc 步骤 → 验证：`biome check .`、
    `prettier --check "**/*.md"`、`tsc --noEmit`、markdownlint、check_md 全绿。
 1. 壳改写为 TS 源码（`types.ts` 收编 `index.d.ts` 契约）→
    验证：`tsc --noEmit` 通过、vitest 直接测 `.ts` 全绿。
-   - **一并解决现存 test typing 问题（2026-09-26 记录）**：`typescript/test/`
+   - **一并解决现存 test typing 问题**：`typescript/test/`
      下**全部**测试文件都有同类问题——凡解构 `fillPattern` 返回值处编辑器报
      TS2339（`buffer`、`byteOffset`、`length` 不存在于 `object` 类型），
      `test/wasm/wasm.roundtrip.test.ts`、`test/native/native.roundtrip.test.ts`、
@@ -118,8 +117,8 @@ tsdown 产物清单：`index.node.mjs` / `index.node.cjs` / `index.browser.mjs` 
 2. 接入 tsdown，输出 esm（node/browser 分 target）、cjs 与 dts；
    napi/wasm glue 保持 external → 验证：`dist/` 产物与旧壳 exports
    逐一对齐（`exports.test.ts` 扩展断言）。
-   - **tsdown × TypeScript 7 验证结论（2026-09-29 实测，tsdown 0.23.0 /
-     rolldown 1.2.11）**：bundle 路径全绿（4 壳一次出，external 生效；旗标
+   - **tsdown × TypeScript 7 验证结论（实测，tsdown 0.23.0 / rolldown
+     1.2.11）**：bundle 路径全绿（4 壳一次出，external 生效；旗标
      `external` 已弃用，正式接入用 `deps.neverBundle`）；**dts × TS7 不兼容**
      ——tsgo 对任意入口（含最小 `.ts`）均不生成 dts，tsdown 自身告警
      "TypeScript 7.0 … experimental"；**回退方案已验证可行**：钉
@@ -135,11 +134,11 @@ tsdown 产物清单：`index.node.mjs` / `index.node.cjs` / `index.browser.mjs` 
 6. 主 spec 修订随 worker 实现 change 同步（本规划不动主 spec）：governance
    spec 升格"单点所有权 + 移动仅经显式 transfer + 常驻 worker 为数据权威 +
    主线程无 wasm"；zero-copy-roundtrip spec 第 1/2/6 条按
-   [worker 常驻架构](#worker-常驻架构2026-09-29-定案) 节改写（分流废止、
+   [worker 常驻架构](#worker-常驻架构已定案) 节改写（分流废止、
    浏览器 `_` 废止、元数据搭结果便车）→ 验证：实现 change 归档时主 spec 含
    上述条款，`openspec validate` 绿。
 
-## wasm target 形态（已定案：长期 web，2026-09-29）
+## wasm target 形态（已定案：长期 web）
 
 `--target web` 为长期形态：单产物喂 vitest / 浏览器 / GitHub Pages，
 `<script type="module">` + 显式 `init()` 零构建直接嵌入；bundler glue 在
@@ -160,6 +159,5 @@ spec（见执行步骤第 6 条）。
   自带 glue；打包器不应介入 wasm 加载，否则 worker 内存不可 transfer 等已趟平的坑（见
   [typescript/README.md](../typescript/README.md) 的Implementation
   notes）会重踩。
-- CI
-  node 格子与 rust job wasm32 格已于 2026-09-26 恢复；源码化后打包步骤
-  需同步加进两处（node job 的 build 步骤换为 tsdown 产物）。
+- CI node 格子与 rust job wasm32 格已恢复；源码化后打包步骤需同步加进两处
+  （node job 的 build 步骤换为 tsdown 产物）。

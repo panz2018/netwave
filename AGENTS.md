@@ -83,8 +83,10 @@
 - **标题不带章节序号**：位置数字会进 GitHub 锚点，章节重排即全仓断链。例外： 概念编号保留（铁律一~七——它们是名字，不是位置）。
 - **禁写临时名称**："方案一/方案二"、"阶段 N"等讨论代号与路线图编号随时会改名、
   随时会变更，禁止写入 spec、账本、Plan 及任何持久文档；用内容本身命名（如
-  "worker 常驻架构"），需时点则附定案日期（如"2026-09-29 定案"）；引用他文结论
-  用标题跳转链接，不用代号。
+  "worker 常驻架构"）；引用他文结论用标题跳转链接，不用代号。
+- **禁写无意义日期**：文档只留最终结论，不留历史过程（"已拍板于 X"、"X 修订"、
+  "已瘦身（X）"、"session X"等时间戳一律不写）——日期无人看，追溯靠 git log。
+  例外：外部标准版本号（如 Touchstone v2.1）与 git commit hash（可解析的证据）。
 - **引用一律用标题跳转链接**（反引号内为格式模板）：`[标题名](文件.md#锚点)`
   禁止 `§X.Y`、禁止"见第 N 节"、禁止裸数字章节引用。
 - **只链相关**：只链接与本文主题直接相关的现存文档；禁止因历史原因保留指向已归档/已删除/无关文档的链接。
@@ -93,7 +95,7 @@
 - **每次改动后必须跑 markdown 检查**：`pnpm check:md`（仓库根，退出码 0 才算
   完成）。它聚合三项：markdownlint 内容规则（`.markdownlint.jsonc`）、Prettier
   格式（`.prettierrc.json`，`proseWrap: preserve`——中文+行内代码下 `always`
-  会碎断，2026-09-26 改回）、`scripts/check_md.py` 链接+跨行 code span 校验
+  会碎断）、`scripts/check_md.py` 链接+跨行 code span 校验
   （纯标准库）。自动修复：`pnpm fix:md`。
 - **JS/TS/JSON 的 lint+format 归 Biome**（根 `biome.jsonc`）+ `tsc --noEmit`
   类型门禁，聚合为 `pnpm check:ts` / `pnpm fix:ts`；Markdown 归 Prettier；

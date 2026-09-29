@@ -20,7 +20,6 @@
 ### LL-009 交互命令预先非交互化
 
 - 犯过：corepack 下载确认假死；cargo-llvm-cov 首跑询问 llvm-tools 假死
-  （2026-09-22）
 - 规则：设 `COREPACK_ENABLE_DOWNLOAD_PROMPT=0`；先预装
   `llvm-tools-preview`
 - 复发检测：可门禁化——CI 环境预装检查；agent 侧文字规则

@@ -14,7 +14,7 @@
 typescript/native、typescript/wasm），以及 `pnpm-workspace.yaml`（typescript）。
 TypeScript 侧为**单一 npm 包单目录**：`typescript/` 内含 `native/`（napi Rust
 crate）与 `wasm/`（wasm-bindgen Rust crate）两个构建目标，exports 条件分发，
-不再拆 `@netwave/node`/`@netwave/wasm` 独立包（2026-09-21 定案）。目录一律
+不再拆 `@netwave/node`/`@netwave/wasm` 独立包。目录一律
 短名，发布名在各清单文件独立声明。
 
 #### Scenario: workspace 清单一致
@@ -55,7 +55,7 @@ crate）与 `wasm/`（wasm-bindgen Rust crate）两个构建目标，exports 条
 全仓 MUST 满足底线版本（= 兼容性下限，覆盖其上所有版本）：Rust edition 2024、
 MSRV = 当前 stable（1.98，升版走 OpenSpec 变更）；Python ≥3.10、NumPy 2.x
 （abi3 一个 wheel 覆盖 3.10–3.14）；Node ≥22（最旧在支持期 LTS，Node 20 已
-2026-04 EOL）。开发版本用当前 latest stable：Python 3.14（`.python-version`
+EOL）。开发版本用当前 latest stable：Python 3.14（`.python-version`
 进 git）、Node 26；CI 版本矩阵见 ci-matrix spec。
 包管理器版本 MUST 钉死：根 `package.json` 含
 `"packageManager": "pnpm@<exact>"`；`python/` 含 `pyproject.toml` 与 `uv.lock`

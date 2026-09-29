@@ -117,7 +117,7 @@ vitest `lines/branches: 100`。
 #### Scenario: 未测代码即红
 
 - **WHEN** 新增一行未被任何测试执行的产码
-- **THEN** 对应覆盖率 job 失败（2026-09-27 已实测：run 36304682759）
+- **THEN** 对应覆盖率 job 失败（已实测：run 36304682759）
 
 #### Scenario: 豁免逐条标注
 

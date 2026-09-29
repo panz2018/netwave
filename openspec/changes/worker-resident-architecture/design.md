@@ -28,7 +28,7 @@ node 模拟测试覆盖；LL-001 记录的"小数据主线程算、大数据才 
 1. **规划承载：并入现有 Plan 文档而非新建**——worker 常驻架构与源码化步骤同属
    TypeScript 绑定演进，拆两文件会造成交叉引用网；单文档内"worker 常驻架构"为
    独立章节，wasm target 节由"待拍板"改写为"已定案 web"。备选（新建
-   `Plan/worker常驻架构规划.md`）被否：用户 2026-09-29 拍板合并。
+   `Plan/worker常驻架构规划.md`）被否：用户拍板合并。
 2. **主 spec 修订推迟**——governance（单点所有权/常驻 worker 权威/主线程无
    wasm）与 zero-copy-roundtrip（第 1/2/6 条）的 Requirement 文本改动写入 Plan
    定案节，实际修订随实现 change 同步进主 spec。理由：主 spec 只描述已验证
@@ -40,7 +40,7 @@ node 模拟测试覆盖；LL-001 记录的"小数据主线程算、大数据才 
    `index.d.ts` 逐 export diff。不接 vitest 产物测试、不动 CI。结论三分：
    兼容（记录，正式接入留给源码化步骤 2）/ dts 不兼容（钉 `typescript@6` 供
    dts 并记入 Plan）/ 构建失败（记录 blocker，tsdown 降回 Rslib 备选重评）。
-5. **账本登记方式**——LL-001 保留原文并加"2026-09-29 修订"标注（分流废止、
+5. **账本登记方式**——LL-001 保留原文并加"修订"标注（分流废止、
    浏览器 `_` 废止、node 保留），不删原文（账本只增不改史）；新增 LL 条目
    覆盖"主线程 wasm 实例退役""同步元数据改异步、元数据搭结果便车"；
    INDEX.md 一行一条同步更新。

@@ -30,14 +30,14 @@
 ### LL-028 sync 后 archive 会重复追加 delta
 
 - 犯过：手动 sync 后再跑 `openspec archive`，CLI 二次应用 delta，
-  governance spec 出现重复需求块（MD024 红，2026-09-27）
+  governance spec 出现重复需求块（MD024 红）
 - 规则：sync 与 archive 只选其一应用 delta；archive 自带 sync，手动
   sync 过则归档后必须 diff 主 spec 去重
 - 复发检测：可门禁化——`pnpm check:md` MD024 重复标题即红（已生效）
 
 ### LL-029 第三方许可表与 GPL 红线
 
-- 犯过：无（预防性登记，2026-09-27 license-compliance）
+- 犯过：无（预防性登记，license-compliance）
 - 规则：参考第三方前先查本表——scikit-rf BSD-3-Clause
   (<https://github.com/scikit-rf/scikit-rf>) 可抄代码但声明随分发；
   SignalIntegrity GPL-3.0-or-later
@@ -53,8 +53,8 @@
 ### LL-032 持久文档禁写临时名称
 
 - 犯过：spec/账本/Plan 写入"方案一""阶段 0/3/6"等讨论代号，代号随时改名导致
-  引用漂移（2026-09-29 人工纠正，规则入 AGENTS.md 文档书写规范）
+  引用漂移（人工纠正，规则入 AGENTS.md 文档书写规范）
 - 规则：持久文档用内容命名（如"worker 常驻架构"），需时点附定案日期；引用结论
   用标题跳转链接不用代号
-- 复发检测：可门禁化——`check_md.py` grep "方案[一二三]/阶段 [0-9]" 于
-  openspec/specs/ 即红；review Standards 轴对照
+- 复发检测：可门禁化——`check_md.py` grep "方案[一二三]/阶段 [0-9]" 与
+  无意义日期戳于 openspec/specs/ 即红；review Standards 轴对照

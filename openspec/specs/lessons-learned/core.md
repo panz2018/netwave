@@ -4,7 +4,7 @@
 
 ### LL-002 API 命名遵 api-contract
 
-- 犯过：自造 `frequency_in` 被否，改回 `f_scaled`（session 2026-09-27）
+- 犯过：自造 `frequency_in` 被否，改回 `f_scaled`
 - 规则：命名以 api-contract spec 为准，禁止自造同义词
 - 复发检测：review Spec 轴对照 api-contract spec 名称表
 

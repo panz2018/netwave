@@ -5,7 +5,7 @@ cross-binding 对拍规则不适用；tsdown 验证不触碰计算路径）。
 
 ## 1. Plan 文档修订（typescript源码化规划.md）
 
-- [x] 1.1 新增"worker 常驻架构（2026-09-29 定案）"章节：数据权威在
+- [x] 1.1 新增"worker 常驻架构（已定案）"章节：数据权威在
       常驻 worker 的 wasm 内、`upload` transfer 托管驻留、结果一律 transfer 传出不
       留副本、主线程无 wasm 实例、worker 常驻至页面关闭、worker 异常终止数据丢失
       为已接受行为（不引入 IndexedDB）、Worker 池未来再议（前置门槛=数据分片归属）
@@ -26,8 +26,8 @@ cross-binding 对拍规则不适用；tsdown 验证不触碰计算路径）。
 
 ## 2. lessons-learned 账本登记
 
-- [x] 2.1 `lessons-learned/typescript.md`：LL-001 保留原文并加"2026-09-29
-      修订"标注（分流废止；浏览器 `_` 废止、node 保留）→ 验证：条目含修订标注且
+- [x] 2.1 `lessons-learned/typescript.md`：LL-001 保留原文并加"修订"标注
+      （分流废止；浏览器 `_` 废止、node 保留）→ 验证：条目含修订标注且
       原文未删
 - [x] 2.2 新增 LL 条目：主线程 wasm 实例退役（防旧壳模式回流）、同步元数据
       读取改异步（元数据搭结果便车）；`INDEX.md` 同步一行一条 → 验证：
