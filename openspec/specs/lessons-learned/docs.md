@@ -47,5 +47,14 @@
   全文勿入仓；《S-Parameters for Signal Integrity》CUP 全版权
   (<https://doi.org/10.1017/9781108784863>) 禁复制原文/图表。借鉴实现
   MUST 在 rustdoc 标注出处
-- 复发检测：元数据一致性已门禁化 `pnpm check:meta`；GPL 混入检测待阶段
-  1/2 立项；review Lessons 轴对照本表
+- 复发检测：元数据一致性已门禁化 `pnpm check:meta`；GPL 混入检测待立项；
+  review Lessons 轴对照本表
+
+### LL-032 持久文档禁写临时名称
+
+- 犯过：spec/账本/Plan 写入"方案一""阶段 0/3/6"等讨论代号，代号随时改名导致
+  引用漂移（2026-09-29 人工纠正，规则入 AGENTS.md 文档书写规范）
+- 规则：持久文档用内容命名（如"worker 常驻架构"），需时点附定案日期；引用结论
+  用标题跳转链接不用代号
+- 复发检测：可门禁化——`check_md.py` grep "方案[一二三]/阶段 [0-9]" 于
+  openspec/specs/ 即红；review Standards 轴对照

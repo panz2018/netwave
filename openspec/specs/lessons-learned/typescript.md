@@ -8,8 +8,9 @@
 - 规则：同步 `_toY` 调 core 计算；`async toY` 内部包装 `_toY`，仅超阈值走
   worker；`expect(_toY(x)).toEqual(await toY(x))`
 - 复发检测：vitest 双路一致性断言
-- **2026-09-29 修订**："小数据不起 worker"分流随 worker 常驻架构（方案一，
-  见 `Plan/typescript源码化规划.md`）废止——所有计算不管大小全进常驻 worker；
+- **2026-09-29 修订**："小数据不起 worker"分流随 worker 常驻架构（定案
+  2026-09-29，见 `Plan/typescript源码化规划.md`）废止——所有计算不管大小
+  全进常驻 worker；
   浏览器端 `_` 同步计算逃生口废止（主线程无 wasm），node 端保留 `_`（napi
   core 在进程内）；双路一致性断言改为 worker 往返 vs `_toY`（仅 node）
 
@@ -59,13 +60,14 @@
 
 ### LL-030 主线程 wasm 实例退役（worker 常驻架构）
 
-- 犯过：阶段 0 壳在主线程 init wasm 与 worker 双实例并存，主线程可持数据副本，
+- 犯过：脚手架期壳在主线程 init wasm 与 worker 双实例并存，主线程可持数据副本，
   权威歧义（2026-09-28/29 讨论纠正，session worker 常驻架构定案）
 - 规则：浏览器端数据/状态/计算全常驻单个 worker 内 wasm，主线程不 init wasm、
   不持数据副本；元数据搭结果便车回传，主线程只从返回值同步读描述符；实现时
   旧壳双实例模式不得回流
-- 复发检测：阶段 3 真浏览器线（vitest browser mode）断言 upload 后主线程视图
-  detached；review 轴 grep 主线程壳中 `wasmInit`/`WebAssembly.instantiate`
+- 复发检测：真浏览器测试线（vitest browser mode，随 worker 实现落地）断言
+  upload 后主线程视图 detached；review 轴 grep 主线程壳中
+  `wasmInit`/`WebAssembly.instantiate`
 
 ### LL-031 同步元数据读取改异步
 

@@ -56,7 +56,7 @@ tsdown 产物清单：`index.node.mjs` / `index.node.cjs` / `index.browser.mjs` 
 `index.d.ts` / `standalone.js`（IIFE，HTML `<script>` 直接导入）/
 `netwave.worker.js`。
 
-## worker 常驻架构（方案一，2026-09-29 定案）
+## worker 常驻架构（2026-09-29 定案）
 
 无 SharedArrayBuffer 环境（GitHub Pages 无 COOP/COEP）下跨线程消息传递的渐近
 最优：数据仅经显式 `upload` transfer 进入 worker 一次，之后命令移动、数据不动。
@@ -82,13 +82,13 @@ tsdown 产物清单：`index.node.mjs` / `index.node.cjs` / `index.browser.mjs` 
   终止（浏览器 OOM 等）数据丢失为**已接受行为**，API 不承诺恢复，不引入
   IndexedDB（复杂度超出收益）。
 - **Worker 池未来再讨论**：前置门槛 = 数据分片归属（数据驻留与池化冲突），
-  阶段 3 实现时决定单 worker 或池。
+  worker 实现落地时决定单 worker 或池。
 - **standalone.js 形态**：内部自起常驻 worker，Pages / `<script type="module">`
   用户依旧零配置。
-- **阶段 3 真浏览器测试线**：vitest browser mode + playwright provider + 仅
-  Chromium（同一套测试代码与 `pnpm test` 入口，真 worker/真 transfer/真
-  detach 只有真浏览器能验证）；不引入 `@playwright/test`（纯计算库无 UI E2E
-  需求），多浏览器矩阵待浏览器特异 bug 出现再加。
+- **真浏览器测试线**（随 worker 实现落地）：vitest browser mode + playwright
+  provider + 仅 Chromium（同一套测试代码与 `pnpm test` 入口，真 worker/真
+  transfer/真 detach 只有真浏览器能验证）；不引入 `@playwright/test`（纯计算库
+  无 UI E2E 需求），多浏览器矩阵待浏览器特异 bug 出现再加。
 - **LL-001 分流废止**："小数据不起 Worker、直接同步 resolve"随本方案废止——
   所有计算不管大小全进常驻 worker（每次 ~1ms 消息往返，公开面本就全 async，
   用户无感）。
@@ -135,7 +135,7 @@ tsdown 产物清单：`index.node.mjs` / `index.node.cjs` / `index.browser.mjs` 
 6. 主 spec 修订随 worker 实现 change 同步（本规划不动主 spec）：governance
    spec 升格"单点所有权 + 移动仅经显式 transfer + 常驻 worker 为数据权威 +
    主线程无 wasm"；zero-copy-roundtrip spec 第 1/2/6 条按
-   [worker 常驻架构](#worker-常驻架构方案一2026-09-29-定案) 节改写（分流废止、
+   [worker 常驻架构](#worker-常驻架构2026-09-29-定案) 节改写（分流废止、
    浏览器 `_` 废止、元数据搭结果便车）→ 验证：实现 change 归档时主 spec 含
    上述条款，`openspec validate` 绿。
 

@@ -37,3 +37,4 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-029 | docs       | 第三方许可表：GPL 源禁抄代码，只读思想                                |
 | LL-030 | typescript | 主线程不 init wasm，数据权威在常驻 worker                             |
 | LL-031 | typescript | 元数据读取异步进 worker，描述符随结果便车回传                         |
+| LL-032 | docs       | 持久文档禁写临时名称（方案X/阶段N），用内容命名+定案日期              |

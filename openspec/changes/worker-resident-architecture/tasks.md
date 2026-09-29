@@ -5,7 +5,7 @@ cross-binding 对拍规则不适用；tsdown 验证不触碰计算路径）。
 
 ## 1. Plan 文档修订（typescript源码化规划.md）
 
-- [x] 1.1 新增"worker 常驻架构（方案一，2026-09-29 定案）"章节：数据权威在
+- [x] 1.1 新增"worker 常驻架构（2026-09-29 定案）"章节：数据权威在
       常驻 worker 的 wasm 内、`upload` transfer 托管驻留、结果一律 transfer 传出不
       留副本、主线程无 wasm 实例、worker 常驻至页面关闭、worker 异常终止数据丢失
       为已接受行为（不引入 IndexedDB）、Worker 池未来再议（前置门槛=数据分片归属）
@@ -17,7 +17,8 @@ cross-binding 对拍规则不适用；tsdown 验证不触碰计算路径）。
       形态标注"待真实 npm bundler 用户需求出现再增量添加（exports.browser 条件
       分发，纯加法）"→ 验证：全文 grep "待拍板" 无 wasm target 残留
 - [x] 1.4 写入 standalone.js 形态定案（内部自起常驻 worker，Pages 零配置）与
-      阶段 3 测试线选型（vitest browser mode + playwright provider + 仅 Chromium，
+      真浏览器测试线选型（vitest browser mode + playwright provider + 仅
+      Chromium，
       不引入 `@playwright/test`）→ 验证：两处文本存在
 - [x] 1.5 执行步骤节补记：主 spec 修订（governance 单点所有权/常驻 worker
       权威 + zero-copy-roundtrip 第 1/2/6 条）随 worker 实现 change 同步，本次

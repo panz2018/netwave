@@ -2,23 +2,24 @@
 
 ## Context
 
-见 `proposal.md` - Why。现状：`typescript/src/` 为手写无类型壳（阶段 0），
+见 `proposal.md` - Why。现状：`typescript/src/` 为手写无类型壳，
 `index.browser.mjs` 在主线程 init wasm，`netwave.worker.js` 为命令分发器但仅
 node 模拟测试覆盖；LL-001 记录的"小数据主线程算、大数据才 offload"分流与
-本轮定案的方案一冲突。tsdown 未安装，`typescript@7.0.2` 已在 lock。
+本轮定案的 worker 常驻架构冲突。tsdown 未安装，`typescript@7.0.2` 已在 lock。
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- 方案一契约、web target 定案、API 面（浏览器废 `_`、node 保留）、测试线选型
+- worker 常驻架构契约、web target 定案、API 面（浏览器废 `_`、node 保留）、
+  测试线选型
   全部固化进 `Plan/typescript源码化规划.md`（单文档承载，不新建 Plan 文件）
 - tsdown × TypeScript 7 dts 兼容性拿到可行动的结论（兼容 / 不兼容+回退方案）
 - LL 账本反映本轮纠正，防旧模式回流
 
 **Non-Goals:**
 
-- 设计 upload/句柄 API 签名与 worker 池拓扑（阶段 3 实现时定，见 proposal
+- 设计 upload/句柄 API 签名与 worker 池拓扑（worker 实现落地时定，见 proposal
   Non-goals）
 - 主 spec 修订与壳代码改动（随后续实现 change）
 
@@ -48,7 +49,8 @@ node 模拟测试覆盖；LL-001 记录的"小数据主线程算、大数据才 
 
 - [Plan 文档膨胀为巨型文档] → 章节化组织；执行完成的章节按 Plan 生命周期当场
   删除（config.yaml apply guidance 已强制）
-- [主 spec 与 Plan 短期不一致（spec 仍写分流/双实例）] → 不一致窗口 = 方案一
+- [主 spec 与 Plan 短期不一致（spec 仍写分流/双实例）] → 不一致窗口 = worker
+  常驻架构
   实现 change 落地前；Plan 为未执行任务的唯一存放处，属既定生命周期内的正常
   状态；review 时以 Plan 定案节为准
 - [tsdown 验证污染 lock] → 验证若失败可 `pnpm remove tsdown` 回退，lock 变化
