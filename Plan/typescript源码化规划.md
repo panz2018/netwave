@@ -1,7 +1,7 @@
 # typescript 源码化规划（源码化已落地，剩 worker 实现与后续演进）
 
 工具链与源码改写（TS 壳 + tsdown + dts 生成 + 类型门禁）已由
-[ts-source-rewrite change](../openspec/changes/ts-source-rewrite/) 落地；
+[ts-source-rewrite change](../openspec/changes/archive/2026-09-30-ts-source-rewrite/) 落地；
 worker 常驻架构定案已入主 spec 与账本（追溯靠 git log）。
 本文件只留未执行任务。
 
