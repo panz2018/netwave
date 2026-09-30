@@ -58,3 +58,15 @@
   用标题跳转链接不用代号
 - 复发检测：可门禁化——`check_md.py` grep "方案[一二三]/阶段 [0-9]" 与
   无意义日期戳于 openspec/specs/ 即红；review Standards 轴对照
+
+### LL-033 决策编号不出决策文档
+
+- 犯过：design.md 用 D1–D6 编号做决策标题，代码注释（tsdown.config.ts、
+  exports.test.ts）与 tasks.md 跨文件引用 "design D1/D2/D3"——回头无人能解
+  （人工纠正，LL-032 同族复发）
+- 规则：决策编号仅限单文档内自引用；跨文件引用与代码注释一律用决策标题的
+  内容本身（如"见 design.md「tsdown 多 entry 单次构建」"），代码注释不写
+  任何外部文档编号
+- 复发检测：已门禁化——`check_md.py` DECISION TAG 规则 grep
+  `design D[0-9]`/`（D[0-9]`/`按 D[0-9]`/`见 D[0-9]` 于全仓 `.md`+`.ts`
+  即红（archive 与账本豁免——它们引用反例作证据）；入 `pnpm check:md`

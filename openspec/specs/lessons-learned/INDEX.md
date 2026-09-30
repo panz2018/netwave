@@ -38,3 +38,4 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-030 | typescript | 主线程不 init wasm，数据权威在常驻 worker                      |
 | LL-031 | typescript | 元数据读取异步进 worker，描述符随结果便车回传                  |
 | LL-032 | docs       | 持久文档禁写临时名称与无意义日期，只留最终结论，追溯靠 git log |
+| LL-033 | docs       | 决策编号不出决策文档，跨文件/代码引用用标题内容指引            |

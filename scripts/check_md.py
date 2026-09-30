@@ -21,6 +21,10 @@ Checks:
   the lessons-learned ledger (openspec/specs/lessons-learned/). LL gate.
 - ARCHIVE LINK: no document may link into openspec/changes/archive/ —
   archived proposals are historical; link the live spec instead. LL gate.
+- DECISION TAG: ephemeral decision numbers ("design D1", "（D2）") must
+  not leak into live documents or TS sources — reference decisions by
+  their heading text instead. LL-033 gate. Archive is frozen history and
+  is exempt.
 """
 
 import os
@@ -75,6 +79,23 @@ def main() -> int:
         )
     }
     ledger_heading = re.compile(r"^#{1,6} .*(Implementation notes|Gotchas)")
+    # LL-033 gate: decision-number tags (D1/D2/...) are ephemeral — they
+    # only make sense inside the single document that defines them, and
+    # never inside code comments. Reference decisions by heading text.
+    decision_tag = re.compile(r"design D\d|[（(]D\d[）)、，,]|按 D\d|见 D\d")
+    # TS sources: decision-tag scan only (markdown link/backtick rules
+    # do not apply to code; template literals would false-positive).
+    # The lessons-learned ledger is exempt: it quotes the violation as
+    # evidence (same rationale as the archive exemption).
+    ledger = "openspec/specs/lessons-learned/"
+    for f in sorted(glob(os.path.join(root, "**", "*.ts"), recursive=True)):
+        if "node_modules" in f or ledger in f.replace("\\", "/"):
+            continue
+        with open(f, encoding="utf-8") as fh:
+            for i, line in enumerate(fh, 1):
+                if decision_tag.search(line):
+                    print(f"DECISION TAG   {f}:{i} {line.rstrip()[:70]}")
+                    bad += 1
     for f in files:
         if "/.git/" in f or "node_modules" in f:
             continue
@@ -89,6 +110,15 @@ def main() -> int:
                     continue
                 if in_code:
                     continue
+                # LL-033 gate: no ephemeral decision-number tags
+                # (ledger exempt: it quotes the violation as evidence)
+                if (
+                    not in_archive
+                    and ledger not in norm.replace("\\", "/")
+                    and decision_tag.search(line)
+                ):
+                    print(f"DECISION TAG   {f}:{i} {line.rstrip()[:70]}")
+                    bad += 1
                 # LL gate: child READMEs must not carry notes/gotchas
                 if is_child_readme and ledger_heading.match(line):
                     print(f"LEDGER SECTION {f}:{i} {line.rstrip()[:70]}")

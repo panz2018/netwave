@@ -10,8 +10,8 @@
   `publish_shell.mjs` 把 `src/` 壳复制进 `dist/` 并把 `"../dist/` 重写为
   `"./`（LL-017：只改 `src/` 禁手改 `dist/`）。
 - vitest 直接测 `src/`，coverage include 写死五个 `.mjs`/`.cjs`/`.js`。
-- `tsconfig.json` 以 `checkJs: false` + `exclude: ["test"]` 豁免换 `tsc
-  --noEmit` 绿；`exports.test.ts` 读 `src/` 源文本断言无 `export *`。
+- `tsconfig.json` 以 `checkJs: false` + `exclude: ["test"]` 豁免换
+  `tsc --noEmit` 绿；`exports.test.ts` 读 `src/` 源文本断言无 `export *`。
 - tsdown `^0.23.0` 已在 devDependencies，无 config、无脚本引用；
   dts × TS7（tsgo）不兼容已实测，钉 `typescript@6` 可行且 esm dts 产物名为
   `.d.mts`。
@@ -39,7 +39,7 @@ worker transfer 表）不受影响；worker 常驻架构与浏览器 `_` 废止�
 
 ## Decisions
 
-### D1：tsdown 多 entry 单次构建，而非多次调用
+### tsdown 多 entry 单次构建，而非多次调用
 
 `tsdown.config.ts` 单 config 声明全部 entry：
 `index.node`（format `["esm","cjs"]`）、`index.browser`、`worker`、
@@ -49,7 +49,7 @@ worker transfer 表）不受影响；worker 常驻架构与浏览器 `_` 废止�
 
 替代方案：每 entry 一次 tsdown 调用——配置重复、构建时间翻倍，弃。
 
-### D2：产物扩展名对齐——`fixedExtension` 双出 dts
+### 产物扩展名对齐——`fixedExtension` 双出 dts
 
 `fixedExtension: true` 使 esm 产物为 `.mjs`、cjs 为 `.cjs`，与现有
 `exports` 路径（`index.node.mjs`/`index.node.cjs`/`index.browser.mjs`）
@@ -60,7 +60,7 @@ worker transfer 表）不受影响；worker 常驻架构与浏览器 `_` 废止�
 替代方案：只出 `.d.mts`——CJS `require()` 消费者丢类型，弃；产物全改
 `.js`——破坏 `exports.test.ts` 现有断言且 CJS/ESM 双格式无法同名，弃。
 
-### D3：`publish_shell.mjs` 瘦身而非删除
+### `publish_shell.mjs` 瘦身而非删除
 
 tsdown 不重写 external specifier，`src/` 壳 import `"../dist/..."` 进
 `dist/` 后路径错误。publish_shell 保留，职责缩为：对 tsdown 产物做
@@ -70,7 +70,7 @@ tsdown 不重写 external specifier，`src/` 壳 import `"../dist/..."` 进
 替代方案：`src/` 直接写 `"./"` 相对路径——vitest 测 `src/` 时解析不到
 glue（glue 只落 `dist/`），需另维符号链接，复杂度更高，弃。
 
-### D4：覆盖率仍测 `src/`，include 切 `.ts`
+### 覆盖率仍测 `src/`，include 切 `.ts`
 
 vitest 继续直接跑 `.ts` 源（esbuild transform 由 vitest 内建承担），
 coverage include 改为对应 `.ts` 文件；`/* v8 ignore */` 豁免随源码改写
@@ -78,14 +78,14 @@ coverage include 改为对应 `.ts` 文件；`/* v8 ignore */` 豁免随源码�
 
 替代方案：测 `dist/` 产物——覆盖率归因到生成代码，豁免失去意义，弃。
 
-### D5：worker 的 `self` 全局类型
+### worker 的 `self` 全局类型
 
 `worker.ts` 用 `/// <reference lib="webworker" />` 引入 worker 全局类型，
 不引 `@types/webworker` 独立包；`standalone.ts`/`index.browser.ts` 用
 `lib="dom"`。tsconfig `lib` 显式列 `["ES2022","DOM","DOM.Iterable"]`，
 worker 文件靠三斜线指令覆盖 `self` 声明。
 
-### D6：`exports.test.ts` 断言扩展（TDD，铁律二）
+### `exports.test.ts` 断言扩展（TDD，铁律二）
 
 先扩展断言（RED）：`dist/` 产物清单存在性 + `exports` 每个目标路径实际
 存在 + dts 双产物存在；再改构建使其 GREEN。`src/` 文本断言（无 `export *`）
