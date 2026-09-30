@@ -50,7 +50,10 @@
 - [x] 4.2 两个 vitest config 的 coverage include 切 `.ts` 源码 → 验证：
       `pnpm test:native --coverage` / `test:wasm --coverage` 100% 达标
       （铁律七）
-- [x] 4.3 `pnpm check:ts`（Biome + tsc）全绿 → 验证：退出码 0
+- [x] 4.3 `pnpm check:ts`（Biome）全绿；`tsc --noEmit` 类型门禁移至 CI
+      node job 双 glue 构建后跑（壳 import `dist/` 生成绑定，零构建环境
+      无法解析；禁造 glue 桩）→ 验证：本地先 `build:wasm` + `build:native`
+      再 `pnpm -C typescript typecheck`，退出码 0
 
 ## 5. 回归对拍与 CI
 

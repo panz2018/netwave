@@ -106,7 +106,8 @@ into docs.
 | Coverage gate         | cargo-llvm-cov (pre-install llvm-tools)               | see Quality gates                 |
 | Node binding build    | napi-rs CLI                                           | `pnpm -C typescript build:native` |
 | wasm build            | wasm-pack + binaryen (full-tree install)              | `pnpm -C typescript build:wasm`   |
-| TS/JSON lint & format | Biome + `tsc --noEmit`                                | `pnpm check:ts`                   |
+| TS/JSON lint & format | Biome                                                 | `pnpm check:ts`                   |
+| TS type gate          | `tsc --noEmit` (after both glues are built)           | `pnpm -C typescript typecheck`    |
 | Markdown lint/format  | markdownlint-cli2 + Prettier + `check_md.py`          | `pnpm check:md`                   |
 | Python lint & format  | ruff                                                  | `pnpm check:py`                   |
 | Rust lint & format    | clippy + rustfmt                                      | `pnpm check:rs`                   |

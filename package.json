@@ -7,7 +7,7 @@
     "fix": "pnpm fix:md && pnpm fix:ts && pnpm fix:rs && pnpm fix:py",
     "check:md": "markdownlint-cli2 \"**/*.md\" && prettier --check \"**/*.md\" && python3 scripts/check_md.py",
     "fix:md": "prettier --write \"**/*.md\" && markdownlint-cli2 \"**/*.md\" --fix",
-    "check:ts": "biome check . && pnpm -C typescript tsc --noEmit",
+    "check:ts": "biome check .",
     "fix:ts": "biome check --write .",
     "check:rs": "cargo fmt --all --check && cargo clippy --workspace --all-targets -- -D warnings",
     "fix:rs": "cargo fmt --all && cargo clippy --workspace --all-targets --fix --allow-dirty -- -D warnings",

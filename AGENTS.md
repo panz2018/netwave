@@ -101,10 +101,14 @@
   格式（`.prettierrc.json`，`proseWrap: preserve`——中文+行内代码下 `always`
   会碎断）、`scripts/check_md.py` 链接+跨行 code span 校验
   （纯标准库）。自动修复：`pnpm fix:md`。
-- **JS/TS/JSON 的 lint+format 归 Biome**（根 `biome.jsonc`）+ `tsc --noEmit`
-  类型门禁，聚合为 `pnpm check:ts` / `pnpm fix:ts`；Markdown 归 Prettier；
-  两者作用域不重叠。`.claude/` 下的第三方生成文件不受本仓库格式约束，已在
+- **JS/TS/JSON 的 lint+format 归 Biome**（根 `biome.jsonc`），聚合为
+  `pnpm check:ts` / `pnpm fix:ts`；Markdown 归 Prettier；两者作用域不重叠。
+  `.claude/` 下的第三方生成文件不受本仓库格式约束，已在
   `.markdownlint-cli2.jsonc` 中忽略。
+- **`tsc --noEmit` 类型门禁不进零构建闸门**：`src/` 壳 import `dist/` 的
+  生成绑定，类型门禁必须在 glue 构建后跑——本地 `pnpm build:wasm` +
+  `build:native` 后 `pnpm -C typescript typecheck`，CI 在 node job 双 glue
+  构建后跑。禁止为零构建环境造 glue 桩（桩=第二份 API 真相源，必漂移）。
 - **对称命令（根 package.json 为唯一定义处，本文只列名字）**：聚合
   `check`/`fix`（跑全部语言）+ 按语言四组
   `check:md`/`fix:md`、`check:ts`/`fix:ts`、`check:rs`/`fix:rs`、

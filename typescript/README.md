@@ -37,7 +37,9 @@ pnpm build:shells         # tsdown (src/*.ts -> dist ESM+CJS+dts) + publish_shel
 pnpm build:native         # release: napi esm + commonjs two passes + build:shells
 pnpm build:native:debug   # same pipeline without --release (fast local iteration)
 pnpm build:wasm             # web target (wasm-pack defaults to release), CARGO_TARGET_DIR=../target-wasm
-pnpm typecheck              # tsc --noEmit type gate (tsconfig.json)
+pnpm typecheck              # tsc --noEmit type gate; run AFTER build:wasm +
+                            # build:native (the shells import dist/ glue, so
+                            # the gate needs both bindings present)
 pnpm test                   # all 4 suites, no coverage (quick smoke)
 pnpm test:native            # vitest native (CI adds --coverage, 100% floor)
 pnpm test:wasm              # vitest wasm  (CI adds --coverage, 100% floor)
@@ -47,14 +49,15 @@ pnpm test:wasm --coverage   # wasm coverage gate (src/ only, 100% required);
                             # /* v8 ignore start/stop */ + reason comment
 ```
 
-Lint/format/typecheck run from the repo root (both crates are workspace
-members — member dirs must NOT keep their own `Cargo.lock`, the root lockfile
-is authoritative):
+Lint/format run from the repo root (both crates are workspace members —
+member dirs must NOT keep their own `Cargo.lock`, the root lockfile is
+authoritative):
 
 ```bash
 pnpm check:rs             # cargo fmt + clippy (all workspace members)
 pnpm fix:rs               # auto-fix Rust formatting + clippy
-pnpm check:ts             # Biome + tsc --noEmit
+pnpm check:ts             # Biome lint+format (build-free; the tsc type gate
+                          # runs in CI's node job after both glues are built)
 pnpm fix:ts               # Biome auto-fix
 ```
 

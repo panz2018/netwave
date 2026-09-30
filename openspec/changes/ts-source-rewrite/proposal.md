@@ -53,7 +53,7 @@
 - 不动 napi/wasm 二进制构建管线（`build:native` / `build:wasm` 命令不变）。
 - 不加 `noUncheckedIndexedAccess` / `exactOptionalPropertyTypes` 等额外
   strict 开关（收益低、测试噪音大）。
-- 不动 biome 规则集与 `pnpm check:ts` 聚合定义。
+- 不动 biome 规则集。
 - 不砍 CJS 产物（已拍板防御性保留）。
 
 ## Impact

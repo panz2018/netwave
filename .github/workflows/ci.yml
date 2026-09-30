@@ -38,6 +38,9 @@ jobs:
           cache: pnpm
       - uses: astral-sh/setup-uv@v10.2.0
       - name: lint gate (md + ts + rs + py, defined in root package.json)
+        # Build-free by design: `check:ts` is Biome only. The tsc type gate
+        # resolves the shells' imports of the generated bindings (dist/),
+        # so it runs in the node job after both glues are built.
         run: |
           pnpm install
           pnpm check
@@ -204,6 +207,12 @@ jobs:
         run: pnpm -C typescript build:wasm
       - name: napi build (+ tsdown shells)
         run: pnpm -C typescript build:native
+      - name: tsc type gate (after both glues exist)
+        # Lives here, not in the lint job: the shells import the generated
+        # bindings from dist/, so the type gate needs napi + wasm glue
+        # present. Runs once per OS matrix cell on the newest Node.
+        if: matrix.node-version == '26'
+        run: pnpm -C typescript typecheck
       - name: dts glue typing check (LL-034)
         # tsdown silently emits `any` when a generated glue is missing at
         # dts time; fail fast instead of shipping degraded types.
