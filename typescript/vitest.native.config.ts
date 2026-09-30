@@ -5,7 +5,7 @@ export default defineConfig({
     include: ["test/native/**/*.test.ts"],
     coverage: {
       provider: "v8",
-      include: ["src/index.node.mjs", "src/index.node.cjs"],
+      include: ["src/index.node.ts"],
       thresholds: { lines: 100, branches: 100 },
     },
   },

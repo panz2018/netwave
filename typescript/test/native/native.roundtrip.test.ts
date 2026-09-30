@@ -2,7 +2,7 @@
  * throws → red). Single async surface: public verbs awaited; `_`-prefixed
  * sync escape hatch compared against. */
 import { describe, expect, it } from "vitest";
-import { _fillPattern, _readElement, fillPattern, readElement } from "../../src/index.node.mjs";
+import { _fillPattern, _readElement, fillPattern, readElement } from "../../src/index.node.ts";
 
 const NFREQ = 2;
 const NPORTS = 2;
@@ -38,7 +38,8 @@ describe("native roundtrip", () => {
   it("CJS twin shell exposes the same contract", async () => {
     const { createRequire } = await import("node:module");
     const require = createRequire(import.meta.url);
-    const cjs = require("../../src/index.node.cjs");
+    // The CJS twin is a tsdown build artifact (dist/), not a source file.
+    const cjs = require("../../dist/index.node.cjs");
     const r = await cjs.fillPattern(NFREQ, NPORTS);
     expect(r.length).toBe(NFREQ * NPORTS * NPORTS);
     expect(await cjs.readElement(new Float64Array(r.buffer, 0, r.length * 2), 2)).toBe(1); // re(0,0,1)

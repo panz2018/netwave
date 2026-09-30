@@ -4,9 +4,11 @@
 // Usage: <script type="module">
 //   import { fillPattern } from "./standalone.js";
 // </script>
+// `.ts` specifier is legal under noEmit; publish_shell.mjs rewrites it to
+// "./index.browser.mjs" in the dist output.
 export {
   _fillPattern,
   _readElement,
   fillPattern,
   readElement,
-} from "./index.browser.mjs";
+} from "./index.browser.ts";

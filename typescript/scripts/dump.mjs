@@ -17,15 +17,16 @@ mkdirSync(out, { recursive: true });
 const NFREQ = 2;
 const NPORTS = 2;
 
-// node (napi) side — public async surface
-const { fillPattern } = await import("../src/index.node.mjs");
+// node (napi) side — public async surface (dist = the published artifact;
+// src/ is TS and runs only under vitest/Node type-stripping).
+const { fillPattern } = await import("../dist/index.node.mjs");
 const n = await fillPattern(NFREQ, NPORTS);
 const nv = new Float64Array(n.buffer, n.byteOffset, n.length * 2);
 const nodePath = join(out, "node.bin");
 writeFileSync(nodePath, Buffer.from(nv.buffer, nv.byteOffset, nv.byteLength));
 
 // wasm side (web-target glue needs async init; call the async verb first)
-const { fillPattern: wfp } = await import("../src/index.browser.mjs");
+const { fillPattern: wfp } = await import("../dist/index.browser.mjs");
 const w = await wfp(NFREQ, NPORTS);
 const wv = new Float64Array(w.buffer, w.byteOffset, w.length * 2);
 const wasmPath = join(out, "wasm.bin");

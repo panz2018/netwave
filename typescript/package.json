@@ -24,8 +24,9 @@
     "./worker": "./dist/netwave.worker.js"
   },
   "scripts": {
-    "build:native": "napi build --platform --release --manifest-path native/Cargo.toml --js index.node.generated.mjs -o dist --format esm && napi build --platform --release --manifest-path native/Cargo.toml --js index.node.generated.cjs -o dist --format commonjs && node scripts/publish_shell.mjs",
-    "build:native:debug": "napi build --platform --manifest-path native/Cargo.toml --js index.node.generated.mjs -o dist --format esm && napi build --platform --manifest-path native/Cargo.toml --js index.node.generated.cjs -o dist --format commonjs && node scripts/publish_shell.mjs",
+    "build:shells": "tsdown && node scripts/publish_shell.mjs",
+    "build:native": "napi build --platform --release --manifest-path native/Cargo.toml --js index.node.generated.mjs -o dist --format esm && napi build --platform --release --manifest-path native/Cargo.toml --js index.node.generated.cjs -o dist --format commonjs && pnpm build:shells",
+    "build:native:debug": "napi build --platform --manifest-path native/Cargo.toml --js index.node.generated.mjs -o dist --format esm && napi build --platform --manifest-path native/Cargo.toml --js index.node.generated.cjs -o dist --format commonjs && pnpm build:shells",
     "build:wasm": "cross-env CARGO_TARGET_DIR=../target-wasm wasm-pack build wasm --target web --out-dir ../dist/wasm-web",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",

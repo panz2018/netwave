@@ -3,7 +3,7 @@
  * needs async init; the `_` sync escape hatch is used only after the first
  * awaited call has completed init. */
 import { describe, expect, it } from "vitest";
-import { _fillPattern, _readElement, fillPattern, readElement } from "../../src/index.browser.mjs";
+import { _fillPattern, _readElement, fillPattern, readElement } from "../../src/index.browser.ts";
 
 const NFREQ = 2;
 const NPORTS = 2;

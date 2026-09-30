@@ -7,10 +7,15 @@ import wasmInit, {
   fill_pattern as _wasmFill,
   read_element as _wasmRead,
 } from "../dist/wasm-web/netwave_wasm.js";
+import type { NetwaveBuffer } from "./types.js";
 
-let ready = null;
-// Record the live linear memory so the worker can avoid transferring it
-// (transferring wasm memory would detach the instance's memory).
+declare global {
+  // The live wasm linear memory, recorded so the worker can avoid
+  // transferring it (transferring wasm memory would detach the instance).
+  var __netwaveWasmMemory: WebAssembly.Memory | undefined;
+}
+
+let ready: Promise<Awaited<ReturnType<typeof wasmInit>>> | null = null;
 const ensureReady = () =>
   (ready ??= (async () => {
     const exports = await wasmInit({ module_or_path: await wasmSource() });
@@ -24,7 +29,7 @@ const ensureReady = () =>
 // node:fs. The node: import is dynamic and browser-invisible.
 /* v8 ignore next 1 -- environment probe; Node-only in this test suite */
 const isNode = typeof process !== "undefined" && !!process.versions.node;
-const wasmSource = async () => {
+const wasmSource = async (): Promise<Uint8Array | undefined> => {
   /* v8 ignore start -- browser-only path; exercised in real-browser tests (phase 3) */
   if (!isNode) return undefined; // glue default: fetch relative to its own URL
   /* v8 ignore stop */
@@ -36,15 +41,16 @@ const wasmSource = async () => {
 /**
  * Allocate and fill an interleaved complex f64 buffer, returning a
  * descriptor from which a view can be rebuilt.
- * @returns {Promise<{buffer: ArrayBuffer, byteOffset: number, length: number}>}
  */
-export async function fillPattern(nfreq, nports) {
+export async function fillPattern(nfreq: number, nports: number): Promise<NetwaveBuffer> {
   await ensureReady();
-  return _fillPattern(nfreq, nports);
+  // The wasm glue d.ts types the descriptor as a bare `object`; the
+  // contract shape is NetwaveBuffer (types.ts is the single source).
+  return _fillPattern(nfreq, nports) as NetwaveBuffer;
 }
 
-/** Pass a view back into core and read an element. @returns {Promise<number>} */
-export async function readElement(view, idx) {
+/** Pass a view back into core and read an element. */
+export async function readElement(view: Float64Array, idx: number): Promise<number> {
   await ensureReady();
   return _readElement(view, idx);
 }
@@ -56,6 +62,7 @@ export async function readElement(view, idx) {
  * {buffer, byteOffset, length}; buffer is the whole linear memory (may
  * grow), so views must be cut at the offset.
  */
-export const _fillPattern = (nfreq, nports) => _wasmFill(nfreq, nports);
+export const _fillPattern = (nfreq: number, nports: number): NetwaveBuffer =>
+  _wasmFill(nfreq, nports) as NetwaveBuffer;
 /** @internal Sync passthrough escape hatch. */
-export const _readElement = (view, idx) => _wasmRead(view, idx);
+export const _readElement = _wasmRead;

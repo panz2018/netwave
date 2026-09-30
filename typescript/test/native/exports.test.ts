@@ -1,5 +1,5 @@
 /** exports structure smoke test (task 1.5 acceptance + no-`export *`). */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
@@ -21,6 +21,35 @@ describe("exports conditional dispatch", () => {
     expect(pkg.exports["./worker"]).toBe("./dist/netwave.worker.js");
   });
 
+  it("every exports target and the tsdown artifact manifest exist", () => {
+    // tsdown emits both dts extensions; the shell names are fixed by
+    // `fixedExtension` and must match exports exactly.
+    const artifacts = [
+      "index.node.mjs",
+      "index.node.cjs",
+      "index.browser.mjs",
+      "standalone.js",
+      "netwave.worker.js",
+      "index.d.ts",
+      "index.d.mts",
+    ];
+    for (const name of artifacts) {
+      expect(existsSync(new URL(`../../dist/${name}`, import.meta.url)), name).toBe(true);
+    }
+    const targets = [
+      pkg.exports["."].types,
+      pkg.exports["."].node.import,
+      pkg.exports["."].node.require,
+      pkg.exports["."].browser,
+      pkg.exports["."].default,
+      pkg.exports["./standalone"],
+      pkg.exports["./worker"],
+    ];
+    for (const target of targets) {
+      expect(existsSync(new URL(`../../${target}`, import.meta.url)), target).toBe(true);
+    }
+  });
+
   it("engines node>=22, no UMD", () => {
     expect(pkg.engines.node).toBe(">=22");
     // Platform split packages (netwave-{os}-{arch}) are created at publish
@@ -33,7 +62,7 @@ describe("exports conditional dispatch", () => {
 });
 
 describe("tree-shaking: entries forbid export *", () => {
-  const entries = ["index.node.mjs", "index.node.cjs", "index.browser.mjs", "netwave.worker.js"];
+  const entries = ["index.node.ts", "index.browser.ts", "worker.ts"];
   for (const name of entries) {
     it(`${name} has no export *`, () => {
       const src = readFileSync(new URL(`../../src/${name}`, import.meta.url), "utf8");
@@ -47,7 +76,7 @@ describe("tree-shaking: entries forbid export *", () => {
 
 describe("node environment resolves to the napi shell", () => {
   it("the node-condition shell exists in the source tree (runtime check in native.roundtrip)", () => {
-    const shell = fileURLToPath(new URL("../../src/index.node.mjs", import.meta.url));
+    const shell = fileURLToPath(new URL("../../src/index.node.ts", import.meta.url));
     expect(readFileSync(shell, "utf8")).toContain("export async function fillPattern");
   });
 });

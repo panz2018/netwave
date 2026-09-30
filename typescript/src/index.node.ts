@@ -1,28 +1,26 @@
-// netwave node conditional shell (ESM): explicit named re-exports (no
-// `export *`, preserves tree-shaking). The public compute surface is
-// single-async: compute verbs return Promises; `_`-prefixed names are sync
-// escape hatches. The generated binding index.node.generated.mjs is produced
-// by `napi build` (sync passthrough implementation).
+// netwave node conditional shell (ESM source; tsdown emits the .mjs and
+// the .cjs twin): explicit named re-exports (no `export *`, preserves
+// tree-shaking). The public compute surface is single-async: compute verbs
+// return Promises; `_`-prefixed names are sync escape hatches. The
+// generated binding index.node.generated.mjs is produced by `napi build`
+// (sync passthrough implementation, kept external by tsdown).
 import {
   fillPattern as _napiFill,
   readElement as _napiRead,
 } from "../dist/index.node.generated.mjs";
+import type { NetwaveBuffer } from "./types.js";
 
 /**
  * Allocate and fill an (nfreq, nports, nports) interleaved complex f64
  * buffer (phase-0 scaffold). Public async surface: on Node small data
  * resolves immediately (large-data AsyncTask offload arrives in phase 6).
- * @returns {Promise<{buffer: ArrayBuffer, byteOffset: number, length: number}>}
  */
-export async function fillPattern(nfreq, nports) {
+export async function fillPattern(nfreq: number, nports: number): Promise<NetwaveBuffer> {
   return _fillPattern(nfreq, nports);
 }
 
-/**
- * Pass a view back into core and read an element (zero-copy roundtrip).
- * @returns {Promise<number>}
- */
-export async function readElement(buf, idx) {
+/** Pass a view back into core and read an element (zero-copy roundtrip). */
+export async function readElement(buf: Float64Array, idx: number): Promise<number> {
   return _readElement(buf, idx);
 }
 
@@ -34,7 +32,7 @@ export async function readElement(buf, idx) {
  * not pooled). The shell converts it to the contract shape, referencing the
  * same memory with zero copies.
  */
-export const _fillPattern = (nfreq, nports) => {
+export const _fillPattern = (nfreq: number, nports: number): NetwaveBuffer => {
   const buf = _napiFill(nfreq, nports);
   return { buffer: buf.buffer, byteOffset: 0, length: buf.byteLength / 16 };
 };
