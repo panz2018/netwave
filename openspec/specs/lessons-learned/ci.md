@@ -43,3 +43,14 @@
   `${{ }}` 解析失败
 - 规则：release 查询步骤传 `GITHUB_TOKEN`；含表达式的 `env:` 用 block
 - 复发检测：可门禁化——yamllint/CI 审查规则
+
+### LL-034 tsdown dts 需双 glue 先建
+
+- 犯过：ts-source-rewrite 把 tsdown 挂进 `build:native` 末尾，但 CI node job
+  里 `build:native` 跑在 `build:wasm` 之前——tsdown dts 生成时 wasm-web glue
+  缺失，`index.browser.d.mts` 的 re-export 动词静默退化为 `any`
+  （tsdown 只 warn "Module not found, treating as external"，exit 0 不拦）
+- 规则：CI node job 先 `build:wasm` 再 `build:native`（含 tsdown）——
+  tsdown 构建不变式 = 双 glue（napi + wasm-web）均已落 `dist/`
+- 复发检测：可门禁化——CI 审查 node job 步骤顺序（build:wasm 必须先于
+  build:native）；构建后 grep `dist/index.browser.d.mts` 无 `: any` 即绿

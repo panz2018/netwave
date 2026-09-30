@@ -185,10 +185,6 @@ jobs:
           cache: pnpm
       - uses: astral-sh/setup-uv@v10.2.0
       - run: pnpm install
-      - name: napi build
-        run: pnpm -C typescript build:native
-      - name: vitest (native, coverage 100)
-        run: pnpm -C typescript test:native --coverage
       - name: install wasm toolchain
         # Own step: the installers append to GITHUB_PATH, which only
         # takes effect for *later* steps — build:wasm must not share
@@ -201,7 +197,24 @@ jobs:
           bash scripts/install_wasm_pack.sh
           bash scripts/install_binaryen.sh
       - name: wasm-pack build
+        # Before build:native: build:native ends with tsdown, whose dts
+        # pass resolves BOTH generated glues (napi + wasm-web). Building
+        # wasm first keeps the browser shell's dts fully typed (a missing
+        # wasm glue makes tsdown emit `any` for the re-exported verbs).
         run: pnpm -C typescript build:wasm
+      - name: napi build (+ tsdown shells)
+        run: pnpm -C typescript build:native
+      - name: dts glue typing check (LL-034)
+        # tsdown silently emits `any` when a generated glue is missing at
+        # dts time; fail fast instead of shipping degraded types.
+        shell: bash
+        run: |
+          if grep -q ": any" typescript/dist/index.browser.d.mts typescript/dist/index.node.d.mts; then
+            echo "::error::shell dts has any-typed exports - glues were not built before tsdown (LL-034)"
+            exit 1
+          fi
+      - name: vitest (native, coverage 100)
+        run: pnpm -C typescript test:native --coverage
       - name: vitest (wasm, coverage 100)
         run: pnpm -C typescript test:wasm --coverage
       - name: cross-binding 对拍（原生逐 bit + wasm 容差 + 篡改自检）

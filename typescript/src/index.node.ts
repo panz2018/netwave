@@ -38,4 +38,4 @@ export const _fillPattern = (nfreq: number, nports: number): NetwaveBuffer => {
 };
 
 /** @internal Sync passthrough escape hatch. */
-export const _readElement = _napiRead;
+export const _readElement: (view: Float64Array, idx: number) => number = _napiRead;
