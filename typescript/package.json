@@ -28,7 +28,7 @@
     "build:native": "napi build --platform --release --manifest-path native/Cargo.toml --js index.node.generated.mjs -o dist --format esm && napi build --platform --release --manifest-path native/Cargo.toml --js index.node.generated.cjs -o dist --format commonjs && pnpm build:shells",
     "build:native:debug": "napi build --platform --manifest-path native/Cargo.toml --js index.node.generated.mjs -o dist --format esm && napi build --platform --manifest-path native/Cargo.toml --js index.node.generated.cjs -o dist --format commonjs && pnpm build:shells",
     "build:wasm": "cross-env CARGO_TARGET_DIR=../target-wasm wasm-pack build wasm --target web --out-dir ../dist/wasm-web",
-    "test": "vitest run --config vitest.native.config.ts && vitest run --config vitest.wasm.config.ts && vitest run --config vitest.browser.config.ts",
+    "test": "pnpm test:native && pnpm test:wasm && pnpm test:browser",
     "typecheck": "tsc --noEmit",
     "test:native": "vitest run --config vitest.native.config.ts",
     "test:wasm": "vitest run --config vitest.wasm.config.ts",
