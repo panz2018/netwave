@@ -54,3 +54,15 @@
   tsdown 构建不变式 = 双 glue（napi + wasm-web）均已落 `dist/`
 - 复发检测：可门禁化——CI 审查 node job 步骤顺序（build:wasm 必须先于
   build:native）；构建后 grep `dist/index.browser.d.mts` 无 `: any` 即绿
+
+### LL-036 改完 TS 必跑 typecheck，勿只跑 pnpm check
+
+- 犯过：worker-resident-implementation 改 `tsdown.config.ts` 引入隐式 any
+  （`neverBundle` 回调参数缺标注），只跑 `pnpm check` 未跑
+  `pnpm -C typescript typecheck` 即提交，靠人工在编辑器里发现 TS7006
+- 规则：`pnpm check` 按设计不含类型门禁（`src/` 壳 import `dist/` 生成
+  绑定，须 glue 构建后跑）；本地 glue 常在，改完任何 `.ts`（含
+  `*.config.ts`）当轮必跑 `pnpm -C typescript typecheck`
+- 复发检测：`tsconfig.json` 的 `include` 已覆盖 `*.ts` 配置文件，
+  `tsc --noEmit --listFiles | grep tsdown.config.ts` 命中即证门禁覆盖；
+  可门禁化——把 typecheck 加进提交前 hook

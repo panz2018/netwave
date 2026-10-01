@@ -49,7 +49,7 @@ export default defineConfig([
     dts: false,
     // index.browser stays a separate dist module (mirrors the pre-rewrite
     // layout: worker/standalone import ./index.browser.mjs, zero duplication).
-    deps: { neverBundle: (id) => glue(id) || id === "./index.browser.ts" },
+    deps: { neverBundle: (id: string) => glue(id) || id === "./index.browser.ts" },
     outDir: "dist",
     clean: false,
   },
