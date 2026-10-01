@@ -16,6 +16,7 @@ orchestration.
 | `install_binaryen.sh`  | installs `wasm-opt` from GitHub **latest** (never pinned; local + CI share it)                                            | `bash scripts/install_binaryen.sh`                           |
 | `install_wasm_pack.sh` | installs `wasm-pack` from GitHub **latest** official prebuilt tarballs (linux/macOS/windows; faster than `cargo install`) | `bash scripts/install_wasm_pack.sh`                          |
 | `check_md.py`          | markdown checker: links/anchors + cross-line code-span detection                                                          | `python3 scripts/check_md.py`                                |
+| `check_ci.py`          | CI gate completeness: every `typescript` `test:*` script must be wired into `ci.yml` (LL-037)                             | `python3 scripts/check_ci.py`                                |
 
 ## Notes
 

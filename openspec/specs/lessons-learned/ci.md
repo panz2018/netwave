@@ -66,3 +66,13 @@
 - 复发检测：`tsconfig.json` 的 `include` 已覆盖 `*.ts` 配置文件，
   `tsc --noEmit --listFiles | grep tsdown.config.ts` 命中即证门禁覆盖；
   可门禁化——把 typecheck 加进提交前 hook
+
+### LL-037 新增 test:* 脚本必须同步进 CI，否则不算闸门
+
+- 犯过：worker-resident-implementation 落地真浏览器线 `test:browser`
+  （本地 `pnpm test` 已含），但 CI 只跑 `test:wasm`（node 模拟）——
+  铁律八"主线程无 wasm"只有真浏览器能证，这条线不进 CI 等于闸门形同虚设
+- 规则：新增 `typescript` `test:<name>` 脚本时，当轮必须把它接进
+  `.github/workflows/ci.yml`（本地能跑 ≠ CI 已守）；CI 是闸门的唯一定义处
+- 复发检测：已门禁化——`scripts/check_ci.py`（并入 `pnpm check:meta`）
+  枚举 `typescript/package.json` 全部 `test:*`，任一未被 ci.yml 调用即红
