@@ -43,3 +43,4 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-035 | docs       | 对话镜像用户语言；文档仅 openspec/ 与 Plan/ 中文其余英文       |
 | LL-036 | ci         | 改完 TS 必跑 typecheck，`pnpm check` 不含类型门禁              |
 | LL-037 | ci         | 新增 test:* 必接进 CI，`check_ci.py` 已入门禁                  |
+| LL-038 | docs       | 模糊指令只执行最小明确项，不可逆操作须显式确认                 |
