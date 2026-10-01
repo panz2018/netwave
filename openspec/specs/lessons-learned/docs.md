@@ -92,3 +92,13 @@
   才触发，禁止自行扩大解释
 - 复发检测：review Lessons 轴对照本节；执行前列出"将要做的动作"清单，
   含不可逆动作时停下等确认
+
+### LL-039 注释只写当前契约事实，禁历史与路线图叙述
+
+- 犯过：`types.ts`/入口壳注释写"replaces the hand-written index.d.ts"、
+  "phase-0 scaffold"、"arrives in phase 6"等变更考古与路线图预告，
+  用户指出没人看也没人需要看
+- 规则：注释面向今天第一次读代码的用户，只写当前契约与行为；历史变更、
+  阶段标记、"不再/曾经"类叙述一律不写，追溯靠 git log
+- 复发检测：review Standards 轴 grep src 注释中
+  `replaces|no longer|used to|phase-[0-9]`，命中即打回
