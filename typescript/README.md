@@ -6,7 +6,17 @@ Single package, dual delivery: `node` resolves to the napi native addon,
 never recompute values (governance spec rule: bindings only move memory; see
 [`openspec/specs/project-governance/spec.md`](../openspec/specs/project-governance/spec.md)).
 
-Current stage: phase-0 scaffold (`fillPattern` / `readElement` roundtrip).
+Current stage: phase-0 scaffold (`fillPattern` / `readElement` roundtrip)
+on the resident-worker architecture (governance spec ironclad rule 8).
+
+Singleton worker: in browsers, all data and compute live inside ONE resident
+worker (`getWorker()` registers it on `globalThis`); the main thread never
+inits wasm and holds no data copy. Multiple imports, multiple handles, or
+duplicate library copies on one page structurally share that single worker.
+Load only ONE copy of the library per page — a second copy's handles run
+against the first copy's worker (version skew). The browser entry exports no
+`_`-prefixed sync compute (there is none without main-thread wasm); node
+keeps `_` because the napi core is in-process.
 
 ## Layout
 

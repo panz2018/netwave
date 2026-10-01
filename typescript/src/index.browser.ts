@@ -1,68 +1,83 @@
-// netwave browser conditional shell: explicit named re-exports (no
-// `export *`, preserves tree-shaking). Backed by the wasm-pack `web`
-// target glue (dist/wasm-web), which exposes an async `init` that fetches
-// the .wasm. Worker offload arrives in phase 3; for now calls resolve
-// immediately after init.
-import wasmInit, {
-  fill_pattern as _wasmFill,
-  read_element as _wasmRead,
-} from "../dist/wasm-web/netwave_wasm.js";
-import type { NetwaveBuffer } from "./types.js";
+// netwave browser conditional shell: a PURE TRANSPORT over the resident
+// worker (governance spec ironclad rule 8). The main thread never inits
+// wasm and holds no data copy — wasm lives only inside the single resident
+// worker (src/netwave.worker.ts). Explicit named exports (no `export *`, preserves
+// tree-shaking); NO `_`-prefixed sync compute exists here (sync compute
+// has nowhere to run without main-thread wasm; node keeps `_`).
+//
+// Singleton: `getWorker()` registers the worker on `globalThis`, so
+// multiple imports, multiple handles, or even duplicate library copies on
+// one page structurally share ONE worker (never a second one).
+import type { Handle, NetwaveBuffer, WorkerRequest, WorkerResponse } from "./types.js";
 
+/** The shell's singleton worker, registered on globalThis (design.md
+ * "worker 单例语义"). */
 declare global {
-  // The live wasm linear memory, recorded so the worker can avoid
-  // transferring it (transferring wasm memory would detach the instance).
-  var __netwaveWasmMemory: WebAssembly.Memory | undefined;
+  var __netwaveWorker: Worker | undefined;
 }
 
-let ready: Promise<Awaited<ReturnType<typeof wasmInit>>> | null = null;
-const ensureReady = () =>
-  (ready ??= (async () => {
-    const exports = await wasmInit({ module_or_path: await wasmSource() });
-    // wasm-bindgen init resolves to the instance exports object.
-    globalThis.__netwaveWasmMemory = exports.memory;
-    return exports;
-  })());
+/** Lazily construct the ONE resident worker; return the existing one if a
+ * shell (this module or a duplicate copy of it) already created it. */
+const getWorker = (): Worker =>
+  (globalThis.__netwaveWorker ??= new Worker(
+    // `.ts` specifier is legal under noEmit and resolvable by vite in
+    // browser tests; publish_shell.mjs rewrites it to
+    // "./netwave.worker.js" in the dist output.
+    new URL("./netwave.worker.ts", import.meta.url),
+    { type: "module" },
+  ));
 
-// In browsers the web-target glue fetches the .wasm itself (default);
-// under Node (vitest) fetch has no file: support, so read the bytes with
-// node:fs. The node: import is dynamic and browser-invisible.
-/* v8 ignore next 1 -- environment probe; Node-only in this test suite */
-const isNode = typeof process !== "undefined" && !!process.versions.node;
-const wasmSource = async (): Promise<Uint8Array | undefined> => {
-  /* v8 ignore start -- browser-only path; exercised in real-browser tests (phase 3) */
-  if (!isNode) return undefined; // glue default: fetch relative to its own URL
-  /* v8 ignore stop */
-  const { readFile } = await import("node:fs/promises");
-  const { fileURLToPath } = await import("node:url");
-  return readFile(fileURLToPath(new URL("../dist/wasm-web/netwave_wasm_bg.wasm", import.meta.url)));
+let seq = 0;
+const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();
+
+// One persistent message listener on the resident worker; replies are
+// demultiplexed by request id (generalized dispatch, api-contract spec).
+getWorker().addEventListener("message", ({ data }: MessageEvent<WorkerResponse>) => {
+  const slot = pending.get(data.id);
+  if (!slot) return;
+  pending.delete(data.id);
+  if (data.error) slot.reject(new Error(data.error));
+  else slot.resolve(data.result);
+});
+
+/** Send one command to the resident worker and await its reply. */
+const call = <T>(cmd: string, args: unknown[], transfer?: ArrayBuffer[]): Promise<T> => {
+  const id = ++seq;
+  return new Promise<T>((resolve, reject) => {
+    pending.set(id, { resolve: resolve as (v: unknown) => void, reject });
+    getWorker().postMessage({ id, cmd, args } satisfies WorkerRequest, {
+      transfer: transfer ?? [],
+    });
+  });
 };
 
 /**
- * Allocate and fill an interleaved complex f64 buffer, returning a
- * descriptor from which a view can be rebuilt.
+ * Allocate and fill an (nfreq, nports, nports) interleaved complex f64
+ * buffer inside the resident worker (phase-0 scaffold API) and return a
+ * descriptor from which a view can be rebuilt. The result buffer is
+ * transferred in (zero-copy); `shape`/`frequency` ride the same reply.
  */
-export async function fillPattern(nfreq: number, nports: number): Promise<NetwaveBuffer> {
-  await ensureReady();
-  // The wasm glue d.ts types the descriptor as a bare `object`; the
-  // contract shape is NetwaveBuffer (types.ts is the single source).
-  return _fillPattern(nfreq, nports) as NetwaveBuffer;
-}
-
-/** Pass a view back into core and read an element. */
-export async function readElement(view: Float64Array, idx: number): Promise<number> {
-  await ensureReady();
-  return _readElement(view, idx);
-}
+export const fillPattern = (nfreq: number, nports: number): Promise<NetwaveBuffer> =>
+  call<NetwaveBuffer>("fillPattern", [nfreq, nports]);
 
 /**
- * @internal Sync passthrough escape hatch; no stability guarantee. Only
- * usable after init has completed (await fillPattern once, or use the
- * async surface). wasm returns a linear-memory view descriptor
- * {buffer, byteOffset, length}; buffer is the whole linear memory (may
- * grow), so views must be cut at the offset.
+ * Host `view` inside the resident worker and return its handle. The view's
+ * buffer is MOVED via explicit transfer (single ownership, ironclad rule
+ * 8): after this call the caller's buffer is detached. Hosted data is
+ * reusable across calls until `release`.
  */
-export const _fillPattern = (nfreq: number, nports: number): NetwaveBuffer =>
-  _wasmFill(nfreq, nports) as NetwaveBuffer;
-/** @internal Sync passthrough escape hatch. */
-export const _readElement = _wasmRead;
+export const upload = (view: Float64Array): Promise<Handle> =>
+  call<Handle>("upload", [view], [view.buffer as ArrayBuffer]);
+
+/** Drop hosted data and invalidate its handle. Later calls through the
+ * handle reject (the error names the handle). */
+export const release = (handle: Handle): Promise<void> =>
+  call<void>("release", [handle]).then(() => undefined);
+
+/**
+ * Read one f64 element (re/im interleaved index). `target` is either a
+ * hosted handle (no data moves) or an unhosted view (bytes are
+ * boundary-copied into the worker; the caller's buffer is NOT consumed).
+ */
+export const readElement = (target: Handle | Float64Array, idx: number): Promise<number> =>
+  call<number>("readElement", [target, idx]);

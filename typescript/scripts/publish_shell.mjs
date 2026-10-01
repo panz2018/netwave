@@ -24,7 +24,8 @@ for (const name of outputs) {
   const p = join("dist", name);
   let fixed = readFileSync(p, "utf8")
     .replaceAll('"../dist/', '"./')
-    .replaceAll('"./index.browser.ts"', '"./index.browser.mjs"');
+    .replaceAll('"./index.browser.ts"', '"./index.browser.mjs"')
+    .replaceAll('"./netwave.worker.ts"', '"./netwave.worker.js"');
   // The CJS twin must require the napi CJS glue, not the ESM one.
   if (name.endsWith(".cjs")) {
     fixed = fixed.replaceAll("./index.node.generated.mjs", "./index.node.generated.cjs");

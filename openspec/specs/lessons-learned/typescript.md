@@ -9,7 +9,7 @@
   worker；`expect(_toY(x)).toEqual(await toY(x))`
 - 复发检测：vitest 双路一致性断言
 - **修订**："小数据不起 worker"分流随 worker 常驻架构（见
-  `Plan/typescript源码化规划.md`）废止——所有计算不管大小
+  [异步与 Worker 边界契约（常驻 worker 架构）](../../changes/worker-resident-implementation/specs/zero-copy-roundtrip/spec.md#added-requirements)）废止——所有计算不管大小
   全进常驻 worker；
   浏览器端 `_` 同步计算逃生口废止（主线程无 wasm），node 端保留 `_`（napi
   core 在进程内）；双路一致性断言改为 worker 往返 vs `_toY`（仅 node）

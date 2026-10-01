@@ -70,3 +70,15 @@
 - 复发检测：已门禁化——`check_md.py` DECISION TAG 规则 grep
   `design D[0-9]`/`（D[0-9]`/`按 D[0-9]`/`见 D[0-9]` 于全仓 `.md`+`.ts`
   即红（archive 与账本豁免——它们引用反例作证据）；入 `pnpm check:md`
+
+### LL-035 对话镜像用户语言，文档按目录分语言
+
+- 犯过：worker-resident-implementation 提案会话中对话正文混写英文散文词
+  （Finding/Goals/spike 等），且规则草案误写"规划正文用中文"未覆盖
+  "对话必须镜像用户提问语言"（人工纠正两次）
+- 规则：①对话必须用用户提问所用的语言回答，不得凭模型偏好选语言；
+  ②文档仅 `openspec/` 与 `Plan/` 用中文，其余一切（docs、代码注释、
+  rustdoc/docstring/JSDoc、README）用英文；命令/文件名/API 名等技术
+  标识符在任何正文中保留原文
+- 复发检测：review Lessons 轴对照本节；不做脚本门禁（散文语言检测
+  误报率高）

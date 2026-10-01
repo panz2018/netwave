@@ -5,7 +5,7 @@ export default defineConfig({
     include: ["test/wasm/**/*.test.ts"],
     coverage: {
       provider: "v8",
-      include: ["src/index.browser.ts", "src/worker.ts", "src/standalone.ts"],
+      include: ["src/index.browser.ts", "src/netwave.worker.ts", "src/standalone.ts"],
       thresholds: { lines: 100, branches: 100 },
     },
   },

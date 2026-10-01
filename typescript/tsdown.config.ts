@@ -38,7 +38,7 @@ export default defineConfig([
     // Worker + standalone: plain .js ESM (zero-build HTML entry; the
     // package is "type": "module" so .js is already ESM).
     entry: {
-      "netwave.worker": "src/worker.ts",
+      "netwave.worker": "src/netwave.worker.ts",
       standalone: "src/standalone.ts",
     },
     format: ["esm"],

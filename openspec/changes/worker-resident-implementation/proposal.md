@@ -2,7 +2,7 @@
 
 ## Why
 
-worker 常驻架构已定案（见 `Plan/typescript源码化规划.md` 与账本 LL-001/LL-030/
+worker 常驻架构已定案（见账本 LL-001/LL-030/
 LL-031），但主 spec 与代码仍是旧契约：`zero-copy-roundtrip spec` 保留"小数据主线程
 分流 + Worker 池"条款与浏览器 `_` 逃生口，浏览器壳在主线程 init wasm，主线程可持
 数据副本，存在权威歧义。定案不落进代码与 spec，账本防复发检测（LL-030 要求真浏览器

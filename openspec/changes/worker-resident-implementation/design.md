@@ -2,7 +2,9 @@
 
 ## Context
 
-worker 常驻架构定案见 `Plan/typescript源码化规划.md`（本 change 实施后整删）与
+worker 常驻架构定案见本 change 的
+[zero-copy-roundtrip delta](specs/zero-copy-roundtrip/spec.md)（归档时同步进主
+spec）与
 账本 LL-001/LL-030/LL-031；契约现状见 `zero-copy-roundtrip spec`（仍含分流与
 浏览器 `_`）与 `api-contract spec`（已钉单常驻 worker 与泛化分发）。现有代码：
 `typescript/src/index.browser.ts` 在主线程 init wasm 并导出 `_` 同步逃生口；

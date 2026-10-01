@@ -1,62 +1,109 @@
-/** Worker dispatcher + standalone entry smoke tests (phase 0: structure +
- * passthrough). The worker holds zero numeric logic: cmds-table dispatch and
- * result transfer. `self` is simulated under Node. */
-import { describe, expect, it } from "vitest";
-import type { WorkerRequest, WorkerResponse } from "../../src/types.ts";
+/** Resident-worker contract tests (ironclad rule 8 + zero-copy-roundtrip
+ * rewrite). Runs unmodified under Node (fake scopes, real structuredClone
+ * transfer) and in a real browser (native Worker) via the shared harness.
+ *
+ * Spec scenarios covered: upload detaches the caller buffer (single
+ * ownership); release invalidates the handle; result buffers transfer back;
+ * metadata (shape/frequency) rides the result message (no extra roundtrip);
+ * unhosted-view read boundary-copies (input NOT consumed); multiple imports
+ * + handles share ONE worker (singleton). */
+import { beforeAll, describe, expect, it } from "vitest";
+import type { Handle } from "../../src/types.ts";
+import { type Harness, installResidentWorkerHarness } from "./harness.ts";
 
-describe("worker dispatcher", () => {
-  it("dispatches known cmds, reports unknown cmds, never transfers wasm memory", async () => {
-    const posted: { msg: WorkerResponse; transfer: ArrayBuffer[] | undefined }[] = [];
-    // Simulate the Worker global `self` under Node (the DOM lib types
-    // `self` as Window; the worker module pins its own scope type).
-    interface FakeScope {
-      self: {
-        postMessage: (msg: WorkerResponse, transfer?: ArrayBuffer[]) => void;
-        onmessage: ((ev: MessageEvent<WorkerRequest>) => Promise<void>) | null;
-      };
-    }
-    const fakeSelf: FakeScope["self"] = {
-      postMessage: (msg: WorkerResponse, transfer?: ArrayBuffer[]) =>
-        posted.push({ msg, transfer }),
-      onmessage: null,
-    };
-    Object.defineProperty(globalThis, "self", {
-      value: fakeSelf,
-      writable: true,
-      configurable: true,
-    });
-    await import("../../src/worker.ts");
-    const onmessage = fakeSelf.onmessage;
-    if (!onmessage) throw new Error("worker did not register onmessage");
-    const ev = (data: WorkerRequest) => ({ data }) as unknown as MessageEvent<WorkerRequest>;
-    await onmessage(ev({ id: 1, cmd: "fillPattern", args: [2, 2] }));
-    expect(posted[0].msg.id).toBe(1);
-    const result = posted[0].msg.result;
-    if (!result) throw new Error(`expected a result, got: ${posted[0].msg.error}`);
-    expect(result.length).toBe(8);
-    // Results are always transferred back (the worker copies wasm linear
-    // memory into a fresh detachable ArrayBuffer).
-    expect(posted[0].transfer).toEqual([result.buffer]);
-    const view = new Float64Array(result.buffer, 0, 16);
-    expect(view[0]).toBe(0); // re(0,0,0)
-    expect(view[1]).toBe(-0); // im(0,0,0) = -0 (sign preserved)
-    expect(view[2]).toBe(1); // re(0,0,1)
+const NFREQ = 2;
+const NPORTS = 2;
+const closedForm = (f: number, p: number, q: number) => {
+  const re = f * 100 + p * 10 + q;
+  return { re, im: -re };
+};
 
-    await onmessage(ev({ id: 2, cmd: "nope", args: [] }));
-    expect(posted[1].msg.error).toContain("unknown cmd");
+let h: Harness;
 
-    // Compute errors take the catch path: error string returned.
-    await onmessage(ev({ id: 3, cmd: "readElement", args: [null, 0] }));
-    expect(posted[2].msg.id).toBe(3);
-    expect(posted[2].msg.error).toBeTruthy();
-  });
+beforeAll(async () => {
+  h = await installResidentWorkerHarness();
 });
 
-describe("standalone entry", () => {
-  it("re-exports the same async contract as the browser shell", async () => {
-    const m = await import("../../src/standalone.ts");
-    const r = await m.fillPattern(2, 2);
-    expect(r.length).toBe(8);
-    expect(await m.readElement(new Float64Array(r.buffer, r.byteOffset, 16), 0)).toBe(0);
+const shell = () => import("../../src/index.browser.ts");
+
+describe("resident worker contract", () => {
+  it("fillPattern: result transferred back, metadata rides the same message", async () => {
+    const m = await shell();
+    const postsBefore = h.shellPosts();
+    const postedBefore = h.posted.length;
+    const r = await m.fillPattern(NFREQ, NPORTS);
+    // One request out, one response back — metadata piggyback costs zero
+    // extra roundtrips.
+    expect(h.shellPosts()).toBe(postsBefore + 1);
+    expect(h.posted.length).toBe(postedBefore + 1);
+    expect(r.shape).toEqual([NFREQ, NPORTS, NPORTS]);
+    expect(r.frequency).toBeInstanceOf(Float64Array);
+    const view = new Float64Array(r.buffer, r.byteOffset, r.length * 2);
+    for (let f = 0; f < NFREQ; f++)
+      for (let p = 0; p < NPORTS; p++)
+        for (let q = 0; q < NPORTS; q++) {
+          const { re, im } = closedForm(f, p, q);
+          const i = (f * NPORTS * NPORTS + p * NPORTS + q) * 2;
+          expect(view[i]).toBe(re);
+          expect(view[i + 1]).toBe(im);
+        }
+    // Reading piggybacked metadata costs no worker message.
+    const postsAfter = h.shellPosts();
+    expect(r.shape[0]).toBe(NFREQ);
+    expect(h.shellPosts()).toBe(postsAfter);
+  });
+
+  it("upload: caller buffer detached (single ownership); handle reads work", async () => {
+    const m = await shell();
+    const src = new Float64Array([1.5, -1.5, 2.5, -2.5]);
+    const handle: Handle = await m.upload(src);
+    // Explicit transfer: the caller's buffer is detached after upload.
+    expect(src.buffer.byteLength).toBe(0);
+    expect(await m.readElement(handle, 2)).toBe(2.5);
+    // Hosted data stays readable repeatedly (input hosted, not consumed).
+    expect(await m.readElement(handle, 3)).toBe(-2.5);
+  });
+
+  it("release: handle invalidated, later calls reject naming the handle", async () => {
+    const m = await shell();
+    const handle = await m.upload(new Float64Array([7, -7]));
+    await m.release(handle);
+    await expect(m.readElement(handle, 0)).rejects.toThrow(new RegExp(String(handle)));
+    // Double release rejects too (handle table no longer holds it).
+    await expect(m.release(handle)).rejects.toThrow(new RegExp(String(handle)));
+  });
+
+  it("unhosted view readElement: boundary copy, input NOT consumed", async () => {
+    const m = await shell();
+    const src = new Float64Array([9.25, -9.25]);
+    expect(await m.readElement(src, 1)).toBe(-9.25);
+    // Input survives (no transfer list for plain views).
+    expect(src.buffer.byteLength).toBe(16);
+    expect(src[1]).toBe(-9.25);
+  });
+
+  it("multiple imports + multiple handles share ONE worker", async () => {
+    const m1 = await shell();
+    const m2 = await shell();
+    const h1 = await m1.upload(new Float64Array([1, 1]));
+    const h2 = await m2.upload(new Float64Array([2, 2]));
+    expect(h.workerInstances()).toBe(1);
+    // Handles address independently in the single worker.
+    expect(await m1.readElement(h1, 0)).toBe(1);
+    expect(await m2.readElement(h2, 1)).toBe(2);
+  });
+
+  it("unknown cmd replies with error", async () => {
+    const m = await shell();
+    await m.fillPattern(1, 1); // ensure the worker is up
+    const w = h.singleton();
+    if (!w) throw new Error("shell did not register the singleton worker");
+    const p = new Promise<string | undefined>((resolve) => {
+      h.onReply((res) => {
+        if (res.id === 999_999) resolve(res.error);
+      });
+    });
+    w.postMessage({ id: 999_999, cmd: "nope", args: [] });
+    expect(await p).toContain("unknown cmd");
   });
 });
