@@ -27,8 +27,7 @@ def main() -> int:
     missing = [
         name
         for name in pkg.get("scripts", {})
-        if re.fullmatch(r"test:[a-z]+", name)
-        and f"typescript {name}" not in ci
+        if re.fullmatch(r"test:[a-z]+", name) and f"typescript {name}" not in ci
     ]
     for name in missing:
         print(f"::error::ci.yml never runs `pnpm -C typescript {name}`", file=sys.stderr)
