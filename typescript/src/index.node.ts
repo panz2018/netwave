@@ -12,10 +12,8 @@ import type { Handle, NetwaveBuffer } from "./types.js";
 
 /**
  * Allocate and fill an (nfreq, nports, nports) interleaved complex f64
- * buffer (phase-0 scaffold). Public async surface: on Node small data
- * resolves immediately (large-data AsyncTask offload arrives in phase 6).
- * `shape`/`frequency` ride the result (metadata piggyback, same contract
- * as the browser end).
+ * buffer in the in-process napi core. `shape`/`frequency` ride the result
+ * (metadata piggyback, same contract as the browser end).
  */
 export async function fillPattern(nfreq: number, nports: number): Promise<NetwaveBuffer> {
   return _fillPattern(nfreq, nports);

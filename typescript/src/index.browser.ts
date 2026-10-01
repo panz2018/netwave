@@ -53,9 +53,9 @@ const call = <T>(cmd: string, args: unknown[], transfer?: ArrayBuffer[]): Promis
 
 /**
  * Allocate and fill an (nfreq, nports, nports) interleaved complex f64
- * buffer inside the resident worker (phase-0 scaffold API) and return a
- * descriptor from which a view can be rebuilt. The result buffer is
- * transferred in (zero-copy); `shape`/`frequency` ride the same reply.
+ * buffer inside the resident worker and return a descriptor from which a
+ * view can be rebuilt. The result buffer is transferred in (zero-copy);
+ * `shape`/`frequency` ride the same reply.
  */
 export const fillPattern = (nfreq: number, nports: number): Promise<NetwaveBuffer> =>
   call<NetwaveBuffer>("fillPattern", [nfreq, nports]);

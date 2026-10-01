@@ -1,9 +1,9 @@
-// netwave public API types — the single source of truth for the SHARED
-// public contract (replaces the hand-written index.d.ts). Compute verbs
-// are single-async: every public verb returns a Promise. Platform-only
-// surfaces live in their entry shells, not here: the node entry exports
-// the `_`-prefixed sync passthroughs (@internal, index.node.ts); the
-// browser entry exports none (main thread has no wasm, ironclad rule 8).
+// netwave public API types — the single source of truth for the shared
+// public contract. Compute verbs are single-async: every public verb
+// returns a Promise. Platform-only surfaces live in their entry shells:
+// the node entry exports the `_`-prefixed sync passthroughs (@internal,
+// index.node.ts); the browser entry exports none (main thread has no
+// wasm, ironclad rule 8).
 
 /** Opaque handle to data hosted inside the resident worker (ironclad
  * rule 8: the worker is the single data authority). Handles are assigned
@@ -24,8 +24,8 @@ export interface NetwaveBuffer {
   length: number;
   /** (nfreq, nports, nports) — piggybacked metadata. */
   shape: [number, number, number];
-  /** Frequency axis in Hz (f64) — piggybacked metadata. Empty until the
-   * real data model (phase 2) populates it. */
+  /** Frequency axis in Hz (f64) — piggybacked metadata. Empty when the
+   * data carries no frequency axis. */
   frequency: Float64Array;
 }
 
@@ -48,8 +48,8 @@ export interface WorkerResponse {
 
 /**
  * Allocate and fill an (nfreq, nports, nports) interleaved complex f64
- * buffer inside the resident worker (phase-0 scaffold API) and return a
- * descriptor from which a view can be rebuilt.
+ * buffer inside the resident worker and return a descriptor from which a
+ * view can be rebuilt.
  */
 export declare function fillPattern(nfreq: number, nports: number): Promise<NetwaveBuffer>;
 
