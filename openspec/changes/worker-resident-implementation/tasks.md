@@ -31,9 +31,10 @@
 - [x] 3.2 重写 `index.browser.ts`：删除全部 wasm import 与 `_` 同步导出，
       改为懒起唯一常驻 worker + 泛化消息收发 + 从返回值重建视图；验证：2.2/2.3
       测试转绿，`pnpm typecheck` 通过
-- [x] 3.3 `standalone.ts` 改为内部自起常驻 worker（复用 3.2 同一 worker
-      起法），`<script type="module">` / Pages 零配置不变；验证：standalone
-      冒烟测试（浏览器套件内 import standalone 跑一次 upload→toY→release）通过
+- [x] 3.3 `dist/standalone.js` 以 `standalone: "src/index.browser.ts"` 编译产
+      出（公开子路径 `./standalone` 不变），`<script type="module">` / Pages 零
+      配置不变；验证：browser 壳冒烟测试（upload→readElement→release，单例
+      worker 断言）通过
 - [x] 3.4 教学式 docs 补齐：新增公开 API（upload/release/结果类型）JSDoc
       达到宪法元规则教学式标准（自包含、说明所有权与 transfer 语义）；验证：
       code-review Standards 轴逐条过

@@ -36,10 +36,12 @@ export default defineConfig([
   },
   {
     // Worker + standalone: plain .js ESM (zero-build HTML entry; the
-    // package is "type": "module" so .js is already ESM).
+    // package is "type": "module" so .js is already ESM). `standalone.js`
+    // is the browser shell compiled to a second name — the public
+    // `./standalone` subpath is a dist artifact path, not a source file.
     entry: {
       "netwave.worker": "src/netwave.worker.ts",
-      standalone: "src/standalone.ts",
+      standalone: "src/index.browser.ts",
     },
     format: ["esm"],
     platform: "browser",

@@ -20,11 +20,4 @@ describe("browser entry surface", () => {
     const m = await import("../../src/index.browser.ts");
     expect(Object.keys(m).sort()).toEqual(["fillPattern", "readElement", "release", "upload"]);
   });
-
-  it("standalone re-exports the same async surface (no `_`)", async () => {
-    const m = await import("../../src/standalone.ts");
-    expect(Object.keys(m).filter((k) => k.startsWith("_"))).toEqual([]);
-    expect(typeof m.upload).toBe("function");
-    expect(typeof m.release).toBe("function");
-  });
 });

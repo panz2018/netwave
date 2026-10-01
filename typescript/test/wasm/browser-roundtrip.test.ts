@@ -1,6 +1,6 @@
-/** Standalone entry smoke (task 3.3): zero-build HTML entry self-hosts
- * the resident worker; same async contract as the browser shell; no `_`.
- * Runs under Node (fake Worker harness) and in a real browser unchanged. */
+/** Browser entry roundtrip smoke: the shell self-hosts the resident
+ * worker; same async contract behind the public `./standalone` dist
+ * artifact. Runs under Node (fake Worker harness) unchanged. */
 import { beforeAll, describe, expect, it } from "vitest";
 import { type Harness, installResidentWorkerHarness } from "./harness.ts";
 
@@ -10,9 +10,9 @@ beforeAll(async () => {
   h = await installResidentWorkerHarness();
 });
 
-describe("standalone entry", () => {
+describe("browser entry", () => {
   it("upload -> readElement -> release via the resident worker", async () => {
-    const m = await import("../../src/standalone.ts");
+    const m = await import("../../src/index.browser.ts");
     const r = await m.fillPattern(2, 2);
     expect(r.length).toBe(8);
     expect(r.shape).toEqual([2, 2, 2]);

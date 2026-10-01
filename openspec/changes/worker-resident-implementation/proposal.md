@@ -45,8 +45,9 @@ LL-031），但主 spec 与代码仍是旧契约：`zero-copy-roundtrip spec` �
 
 ## Impact
 
-- 代码：`typescript/src/index.browser.ts`、`src/worker.ts`、`src/standalone.ts`、
-  `src/types.ts`（公开契约单一来源）；node 壳不动。
+- 代码：`typescript/src/index.browser.ts`、`src/worker.ts`、
+  `src/types.ts`（公开契约单一来源）；`dist/standalone.js` 由浏览器壳以第二
+  产物名编译，无独立源文件；node 壳不动。
 - 测试：`typescript/test/` 新增浏览器套件（vitest browser mode + playwright +
   Chromium）；`vitest.config` 增浏览器配置并入 `pnpm test`；覆盖率 100% 闸门
   （铁律七）覆盖新浏览器路径。

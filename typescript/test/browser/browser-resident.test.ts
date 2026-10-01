@@ -39,12 +39,4 @@ describe("real browser: main thread has no wasm (LL-030)", () => {
     const m = await import("../../src/index.browser.ts");
     expect(Object.keys(m).filter((k) => k.startsWith("_"))).toEqual([]);
   });
-
-  it("standalone self-hosts the same resident worker", async () => {
-    const s = await import("../../src/standalone.ts");
-    const r = await s.fillPattern(1, 1);
-    expect(r.length).toBe(1);
-    // Same singleton worker as the browser shell (one per page).
-    expect(globalThis.__netwaveWorker).toBeInstanceOf(Worker);
-  });
 });

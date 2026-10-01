@@ -10,13 +10,13 @@ spec）与
 `typescript/src/index.browser.ts` 在主线程 init wasm 并导出 `_` 同步逃生口；
 `src/worker.ts` 是命令分发器但 cmd 表直接 import 主线程壳（架构错位——worker
 常驻后 wasm 只能在 worker 内 init，分发器必须改为直接持有 wasm glue）；
-`src/standalone.ts` 走主线程壳。测试仅 node 模拟 worker。
+standalone 入口走主线程壳。测试仅 node 模拟 worker。
 
 ## Goals / Non-Goals
 
 **Goals:**
 
-- 浏览器壳、worker、standalone 三线重写为常驻 worker 架构；主线程零 wasm。
+- 浏览器壳与 worker 两线重写为常驻 worker 架构；主线程零 wasm。
 - upload/release 句柄 API 签名定案（本 design 拍板，随实现落地）。
 - governance / zero-copy-roundtrip 主 spec 按 delta 改写并 `openspec validate` 绿。
 - 真浏览器测试线（vitest browser mode + playwright + Chromium）进 `pnpm test`。
@@ -93,14 +93,14 @@ spec）与
 - cmd 表显式静态：`upload / release / fillPattern / readElement / toY(未来动词)`，
   加动词只改表。
 
-### standalone.js 自起常驻 worker
+### standalone.js = 浏览器壳的第二产物名
 
-- `standalone.ts` 不再触碰 wasm：其公开面与 `index.browser.ts` 同一套 async
-  动词，内部复用同一 worker 起法；备选内联起法（Blob/data URL）仅在跨域场景
-  需要时启用；具体方式实现时按 tsdown 产物形态定，优先相对 URL 构造
-  （Pages 场景已同源，见上方代码块）。
+- 常驻 worker 架构下浏览器壳与 standalone 内部机制完全相同，standalone 不再
+  设独立源文件：tsdown 以 `standalone: "src/index.browser.ts"` 编译出
+  `dist/standalone.js`，公开子路径 `./standalone` 契约不变。
 - 零配置体验不变：用户 `<script type="module">` import standalone.js 后直接
-  `await` 动词即可。
+  `await` 动词即可；`globalThis.__netwaveWorker` 单例保证与 browser 壳混用
+  时仍只有一个 worker。
 
 ### 真浏览器测试线
 

@@ -22,7 +22,7 @@ export default defineConfig({
       // netwave.worker.ts runs in the worker context, which v8 browser
       // coverage does not instrument; its logic is covered to 100% by the
       // node wasm suite (the harness imports the worker module directly).
-      include: ["src/index.browser.ts", "src/standalone.ts"],
+      include: ["src/index.browser.ts"],
       thresholds: { lines: 100, functions: 100, branches: 100, statements: 100 },
     },
   },

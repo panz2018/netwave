@@ -22,7 +22,8 @@ keeps `_` because the napi core is in-process.
 
 - `native/` — napi crate (`.node` addon), `build.rs` drives napi build
 - `wasm/` — wasm-bindgen crate (`cdylib` only)
-- `src/` — TypeScript shells (node/browser/worker/standalone) + `types.ts`
+- `src/` — TypeScript shells (node/browser/worker) + `types.ts`
+  (`standalone.js` is the browser shell compiled to a second dist name)
   (the single source of the public contract); tests run against `src/`
   (coverage measured there)
 - `tsdown.config.ts` — bundles `src/*.ts` into `dist/` (ESM + CJS + dts);
