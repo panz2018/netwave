@@ -1,10 +1,9 @@
-// netwave public API types — the single source of truth for the public
-// contract (replaces the hand-written index.d.ts). Compute verbs are
-// single-async: every public verb returns a Promise. On the browser end
-// there are NO sync escape hatches (`_`-prefixed): the main thread never
-// inits wasm (governance spec ironclad rule 8), so sync compute has
-// nowhere to run. On the node end `_`-prefixed sync passthroughs remain
-// (@internal) because the napi core lives in-process.
+// netwave public API types — the single source of truth for the SHARED
+// public contract (replaces the hand-written index.d.ts). Compute verbs
+// are single-async: every public verb returns a Promise. Platform-only
+// surfaces live in their entry shells, not here: the node entry exports
+// the `_`-prefixed sync passthroughs (@internal, index.node.ts); the
+// browser entry exports none (main thread has no wasm, ironclad rule 8).
 
 /** Opaque handle to data hosted inside the resident worker (ironclad
  * rule 8: the worker is the single data authority). Handles are assigned
@@ -73,14 +72,3 @@ export declare function release(handle: Handle): Promise<void>;
  * node: read directly in-process).
  */
 export declare function readElement(target: Handle | Float64Array, idx: number): Promise<number>;
-
-/**
- * @internal Sync passthrough escape hatch — **node only**. Callable
- * externally, signature carries no stability guarantee. The browser entry
- * does not export any `_`-prefixed sync compute (main thread has no
- * wasm, ironclad rule 8).
- */
-export declare function _fillPattern(nfreq: number, nports: number): NetwaveBuffer;
-
-/** @internal Sync passthrough escape hatch — node only. */
-export declare function _readElement(view: Float64Array, idx: number): number;
