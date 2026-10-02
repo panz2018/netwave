@@ -17,6 +17,20 @@
   命令原样模拟；已知陷阱见 LL-011..LL-013
 - 复发检测：review 时核对 CI 改动 commit 前是否有本地模拟记录
 
+### LL-040 合并只走 PR，禁直推 main；PR 用 credential helper 建
+
+- 犯过：用户要求"提交PR合并进主分支"，agent 见 push 权限可用即
+  `git push origin HEAD:main` 直推合并，被人工纠正后 force-with-lease 回滚；
+  又因未找到 gh CLI 就误报"建不了 PR"，实际 git credential helper 里有
+  凭据（VS Code 注入）
+- 规则："提交PR" = 建 PR 并等人工在 PR 页面点 Merge，任何情况下不得
+  直推 main。建 PR 的方法：用 `git credential fill`（stdin 喂
+  `protocol=https` + `host=github.com`）取 token，调
+  `api.github.com/repos/{owner}/{repo}/pulls` 创建（token 不得回显进
+  对话）。找不到 gh CLI / token 环境变量 ≠ 无凭据，先试 credential helper
+- 复发检测：review 时核对 main 历史无 agent 直推 commit；对话中声称
+  "无凭据建不了 PR"前，必须附 credential fill 失败的证据
+
 ### LL-009 交互命令预先非交互化
 
 - 犯过：corepack 下载确认假死；cargo-llvm-cov 首跑询问 llvm-tools 假死
