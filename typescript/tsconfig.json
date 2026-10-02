@@ -1,0 +1,21 @@
+{
+  // Shared by vitest, tsdown and `tsc --noEmit` (CI type gate).
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "allowJs": true,
+    "checkJs": true,
+    "noEmit": true,
+    // src/ and test/ import each other with explicit `.ts` specifiers
+    // (vitest resolves them directly; tsdown keeps them external and
+    // publish_shell.mjs rewrites them in the dist output).
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts", "test/**/*.ts", "*.ts"]
+}

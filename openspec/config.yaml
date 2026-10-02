@@ -2,15 +2,15 @@ schema: spec-driven
 
 context: |
   全部硬约束（数据布局/TDD/容差/z0/性能/零拷贝/语言约定/权威术语源）的唯一真相源
-  是 Plan/constitution.md，agent 行为准则见仓库根 AGENTS.md。动手前先读，禁止绕过。
-  本文件只保留 OpenSpec 工件专属规则（见 rules）。
+  是 openspec/specs/project-governance/spec.md，agent 行为准则见仓库根 AGENTS.md。
+  动手前先读，禁止绕过。本文件只保留 OpenSpec 工件专属规则（见 rules）。
 
 # Per-artifact rules
 rules:
   proposal:
     - 必须包含 "Non-goals" 段，明确本次不做什么
     - 引用受影响的铁律编号（若有）
-  spec:
+  specs:
     - 每条 Requirement 必须可测，附容差（引用 manifest key，不写死数值）
     - 数值需求必须指明独立真值来源（skrf golden / 闭式解 / 物理不变量）
     - 涉及 RF 术语时，以权威术语表（knowledge/RF 下 S-Parameters 书 / Touchstone 规范）
@@ -23,11 +23,15 @@ rules:
 # Per-operation guidance (optional)
 # Add advisory guidance for how apply and archive work should be conducted.
 # This is separate from artifact rules above.
-# Example:
-#   operations:
-#     apply:
-#       guidance:
-#         - Keep test summaries concise
-#     archive:
-#       guidance:
-#         - Summarize the archive outcome before finishing
+operations:
+  apply:
+    guidance:
+      - 本次 change 完成的任务/定案的结论，其在 Plan/ 中的对应章节必须
+        当场删除（不留已完成的规划文字），只保留未执行或待改善的任务；
+        删后跑 pnpm check:md
+  archive:
+    guidance:
+      - 归档前必须执行 Plan/ 瘦身检查：grep Plan/ 中与本 change 相关的条目，
+        已完成/已定案的章节一律删除（结论已在主 spec，Plan/ 不留存）、
+        与主 spec 冲突的当场指出；Plan/ 只留未执行任务，终态是整目录删除
+        （追溯靠 git log）

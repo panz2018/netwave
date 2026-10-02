@@ -1,0 +1,4 @@
+[toolchain]
+channel = "1.98.1"
+# pinned stable (workspace-layout spec "version floor"); upgrades go
+# through an OpenSpec change

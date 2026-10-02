@@ -1,0 +1,266 @@
+name: CI
+
+on:
+  push:
+    branches: "**"
+  pull_request:
+
+# One CI run per branch: a new push cancels the previous in-flight run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+# Jobs are ordered cheap-first: docs (seconds) -> rust -> wasm ->
+# python -> node -> bench (most expensive). One job per language/
+# toolchain; platforms expand inside each job. A step that only applies
+# to one matrix cell uses a step-level `if` — cheaper than a separate
+# job (no extra runner spin-up, checkout or toolchain install).
+jobs:
+  # Lint gate: every language's lint+format+type check, delegated to the
+  # root package.json check:* scripts — the single source of truth for
+  # command details. Matrix jobs below only run tests (they need compiled
+  # artifacts); never duplicate a check command there.
+  # ubuntu-latest ships rust + python preinstalled; uv and pnpm are setup.
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - name: components for the pinned toolchain
+        # rust-toolchain.toml pins the ACTIVE toolchain; the setup above
+        # installs components on @stable, not on the pinned one (rustup
+        # auto-installs the pinned toolchain bare). Add them to whichever
+        # toolchain is active so cargo fmt/clippy resolve.
+        run: rustup component add rustfmt clippy
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 26
+          cache: pnpm
+      - uses: astral-sh/setup-uv@v10.2.0
+      - name: lint gate (md + ts + rs + py, defined in root package.json)
+        # Build-free by design: `check:ts` is Biome only. The tsc type gate
+        # resolves the shells' imports of the generated bindings (dist/),
+        # so it runs in the node job after both glues are built.
+        run: |
+          pnpm install
+          pnpm check
+
+  # Rust matrix: native platforms only (macOS only Apple Silicon, Intel x64
+  # dropped). wasm32 lives in its own `wasm` job below: it shares no step
+  # with the native cells (no cargo test; needs wasm target + wasm-pack +
+  # pnpm), so keeping it here meant an `if` on nearly every step.
+  rust:
+    name: rust (${{ matrix.target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: linux-x64
+            os: ubuntu-latest
+          - target: linux-arm64
+            os: ubuntu-26.04-arm
+          - target: windows-x64
+            os: windows-latest
+          - target: darwin-arm64
+            os: macos-latest
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: mozilla-actions/sccache-action@v0.0.11
+      - name: cargo test
+        run: cargo test --workspace
+      - name: llvm-cov (100% floor, ubuntu x64 only)
+        # Single cell: llvm-cov is weak on Windows/MSVC, and coverage of
+        # the same code + tests is host-comparable. Binding crates
+        # (python, typescript native/wasm) need a JS/Python runtime and
+        # are covered by pytest/vitest in their own jobs (spec-sanctioned
+        # exclusion, structurally unreachable under cargo test).
+        if: matrix.target == 'linux-x64'
+        run: |
+          cargo install cargo-llvm-cov --locked
+          cargo llvm-cov --workspace --fail-under-lines 100 \
+            --ignore-filename-regex '(python|typescript/(native|wasm))/src/lib\.rs'
+
+  # wasm: browser is the primary target -> first-class job, zero
+  # conditionals, full OS matrix: wasm codegen differs per host toolchain,
+  # so build + vitest run on every platform (installer scripts cover
+  # linux/macOS/windows).
+  wasm:
+    name: wasm (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-26.04-arm, windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          target: wasm32-unknown-unknown
+      - name: install binaryen (wasm-opt, latest)
+        # Always latest: wasm-pack's built-in download is stuck on binaryen
+        # 117; pinning a version here would rot (AGENTS.md dependency policy).
+        # GITHUB_TOKEN: authenticated API calls (runners share IPs; the
+        # anonymous 60 req/h quota gets exhausted by parallel jobs).
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/install_binaryen.sh
+      - name: install wasm-pack (latest official binary)
+        # cargo install compiles for minutes; official prebuilt tarballs.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/install_wasm_pack.sh
+      - uses: pnpm/action-setup@v6
+      - name: wasm build + vitest (wasm artifacts)
+        # bash: keeps `ls -la` working on Windows (pwsh has no -la).
+        shell: bash
+        run: |
+          pnpm install
+          pnpm -C typescript build:wasm
+          # Diagnostics: vitest resolves ../dist/wasm-web/netwave_wasm.js;
+          # list it so a missing-artifact failure names what build:wasm left.
+          ls -la typescript/dist/wasm-web
+          pnpm -C typescript test:wasm --coverage
+      - name: install Chromium (headless shell only)
+        # The real-browser suite (ironclad rule 8: main thread has no wasm
+        # can only be proven in a REAL browser) runs headless, so the
+        # headless shell suffices.
+        run: pnpm -C typescript exec playwright install --only-shell chromium
+      - name: vitest (real browser, coverage 100)
+        run: pnpm -C typescript test:browser --coverage
+
+  # Python matrix: ubuntu runs the floor (3.10) + latest (3.14);
+  # windows/macos run latest only — the point there is the platform ABI
+  # (.so/.pyd/.dylib + zero-copy base object), not the version spread.
+  python:
+    name: python (${{ matrix.os }}, ${{ matrix.python-version }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            python-version: "3.10"
+          - os: ubuntu-latest
+            python-version: "3.14"
+          - os: windows-latest
+            python-version: "3.14"
+          - os: macos-latest
+            python-version: "3.14"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      # maturin compiles the crate: ubuntu/macos runners ship rust
+      # preinstalled, windows does not — install it explicitly.
+      - uses: dtolnay/rust-toolchain@stable
+      # pinned full tag: setup-uv publishes no floating major tag (v10)
+      - uses: astral-sh/setup-uv@v10.2.0
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: sync + build + test
+        working-directory: python
+        run: |
+          uv sync
+          uv run maturin develop
+          uv run pytest --cov=netwave --cov-fail-under=100
+
+  # Node matrix: ubuntu runs the floor (22) + latest (26);
+  # windows/macos run latest only — the point there is the platform ABI
+  # (.node addon + napi external zero-copy), not the version spread.
+  # Re-enabled 2026-09-26 after the typescript manual review landed.
+  node:
+    name: node (${{ matrix.os }}, ${{ matrix.node-version }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            node-version: "22"
+          - os: ubuntu-latest
+            node-version: "26"
+          - os: windows-latest
+            node-version: "26"
+          - os: macos-latest
+            node-version: "26"
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable # required on windows
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: pnpm
+      - uses: astral-sh/setup-uv@v10.2.0
+      - run: pnpm install
+      - name: install wasm toolchain
+        # Own step: the installers append to GITHUB_PATH, which only
+        # takes effect for *later* steps — build:wasm must not share
+        # this step (its PATH export dies with the bash subprocess).
+        # GITHUB_TOKEN: authenticated API calls (see wasm job).
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          rustup target add wasm32-unknown-unknown
+          bash scripts/install_wasm_pack.sh
+          bash scripts/install_binaryen.sh
+      - name: wasm-pack build
+        # Before build:native: build:native ends with tsdown, whose dts
+        # pass resolves BOTH generated glues (napi + wasm-web). Building
+        # wasm first keeps the browser shell's dts fully typed (a missing
+        # wasm glue makes tsdown emit `any` for the re-exported verbs).
+        run: pnpm -C typescript build:wasm
+      - name: napi build (+ tsdown shells)
+        run: pnpm -C typescript build:native
+      - name: tsc type gate (after both glues exist)
+        # Lives here, not in the lint job: the shells import the generated
+        # bindings from dist/, so the type gate needs napi + wasm glue
+        # present. Runs once per OS matrix cell on the newest Node.
+        if: matrix.node-version == '26'
+        run: pnpm -C typescript typecheck
+      - name: dts glue typing check (LL-034)
+        # tsdown silently emits `any` when a generated glue is missing at
+        # dts time; fail fast instead of shipping degraded types.
+        shell: bash
+        run: |
+          if grep -q ": any" typescript/dist/index.browser.d.mts typescript/dist/index.node.d.mts; then
+            echo "::error::shell dts has any-typed exports - glues were not built before tsdown (LL-034)"
+            exit 1
+          fi
+      - name: vitest (native, coverage 100)
+        run: pnpm -C typescript test:native --coverage
+      - name: vitest (wasm, coverage 100)
+        run: pnpm -C typescript test:wasm --coverage
+      - name: cross-binding compare (native bit-exact + wasm tolerance + tamper self-check)
+        run: |
+          uv sync --project python
+          (cd python && uv run maturin develop)
+          # check:cross includes the built-in anti-tautology self-check
+          # (perturbs each non-reference end in memory, requires detection)
+          pnpm check:cross
+
+  # criterion baseline: regressions >20% fail (ci-matrix spec)
+  bench:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: dtolnay/rust-toolchain@stable
+      - name: bench vs previous baseline
+        run: |
+          # Compare against the default 'base' baseline if one exists
+          # (first run has none -> no comparison data, gate passes).
+          # Cross-commit persistence (cache or committed baseline) lands
+          # with the real data model; until then this only measures
+          # run-to-run noise.
+          cargo bench --bench scaffold -- --baseline-lenient=base || true
+          cargo bench --bench scaffold -- --save-baseline=ci
+          # Fail if current regressed >20% against the saved baseline.
+          python3 scripts/bench_gate.py target/criterion

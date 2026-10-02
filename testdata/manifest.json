@@ -1,0 +1,10 @@
+{
+  "schema_version": 0,
+  "note": "阶段 0 骨架；golden/容差正式化属阶段 1（见测试规划）。",
+  "core_tol": {
+    "status": "placeholder",
+    "relative": 1e-12,
+    "python_relative": 0.0,
+    "note": "wasm 跨实现相对容差占位；阶段 1 按 benchmark 正式化。python_relative=0：同一块内存读回，逐 bit 相等。"
+  }
+}

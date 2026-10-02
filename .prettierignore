@@ -1,0 +1,11 @@
+# Third-party generated skill files — not covered by repo style rules.
+.claude/
+# Dependency / build artifacts.
+node_modules/
+target/
+target-wasm/
+dist/
+coverage/
+.venv/
+# Lockfiles are machine-generated.
+pnpm-lock.yaml

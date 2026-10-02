@@ -1,0 +1,20 @@
+{
+  // Extensions this repo expects. VS Code prompts to install these when
+  // someone opens the workspace fresh (replaces manual install hunting).
+  "recommendations": [
+    // Rust: IDE analysis for core/ + binding crates (pinned toolchain
+    // in rust-toolchain.toml; extraEnv in settings.json feeds pyo3).
+    "rust-lang.rust-analyzer",
+    // Markdown: this repo lints all md with markdownlint rules
+    // (.markdownlint.jsonc shared with the CLI).
+    "davidanson.vscode-markdownlint",
+    // Vitest: run/debug the typescript test suites from the sidebar
+    // (vitest.native.config.ts / vitest.wasm.config.ts).
+    "vitest.explorer",
+    // Python: pytest runner + interpreter selection for python/.venv.
+    "ms-python.python",
+    // TOML: Cargo.toml / pyproject.toml syntax support.
+    "tamasfe.even-better-toml"
+  ],
+  "unwantedRecommendations": []
+}

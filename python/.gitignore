@@ -1,0 +1,9 @@
+# Python binding build/test artifacts (root .gitignore covers these too;
+# this file scopes them explicitly to this directory).
+.venv/
+__pycache__/
+target/
+.coverage
+.pytest_cache/
+*.egg-info/
+dist/

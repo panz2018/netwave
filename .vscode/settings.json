@@ -1,0 +1,19 @@
+{
+  // Sandbox-only env fixes, scoped to this workspace (never leaks to
+  // other machines or CI):
+  // 1. This shell carries a stale VIRTUAL_ENV=/lsiopy (deleted), which
+  //    breaks pyo3 build scripts. Point both vars at the uv venv via
+  //    ${workspaceFolder} so the values stay portable.
+  // 2. uv-managed CPython's libpython is not on the loader path; the
+  //    stable symlink dir is added to LD_LIBRARY_PATH. On machines where
+  //    the dir does not exist the entry is silently ignored (harmless).
+  "terminal.integrated.env.linux": {
+    "VIRTUAL_ENV": "${workspaceFolder}/python/.venv",
+    "PYO3_PYTHON": "${workspaceFolder}/python/.venv/bin/python",
+    "LD_LIBRARY_PATH": "${env:HOME}/.local/share/uv/python/cpython-3.14-linux-aarch64-gnu/lib:${env:LD_LIBRARY_PATH}"
+  },
+  "rust-analyzer.cargo.extraEnv": {
+    "VIRTUAL_ENV": "${workspaceFolder}/python/.venv",
+    "PYO3_PYTHON": "${workspaceFolder}/python/.venv/bin/python"
+  }
+}
