@@ -18,6 +18,6 @@ Rules:
 
 ## Registry
 
-| File                                        | Source URL | Upstream version | copied/generated | License |
-| ------------------------------------------- | ---------- | ---------------- | ---------------- | ------- |
-| _(none yet — golden data lands in phase 1)_ |            |                  |                  |         |
+| File                                   | Source URL | Upstream version | copied/generated | License |
+| -------------------------------------- | ---------- | ---------------- | ---------------- | ------- |
+| _(none yet — golden data lands later)_ |            |                  |                  |         |

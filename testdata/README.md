@@ -10,18 +10,18 @@ test time.
 - `manifest.json` — the single tolerance + case contract (governance spec
   rule 3: tolerances live only here)
 - `LICENSE-NOTES.md` — provenance and licenses of borrowed samples
-- `golden/` — skrf-generated expected outputs (added in phase 1;
-  phase 0 has the manifest only)
+- `golden/` — skrf-generated expected outputs (added when golden data
+  lands; the scaffold has the manifest only)
 
 ## manifest.json contract
 
-- `schema_version`: manifest schema version (phase 0 is a skeleton, `0`).
+- `schema_version`: manifest schema version (skeleton is `0`).
 - `core_tol`: default tolerances for the unit/property layers inside the
-  Rust core (`relative: 1e-12`, placeholder until phase 1) plus
+  Rust core (`relative: 1e-12`, placeholder until golden data lands) plus
   `python_relative: 0.0` — bit-exact, because the python roundtrip views
   the same memory with no arithmetic.
 - `cases[]`: per-case `input` / `op` / `golden` / `shape` / `tol_abs` /
-  `tol_rel` — added in phase 1 with the golden files. wasm cases will
+  `tol_rel` — added with the golden files. wasm cases will
   declare `tol_rel` only (absolute tolerances false-positive on large
   values).
 - Binary format contract: every `.bin` is raw little-endian f64 pairs
@@ -30,12 +30,12 @@ test time.
 
 ## Who generates, who consumes
 
-| Role     | Path                                   | Notes                         |
-| -------- | -------------------------------------- | ----------------------------- |
-| generate | `gen_golden.py` (phase 1, offline, uv) | only place Python + skrf runs |
-| consume  | `core/tests/golden.rs`                 | `std::fs::read` → `&[f64]`    |
-| consume  | `python/tests/`                        | `np.fromfile(dtype='<c16')`   |
-| consume  | `typescript/` vitest                   | `new Float64Array(buf)`       |
+| Role     | Path                          | Notes                         |
+| -------- | ----------------------------- | ----------------------------- |
+| generate | `gen_golden.py` (offline, uv) | only place Python + skrf runs |
+| consume  | `core/tests/golden.rs`        | `std::fs::read` → `&[f64]`    |
+| consume  | `python/tests/`               | `np.fromfile(dtype='<c16')`   |
+| consume  | `typescript/` vitest          | `new Float64Array(buf)`       |
 
 Comparison rule and cross-binding tiers (native bit-exact, wasm
 relative) are defined in the governance spec rule 3
