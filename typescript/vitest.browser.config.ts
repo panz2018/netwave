@@ -1,6 +1,6 @@
 // Real-browser test line (vitest browser mode + playwright, Chromium only
-// — governance spec ironclad rule 8 scenario "主线程无 wasm" needs a REAL
-// browser; node simulation cannot prove it). Same test code as the node
+// — governance spec ironclad rule 8 scenario "no wasm on the main thread"
+// needs a REAL browser; node simulation cannot prove it). Same test code as the node
 // wasm suite: test/wasm/** runs unmodified here; the harness detects the
 // native Worker and wraps it instead of faking scopes.
 import { playwright } from "@vitest/browser-playwright";

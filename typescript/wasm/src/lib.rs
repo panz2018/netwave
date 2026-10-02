@@ -1,11 +1,11 @@
-//! netwave wasm binding (wasm-bindgen, scaffold phase 0).
+//! netwave wasm binding (wasm-bindgen).
 //!
 //! Zero-copy: core allocates a `Vec<Complex64>`; `mem::forget` leaks it
 //! into wasm linear memory and the function returns
 //! `{buffer: memory.buffer, byteOffset: ptr, length}`. The JS shell cuts a
 //! view directly with `new Float64Array(buffer, byteOffset, length*2)` —
-//! no copy. The leak is acceptable in phase 0 (scaffold, tiny call volume);
-//! an explicit arena with reclamation arrives in phase 6 (design.md).
+//! no copy. The leak is acceptable at scaffold call volume; an explicit
+//! arena with reclamation replaces it later.
 
 use js_sys::{Object, Reflect, WebAssembly::Memory};
 use wasm_bindgen::prelude::*;

@@ -43,8 +43,8 @@ const ready = (async () => wasmInit({ module_or_path: await wasmSource() }))();
 const hosted = new Map<Handle, Float64Array>();
 let nextHandle: Handle = 1;
 
-// `frequency` stays empty until the real data model (phase 2) populates it;
-// it still rides every reply so the piggyback contract holds from day one.
+// `frequency` stays empty until the real data model populates it; it still
+// rides every reply so the piggyback contract holds from day one.
 const emptyFreq = (): Float64Array => new Float64Array(0);
 
 const cmds: Record<string, (args: unknown[]) => Promise<NetwaveBuffer | number | Handle>> = {

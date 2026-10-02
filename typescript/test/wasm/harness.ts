@@ -21,8 +21,8 @@ export interface Harness {
   shellPosts(): number;
   /** Count of Worker instances constructed. */
   workerInstances(): number;
-  /** The shell's singleton worker (globalThis registry, design.md
-   * "worker 单例语义"). Available after the shell's first await. */
+  /** The shell's singleton worker (globalThis registry). Available after
+   * the shell's first await. */
   singleton(): { postMessage: (m: WorkerRequest, t?: ArrayBuffer[]) => void } | undefined;
   /** Subscribe to worker replies (all of them); returns unsubscribe. */
   onReply(fn: (res: WorkerResponse) => void): () => void;

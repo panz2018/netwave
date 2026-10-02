@@ -1,4 +1,4 @@
-//! netwave Node binding (napi-rs, scaffold phase 0).
+//! netwave Node binding (napi-rs).
 //!
 //! Zero-copy: core allocates a `Vec<Complex64>`; the bytes' ownership is
 //! moved into a V8 external `Buffer` via `Buffer::from(Vec<u8>)` (no copy;

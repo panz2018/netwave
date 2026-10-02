@@ -10,8 +10,7 @@
 // one page structurally share ONE worker (never a second one).
 import type { Handle, NetwaveBuffer, WorkerRequest, WorkerResponse } from "./types.js";
 
-/** The shell's singleton worker, registered on globalThis (design.md
- * "worker 单例语义"). */
+/** The shell's singleton worker, registered on globalThis. */
 declare global {
   var __netwaveWorker: Worker | undefined;
 }

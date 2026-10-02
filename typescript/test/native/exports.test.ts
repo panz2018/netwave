@@ -53,8 +53,8 @@ describe("exports conditional dispatch", () => {
   it("engines node>=22, no UMD", () => {
     expect(pkg.engines.node).toBe(">=22");
     // Platform split packages (netwave-{os}-{arch}) are created at publish
-    // time; phase-0 ships the .node addon inside dist/ and must NOT list
-    // them as optionalDependencies — unpublished names break CI's
+    // time; the scaffold ships the .node addon inside dist/ and must NOT
+    // list them as optionalDependencies — unpublished names break CI's
     // frozen-lockfile install.
     expect(pkg.optionalDependencies).toBeUndefined();
     expect(JSON.stringify(pkg)).not.toContain("umd");

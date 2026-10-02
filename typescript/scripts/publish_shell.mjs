@@ -6,7 +6,7 @@
 // compare scripts consume.
 // The src/ sources keep "../dist/" and ".ts" specifiers so vitest can run
 // against src/ directly (coverage is measured there).
-import { readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const outputs = [
@@ -37,6 +37,13 @@ for (const name of outputs) {
 // at the shell matching its module format so TS resolves the right twin.
 writeFileSync(join("dist", "index.d.mts"), 'export * from "./index.browser.mjs";\n');
 writeFileSync(join("dist", "index.d.ts"), 'export * from "./index.node.cjs";\n');
+
+// Ship both license full texts inside the package (license-compliance
+// spec): npm's `files` cannot reference ../, so copy the root licenses into
+// the package dir where `files` lists them.
+for (const lic of ["LICENSE-MIT", "LICENSE-APACHE"]) {
+  copyFileSync(join("..", lic), lic);
+}
 
 // Full paths, matching the per-end dump scripts' output format
 // ("dumped <absolute path>", one per line).

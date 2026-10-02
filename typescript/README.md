@@ -6,8 +6,8 @@ Single package, dual delivery: `node` resolves to the napi native addon,
 never recompute values (governance spec rule: bindings only move memory; see
 [`openspec/specs/project-governance/spec.md`](../openspec/specs/project-governance/spec.md)).
 
-Current stage: phase-0 scaffold (`fillPattern` / `readElement` roundtrip)
-on the resident-worker architecture (governance spec ironclad rule 8).
+Current stage: scaffold (`fillPattern` / `readElement` roundtrip) on the
+resident-worker architecture (governance spec ironclad rule 8).
 
 Singleton worker: in browsers, all data and compute live inside ONE resident
 worker (`getWorker()` registers it on `globalThis`); the main thread never
