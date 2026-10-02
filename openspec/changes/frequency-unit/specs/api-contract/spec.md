@@ -1,5 +1,20 @@
 # Spec Delta
 
+## ADDED Requirements
+
+### Requirement: 跨端词汇零手抄
+
+跨端共享的枚举词汇与常量表 MUST 在 core 定义一次，经绑定宏反射（pyo3 `add_class`、
+napi/wasm-bindgen 生成 `.d.ts`）或 core 透传函数自我发现地暴露到三端。py/ts 源码
+与手写声明文件 MUST NOT 手抄成员列表、字符串表或数值表；新增词汇 MUST 只改 core
+一处，三端经重新构建自动一致。
+
+#### Scenario: 加词汇只改 core
+
+- **WHEN** 新增一个枚举变体
+- **THEN** 改动仅发生在 core enum（及其穷尽数值匹配）；三端重新构建后成员集合
+  自动一致，绑定壳零改动
+
 ## MODIFIED Requirements
 
 ### Requirement: 频率轴主数据恒为 f64 Hz

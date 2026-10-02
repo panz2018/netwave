@@ -17,8 +17,10 @@
 - THz 入表（当前支持）；Touchstone 文件头不支持 THz 属阶段 2 解析层约束，与本词汇定义无关。
 - py/ts 绑定零手抄：pyo3 `add_class` 一行 + napi/wasm-bindgen feature 门控 + re-export
   一行；成员与字符串靠运行时反射与构建期生成的 `.d.ts`/`.pyi` 自我发现。
+- core 提供 `frequency_units()` 透传（`iter().map(as_ref)`，零词汇内容），三端同名
+  导出（JS camelCase `frequencyUnits()`），作为 py/ts 列出全部单位的唯一自我发现通道。
 - 错误契约：core `Error::UnknownFrequencyUnit` → Python `ValueError` / Node+浏览器
-  `TypeError`（各端内置异常类，不自定义异常层级）。
+  `TypeError`（各端内置异常类，不自定义异常层级；映射随首个字符串入参入口落地）。
 - 落盘一律规范字符串（`as_ref`），数字 enum 只活在单次页面 `postMessage`，永不持久化。
 
 ## Capabilities

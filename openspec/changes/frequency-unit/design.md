@@ -19,10 +19,13 @@
 
 ### 词汇源头用 enum + strum，不用字符串数组或字典
 
-`enum FrequencyUnit { Hz, kHz, MHz, GHz, THz }` 加 `#[derive(AsRefStr, EnumIter, EnumString)]`
-加 `#[strum(ascii_case_insensitive)]`。变体名即规范拼写，字符串"Hz"全仓只出现一次
-（enum 定义处）。`iter()`/`as_ref()`/`FromStr` 由 strum 生成，替代手写
-`ALL`/`as_str`/`FromStr`。
+`enum FrequencyUnit { Hz, kHz, MHz, GHz, THz }` 加 `#[derive(AsRefStr, EnumIter)]`。
+变体名即规范拼写，字符串"Hz"全仓只出现一次（enum 定义处）。`iter()`/`as_ref()`
+由 strum 生成，替代手写 `ALL`/`as_str`。
+
+strum `EnumString` 弃用：其生成的 `ParseError` 不含输入原文，不满足错误契约。
+`FromStr` 手写（`iter()`+`as_ref()` case-insensitive 匹配，失败当场绑原文进
+`Error::UnknownFrequencyUnit`），匹配零词汇重复。
 
 - 备选：`const [&str; 5]` 数组——词汇与 enum 成两份，漂移面，否。
 - 备选：`HashMap`/`phf` 字典——Rust `const` 造不了 `HashMap`，引 `phf` 不值，否。
@@ -42,18 +45,23 @@
 
 - 备选：napi `string_enum`——JS 值 `"kHz"` 更可读，但与 wasm 端不对称，否。
 
-### 绑定层 feature 门控，core enum 本体挂属性
+### 绑定层 feature 门控，core 本体挂属性
 
-core enum 用 `#[cfg_attr(feature = "python", pyclass)]` 等直接挂三端属性，glue 仅
-`add_class`/re-export 一行。
+core enum 与 `frequency_units()` 用 `#[cfg_attr(feature = "python", pyclass)]` 等
+直接挂三端属性，定义均在 `core/src/frequency.rs`（与 enum 同文件同域）；napi/
+wasm-bindgen 链接期自动收集注册，绑定 crate 零代码；py 仅 `add_class`/
+`add_function` 各一行。JS 名由宏自动 camelCase（`frequencyUnits()`）。
 
 - 备选：`python/src/lib.rs` 另包 `PyFrequencyUnit`——变体重抄第二遍，漂移温床，否。
+- 备选：透传函数写在绑定 crate 各写一份——同一逻辑三处，否。
 
-### 错误用各端内置异常
+### 错误用各端内置异常，随入口落地
 
 core `enum Error { UnknownFrequencyUnit(String) }` + `impl From<Error> for PyErr`
 （→`PyValueError`）；node `env.throw_type_error`；wasm-bindgen 对 `Result<T, E: Debug>`
 自动 throw。不自定义异常层级（YAGNI，将来需精确捕获再走 OpenSpec 变更升格）。
+本 change 无字符串入参公开入口（解析在 core 内部），映射实现随阶段 1/2 首个
+字符串入参入口落地，避免无人可调的死代码（铁律七）。
 
 ## Risks / Trade-offs
 
@@ -66,9 +74,10 @@ core `enum Error { UnknownFrequencyUnit(String) }` + `impl From<Error> for PyErr
 
 ## Migration Plan
 
-阶段 0 脚手架期引入：加 strum 依赖 → 写 enum + match + Error → 三端 glue 注册 →
-生成 `.pyi`/`.d.ts` → exports 测试 + cross_compare 对拍。无存量数据，无回滚负担；
-若 strum 与工具链冲突，回退到手写 `as_ref`/`iter`（保留 enum 单源不变）。
+阶段 0 脚手架期引入：加 strum 依赖 → 写 enum + match + FromStr + Error +
+`frequency_units()` → 三端 glue 注册 → 生成 `.pyi`/`.d.ts` → exports 测试 +
+cross_compare 对拍。无存量数据，无回滚负担；若 strum 与工具链冲突，回退到手写
+`as_ref`/`iter`（保留 enum 单源不变）。
 
 ## Open Questions
 

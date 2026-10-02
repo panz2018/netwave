@@ -52,24 +52,39 @@ py/ts，仅供 `Frequency.f_scaled` 内部消费。跨端倍率一致性容差�
 
 #### Scenario: 三端成员集合相等
 
-- **WHEN** 分别取 Python `vars(FrequencyUnit)` 键集合、node 与 wasm `.d.ts` 成员集合
-- **THEN** 三者与 core enum 变体集合相等；任一构建产物过期即 CI 红
+- **WHEN** 分别调用 Python `netwave.frequency_units()`、node 与浏览器
+  `frequencyUnits()`
+- **THEN** 三者返回集合与 core enum 变体集合相等；任一构建产物过期即 CI 红
 
 #### Scenario: 非法成员 IDE 报错
 
 - **WHEN** 在 py/ts 写 `FrequencyUnit.Hzz`
 - **THEN** 类型检查器（pyright / tsc）报"成员不存在"错误
 
+### Requirement: 列出全部单位
+
+core MUST 提供 `frequency_units()`——`FrequencyUnit::iter()` 映射 `as_ref()` 的
+一行透传（零词汇内容），经绑定宏三端同名导出（JS 端 camelCase `frequencyUnits()`），
+返回规范拼写字符串数组。这是 py/ts 列出全部单位的唯一自我发现通道；绑定 crate
+MUST NOT 自行枚举成员或过滤反向映射。
+
+#### Scenario: 三端列出五单位
+
+- **WHEN** 调用 Python `netwave.frequency_units()` 或 node/浏览器 `frequencyUnits()`
+- **THEN** 均返回 `['Hz','kHz','MHz','GHz','THz']`，与 core `iter()` 顺序一致
+
 ### Requirement: 未知单位错误契约
 
-core 解析未知单位字符串（`FromStr` 失败）MUST 返回 `Error::UnknownFrequencyUnit`，
-错误消息含非法输入原文。该错误映射到各端 MUST 用内置异常类：Python `ValueError`、
-Node `TypeError`、浏览器 `TypeError`。MUST NOT 自定义跨端异常类层级。
+core 解析入口 MUST 是手写 `impl FromStr`（strum `EnumString` 生成的 `ParseError`
+不含输入原文，故弃用），失败 MUST 返回 `Error::UnknownFrequencyUnit`，错误消息
+含非法输入原文。该错误映射到各端 MUST 用内置异常类：Python `ValueError`、
+Node `TypeError`、浏览器 `TypeError`；MUST NOT 自定义跨端异常类层级。映射实现
+随首个字符串入参入口落地（阶段 1/2），本 change 在 core 层验证错误含原文。
 
 #### Scenario: 解析非法单位报错并含原文
 
-- **WHEN** 以 `"Hzz"` 触发单位解析
-- **THEN** 抛错且消息含 `"Hzz"`；Python 端为 `ValueError`、JS 端为 `TypeError`
+- **WHEN** `"Hzz".parse::<FrequencyUnit>()` 失败
+- **THEN** 返回 `Error::UnknownFrequencyUnit` 且错误消息含 `"Hzz"`
 
 ### Requirement: 传输与存储表示分离
 
