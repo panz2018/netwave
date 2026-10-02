@@ -6,7 +6,7 @@ rust-version = "1.98"
 publish = false
 license = "MIT OR Apache-2.0"
 license-file = "../LICENSE-MIT"
-description = "netwave core: network scattering-parameter math (scaffold phase 0)"
+description = "netwave core: network scattering-parameter math (scaffold)"
 
 [dependencies]
 num-complex = "0.4"

@@ -6,10 +6,10 @@ deliberately thin transports over this crate — they must never recompute value
 (governance spec rule: bindings only move memory; see
 [`openspec/specs/project-governance/spec.md`](../openspec/specs/project-governance/spec.md)).
 
-Current stage: phase-0 scaffold. The only public verb is `fill_pattern`, a
+Current stage: scaffold. The only public verb is `fill_pattern`, a
 predictable-pattern allocator whose sole purpose is to give the bindings real
 memory to pass around zero-copy. It is replaced by the real Network/SParameter
-data model in phase 2.
+data model later.
 
 ## Layout
 

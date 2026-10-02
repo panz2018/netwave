@@ -1,5 +1,5 @@
-//! criterion benchmark placeholder (task 2.3; real fill_pattern benchmarks
-//! arrive with the phase-2 data model).
+//! criterion benchmark placeholder (real fill_pattern benchmarks arrive
+//! with the real data model).
 use criterion::{Criterion, criterion_group, criterion_main};
 
 fn placeholder(c: &mut Criterion) {

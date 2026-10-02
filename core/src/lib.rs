@@ -1,4 +1,4 @@
-//! netwave core (scaffold phase 0).
+//! netwave core.
 //!
 //! # Interleaved complex layout (governance spec rule 1)
 //!
@@ -12,11 +12,10 @@
 //!
 //! # Temporary API notice
 //!
-//! [`fill_pattern`] is a phase-0 scaffold: its only purpose is to give
-//! the three bindings real memory to pass around and a predictable
-//! pattern to assert against. It is replaced by the real data model
-//! (Network/SParameter) in phase 2 and is not part of the long-term
-//! contract.
+//! [`fill_pattern`] is scaffold-only: its purpose is to give the three
+//! bindings real memory to pass around and a predictable pattern to assert
+//! against. It is not part of the long-term contract (the real data model
+//! — Network/SParameter — replaces it).
 
 use num_complex::Complex64;
 
