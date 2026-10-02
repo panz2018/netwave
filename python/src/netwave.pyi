@@ -1,4 +1,4 @@
-"""Type stubs for the netwave extension module (scaffold phase 0)."""
+"""Type stubs for the netwave extension module."""
 
 import numpy as np
 import numpy.typing as npt

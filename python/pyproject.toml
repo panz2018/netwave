@@ -5,11 +5,11 @@ build-backend = "maturin"
 [project]
 name = "netwave"
 version = "0.0.1"
-description = "Network scattering-parameter math (PyO3 bindings, scaffold phase 0)"
+description = "Network scattering-parameter math (PyO3 bindings, scaffold)"
 requires-python = ">=3.10"
 license = "MIT OR Apache-2.0"
-# license full texts live at repo root; maturin bundles them at wheel
-# build time (phase 1) via the sdist, not by path here.
+# license full texts live at repo root; the wheel build copies them into
+# this dir first (see python/README) so maturin bundles both into the wheel.
 dependencies = ["numpy>=2.0"]
 
 [dependency-groups]

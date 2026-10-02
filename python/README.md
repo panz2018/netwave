@@ -5,9 +5,9 @@ PyO3 binding over the Rust core (`../core`): a thin transport that hands numpy a
 (governance spec rule: bindings only move memory; see
 [`openspec/specs/project-governance/spec.md`](../openspec/specs/project-governance/spec.md)).
 
-Current stage: phase-0 scaffold. Two verbs: `fill_pattern` (allocate + view) and
+Current stage: scaffold. Two verbs: `fill_pattern` (allocate + view) and
 `read_element` (read back through the same memory), replaced by the real data
-model in phase 2.
+model later.
 
 ## Layout
 

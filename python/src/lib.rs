@@ -1,4 +1,4 @@
-//! netwave Python binding (scaffold phase 0, final borrowed-view form).
+//! netwave Python binding (borrowed-view form).
 //!
 //! Zero-copy end state: core allocates the memory; a `#[pyclass] Owner` holds
 //! it and is attached as the returned array's base object — the ndarray has
