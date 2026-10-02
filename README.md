@@ -21,10 +21,9 @@ milliseconds for a 50 MB s4p) and shares one buffer across all three
 language runtimes without copies. Byte layout is identical to scikit-rf
 `Network.s` (complex128), so interop is a reinterpret, not a conversion.
 
-Current stage: **phase-0 scaffold** — the only public verb is
-`fill_pattern`, a predictable-pattern allocator proving the zero-copy
-plumbing end to end. The real `Network` / `SParameter` data model lands in
-phase 2.
+Current stage: **scaffold** — the only public verb is `fill_pattern`, a
+predictable-pattern allocator proving the zero-copy plumbing end to end. The
+real `Network` / `SParameter` data model replaces it later.
 
 Building from source or contributing? See
 [CONTRIBUTING.md](CONTRIBUTING.md).

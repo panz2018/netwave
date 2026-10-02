@@ -233,7 +233,7 @@ jobs:
         run: pnpm -C typescript test:native --coverage
       - name: vitest (wasm, coverage 100)
         run: pnpm -C typescript test:wasm --coverage
-      - name: cross-binding 对拍（原生逐 bit + wasm 容差 + 篡改自检）
+      - name: cross-binding compare (native bit-exact + wasm tolerance + tamper self-check)
         run: |
           uv sync --project python
           (cd python && uv run maturin develop)
@@ -251,8 +251,9 @@ jobs:
         run: |
           # Compare against the default 'base' baseline if one exists
           # (first run has none -> no comparison data, gate passes).
-          # Cross-commit persistence (cache or committed baseline) is a
-          # phase-2 task; until then this only measures run-to-run noise.
+          # Cross-commit persistence (cache or committed baseline) lands
+          # with the real data model; until then this only measures
+          # run-to-run noise.
           cargo bench --bench scaffold -- --baseline-lenient=base || true
           cargo bench --bench scaffold -- --save-baseline=ci
           # Fail if current regressed >20% against the saved baseline.
