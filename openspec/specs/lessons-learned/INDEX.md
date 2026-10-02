@@ -45,4 +45,4 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-037 | ci         | 新增 test:* 必接进 CI，`check_ci.py` 已入门禁                  |
 | LL-038 | docs       | 模糊指令只执行最小明确项，不可逆操作须显式确认                 |
 | LL-039 | docs       | 注释只写当前契约事实，禁历史与路线图叙述                       |
-| LL-040 | ci         | 合并只走 PR 禁直推 main；PR 用 git credential helper 建        |
+| LL-040 | ci         | 合并只走 PR 禁直推 main；PR 用 git credential helper 建        |     | LL-041 | ci  | 钉版 toolchain 后组件要补装到激活工具链（rustup component add） |

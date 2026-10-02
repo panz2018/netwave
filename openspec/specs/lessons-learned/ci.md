@@ -17,6 +17,19 @@
   命令原样模拟；已知陷阱见 LL-011..LL-013
 - 复发检测：review 时核对 CI 改动 commit 前是否有本地模拟记录
 
+### LL-041 钉版 toolchain 后组件要补装到激活工具链
+
+- 犯过：`rust-toolchain.toml` 钉 1.98.1 后，lint job 里
+  `dtolnay/rust-toolchain@stable` + `components: rustfmt, clippy` 只装到
+  @stable，rustup 裸装激活的 1.98.1 不含组件，CI 报
+  `'cargo-fmt' is not installed for the toolchain '1.98.1'`（本地无此坑，
+  因为本地激活工具链早已带组件）
+- 规则：钉版后凡用 `@stable`/`@1.x` 形式 setup 的 job，后续必须补一步
+  `rustup component add <组件>`（作于当前激活工具链）；改 toolchain 钉版
+  属 LL-004 范畴，push 前逐 step 核对组件/目标解析到哪个工具链
+- 复发检测：review ci.yml 中 `dtolnay/rust-toolchain` 与
+  `rust-toolchain.toml` 共存且无 `rustup component add` 即打回
+
 ### LL-040 合并只走 PR，禁直推 main；PR 用 credential helper 建
 
 - 犯过：用户要求"提交PR合并进主分支"，agent 见 push 权限可用即
