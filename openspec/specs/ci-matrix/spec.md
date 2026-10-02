@@ -43,16 +43,23 @@ CI MUST 运行 criterion 基准 job（阶段 0 允许空基准/极小基准，�
 
 ### Requirement: 语言版本矩阵
 
-预编译二进制分发 MUST 在 CI 实测底线与最新两个版本：python job 跑
-Python 3.10（底线）与 3.14（最新 stable）双格；node job 跑 Node 22（底线
-LTS）与 26（最新 stable）双格。Rust MUST 只跑单一 stable（1.98，
-rust-toolchain.toml 钉死）——消费者自带 toolchain 编译，`rust-version`
-由 cargo 自动检查。
+语言版本轴与硬件平台轴是两个正交维度，须分别覆盖：
 
-#### Scenario: python/node 双版本格
+- **语言版本轴**（主 runner ubuntu 上跑底线 + 最新两格）：python job 跑
+  Python 3.10（底线）与 3.14（最新 stable）；node job 跑 Node 22（底线
+  LTS）与 26（最新 stable）。
+- **硬件平台轴**（各 OS 跑最新语言版本，验平台 ABI 而非版本 spread）：
+  python/node job 另在 windows-latest 与 macos-latest 各跑最新一格，
+  验证 `.so`/`.pyd`/`.dylib`/`.node` addon 与零拷贝 base object 的平台 ABI。
+
+Rust MUST 只跑单一 stable（`rust-toolchain.toml` 钉死当前 stable）——
+消费者自带 toolchain 编译，`rust-version` 由 cargo 自动检查。
+
+#### Scenario: python/node 版本格 + 平台格
 
 - **WHEN** PR 触发 `ci.yml`
-- **THEN** python job 矩阵含 3.10 与 3.14 两格、node job 矩阵含 22 与 26 两格，
+- **THEN** python job 在 ubuntu 含 3.10 与 3.14 两格、node job 在 ubuntu
+  含 22 与 26 两格；两者另在 windows/macos 各跑最新一格验 ABI，
   全部通过方可合并
 
 ### Requirement: 覆盖率门槛生效（铁律七）
@@ -63,6 +70,12 @@ Python 用 `pytest-cov --cov-fail-under=100`（阶段 0 python 侧仅胶水则�
 逐条标注），Node/wasm 用 vitest coverage `lines: 100` 阈值写进配置。
 结构性不可达代码 MUST 逐条标注豁免（`#[coverage(off)]` /
 `# pragma: no cover` / `/* v8 ignore start/stop */`，vitest v8 provider）并附理由。
+
+绑定 crate（python、typescript/native、typescript/wasm）从 Rust
+`cargo llvm-cov` job 排除（`--ignore-filename-regex`）属**工具作用域分离**
+而非批量豁免：这些 crate 依赖 JS/Python 运行时，无法在 `cargo test` 下执行，
+其产码由各自语言的覆盖率工具（pytest-cov / vitest）在自身 job 内独立
+100% 度量。逐条标注规则适用于**同一工具正在度量**的代码内的不可达分支。
 
 #### Scenario: 空 crate 即 100%
 
