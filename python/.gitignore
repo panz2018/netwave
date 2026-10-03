@@ -7,3 +7,14 @@ target/
 .pytest_cache/
 *.egg-info/
 dist/
+
+# Mixed-layout package dir (netwave/) mixes the hand-written public shell
+# (netwave/__init__.py — MUST stay tracked) with build artifacts dropped
+# beside it. Ignore only the artifacts, never the directory itself.
+# Compiled extension `maturin develop` drops into the source package;
+# rebuilt from Rust every build.
+netwave/*.so
+# Generated type stub (stub_gen output), regenerated before the wheel build
+# (order: maturin develop → stub_gen). Same category as the generated .d.ts
+# glue in the gitignored typescript/dist/.
+netwave/_netwave.pyi
