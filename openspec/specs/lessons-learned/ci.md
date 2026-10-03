@@ -71,6 +71,20 @@
 - 规则：release 查询步骤传 `GITHUB_TOKEN`；含表达式的 `env:` 用 block
 - 复发检测：可门禁化——yamllint/CI 审查规则
 
+### LL-048 跨平台步骤用 bash 子 shell 语义须钉 `shell: bash`
+
+- 犯过：node job 跨端步骤用 `(cd python && ...)` 隔离子 shell，Windows 默认
+  shell 是 PowerShell——其 `( )` 是子表达式非子 shell，第一个 `cd` 泄漏到父
+  作用域，第二个 `(cd python ...)` 解析成 `python/python` 报
+  `Cannot find path ...python\python`（ubuntu/macos 默认 bash 不暴露，仅
+  windows 格红）
+- 规则：凡 `run:` 依赖 bash 语义（子 shell `( )`、`[[ ]]`、数组、`$'...'`）
+  的步骤 MUST 显式 `shell: bash`；跨平台矩阵步骤不靠"默认 shell"——默认值随
+  OS 变（Windows=PowerShell）。同 LL-011（Windows GITHUB_PATH）同族：Windows
+  格专坑，本地 linux 复现不出
+- 复发检测：review ci.yml 中 `run:` 含 `(cd`/`[[`/`$'` 等 bash-only 语法且
+  无 `shell: bash` 即打回；可门禁化——CI 审查脚本扫 bash-only 构造
+
 ### LL-034 tsdown dts 需双 glue 先建
 
 - 犯过：ts-source-rewrite 把 tsdown 挂进 `build:native` 末尾，但 CI node job
