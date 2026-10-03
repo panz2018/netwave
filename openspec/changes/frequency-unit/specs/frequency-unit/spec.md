@@ -22,21 +22,27 @@ THz MUST 入表；Touchstone 文件头是否接受 `THZ` 属解析层约束，�
 
 #### Scenario: 绑定层无手抄词汇
 
-- **WHEN** grep `python/`、`typescript/src/` 源码（排除构建产物 `.pyi`/`.d.ts`）
-- **THEN** 无任何单位字符串字面量列表（`"kHz"` 等仅出现在 core 与构建期生成物）
+- **WHEN** grep `python/`、`typescript/src/` 源码（排除构建产物 `.pyi`/`.d.ts`
+  与测试目录 `python/tests/`、`typescript/test/`——测试以字面量断言契约属绊线，
+  core 改名时绊红测试即其职责，非手抄漂移面）
+- **THEN** 无任何单位字符串字面量列表（`"kHz"` 等仅出现在 core、构建期生成物
+  与测试绊线）
 
 ### Requirement: 倍率权威与穷尽性
 
 每个单位的倍率（换算到 Hz 的乘数）MUST 在 core 以穷尽匹配定义，值恰为
 $10^{0}/10^{3}/10^{6}/10^{9}/10^{12}$（SI 词头定义，精确无近似）。新增 enum 变体
 而未配倍率 MUST 导致编译失败（穷尽匹配强制）。倍率 MUST NOT 作为公开函数暴露给
-py/ts，仅供 `Frequency.f_scaled` 内部消费。跨端倍率一致性容差引用 manifest key
-`core_tol`（真值来源：SI 词头闭式定义，非 skrf golden）。
+py/ts，仅供 `Frequency.f_scaled` 内部消费。倍率是精确常量而非计算结果：跨端
+（core/py/ts）对拍 MUST 逐 bit `==` 相等，MUST NOT 引用 manifest 容差
+（`core_tol` 只约束计算后数值的跨平台相对容差，与精确常量比较是两回事，
+见 lessons-learned LL-042；真值来源：SI 词头闭式定义，非 skrf golden）。
 
 #### Scenario: 倍率值精确
 
 - **WHEN** 查询各变体倍率
-- **THEN** `Hz`→1、`kHz`→1e3、`MHz`→1e6、`GHz`→1e9、`THz`→1e12，逐值精确
+- **THEN** `Hz`→1、`kHz`→1e3、`MHz`→1e6、`GHz`→1e9、`THz`→1e12，逐值 `==`
+  精确相等（无容差）
 
 #### Scenario: 加变体漏配倍率编译失败
 
@@ -48,13 +54,16 @@ py/ts，仅供 `Frequency.f_scaled` 内部消费。跨端倍率一致性容差�
 `FrequencyUnit` MUST 经绑定宏从 core enum 自我发现地暴露到三端：Python 由 pyo3
 反射成员、Node 与浏览器由构建期生成的 `.d.ts` 提供成员名。三端 MUST NOT 手写成员
 列表、倍率或校验逻辑。py/ts 用户以 `FrequencyUnit.kHz` 形态访问，IDE MUST 能对
-不存在的成员（如 `FrequencyUnit.Hzz`）报类型错误。
+不存在的成员（如 `FrequencyUnit.Hzz`）报类型错误。浏览器端：`FrequencyUnit` 成员
+是 glue JS 里的数字常量对象，从 glue 直接 re-export（import 常量不实例化 wasm，
+铁律八不破）；需执行 wasm 的 `frequencyUnits()` MUST 经常驻 worker 命令暴露
+（async，同 `fillPattern` 形态），主线程 MUST NOT 执行 wasm。
 
 #### Scenario: 三端成员集合相等
 
-- **WHEN** 分别调用 Python `netwave.frequency_units()`、node 与浏览器
-  `frequencyUnits()`
-- **THEN** 三者返回集合与 core enum 变体集合相等；任一构建产物过期即 CI 红
+- **WHEN** 分别反射 Python `netwave.FrequencyUnit`、node 与浏览器壳 re-export 的
+  `FrequencyUnit` 成员集合
+- **THEN** 三者成员名集合与 core enum 变体集合相等；任一构建产物过期即 CI 红
 
 #### Scenario: 非法成员 IDE 报错
 
@@ -70,7 +79,8 @@ MUST NOT 自行枚举成员或过滤反向映射。
 
 #### Scenario: 三端列出五单位
 
-- **WHEN** 调用 Python `netwave.frequency_units()` 或 node/浏览器 `frequencyUnits()`
+- **WHEN** 调用 Python `netwave.frequency_units()`、node `frequencyUnits()`，或
+  浏览器端 `await frequencyUnits()`（经常驻 worker）
 - **THEN** 均返回 `['Hz','kHz','MHz','GHz','THz']`，与 core `iter()` 顺序一致
 
 ### Requirement: 未知单位错误契约
@@ -78,8 +88,10 @@ MUST NOT 自行枚举成员或过滤反向映射。
 core 解析入口 MUST 是手写 `impl FromStr`（strum `EnumString` 生成的 `ParseError`
 不含输入原文，故弃用），失败 MUST 返回 `Error::UnknownFrequencyUnit`，错误消息
 含非法输入原文。该错误映射到各端 MUST 用内置异常类：Python `ValueError`、
-Node `TypeError`、浏览器 `TypeError`；MUST NOT 自定义跨端异常类层级。映射实现
-随首个字符串入参入口落地（阶段 1/2），本 change 在 core 层验证错误含原文。
+Node `TypeError`、浏览器 `TypeError`；MUST NOT 自定义跨端异常类层级。本 change 无
+字符串入参公开入口，跨端映射属**契约冻结**（本 spec 定死映射关系，review 据此
+判定，不得偏离），实现随阶段 1/2 首个字符串入参入口落地；本 change 在 core 层
+验证错误含原文。
 
 #### Scenario: 解析非法单位报错并含原文
 

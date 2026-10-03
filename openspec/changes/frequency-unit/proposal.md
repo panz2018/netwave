@@ -17,8 +17,13 @@
 - THz 入表（当前支持）；Touchstone 文件头不支持 THz 属阶段 2 解析层约束，与本词汇定义无关。
 - py/ts 绑定零手抄：pyo3 `add_class` 一行 + napi/wasm-bindgen feature 门控 + re-export
   一行；成员与字符串靠运行时反射与构建期生成的 `.d.ts`/`.pyi` 自我发现。
+  `.pyi` 直接接入 pyo3-stub-gen 终态工具链（不再手写，提前兑现绑定壳省力化，
+  免二次迁移）。
 - core 提供 `frequency_units()` 透传（`iter().map(as_ref)`，零词汇内容），三端同名
-  导出（JS camelCase `frequencyUnits()`），作为 py/ts 列出全部单位的唯一自我发现通道。
+  导出（JS camelCase `frequencyUnits()`），作为 py/ts 列出全部单位的唯一自我发现
+  通道。浏览器端：`FrequencyUnit` 成员是 glue JS 数字常量，从 glue 直接 re-export
+  （import 常量不实例化 wasm）；`frequencyUnits()` 经常驻 worker 命令暴露（async，
+  同 `fillPattern` 形态），主线程不执行 wasm（铁律八）。
 - 错误契约：core `Error::UnknownFrequencyUnit` → Python `ValueError` / Node+浏览器
   `TypeError`（各端内置异常类，不自定义异常层级；映射随首个字符串入参入口落地）。
 - 落盘一律规范字符串（`as_ref`），数字 enum 只活在单次页面 `postMessage`，永不持久化。
@@ -39,11 +44,16 @@
 ## Impact
 
 - 代码：`core/src/frequency.rs`（新增 enum + 倍率 match + `Error`）、`core/Cargo.toml`
-  （新增 strum 依赖 + `python`/`node`/`browser` feature）、`python/src/lib.rs`
-  （`add_class`）、`typescript` 两份 glue re-export。
-- 依赖：新增 `strum`（+ 配套 `strum_macros`，同 minor），按仓库策略钉最新。
-- 文档：`Plan/总体计划.md` 待决清单对应条目销账；`api-contract` spec 收敛。
-- 绑定产物：`.pyi`（pyo3-stub-gen）、node/wasm `.d.ts`（构建期自动生成）。
+  （新增 strum 依赖 + `python`/`node`/`browser` feature 与 optional 绑定依赖
+  `pyo3`/`napi`/`wasm-bindgen`，pyo3 与 `python/Cargo.toml` 钉同 minor）、
+  `python/src/lib.rs`（`add_class`/`add_function`）、`typescript/native`、
+  `typescript/wasm` 与 `typescript/src`（含 `netwave.worker.ts` cmds 表）re-export。
+- 依赖：新增 `strum`（其 `derive` feature 自带配套 `strum_macros`，不单列），按仓库
+  策略钉最新；core optional 绑定依赖与各 glue crate 同 minor 配对。
+- 文档：`Plan/总体计划.md` 待决清单对应条目销账（含绑定壳省力化中 pyo3-stub-gen
+  提前兑现部分）；`api-contract` spec 收敛。
+- 绑定产物：`.pyi`（pyo3-stub-gen，删手写 `netwave.pyi`）、node/wasm `.d.ts`
+  （构建期自动生成）。
 
 ## Non-goals
 
@@ -53,3 +63,6 @@
 - 不做 Touchstone `#` 行单位白名单拒绝（阶段 2 解析层）。
 - 不自定义跨端异常类层级（用各端内置异常）。
 - 不引入 py/ts 侧任何单位表、倍率或校验逻辑。
+- 不改 worker 消息信封字段（api-contract spec 的 `{handle, method, args}` 措辞与
+  实现的 `{id, cmd, args}` 不一致属既有漂移：handle 本就在 args 内，信封形状与
+  有无对象无关；措辞修正另立小 change，不混入本 change）。

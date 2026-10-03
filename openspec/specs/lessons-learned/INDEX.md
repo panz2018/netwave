@@ -47,3 +47,4 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-039 | docs       | 注释只写当前契约事实，禁历史与路线图叙述                        |
 | LL-040 | ci         | 合并只走 PR 禁直推 main；PR 用 git credential helper 建         |
 | LL-041 | ci         | 钉版 toolchain 后组件要补装到激活工具链（rustup component add） |
+| LL-042 | core       | 精确常量比较逐 bit ==，不引用 core_tol（容差只管计算结果）      |

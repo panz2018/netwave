@@ -42,3 +42,12 @@
 - 犯过：无（预防性记录）
 - 规则：core 不独立发布，版本随 workspace 移动
 - 复发检测：review 检查 `core/Cargo.toml` 保留 `publish = false`
+
+### LL-042 精确常量比较不引用容差
+
+- 犯过：倍率（SI 词头 $10^{3n}$，f64 精确可表示）的测试曾引用 manifest
+  `core_tol` 相对容差，把逐 bit 精确断言放松成 1e-12
+- 规则：`core_tol` 只约束**计算后数值**的跨平台相对容差；精确常量
+  （词头倍率、整数形状等）跨端对拍 MUST 逐 bit `==`，MUST NOT 引用容差
+- 复发检测：review Spec 轴检查数值断言——引用容差者必为计算结果；
+  常量表测试断言中不得出现 `core_tol`
