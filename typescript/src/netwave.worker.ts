@@ -19,6 +19,7 @@
 // publish_shell.mjs rewrites glue specifiers in the dist output.
 import wasmInit, {
   fill_pattern as _wasmFill,
+  frequency_units as _wasmFrequencyUnits,
   read_element as _wasmRead,
 } from "../dist/wasm-web/netwave_wasm.js";
 import type { Handle, NetwaveBuffer, WorkerRequest, WorkerResponse } from "./types.ts";
@@ -47,7 +48,10 @@ let nextHandle: Handle = 1;
 // rides every reply so the piggyback contract holds from day one.
 const emptyFreq = (): Float64Array => new Float64Array(0);
 
-const cmds: Record<string, (args: unknown[]) => Promise<NetwaveBuffer | number | Handle>> = {
+const cmds: Record<
+  string,
+  (args: unknown[]) => Promise<NetwaveBuffer | number | Handle | string[]>
+> = {
   fillPattern: async (args) => {
     const [nfreq, nports] = args as [number, number];
     await ready;
@@ -89,6 +93,10 @@ const cmds: Record<string, (args: unknown[]) => Promise<NetwaveBuffer | number |
     }
     return _wasmRead(target, idx);
   },
+  frequencyUnits: async () => {
+    await ready;
+    return _wasmFrequencyUnits() as string[];
+  },
 };
 
 // The DOM lib types `self` as `Window` (postMessage requires targetOrigin);
@@ -107,8 +115,9 @@ workerScope.onmessage = async ({ data }: MessageEvent<WorkerRequest>) => {
   }
   try {
     const result = await fn(data.args);
-    if (typeof result === "object" && result !== null) {
-      // Buffer-bearing: transfer the result buffer back (zero-copy).
+    // Buffer-bearing results (NetwaveBuffer) transfer their buffer back;
+    // scalars and string arrays (frequencyUnits) ride the message as-is.
+    if (typeof result === "object" && result !== null && "buffer" in result) {
       workerScope.postMessage({ id: data.id, result }, [(result as NetwaveBuffer).buffer]);
     } else {
       workerScope.postMessage({ id: data.id, result });

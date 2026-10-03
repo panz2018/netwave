@@ -12,7 +12,7 @@ name = "netwave_native"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-netwave = { path = "../../core" }
+netwave = { path = "../../core", features = ["node"] }
 napi = { version = "3", features = ["napi9"] }
 napi-derive = "3"
 

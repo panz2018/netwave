@@ -6,3 +6,8 @@ dist/
 coverage/
 target/
 target-wasm/
+# napi build copies the crate's license-file (../../LICENSE-MIT) into the
+# package dir on every build. These are duplicates of the root licenses,
+# not source — never commit them.
+LICENSE-APACHE
+LICENSE-MIT

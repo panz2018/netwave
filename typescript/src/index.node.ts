@@ -7,8 +7,15 @@
 import {
   fillPattern as _napiFill,
   readElement as _napiRead,
+  FrequencyUnit,
+  frequencyUnits,
 } from "../dist/index.node.generated.mjs";
 import type { Handle, NetwaveBuffer } from "./types.js";
+
+// Vocabulary re-exports (spec: frequency-unit "zero hand-copy"): the enum
+// (numeric JS object) and the passthrough function come straight from the
+// napi-generated glue, never re-declared here.
+export { FrequencyUnit, frequencyUnits };
 
 /**
  * Allocate and fill an (nfreq, nports, nports) interleaved complex f64
@@ -67,7 +74,9 @@ export async function readElement(target: Handle | Float64Array, idx: number): P
 export const _fillPattern = (nfreq: number, nports: number): NetwaveBuffer => {
   const buf = _napiFill(nfreq, nports);
   return {
-    buffer: buf.buffer,
+    // napi external Buffers are always backed by a plain ArrayBuffer
+    // (never SharedArrayBuffer); the typed glue reports `ArrayBufferLike`.
+    buffer: buf.buffer as ArrayBuffer,
     byteOffset: 0,
     length: buf.byteLength / 16,
     shape: [nfreq, nports, nports],

@@ -16,8 +16,15 @@ describe("browser entry surface", () => {
     expect(syncHatches).toEqual([]);
   });
 
-  it("exports the async surface + upload/release handles", async () => {
+  it("exports the async surface + upload/release handles + vocabulary", async () => {
     const m = await import("../../src/index.browser.ts");
-    expect(Object.keys(m).sort()).toEqual(["fillPattern", "readElement", "release", "upload"]);
+    expect(Object.keys(m).sort()).toEqual([
+      "FrequencyUnit",
+      "fillPattern",
+      "frequencyUnits",
+      "readElement",
+      "release",
+      "upload",
+    ]);
   });
 });

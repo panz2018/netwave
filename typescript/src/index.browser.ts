@@ -8,7 +8,15 @@
 // Singleton: `getWorker()` registers the worker on `globalThis`, so
 // multiple imports, multiple handles, or even duplicate library copies on
 // one page structurally share ONE worker (never a second one).
+// `FrequencyUnit` is re-exported straight from the glue: it is a plain JS
+// numeric-constant object, so importing it never instantiates wasm
+// (ironclad rule 8 holds — only `wasmInit()`/compute touch wasm, and those
+// live in the worker). `frequencyUnits()` DOES run wasm, so it goes
+// through the worker like every other compute verb.
+import { FrequencyUnit } from "../dist/wasm-web/netwave_wasm.js";
 import type { Handle, NetwaveBuffer, WorkerRequest, WorkerResponse } from "./types.js";
+
+export { FrequencyUnit };
 
 /** The shell's singleton worker, registered on globalThis. */
 declare global {
@@ -80,3 +88,11 @@ export const release = (handle: Handle): Promise<void> =>
  */
 export const readElement = (target: Handle | Float64Array, idx: number): Promise<number> =>
   call<number>("readElement", [target, idx]);
+
+/**
+ * List every frequency unit in canonical spelling, definition order. Runs
+ * wasm, so it goes through the resident worker (ironclad rule 8: the main
+ * thread never executes wasm). The names come from the core enum by
+ * reflection — zero hand-copied vocabulary.
+ */
+export const frequencyUnits = (): Promise<string[]> => call<string[]>("frequencyUnits", []);

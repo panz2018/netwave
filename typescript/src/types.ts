@@ -39,10 +39,11 @@ export interface WorkerRequest {
 }
 
 /** Worker reply envelope (worker -> main thread). `result.shape` and
- * `result.frequency` ride the same message (metadata piggyback). */
+ * `result.frequency` ride the same message (metadata piggyback). `string[]`
+ * carries the vocabulary list (`frequencyUnits`). */
 export interface WorkerResponse {
   id: number;
-  result?: NetwaveBuffer | number | Handle;
+  result?: NetwaveBuffer | number | Handle | string[];
   error?: string;
 }
 
