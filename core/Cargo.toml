@@ -10,6 +10,24 @@ description = "netwave core: network scattering-parameter math (scaffold)"
 
 [dependencies]
 num-complex = "0.4"
+strum = { version = "0.28", features = ["derive"] }
+# Optional binding deps: core attaches #[cfg_attr(feature = ...)] macros to its
+# own types so bindings are registered at link time with zero glue-crate code.
+# pyo3 must stay on the same minor as python/Cargo.toml (two pyo3 majors in
+# one link = conflicts; paired deps upgrade together).
+pyo3 = { version = "0.29", features = ["abi3-py310"], optional = true }
+napi = { version = "3", features = ["napi9"], optional = true }
+napi-derive = { version = "3", optional = true }
+wasm-bindgen = { version = "0.2", optional = true }
+pyo3-stub-gen = { version = "0.23", optional = true }
+
+[features]
+python = ["dep:pyo3"]
+node = ["dep:napi", "dep:napi-derive"]
+browser = ["dep:wasm-bindgen"]
+# Stub annotations ride the same items as the pyclass/pyfunction attributes,
+# so enabling stub generation implies the python binding attributes.
+pyo3-stub-gen = ["python", "dep:pyo3-stub-gen"]
 
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }

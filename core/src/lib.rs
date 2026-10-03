@@ -19,6 +19,8 @@
 
 use num_complex::Complex64;
 
+pub mod frequency;
+
 /// Allocate an `(nfreq, nports, nports)` interleaved complex f64 buffer
 /// and fill it with a predictable pattern.
 ///
