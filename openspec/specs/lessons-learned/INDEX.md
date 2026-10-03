@@ -52,3 +52,4 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-044 | core       | clippy --workspace 特性统一：napi/wasm 属性须 not() 互斥门控    |
 | LL-045 | docs       | 归档 mv 使目录加深，提交前跑全仓 check:md 修相对链接            |
 | LL-046 | core       | 绑定宏 glue 计入 core 覆盖率，属性+导入须 not(coverage) 剥离    |
+| LL-047 | ci         | 跨 job 读生成产物的测试，须在该 job 内先生成全部产物            |

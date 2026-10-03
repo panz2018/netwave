@@ -235,6 +235,15 @@ jobs:
             echo "::error::shell dts has any-typed exports - glues were not built before tsdown (LL-034)"
             exit 1
           fi
+      - name: generate python stub (cross-end vocabulary test)
+        # The cross-end vocabulary test (test/native/vocabulary-consistency.test.ts)
+        # reads all three generated type artifacts and asserts identical member
+        # sets. This job builds the napi + wasm dts, so it is the only job that
+        # can hold all three; generate the python stub here to complete the set.
+        # stub_gen statically links libpython (no extension .so needed).
+        run: |
+          uv sync --project python
+          (cd python && uv run --no-sync cargo run --features stub-gen --bin stub_gen)
       - name: vitest (native, coverage 100)
         run: pnpm -C typescript test:native --coverage
       - name: vitest (wasm, coverage 100)
