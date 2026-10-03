@@ -8,13 +8,22 @@ license = "MIT OR Apache-2.0"
 license-file = "../LICENSE-MIT"
 
 [lib]
-name = "netwave"
-# cdylib only: an rlib would emit an unhashed libnetwave.rlib that
-# collides with core's libnetwave-<hash>.rlib on the doc-test search
-# path (E0464).
-crate-type = ["cdylib"]
+name = "_netwave"
+crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-netwave = { path = "../core" }
+netwave = { path = "../core", features = ["python"] }
 pyo3 = { version = "0.29", features = ["abi3-py310"] }
 numpy = "0.29"
+pyo3-stub-gen = { version = "0.23", optional = true }
+
+[features]
+# Enables .pyi generation: pulls the stub annotations into core and the
+# gatherer into this crate. Off for normal wheel builds, so the shipped
+# .so carries no stub runtime.
+stub-gen = ["dep:pyo3-stub-gen", "netwave/pyo3-stub-gen"]
+
+[[bin]]
+name = "stub_gen"
+path = "src/bin/stub_gen.rs"
+required-features = ["stub-gen"]
