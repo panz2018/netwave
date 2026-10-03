@@ -117,8 +117,9 @@
   勿下沉进单端测试段再为喂它单开跨语言步骤——首版误把该检查放 `test:native`
   并在 node 测试段单开 `stub_gen` 步骤，node 章节凭空依赖 python 构建（职责
   错位，被人工质疑）。终态：检查改纯标准库脚本 `scripts/check_vocab_types.py`
-  （同 `check_vocab.py` 族），在 `check:cross` 步骤内 `maturin develop` 后
-  跑 `stub_gen`（静态链 libpython，无需 `.so`）+ `pnpm check:vocab-types`。
+  （同 `check_vocab.py` 族）折进 `check:cross` 末尾（跨端闸门单一入口），
+  CI 步骤内 `maturin develop` 后先跑 `stub_gen`（静态链 libpython，无需
+  `.so`）生成 `.pyi`，再 `pnpm check:cross`（其前置契约=三端产物齐备）。
   本地模拟 CI 某 job 前先删该 job 不该有的产物，别信脏工作树
 - 复发检测：review 读 `readFileSync`/`fs` 生成产物的测试/脚本时，核对其所在
   job 步骤是否生成了被测的每一类产物，且跨端检查是否落在构建各端的集成步骤

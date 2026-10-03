@@ -243,18 +243,16 @@ jobs:
         run: |
           uv sync --project python
           (cd python && uv run maturin develop)
+          # stub_gen statically links libpython (no .so needed); it must
+          # precede check:cross, which now asserts the three generated type
+          # artifacts agree (LL-047: the cross-end check lives in the
+          # integration step that already builds each end, not in a
+          # single-end test section).
+          (cd python && uv run --no-sync cargo run --features stub-gen --bin stub_gen)
           # check:cross includes the built-in anti-tautology self-check
           # (perturbs each non-reference end in memory, requires detection)
+          # and the cross-end vocabulary types gate.
           pnpm check:cross
-          # Cross-end vocabulary types: this step already builds python
-          # (maturin) and the job built napi + wasm dts, so it is the only
-          # place all three generated type artifacts coexist. Generate the
-          # python stub (stub_gen statically links libpython, no .so needed)
-          # then assert the three member sets agree (LL-047: the cross-end
-          # check lives in the integration step that already builds each end,
-          # not in a single-end test section).
-          (cd python && uv run --no-sync cargo run --features stub-gen --bin stub_gen)
-          pnpm check:vocab-types
 
   # criterion baseline: regressions >20% fail (ci-matrix spec)
   bench:
