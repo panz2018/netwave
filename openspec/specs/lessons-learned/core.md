@@ -51,3 +51,16 @@
   （词头倍率、整数形状等）跨端对拍 MUST 逐 bit `==`，MUST NOT 引用容差
 - 复发检测：review Spec 轴检查数值断言——引用容差者必为计算结果；
   常量表测试断言中不得出现 `core_tol`
+
+### LL-044 clippy --workspace 特性统一致 napi/wasm 属性冲突
+
+- 犯过：core 函数 `frequency_units()` 同挂 `#[cfg_attr(feature="node",napi)]`
+  与 `#[cfg_attr(feature="browser",wasm_bindgen)]`；`cargo clippy --workspace`
+  把 python+node+browser 三特性统一进 core 一次编译，napi 宏见同函数已带
+  `#[wasm_bindgen]` 即报 `can only #[wasm_bindgen] public functions`（真实
+  glue 构建各只开一端，从不冲突；仅统一 clippy 暴露）
+- 规则：同一函数上互斥的 JS 绑定属性用 `all(feature="node",not(feature="browser"))`
+  / `all(feature="browser",not(feature="node"))` 门控——真实构建只开一端各端仍
+  生效，统一 clippy 下该函数留裸（仍可被 Rust 测试调用，只是不导出 JS）；
+  enum 同挂 `#[napi]`+`#[wasm_bindgen]` 不冲突，无需此处理
+- 复发检测：`cargo clippy --workspace --all-targets -- -D warnings`（`pnpm check:rs`）

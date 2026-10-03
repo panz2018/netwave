@@ -76,3 +76,18 @@
 - 规则：计算与元数据一律异步进 worker；已 resolve 结果描述符上的元数据可同步
   读；worker 异常终止数据丢失为已接受行为，不引入 IndexedDB 恢复
 - 复发检测：api-contract 类型面元数据访问器全为 `Promise`（node 端 `_` 除外）
+
+### LL-043 napi build 必须出 .d.ts 且非 const enum
+
+- 犯过：`build:native` 未传 `--dts`，node glue（`index.node.generated.mjs`）无类型
+  伴生文件，`FrequencyUnit` 在 `index.node.ts` 退化为 `any`，测试里的
+  `@ts-expect-error`（`FrequencyUnit.Hzz`）变"unused directive"、typecheck 假绿；
+  补 `--dts` 后又因 napi 默认出 `const enum`（类型-only，不能作值引用），
+  `Object.getOwnPropertyNames(FrequencyUnit)` 报 TS2475
+- 规则：`napi build` 必带 `--dts index.node.generated.d.mts`（ESM 用 `.d.mts`，
+  NodeNext 解析；CJS 伴生用 `.d.cts`）与 `--no-const-enum`（出运行时枚举，
+  可作值引用）；wasm-bindgen 枚举对象含反向映射数字键（`kHz:1,"1":"kHz"`），
+  成员集合断言须过滤 `^\d+$`；napi 枚举成员是非枚举 own property，用
+  `getOwnPropertyNames` 非 `Object.keys`
+- 复发检测：`pnpm -C typescript typecheck`（缺 `--dts` 时 `@ts-expect-error`
+  unused 即红）；`vocabulary-consistency.test.ts` 断言三端生成物成员集合相等
