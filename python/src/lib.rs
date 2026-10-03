@@ -71,7 +71,13 @@ fn read_element(arr: PyReadonlyArray3<Complex64>, idx: usize) -> (f64, f64) {
 fn netwave_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(fill_pattern, m)?)?;
     m.add_function(wrap_pyfunction!(read_element, m)?)?;
+    // Gated with not(coverage): core drops the pyclass/pyfunction attributes
+    // under cfg(coverage), so these registrations cannot compile there. The
+    // coverage build excludes this glue crate anyway; pytest exercises the
+    // Python surface in a normal (non-coverage) build.
+    #[cfg(not(coverage))]
     m.add_class::<netwave::frequency::FrequencyUnit>()?;
+    #[cfg(not(coverage))]
     m.add_function(wrap_pyfunction!(netwave::frequency::frequency_units, m)?)?;
     Ok(())
 }

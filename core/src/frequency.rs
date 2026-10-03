@@ -7,7 +7,10 @@ use strum::{AsRefStr, EnumIter};
 
 // With the `python` feature the enum/function below carry pyo3 attributes so
 // the binding crate registers them by reflection (zero hand-copied names).
-#[cfg(feature = "python")]
+// `not(coverage)` drops the pyo3 registration glue (pytest covers the Python
+// surface); the python glue crate gates its add_class/wrap_pyfunction calls
+// the same way so the coverage build still compiles.
+#[cfg(all(feature = "python", not(coverage)))]
 use pyo3::prelude::*;
 
 // With `pyo3-stub-gen` the same items also carry stub annotations so the
@@ -18,13 +21,15 @@ use pyo3_stub_gen::derive::{gen_stub_pyclass_enum, gen_stub_pyfunction};
 
 // With the `node` feature the same items carry napi attributes; the enum
 // becomes a numeric JS enum (design: numeric across the worker boundary).
-#[cfg(feature = "node")]
+// `not(browser)` avoids the clippy --workspace macro collision (LL-044);
+// `not(coverage)` drops the JS-registration glue (pytest/vitest cover it).
+#[cfg(all(feature = "node", not(feature = "browser"), not(coverage)))]
 use napi_derive::napi;
 
 // With the `browser` feature the same items carry wasm-bindgen attributes;
 // the enum becomes a numeric JS constant object in the glue (importing a
 // constant does not instantiate wasm — ironclad rule 8 holds).
-#[cfg(feature = "browser")]
+#[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
 use wasm_bindgen::prelude::wasm_bindgen;
 
 /// Re-exported so callers can invoke [`FrequencyUnit::iter`] without adding
@@ -89,9 +94,16 @@ impl FromStr for FrequencyUnit {
     feature = "pyo3-stub-gen",
     gen_stub_pyclass_enum(module = "netwave._netwave")
 )]
-#[cfg_attr(feature = "python", pyclass(skip_from_py_object))]
-#[cfg_attr(feature = "node", napi)]
-#[cfg_attr(feature = "browser", wasm_bindgen)]
+#[cfg_attr(all(feature = "python", not(coverage)), pyclass(skip_from_py_object))]
+// `not(coverage)` drops the runtime-only registration glue (pytest/vitest
+// cover the binding surface); `not(browser)`/`not(node)` avoid the clippy
+// --workspace macro collision (LL-044). A real glue build enables exactly
+// one of node/browser, so the enum is exported there either way.
+#[cfg_attr(all(feature = "node", not(feature = "browser"), not(coverage)), napi)]
+#[cfg_attr(
+    all(feature = "browser", not(feature = "node"), not(coverage)),
+    wasm_bindgen
+)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, AsRefStr, EnumIter)]
 pub enum FrequencyUnit {
     /// Hertz, 10^0 — the canonical storage unit of the frequency axis.
@@ -141,15 +153,17 @@ impl FrequencyUnit {
     feature = "pyo3-stub-gen",
     gen_stub_pyfunction(module = "netwave._netwave")
 )]
-#[cfg_attr(feature = "python", pyfunction)]
-// napi and wasm_bindgen cannot both decorate one function (napi's macro
-// rejects an item that also carries `#[wasm_bindgen]`). A real glue build
-// enables exactly one of `node`/`browser`, so each attribute still applies
-// there; the `not()` guards only matter for `cargo clippy --workspace`,
-// which unifies every feature onto core in one pass — there the function is
-// left plain (still callable from Rust tests, just not JS-exported).
-#[cfg_attr(all(feature = "node", not(feature = "browser")), napi)]
-#[cfg_attr(all(feature = "browser", not(feature = "node")), wasm_bindgen)]
+#[cfg_attr(all(feature = "python", not(coverage)), pyfunction)]
+// `not(coverage)` drops the runtime-only registration glue (pytest/vitest
+// cover it). napi and wasm_bindgen cannot both decorate one function (napi's
+// macro rejects an item that also carries `#[wasm_bindgen]`), so `node` and
+// `browser` are mutually exclusive (LL-044); a real glue build enables
+// exactly one, so the function is still JS-exported there.
+#[cfg_attr(all(feature = "node", not(feature = "browser"), not(coverage)), napi)]
+#[cfg_attr(
+    all(feature = "browser", not(feature = "node"), not(coverage)),
+    wasm_bindgen
+)]
 pub fn frequency_units() -> Vec<String> {
     FrequencyUnit::iter()
         .map(|u| u.as_ref().to_owned())

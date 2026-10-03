@@ -27,3 +27,8 @@ stub-gen = ["dep:pyo3-stub-gen", "netwave/pyo3-stub-gen"]
 name = "stub_gen"
 path = "src/bin/stub_gen.rs"
 required-features = ["stub-gen"]
+
+[lints.rust]
+# cargo-llvm-cov auto-sets cfg(coverage); the frequency registrations gate on
+# not(coverage) to match core dropping the pyclass/pyfunction attributes there.
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)'] }

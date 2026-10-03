@@ -64,3 +64,19 @@
   生效，统一 clippy 下该函数留裸（仍可被 Rust 测试调用，只是不导出 JS）；
   enum 同挂 `#[napi]`+`#[wasm_bindgen]` 不冲突，无需此处理
 - 复发检测：`cargo clippy --workspace --all-targets -- -D warnings`（`pnpm check:rs`）
+
+### LL-046 绑定宏生成的 glue 计入 core 覆盖率，须 not(coverage) 剥离
+
+- 犯过：core 的 `FrequencyUnit`/`frequency_units` 挂 pyo3/napi/wasm_bindgen
+  属性；`cargo llvm-cov --workspace --fail-under-lines 100` 下这些宏生成的
+  注册 glue 被归属到属性行，而 glue 只在 JS/Python 运行时执行、`cargo test`
+  永不触发，`frequency.rs` 掉到 92%，100% 地板红（CI rust job）
+- 规则：绑定属性与其 `use` 导入统一加 `not(coverage)` 门控（cargo-llvm-cov
+  自动设 `cfg(coverage)`），覆盖率构建只测纯 Rust 逻辑；绑定面由 pytest/vitest
+  在普通构建覆盖。python 侧须**两端同步**：core 剥属性后，glue crate
+  （`python/src/lib.rs`）的 `add_class`/`wrap_pyfunction` 调用也要 `#[cfg(not(coverage))]`，
+  否则 glue 编译不过（glue 的 lib.rs 本就在 llvm-cov 排除正则内）。
+  `cfg(coverage)` 须在用到的每个 crate 的 `[lints.rust]` 声明 `check-cfg`，
+  否则 `-D warnings` 报 unexpected_cfgs
+- 复发检测：`cargo llvm-cov --workspace --fail-under-lines 100`（rust job）；
+  改绑定属性后必跑，且须验证真实 glue 构建（maturin/napi/wasm-pack）仍导出

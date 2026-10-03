@@ -29,6 +29,11 @@ browser = ["dep:wasm-bindgen"]
 # so enabling stub generation implies the python binding attributes.
 pyo3-stub-gen = ["python", "dep:pyo3-stub-gen"]
 
+[lints.rust]
+# cargo-llvm-cov auto-sets cfg(coverage); the binding attributes gate on
+# not(coverage) to drop runtime-only glue from the coverage build.
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)'] }
+
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }
 
