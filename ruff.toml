@@ -6,6 +6,12 @@
 line-length = 100
 target-version = "py310"
 
+# Generated type stubs (pyo3-stub-gen output) are build artifacts, not
+# hand-written source: their import order is fixed by the generator and
+# re-running `ruff check --fix` would fight the next regeneration. Exempt
+# them from lint+format, same category as the generated `.d.ts` glue.
+extend-exclude = ["**/*.pyi"]
+
 [lint]
 # pycodestyle + pyflakes + isort + bugbear-style defaults.
 select = ["E", "F", "I", "UP", "B"]
