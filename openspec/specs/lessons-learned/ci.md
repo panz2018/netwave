@@ -104,7 +104,7 @@
 - 复发检测：已门禁化——`scripts/check_ci.py`（并入 `pnpm check:meta`）
   枚举 `typescript/package.json` 全部 `test:*`，任一未被 ci.yml 调用即红
 
-### LL-047 跨 job 读生成产物的测试，须在该 job 内先生成全部产物
+### LL-047 跨端一致性检查归构建各端产物的集成步骤
 
 - 犯过：`test/native/vocabulary-consistency.test.ts`（node job 跑）读三份
   生成类型产物（node `.d.mts`、wasm `.d.ts`、python `_netwave.pyi`）断言
@@ -112,10 +112,14 @@
   生成且**全仓无任何 CI job 调用它**——CI 里 `.pyi` 根本不存在，node 四格
   全红 `ENOENT ... _netwave.pyi`。本地全绿只因工作树残留各 job 的历史产物
   （违 LL-004：本地模拟未清干净）
-- 规则：测试读 N 份生成产物，则跑它的 job 必须先生成齐 N 份——node job 是
-  唯一能凑齐三端 dts 的 job（已 build napi+wasm），故在其 `test:native` 前
-  补 `uv sync` + `cargo run --features stub-gen --bin stub_gen`（stub_gen
-  静态链 libpython，无需先 maturin 出 `.so`）。本地模拟 CI 某 job 前先删该
-  job 不该有的产物，别信脏工作树
-- 复发检测：review 读 `readFileSync`/`fs` 生成产物的测试时，核对其所在 job
-  步骤是否生成了被测的每一类产物；可门禁化——job 内产物存在性冒烟
+- 规则：跨端一致性检查归**本就已构建各端产物的集成步骤**（node job 末尾
+  `check:cross` 已 `maturin develop`+build napi+wasm，三端产物天然齐备），
+  勿下沉进单端测试段再为喂它单开跨语言步骤——首版误把该检查放 `test:native`
+  并在 node 测试段单开 `stub_gen` 步骤，node 章节凭空依赖 python 构建（职责
+  错位，被人工质疑）。终态：检查改纯标准库脚本 `scripts/check_vocab_types.py`
+  （同 `check_vocab.py` 族），在 `check:cross` 步骤内 `maturin develop` 后
+  跑 `stub_gen`（静态链 libpython，无需 `.so`）+ `pnpm check:vocab-types`。
+  本地模拟 CI 某 job 前先删该 job 不该有的产物，别信脏工作树
+- 复发检测：review 读 `readFileSync`/`fs` 生成产物的测试/脚本时，核对其所在
+  job 步骤是否生成了被测的每一类产物，且跨端检查是否落在构建各端的集成步骤
+  而非单端测试段；可门禁化——job 内产物存在性冒烟
