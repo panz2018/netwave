@@ -50,3 +50,4 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-042 | core       | 精确常量比较逐 bit ==，不引用 core_tol（容差只管计算结果）      |
 | LL-043 | typescript | napi build 必带 --dts（.d.mts）+ --no-const-enum，否则类型假绿  |
 | LL-044 | core       | clippy --workspace 特性统一：napi/wasm 属性须 not() 互斥门控    |
+| LL-045 | docs       | 归档 mv 使目录加深，提交前跑全仓 check:md 修相对链接            |

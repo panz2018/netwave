@@ -102,3 +102,14 @@
   阶段标记、"不再/曾经"类叙述一律不写，追溯靠 git log
 - 复发检测：review Standards 轴 grep src 注释中
   `replaces|no longer|used to|phase-[0-9]`，命中即打回
+
+### LL-045 归档 mv 后必须跑全仓 check:md 修相对链接再提交
+
+- 犯过：frequency-unit 归档 `mv` 进 `archive/` 后直接提交，工件内
+  `../../specs/...` 相对链接因目录加深一级全部断链，CI lint 红
+  （本地只跑了改动文件的检查，未跑全仓闸门）
+- 规则：归档移动使 change 工件目录加深一级，其内所有相对链接需补一级
+  `../`；归档当轮必须跑全仓 `pnpm check:md`（check_md.py 会解析
+  archive 内链接，断链当场暴露）并修完才提交，禁止只检查本次手改的文件
+- 复发检测：已门禁化——`pnpm check:md` 即闸门，CI lint job 必红；
+  review 时确认归档 commit 同轮含链接修复

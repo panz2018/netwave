@@ -4,7 +4,7 @@
 
 `api-contract` 把"频率轴主数据恒为 f64 Hz"钉为铁律，但明确把 `unit` 的存放位置、
 `f_scaled` 形态、`FrequencyUnit` 的词汇与倍率定义推给阶段 1/2 design.md（见
-[api-contract 频率轴主数据恒为 f64 Hz](../../specs/api-contract/spec.md)）。这块悬空
+[api-contract 频率轴主数据恒为 f64 Hz](../../../specs/api-contract/spec.md)）。这块悬空
 会让绑定层各自长出单位表，撕开漂移面。本 change 定案 `FrequencyUnit` 的单一真相源
 形态：词汇、倍率、跨端暴露与错误契约，杜绝 py/ts 手抄。
 
