@@ -34,7 +34,7 @@
       回调 `postMessage({cmd:"drop", handle})`；worker `drop` 处理
       `frequencies.get(handle).free()` + `delete`；验证：断言 1 转绿。
 - [ ] 3.3 验证断言 2 转绿（共享对象在全部引用消失前不被回收）；若失败，按 design
-      D3 检查 held 是否误持 wrapper。
+      「主线程 registry 的 held 值」决策检查 held 是否误持 wrapper。
 - [ ] 3.4 验证断言 3 转绿（显式 `drop()` 不依赖 GC 即时回收）。
 
 ## 4. 结论写回与清理
