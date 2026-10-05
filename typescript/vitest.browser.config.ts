@@ -12,7 +12,9 @@ export default defineConfig({
     browser: {
       enabled: true,
       headless: true,
-      provider: playwright(),
+      // Chromium exposes window.gc() via the V8 flag wrapped in --js-flags
+      // (node's bare --expose-gc is not a chromium switch).
+      provider: playwright({ launchOptions: { args: ["--js-flags=--expose-gc"] } }),
       instances: [{ browser: "chromium" }],
     },
     coverage: {
