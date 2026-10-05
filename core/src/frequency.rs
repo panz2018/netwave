@@ -124,9 +124,8 @@ impl FrequencyUnit {
     /// The multiplier of an SI prefix is exactly 10^3n (kilo 10^3, mega
     /// 10^6, giga 10^9, tera 10^12); every value here is a power of ten
     /// exactly representable in f64, so conversions are bit-exact and no
-    /// tolerance applies (LL-042). Consumed internally by
-    /// `Frequency.f_scaled` (stage 1); deliberately NOT exposed to py/ts —
-    /// bindings see names via reflection and never numeric tables.
+    /// tolerance applies (LL-042). Internal helper: deliberately NOT exposed
+    /// to py/ts — bindings see names via reflection and never numeric tables.
     ///
     /// The `match` is exhaustive on purpose: adding an enum variant without
     /// a multiplier here fails to compile, so a name can never ship without
@@ -139,6 +138,15 @@ impl FrequencyUnit {
             FrequencyUnit::GHz => 1e9,
             FrequencyUnit::THz => 1e12,
         }
+    }
+
+    /// Reconstruct a unit from its definition-order ordinal (0 = Hz, 1 = kHz,
+    /// …). The JS boundary carries units as plain numbers (the glue enum is
+    /// numeric), so glue converts back here — keeping the ordinal↔variant
+    /// mapping in one place instead of duplicating the variant list per
+    /// binding. Internal helper: deliberately not exposed to py/ts.
+    pub fn from_ordinal(ordinal: u8) -> Option<Self> {
+        Self::iter().nth(ordinal as usize)
     }
 }
 
@@ -168,4 +176,106 @@ pub fn frequency_units() -> Vec<String> {
     FrequencyUnit::iter()
         .map(|u| u.as_ref().to_owned())
         .collect()
+}
+
+// Live `Frequency` count — a test witness, not memory management. The real
+// reclamation is `Drop` (RAII); this counter only proves `Drop` actually ran
+// (a Map entry vanishing does not prove the Rust destructor fired). Always
+// compiled: `Frequency` is a large object (a whole sweep's `Vec<f64>`) built
+// and dropped once, so one atomic increment/decrement is negligible next to
+// that allocation.
+// u32 (not usize): napi maps usize to JS bigint but wasm maps it to number;
+// u32 is exact in f64 so both bindings expose a plain number (cross-end
+// type parity, ironclad rule 9).
+static LIVE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+
+/// How many [`Frequency`] instances are currently alive. Test-only witness:
+/// the memory-lifecycle suite polls this to confirm Rust `Drop` ran.
+///
+/// Read-only diagnostic probe: holds no data, no side effects. Always
+/// compiled (see [`LIVE`]).
+#[cfg_attr(all(feature = "node", not(feature = "browser"), not(coverage)), napi)]
+#[cfg_attr(
+    all(feature = "browser", not(feature = "node"), not(coverage)),
+    wasm_bindgen
+)]
+pub fn live_count() -> u32 {
+    LIVE.load(std::sync::atomic::Ordering::SeqCst)
+}
+
+/// A frequency sweep: the in-memory data model's frequency axis.
+///
+/// The core owns the sweep's `Vec<f64>` and reclaims it through `Drop`
+/// (RAII). The class is deliberately NOT exported from the package entry
+/// yet: the functional surface (`f`/`f_scaled`/`w`/`wavelength`/`Display`)
+/// is not complete, and a half-public class would violate ironclad rules
+/// 9/10.
+///
+/// # Memory contract
+///
+/// - Construction ([`Frequency::from_f`]) owns a `Vec<f64>` (Hz storage) and
+///   bumps [`LIVE`].
+/// - [`Drop`] is the ONLY reclamation path (RAII): when the last owner drops
+///   the value, the `Vec` frees and [`LIVE`] decrements. There is zero manual
+///   memory-management code.
+/// - In wasm, `Drop` returns bytes to the allocator's free list; the linear
+///   memory high-water mark does NOT shrink. That is why reclamation is
+///   observed through [`live_count`], not by watching memory size.
+// The Rust type is plain (no binding attributes): the wasm/napi class
+// wrappers live in the glue crates, where each binding's macro decorates the
+// impl its own way (wasm_bindgen marks the impl block, napi marks each
+// method — they cannot share one cfg_attr'd impl). "Internalized" means the
+// TS shell does not re-export the class, not that it is uncompiled.
+pub struct Frequency {
+    /// Frequency points in hertz (canonical storage unit, governance rule 1).
+    f_hz: Vec<f64>,
+    /// Display unit carried alongside the data. Read by the functional
+    /// accessors (`f_scaled`/`set_unit`), not yet by the memory surface,
+    /// hence the allow.
+    #[allow(dead_code)]
+    unit: FrequencyUnit,
+    /// Set once [`Frequency::release`] has run, so the later RAII `Drop`
+    /// does not double-decrement [`LIVE`].
+    dropped: bool,
+}
+
+impl Frequency {
+    /// Build a sweep from frequency points already in hertz.
+    ///
+    /// Takes ownership of `f_hz`; bumps [`LIVE`] (witness only).
+    pub fn from_f(f_hz: Vec<f64>, unit: FrequencyUnit) -> Self {
+        LIVE.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        Self {
+            f_hz,
+            unit,
+            dropped: false,
+        }
+    }
+
+    /// Number of frequency points.
+    pub fn npoints(&self) -> usize {
+        self.f_hz.len()
+    }
+
+    /// Free the sweep and decrement the witness exactly once. Idempotent: a
+    /// later RAII `Drop` (or a second call) is a no-op for the witness.
+    ///
+    /// The glue `free` escape hatch calls this for deterministic early
+    /// release; RAII `Drop` calls it too, so the witness never
+    /// double-decrements.
+    pub fn release(&mut self) {
+        if !self.dropped {
+            self.f_hz = Vec::new();
+            LIVE.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
+            self.dropped = true;
+        }
+    }
+}
+
+impl Drop for Frequency {
+    /// RAII reclamation: frees the `Vec` and decrements the witness counter.
+    /// This is the single reclamation path — no manual free exists.
+    fn drop(&mut self) {
+        self.release();
+    }
 }

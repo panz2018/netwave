@@ -62,3 +62,17 @@ fn multipliers_are_exact_powers_of_ten() {
     assert_eq!(FrequencyUnit::GHz.multiplier(), 1e9);
     assert_eq!(FrequencyUnit::THz.multiplier(), 1e12);
 }
+
+#[test]
+fn from_ordinal_round_trips_definition_order() {
+    // The JS boundary carries units as ordinals; glue converts back here, so
+    // every variant must map from its position (independent literals, never
+    // derived from `iter` — ironclad rule 2).
+    assert_eq!(FrequencyUnit::from_ordinal(0), Some(FrequencyUnit::Hz));
+    assert_eq!(FrequencyUnit::from_ordinal(1), Some(FrequencyUnit::kHz));
+    assert_eq!(FrequencyUnit::from_ordinal(2), Some(FrequencyUnit::MHz));
+    assert_eq!(FrequencyUnit::from_ordinal(3), Some(FrequencyUnit::GHz));
+    assert_eq!(FrequencyUnit::from_ordinal(4), Some(FrequencyUnit::THz));
+    // Out of range: the last valid ordinal is 4, so 5 is None.
+    assert_eq!(FrequencyUnit::from_ordinal(5), None);
+}
