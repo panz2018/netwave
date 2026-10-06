@@ -14,7 +14,7 @@
     "check:py": "uv run --project python ruff check python/ scripts/ && uv run --project python ruff format --check python/ scripts/",
     "fix:py": "uv run --project python ruff check --fix python/ scripts/ && uv run --project python ruff format python/ scripts/",
     "check:cross": "cargo run -q -p netwave --example dump .cross-tmp && uv run --project python python python/scripts/dump.py .cross-tmp && node typescript/scripts/dump.mjs .cross-tmp && python3 scripts/cross_compare.py .cross-tmp && python3 scripts/check_vocab_types.py",
-    "check:meta": "python3 scripts/check_license.py && python3 scripts/check_ci.py && python3 scripts/check_vocab.py"
+    "check:meta": "python3 scripts/check_license.py && python3 scripts/check_ci.py && python3 scripts/check_vocab.py && python3 scripts/check_comments.py"
   },
   "devDependencies": {
     "@biomejs/biome": "^2",

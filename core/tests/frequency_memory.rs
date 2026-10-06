@@ -1,4 +1,4 @@
-//! Memory-lifecycle witness for the core `Frequency` skeleton
+//! Memory-lifecycle witness for the core `Frequency`
 //! (spec: memory-lifecycle "Rust `Drop` 经见证计数器可证"). One test per
 //! binary so the global `LIVE` counter has no intra-binary contention.
 
