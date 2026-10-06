@@ -23,13 +23,12 @@
 
 - **core `Frequency` 骨架**（`core/src/frequency.rs`）：struct 持 `Vec<f64>`（Hz
   存储）+ `FrequencyUnit`；`from_f` 分配、`impl Drop`（RAII，生产零内存管理代码）；
-  `#[cfg(any(test, feature = "mem-test"))]` 门控的 `static LIVE: AtomicUsize`
-  （`new` +1 / `Drop` −1）+ `live_count()`——**仅测试见证**，非内存管理。
+  `static LIVE: AtomicUsize`（`new` +1 / `Drop` −1）+ `live_count()`——**仅测试
+  见证**，非内存管理，常驻编译（开销可忽略，不设 feature 门控）。
 - **wasm 绑定**（`typescript/wasm/src/lib.rs`）：`#[wasm_bindgen]` class（骨架
-  内部化，**不从包入口导出**）+ `live_count()`，均 `mem-test` feature 门控
-  （LL-044：release 构建符号缺席，公开面干净）。
+  内部化，**不从包入口导出**）+ `live_count()`，常驻导出。
 - **napi 绑定**（`typescript/native/src/lib.rs`）：`#[napi]` class + `live_count()`，
-  同 `mem-test` 门控；node 端 napi cleanup finalizer 自动 `Drop`（壳 GC 即释放，
+  常驻导出；node 端 napi cleanup finalizer 自动 `Drop`（壳 GC 即释放，
   不进 `hosted` Map）。
 - **常驻 worker**（`typescript/src/netwave.worker.ts`）：`frequencies` 地址表
   （`Map<Handle, Frequency>`）+ `newFrequency`/`dropFrequency`/`liveCount` 命令，镜像既有
@@ -39,7 +38,8 @@
   `{cmd:"dropFrequency", handle}` 消息；显式 `drop()` 公开 API（确定性逃生口）。
 - **永久绊线测试**（真浏览器 + node，`--expose-gc`）：三条断言（registry 驱动
   free / 共享不误删 / 显式 drop 即时），轮询 `live_count()` 归零，fail-fast 区分
-  「环境未开 expose-gc」与「机制失败」。新增 `test:memory` 脚本当轮接进 CI（LL-037）。
+  「环境未开 expose-gc」与「机制失败」。测试随现有 `test:wasm`/`test:browser`/
+  `test:native` 已在 CI，无需新接线。
 
 ## Capabilities
 
@@ -67,8 +67,6 @@
 - **不验证 Python/Rust 端内存**：Python 走 pyo3 引用计数、Rust 走 RAII，全自动
   无需验证；`drop()` 也不加到这两端（footgun 且违铁律十）。
 - **不做性能/吞吐测量**：只验「`Drop` 是否被触发、时机是否可测」，不测分配速率。
-- **不暴露 `live_count()` 于发布产物**：`mem-test` feature 门控，release 构建符号
-  缺席（`.d.mts`/`.d.ts` 无此成员）。
 
 ## Impact
 

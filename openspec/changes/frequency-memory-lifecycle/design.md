@@ -33,7 +33,7 @@
 **Non-Goals:**
 
 - 不设计功能方法面（`f`/`f_scaled`/`w`/`wavelength`/`Display` 归 `frequency-class`）；
-  骨架内部化、不导出（见「骨架内部化」决策）。
+  骨架内部化、不作为公开 API 导出（见「骨架内部化」决策）。
 - 不追求骨架代码可复用为最终实现——`frequency-class` 会扩展它，但内存管道
   （构造/`Drop`/计数器/registry/worker 地址表）一次定型、不再改。
 
@@ -47,6 +47,15 @@
 但**不从包入口（`index.browser.ts`/`index.node.ts`）导出** `Frequency`。公开
 `Frequency`（含铁律九/十完整面 + `drop()` 兑现）由 `frequency-class` 完成时一次性
 导出。每个「公开边界」都铁律干净，绝不出现半截公开类。
+
+**测试缝 `internals`（JS 生态标准做法）**：ES module 作用域封闭，未 `export`
+的符号运行时不存在，测试无法像 Python 那样掏内部；且创建句柄的入口
+（`newFrequency`）在壳内部，没有公开路径就造不出被测对象。故 `index.browser.ts`
+导出一个 `internals` 命名空间（`newFrequency`/`drop`/`liveCount`），测试直接
+import。命名不带 `_` 前缀——`browser-resident.test.ts` 的「无 `_` 导出」断言
+检查的是「主线程无同步计算逃生口」（铁律八），`internals` 全异步、不违此意。
+本 change 阶段 `internals` 留在源码导出面；`frequency-class` 定稿公开 API 时
+并入公开 `Frequency` 或删除。
 
 - 备选：骨架即公开 + 补最小 `Display`——否决，制造「半截公开类」的铁律九/十灰色
   地带，且 `frequency-class` 还要再动导出面。
@@ -65,15 +74,17 @@
 单看 worker `frequencies.size` 只证明 Map 删除、不证明 Rust `Drop`——若 `Drop` 没跑
 而 Map 删了，size 测试仍绿（假绿闸门）。故必须配 `LIVE` 计数作硬证据。
 
-### `live_count()` 可见性：`mem-test` feature 门控
+### `live_count()` 常驻编译（不设 feature 门控）
 
-`static LIVE` 与 `live_count()` 用 `#[cfg(any(test, feature = "mem-test"))]` 门控；
-wasm/napi 的 `live_count` 导出同门控（照 `FrequencyUnit` 的 `cfg_attr` 模板，
-LL-044）。CI 内存测试 job 以 `--features mem-test` 构建；release 构建不开该 feature
-→ 符号缺席 `.d.mts`/`.d.ts`，公开面干净。
+`static LIVE` 与 `live_count()` **常驻编译**，不用 feature 门控。理由：`Frequency`
+是大数据对象（整条扫频的 `Vec<f64>`），每条只构造/析构一次，一次 atomic +1/−1
+相对那次大分配完全可忽略；为可忽略的开销引入「测试专用构建变体 + 符号缺失即挂」
+的机制是过早优化。砍掉门控的连锁简化：无 `mem-test` feature、无独立
+`vitest.memory.config.ts`、无独立 `test:memory` 脚本与 CI job——内存测试放进
+`test/wasm/`（被 wasm + browser 两 config 自动跑）与 `test/native/`，白嫖现有 CI。
 
-- 后果：唯一不变式是「测试构建必须开 `mem-test`」；若忘开，测试**立刻失败**
-  （符号缺失），绝不静默变绿。
+- 后果：`live_count` 常驻公开面（wasm/napi glue 均导出）。它是只读诊断探针，
+  不持数据、无副作用，常驻无害。
 
 ### `drop()` 公开 API（铁律十偏离立案）
 
@@ -112,8 +123,10 @@ napi class 实例，无 Map 强引用 → 无压制 → 自带 finalizer 正常�
 
 `FinalizationRegistry`/finalizer 回调时机由 GC 决定，不强制则测试 flaky。
 
-- 浏览器：经 `@vitest/browser-playwright` 的 `launch` options 注入 `--expose-gc`。
-- node：经 vitest `poolOptions.threads.execArgv`（或 `vmThreads`）注入 `--expose-gc`。
+- 浏览器：`vitest.browser.config.ts` 的 `browser.provider` 经
+  `@vitest/browser-playwright` 的 `launchOptions.args` 注入 `--expose-gc`。
+- node wasm 线：`vitest.wasm.config.ts` 经 `poolOptions.threads.execArgv` 注入。
+- node napi 线：`vitest.native.config.ts` 同法注入。
 
 测试内调 `globalThis.gc()` 强制 major GC，再轮询 `live_count()` 归零（带超时兜底）。
 
@@ -138,17 +151,17 @@ napi class 实例，无 Map 强引用 → 无压制 → 自带 finalizer 正常�
 - [骨架与真实 worker 结构漂移，结论不可迁移] → worker 命令面（`newFrequency`/
   `dropFrequency`/`liveCount`）与 handle 表语义严格镜像
   `typescript/src/netwave.worker.ts` 现有 `upload`/`release` 契约。
-- [`mem-test` feature 在测试构建被漏开 → 假绿] → `live_count` 符号缺失即测试
-  编译/调用失败（fail-fast），不会静默通过；CI 内存 job 显式 `--features mem-test`。
-- [骨架被误当公开 API 使用] → 不从包入口导出 + `mem-test` 门控 `live_count`；
-  `check_vocab_types.py` 不纳入骨架（无功能面可校验），`frequency-class` 导出时再接入。
+- [骨架被误当公开 API 使用] → 不从包入口导出 `Frequency`；`live_count` 常驻但
+  仅经 `internals`/glue 可达，非公开类成员；`check_vocab_types.py` 不纳入骨架
+  （无功能面可校验），`frequency-class` 导出时再接入。
 
 ## Migration Plan
 
 无生产部署（骨架不导出）。生命周期：写失败测试（red）→ 建 core 骨架 + wasm/napi
-class + worker 地址表 + 主线程 registry（green）→ 双端 `--expose-gc` 跑三条断言 →
-`test:memory` 接进 CI（LL-037）→ 实测结论写回 `Plan/频率类设计.md`。回滚 = 删骨架
-与测试（无公开 API 可回滚）。
+class + worker 地址表 + 主线程 registry（green）→ 双端 `--expose-gc`（进现有三个
+config）跑三条断言 → 实测结论写回 `Plan/频率类设计.md`。内存测试随现有
+`test:wasm`/`test:browser`/`test:native` 已在 CI，无需新接线。回滚 = 删骨架与测试
+（无公开 API 可回滚）。
 
 ## Open Questions
 

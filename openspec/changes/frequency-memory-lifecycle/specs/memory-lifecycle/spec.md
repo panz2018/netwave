@@ -12,9 +12,10 @@
 ### Requirement: Rust `Drop` 经见证计数器可证
 
 `Frequency` 的内存释放 MUST 由 Rust `Drop`（RAII）完成，生产代码 MUST NOT 含任何
-手动内存管理逻辑。为可实测，core MUST 提供 `#[cfg(any(test, feature = "mem-test"))]`
-门控的活对象计数（构造 +1 / `Drop` −1）与 `live_count()`；该符号 MUST NOT 出现在
-未开 `mem-test` 的发布构建（`.d.mts`/`.d.ts` 无此成员）。真值来源：wasm-bindgen
+手动内存管理逻辑。为可实测，core MUST 提供活对象计数（构造 +1 / `Drop` −1）与
+`live_count()`；该计数器常驻编译（`Frequency` 为大数据对象，一次 atomic 增减相对
+其分配可忽略，不设 feature 门控），仅作只读诊断探针，不持数据、无副作用。
+真值来源：wasm-bindgen
 0.2.128 源码（每个 `#[wasm_bindgen]` class 自动生成 `FinalizationRegistry`，构造
 `register`、GC 回调 `free`）+ 本 spec 的实测断言。本契约无数值容差（断言为计数
 归零，非数值比较）。
@@ -23,16 +24,6 @@
 
 - **WHEN** 构造一个 `Frequency` 后将其唯一引用丢弃并强制 GC，轮询 `live_count()`
 - **THEN** 计数从 1 归零（证明 Rust `Drop` 执行，而非仅 JS 侧对象消失）
-
-#### Scenario: 发布构建无见证符号
-
-- **WHEN** 以**不**开 `mem-test` 的 release 构建生成 `.d.mts`/`.d.ts`
-- **THEN** 其中无 `live_count` 成员（公开面干净）
-
-#### Scenario: 漏开 mem-test 测试即红
-
-- **WHEN** 测试构建漏开 `mem-test` feature
-- **THEN** `live_count` 符号缺失，测试编译/调用立即失败（绝不静默通过）
 
 ### Requirement: 主线程 registry 驱动 worker 释放（浏览器双 realm）
 
