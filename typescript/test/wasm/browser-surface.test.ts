@@ -22,6 +22,9 @@ describe("browser entry surface", () => {
       "FrequencyUnit",
       "fillPattern",
       "frequencyUnits",
+      // Internalized memory test seam; NOT public API. Async-only, so it
+      // is not a sync compute escape hatch.
+      "internals",
       "readElement",
       "release",
       "upload",

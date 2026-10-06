@@ -17,9 +17,13 @@
 // Explicit static table (no dynamic property access on the namespace,
 // preserves tree-shaking). `.ts` specifier is legal under noEmit;
 // publish_shell.mjs rewrites glue specifiers in the dist output.
+
+import type { FrequencyUnit as FrequencyUnitType } from "../dist/wasm-web/netwave_wasm.js";
 import wasmInit, {
+  Frequency as _WasmFrequency,
   fill_pattern as _wasmFill,
   frequency_units as _wasmFrequencyUnits,
+  live_count as _wasmLiveCount,
   read_element as _wasmRead,
 } from "../dist/wasm-web/netwave_wasm.js";
 import type { Handle, NetwaveBuffer, WorkerRequest, WorkerResponse } from "./types.ts";
@@ -42,6 +46,11 @@ const ready = (async () => wasmInit({ module_or_path: await wasmSource() }))();
 
 // Handle table: the worker is the single data authority (ironclad rule 8).
 const hosted = new Map<Handle, Float64Array>();
+// Frequency address table: handle -> wasm class instance.
+// The strong ref here is what suppresses wasm-bindgen's own Finalization-
+// Registry, so reclamation is driven ONLY by the main-thread registry's
+// `dropFrequency` message (or explicit `drop`) — never by worker-side GC.
+const frequencies = new Map<Handle, _WasmFrequency>();
 let nextHandle: Handle = 1;
 
 // `frequency` stays empty until the real data model populates it; it still
@@ -96,6 +105,26 @@ const cmds: Record<
   frequencyUnits: async () => {
     await ready;
     return _wasmFrequencyUnits() as string[];
+  },
+  newFrequency: async (args) => {
+    await ready;
+    const [view, unit] = args as [Float64Array, FrequencyUnitType];
+    const handle = nextHandle++;
+    frequencies.set(handle, _WasmFrequency.from_f(view, unit));
+    return handle;
+  },
+  dropFrequency: async (args) => {
+    await ready;
+    const handle = args[0] as Handle;
+    const f = frequencies.get(handle);
+    if (!f) throw new Error(`unknown or dropped frequency handle: ${handle}`);
+    f.free(); // runs Rust Drop (RAII) — the single reclamation path
+    frequencies.delete(handle);
+    return 0;
+  },
+  liveCount: async () => {
+    await ready;
+    return _wasmLiveCount();
   },
 };
 

@@ -13,6 +13,8 @@
 // (ironclad rule 8 holds — only `wasmInit()`/compute touch wasm, and those
 // live in the worker). `frequencyUnits()` DOES run wasm, so it goes
 // through the worker like every other compute verb.
+
+import type { FrequencyUnit as FrequencyUnitType } from "../dist/wasm-web/netwave_wasm.js";
 import { FrequencyUnit } from "../dist/wasm-web/netwave_wasm.js";
 import type { Handle, NetwaveBuffer, WorkerRequest, WorkerResponse } from "./types.js";
 
@@ -96,3 +98,37 @@ export const readElement = (target: Handle | Float64Array, idx: number): Promise
  * reflection — zero hand-copied vocabulary.
  */
 export const frequencyUnits = (): Promise<string[]> => call<string[]>("frequencyUnits", []);
+
+// --- Memory test seam (internalized) -------------------------------------
+// NOT part of the public API. The main thread holds only a numeric-handle
+// wrapper; the real wasm object lives in the worker (ironclad rule 8). When
+// the wrapper is GC'd, the registry tells the worker to free it -> Rust Drop.
+// The held value is the handle NUMBER, never the wrapper (a wrapper-referencing
+// held value would pin the wrapper alive and defeat reclamation).
+interface FrequencyRef {
+  readonly handle: Handle;
+}
+
+const registry = new FinalizationRegistry<Handle>((handle) => {
+  // Fire-and-forget: no caller awaits a GC-driven release. The worker frees
+  // (Rust Drop) and deletes its address-table entry.
+  getWorker().postMessage({ id: 0, cmd: "dropFrequency", args: [handle] } satisfies WorkerRequest);
+});
+
+/** Internal memory-pipeline surface (test seam; see the block comment). */
+export const internals = {
+  /** Allocate a sweep in the worker; return a GC-able wrapper holding its handle. */
+  newFrequency: async (fHz: Float64Array, unit: FrequencyUnitType): Promise<FrequencyRef> => {
+    const handle = await call<Handle>("newFrequency", [fHz, unit]);
+    const ref: FrequencyRef = { handle };
+    registry.register(ref, handle, ref); // held = handle number, never the ref
+    return ref;
+  },
+  /** Deterministic early release (no GC needed); unregisters so no later GC double-frees. */
+  drop: (ref: FrequencyRef): Promise<void> => {
+    registry.unregister(ref);
+    return call<void>("dropFrequency", [ref.handle]).then(() => undefined);
+  },
+  /** Witness: how many Rust `Frequency` objects are alive in the worker. */
+  liveCount: (): Promise<number> => call<number>("liveCount", []),
+};

@@ -8,6 +8,7 @@
 //! arena with reclamation replaces it later.
 
 use js_sys::{Object, Reflect, WebAssembly::Memory};
+use netwave::frequency::{Frequency as CoreFrequency, FrequencyUnit};
 use wasm_bindgen::prelude::*;
 
 /// Allocate and fill interleaved complex f64, moving ownership into linear
@@ -36,4 +37,33 @@ pub fn fill_pattern(nfreq: u32, nports: u32) -> Result<Object, JsValue> {
 #[wasm_bindgen]
 pub fn read_element(view: &[f64], idx: u32) -> f64 {
     view[idx as usize]
+}
+
+/// Wasm binding for the core `Frequency` (internalized: the TS shell does
+/// NOT re-export it). wasm_bindgen's generated `free()` runs the Rust
+/// `Drop` (RAII) — the single reclamation path.
+#[wasm_bindgen]
+pub struct Frequency(CoreFrequency);
+
+#[wasm_bindgen]
+impl Frequency {
+    /// Build a sweep from hertz points + unit ordinal (the JS enum value).
+    ///
+    /// `unit` is a plain `u8`, not `FrequencyUnit`: the FFI signature must
+    /// not name the core enum, because under `cargo clippy --workspace` the
+    /// `node` and `browser` features merge onto one `netwave` build and
+    /// neither binding macro applies (LL-044) — the same reason
+    /// `fill_pattern`/`frequency_units` use primitives. The ordinal maps back
+    /// to the variant in core (`from_ordinal`), so no name list is copied.
+    #[wasm_bindgen]
+    pub fn from_f(f_hz: &[f64], unit: u8) -> Frequency {
+        let unit = FrequencyUnit::from_ordinal(unit).expect("invalid frequency unit ordinal");
+        Frequency(CoreFrequency::from_f(f_hz.to_vec(), unit))
+    }
+
+    /// Number of frequency points.
+    #[wasm_bindgen]
+    pub fn npoints(&self) -> usize {
+        self.0.npoints()
+    }
 }
