@@ -33,19 +33,27 @@
       `native.roundtrip.test.ts`（`release`→`drop`）。验证：
       `pnpm -C typescript test:native` 全绿。
 
-## 4. 浏览器：句柄动词与 worker 命令统一 `drop`
+## 4. 浏览器：句柄表下沉 core（cfg=browser），worker JS 零状态
 
-- [ ] 4.1 `typescript/src/netwave.worker.ts`：`hosted` 与 `frequencies` 合并为单一
-      `resources` 表；命令表 `release`/`dropFrequency` 收拢为单一 `drop`（按句柄
-      取资源后分派：wasm `Frequency` 调生成物 `free()`——豁免，裸字节缓冲直接
-      删除）；错误文案 `unknown or released handle`→`unknown or dropped handle`。
-      验证：worker 往返测试全绿。
-- [ ] 4.2 `typescript/src` 三文件（`index.browser`/`index.node`/`types`）：
+- [ ] 4.1 core 新增资源表模块（cfg 门控 browser feature）：`Resource` enum
+      （裸字节缓冲 / `Frequency` / 预留注释不写未来变体）、单张
+      `Mutex<BTreeMap<u32, Resource>>` + 单一句柄计数器；`#[wasm_bindgen]` 句柄
+      入口 `upload`/`new_frequency`/`drop`/`read_element`（`drop` = `remove` 直接
+      触发 Rust `Drop`，不经 JS 对象中转）。验证：`cargo test -p netwave`
+      配 `--features browser --target wasm32-unknown-unknown` 跑新增句柄表用例
+      （注册/查表/释放/未知句柄报错）先 red 后 green；非 browser target 不编译
+      该模块（`cargo check -p netwave` 绿即证 cfg 隔离）。
+- [ ] 4.2 `typescript/src/netwave.worker.ts`：删除 `hosted`/`frequencies`/`nextHandle`
+      （JS 零状态）；命令表 `release`/`dropFrequency` 收拢为单一 `drop`，
+      `upload`/`newFrequency`/`readElement`/`drop` 退化为转发 core 句柄入口；
+      错误文案 `unknown or released handle`→`unknown or dropped handle`（错误源
+      改由 core throw 透传）。验证：worker 往返测试全绿。
+- [ ] 4.3 `typescript/src` 三文件（`index.browser`/`index.node`/`types`）：
       `release(handle)` 导出重命名 `drop(handle)`，JSDoc 同步；`index.browser.ts`
       的 `FinalizationRegistry` 回调改发 `{cmd:"drop", handle}`；node 壳同步暴露实例
       `drop()`（经 3.1 绑定搬运）。验证：`pnpm -C typescript typecheck` 通过、
       `typescript/src` grep `release` 与 `dropFrequency` 零命中。
-- [ ] 4.3 测试改名：`typescript/test/wasm` 下 `worker`/`memory-lifecycle`/
+- [ ] 4.4 测试改名：`typescript/test/wasm` 下 `worker`/`memory-lifecycle`/
       `browser-roundtrip`/`browser-surface` 与 `typescript/test/browser/`
       `browser-resident.test.ts`（`release`→`drop`、导出名断言列表同步）。验证：
       `pnpm -C typescript test:wasm` 与 `test:browser` 全绿（真 Chromium 常驻 worker）。
@@ -79,6 +87,7 @@
 - [ ] 7.3 四端测试全绿：`cargo test --workspace`、pytest、
       `pnpm -C typescript test:native`、`test:wasm`、`test:browser`。
 - [ ] 7.4 全仓 grep 验收：core/python/typescript 的 `.rs`/`.py`/`.ts` 中
-      `.free()` 与 `release(` 用户可见面零命中（豁免：worker 内部对 wasm 生成物
-      的 `f.free()`、`mem::forget`、`free list` 注释、`target/release` 路径）；
-      `dropFrequency` 全仓零命中。
+      `.free()` 与 `release(` 用户可见面零命中（豁免：`mem::forget`、
+      `free list` 注释、`target/release` 路径——句柄表下沉 core 后 wasm 生成物
+      `free()` 已无 JS 调用点）；`dropFrequency`、worker JS 内 `hosted`/
+      `frequencies`/`nextHandle` 全仓零命中。

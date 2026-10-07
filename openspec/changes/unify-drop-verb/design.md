@@ -5,14 +5,14 @@
 动机见 [proposal.md](proposal.md#why)。当前同一语义（手动立即释放）的四个名字与
 其所在层：
 
-| 层                  | 现名                        | 用户可见                          |
-| ------------------- | --------------------------- | --------------------------------- |
-| core Rust           | `Frequency::release()`      | ❌                                |
-| node napi           | `Frequency.free()`          | ✅                                |
-| 浏览器 TS 壳        | `internals.drop(ref)`       | ✅（测试缝）                      |
-| worker 命令         | `dropFrequency` / `release` | ❌（本 change 收拢为单一 `drop`） |
-| JS 句柄函数         | `release(handle)`           | ✅                                |
-| wasm-bindgen 生成物 | `free()`                    | ❌（只活在 worker 内）            |
+| 层                  | 现名                        | 用户可见                                     |
+| ------------------- | --------------------------- | -------------------------------------------- |
+| core Rust           | `Frequency::release()`      | ❌                                           |
+| node napi           | `Frequency.free()`          | ✅                                           |
+| 浏览器 TS 壳        | `internals.drop(ref)`       | ✅（测试缝）                                 |
+| worker 命令         | `dropFrequency` / `release` | ❌（本 change 收拢为单一 `drop`，转发 core） |
+| JS 句柄函数         | `release(handle)`           | ✅                                           |
+| wasm-bindgen 生成物 | `free()`                    | ❌（只活在 worker 内）                       |
 
 约束：wasm-bindgen 为每个 `#[wasm_bindgen]` class 自动生成的释放方法名固定为
 `free()`（工具链焊死，见 memory-lifecycle spec「Rust `Drop` 经见证计数器可证」
@@ -82,20 +82,31 @@ worker 命令表 `release` → `drop`；错误文案 `unknown or released handle
 
 `internals.drop`（浏览器测试缝）已含 `drop`，不改名。
 
-### worker：单一 `resources` 表 + 单一 `drop`
+### worker 资源表：下沉 core（cfg=browser）+ worker JS 零状态
 
-常驻 worker 原有两张句柄表——`hosted`（`upload` 移入的裸字节缓冲）与
+常驻 worker 原有两张 JS 句柄表——`hosted`（`upload` 移入的裸字节缓冲）与
 `frequencies`（worker 内 wasm `Frequency` 实例），释放动词分裂为 `release`(buffer)
-与 `dropFrequency`(Frequency)。本 change 合并两表为**单一 `resources` 表**，
-释放命令收拢为**单一 `drop(handle)`**（废止 `dropFrequency`）：句柄共用同一
-`nextHandle` 计数器、全局唯一，单表查找无歧义；取出后按值分派——wasm
-`Frequency` 调其生成物 `free()` 触发 Rust `Drop`（生成物豁免），裸字节缓冲直接
-删除。未来 Network/Circuit 进同一张表，表数量恒为 1。
+与 `dropFrequency`(Frequency)。本 change 把句柄表**整体下沉到 core Rust**：
 
-`resources` 表只存在于浏览器 worker（铁律八：主线程只持数字 handle，worker 靠
-句柄路由消息）；node/python 直接持对象，无句柄表、无需此结构。全平台统一
-公开形态是实例方法 `obj.drop()`；`drop(handle)` 仅是浏览器 `postMessage`
-协议的内部命令形态，不上浮公开 API。
+```rust
+// core，cfg 门控 browser feature
+pub enum Resource { Buffer(Vec<f64>), Frequency(Frequency) /* 未来 Network 等 */ }
+static RESOURCES: Mutex<BTreeMap<u32, Resource>>; // 句柄计数器同表递增
+```
+
+- **单一一张表**：`handle → Resource` enum，句柄由 core 单一计数器递增、全局
+  唯一，单表查找无歧义；未来 Network/Circuit 只加 enum 变体，表数量恒为 1。
+- **单一 `drop(handle)`**：core 侧 `remove(handle)` 直接触发 Rust `Drop`（RAII），
+  不经 JS 对象中转——wasm `Frequency` 实例不再浮出 JS，连生成物 `free()` 的
+  JS 调用点都不存在（工具链生成物豁免因此自动满足）。
+- **worker JS 零状态**：`hosted`/`frequencies`/`nextHandle` 全删；`upload`/
+  `newFrequency`/`drop` 等命令退化为把参数/句柄原样转发给 core 的
+  `#[wasm_bindgen]` 入口，零分派零状态（铁律八：worker 内 wasm 是唯一数据权威，
+  表也应在 wasm 内而非 JS）。
+- **cfg 只门控浏览器**：表代码写在 core crate、只编进 wasm；node/python 编译时
+  不启用该 cfg，直接持对象、无句柄表，不会被拖去实现注册表。三端统一的是
+  `drop` 这个名字与行为契约，不是那张表；公开形态统一实例方法 `obj.drop()`，
+  `drop(handle)` 仅是浏览器 `postMessage` 协议的内部命令形态，不上浮公开 API。
 
 ### 门禁：三端动词集合相等
 
@@ -112,6 +123,9 @@ napi `#[napi]` / 浏览器 TS 壳导出的公开动词集合，做 camelCase 机
   作为验收项（LL-008 同类坑）。
 - **[worker 命令名与壳不同步]** 壳发 `drop` 而 worker 表仍是 `release` → 运行期
   "unknown command"；同一 PR 内两处同改 + 往返测试覆盖。
+- **[句柄表下沉 core 的波及]** `upload`/`readElement` 从 JS Map 读写改为 core
+  句柄入口（字节移进 core `Vec<f64>`），是行为等价的搬运 → 往返测试逐 bit 对拍
+  托管/未托管两路径不变即证明；wasm 体积增量（一张表 + Mutex）可忽略。
 - **[Python 手动 drop 冗余]** Python 有引用计数，`drop()` 看似多余 → 幂等 +
   释放后报错封死误用；换取四端动词单一，收益已在 spec 立案。
 

@@ -17,10 +17,12 @@
 - **BREAKING** JS 托管句柄释放动词 `release(handle)` 重命名为 `drop(handle)`；
   worker 命令 `release` → `drop`；错误文案 `unknown or released handle` →
   `unknown or dropped handle`。
-- **BREAKING** 常驻 worker 两张句柄表 `hosted`（裸字节缓冲）+ `frequencies`
-  （wasm `Frequency` 实例）合并为**单一 `resources` 表**；释放命令收拢为**单一
-  `drop`**（废止 `dropFrequency`）——句柄全局唯一，单表查找无歧义；未来
-  Network/Circuit 进同一张表，表数量恒为 1。
+- **BREAKING** 常驻 worker 两张 JS 句柄表 `hosted`（裸字节缓冲）+ `frequencies`
+  （wasm `Frequency` 实例）**整体下沉 core Rust**（cfg 门控 browser feature）：
+  core 内唯一一张资源表（`handle → Resource` enum，句柄由 core 单一计数器递增）；
+  释放命令收拢为**单一 `drop(handle)`**（废止 `dropFrequency`），core 侧
+  `remove` 直接触发 Rust `Drop`；worker JS 零状态纯转发，未来 Network/Circuit
+  只加 enum 变体，表数量恒为 1。
 - 公开形态统一为实例方法 `obj.drop()`；`drop(handle)` 仅作为浏览器 worker 内部
   `postMessage` 命令形态，不上浮公开 API（node/python 直接持对象，无 handle 表）。
 - Python 端 `Frequency` 公开面新增 `drop()`（推翻 memory-lifecycle spec 现行
@@ -46,8 +48,9 @@
   工具链生成物豁免）。
 - `memory-lifecycle`：显式释放 Requirement 从「JS-only `drop()`」改为「全端
   `drop()`」；删除 Python/Rust 禁令；node `free()` 措辞改 `drop()`；「主线程
-  registry 驱动 worker 释放」改为单一 `resources` 表 + 单一 `drop` 命令（废止
-  `dropFrequency` 与 `hosted`/`frequencies` 两表）。
+  registry 驱动 worker 释放」改为句柄表下沉 core（cfg=browser）+ worker JS
+  零状态纯转发 + 单一 `drop` 命令（废止 `dropFrequency` 与 `hosted`/
+  `frequencies` 两表）。
 - `zero-copy-roundtrip`：「只有名字里明说移交/消耗的 API 才 transfer 输入」中
   点名的 `upload`/`release` 改为 `upload`/`drop`。
 
@@ -59,8 +62,8 @@
 
 - 不加 Python `with` 上下文管理器（`__enter__`/`__exit__`）——v1 只有一个
   `drop()`，将来有真实需求再立项。
-- 不改 wasm-bindgen 为导出类自动生成的 `free()`（工具链焊死、且该生成物只活在
-  worker 内部、用户不可见）；worker 内部对它的调用保持不变。
+- 不改 wasm-bindgen 为导出类自动生成的 `free()`（工具链焊死、用户不可见）；
+  句柄表下沉 core 后 wasm `Frequency` 不再浮出 JS，该生成物连 JS 调用点都不存在。
 - 不加任何兼容性别名（`free`/`release` 均不留 deprecated 转发）。
 - 不动 `Frequency` 功能方法面（`f`/`f_scaled`/`w`/`wavelength`/`from_wavelength`/
   `WavelengthUnit`/`SPEED_OF_LIGHT`）——归 `frequency-class` change。
@@ -70,9 +73,11 @@
 
 ## Impact
 
-- 代码：`core/src/frequency.rs`、`typescript/native/src/lib.rs`、
-  `typescript/src/{index.browser,index.node,types,netwave.worker}.ts`、
-  `python/src/lib.rs`（Python `Frequency` 类首次导出含 `drop()`）。
+- 代码：`core/src/frequency.rs` 与 core 新增资源表模块（cfg=browser：句柄表 +
+  `upload`/`newFrequency`/`drop`/`read_element` 句柄入口的 `#[wasm_bindgen]` 面）、
+  `typescript/native/src/lib.rs`、
+  `typescript/src/{index.browser,index.node,types,netwave.worker}.ts`（worker 退化为
+  零状态转发）、`python/src/lib.rs`（Python `Frequency` 类首次导出含 `drop()`）。
 - 测试：`typescript/test/native/{memory-lifecycle,native.roundtrip}.test.ts`、
   `typescript/test/wasm/{memory-lifecycle,browser-roundtrip,browser-surface,worker}.test.ts`、
   `typescript/test/browser/browser-resident.test.ts`（改名，断言逻辑不变）。
