@@ -1,5 +1,5 @@
 //! Frequency unit vocabulary: the single source of truth for unit names
-//! and their multipliers (spec: frequency-unit).
+//! and their multipliers.
 
 use std::str::FromStr;
 
@@ -20,15 +20,16 @@ use pyo3::prelude::*;
 use pyo3_stub_gen::derive::{gen_stub_pyclass_enum, gen_stub_pyfunction};
 
 // With the `node` feature the same items carry napi attributes; the enum
-// becomes a numeric JS enum (design: numeric across the worker boundary).
-// `not(browser)` avoids the clippy --workspace macro collision (LL-044);
-// `not(coverage)` drops the JS-registration glue (pytest/vitest cover it).
+// becomes a numeric JS enum (units cross the worker boundary as numbers).
+// `not(browser)` avoids the clippy --workspace macro collision between the
+// napi and wasm-bindgen derive macros; `not(coverage)` drops the
+// JS-registration glue (pytest/vitest cover the binding surface).
 #[cfg(all(feature = "node", not(feature = "browser"), not(coverage)))]
 use napi_derive::napi;
 
 // With the `browser` feature the same items carry wasm-bindgen attributes;
-// the enum becomes a numeric JS constant object in the glue (importing a
-// constant does not instantiate wasm — ironclad rule 8 holds).
+// the enum becomes a numeric JS constant object in the glue, so importing a
+// unit name never instantiates the wasm module.
 #[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
 use wasm_bindgen::prelude::wasm_bindgen;
 
@@ -40,7 +41,7 @@ pub use strum::IntoEnumIterator;
 /// Core parse/conversion errors.
 ///
 /// The offending input is carried verbatim so every binding surface can
-/// quote it (spec: frequency-unit "unknown unit error contract").
+/// quote it in its raised error message.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     /// A unit string did not match any [`FrequencyUnit`] spelling.
@@ -82,7 +83,7 @@ impl FromStr for FrequencyUnit {
 /// The variant name IS the canonical spelling (`kHz` = kilo + hertz,
 /// multiplier 10^3). This enum is the only place any unit name appears in
 /// the repository; bindings expose it by reflection, never by copying a
-/// name list (spec: frequency-unit "vocabulary single source").
+/// name list.
 /// Multipliers are exact powers of ten (10^3n), representable bit-exactly
 /// in f64 — see [`FrequencyUnit::multiplier`].
 // `kHz` is the correct SI spelling (lowercase prefix k); the Rust naming
@@ -97,8 +98,9 @@ impl FromStr for FrequencyUnit {
 #[cfg_attr(all(feature = "python", not(coverage)), pyclass(skip_from_py_object))]
 // `not(coverage)` drops the runtime-only registration glue (pytest/vitest
 // cover the binding surface); `not(browser)`/`not(node)` avoid the clippy
-// --workspace macro collision (LL-044). A real glue build enables exactly
-// one of node/browser, so the enum is exported there either way.
+// --workspace macro collision between the napi and wasm-bindgen derive
+// macros. A real glue build enables exactly one of node/browser, so the
+// enum is exported there either way.
 #[cfg_attr(all(feature = "node", not(feature = "browser"), not(coverage)), napi)]
 #[cfg_attr(
     all(feature = "browser", not(feature = "node"), not(coverage)),
@@ -124,7 +126,7 @@ impl FrequencyUnit {
     /// The multiplier of an SI prefix is exactly 10^3n (kilo 10^3, mega
     /// 10^6, giga 10^9, tera 10^12); every value here is a power of ten
     /// exactly representable in f64, so conversions are bit-exact and no
-    /// tolerance applies (LL-042). Internal helper: deliberately NOT exposed
+    /// tolerance is ever needed. Internal helper: deliberately NOT exposed
     /// to py/ts — bindings see names via reflection and never numeric tables.
     ///
     /// The `match` is exhaustive on purpose: adding an enum variant without
@@ -165,8 +167,8 @@ impl FrequencyUnit {
 // `not(coverage)` drops the runtime-only registration glue (pytest/vitest
 // cover it). napi and wasm_bindgen cannot both decorate one function (napi's
 // macro rejects an item that also carries `#[wasm_bindgen]`), so `node` and
-// `browser` are mutually exclusive (LL-044); a real glue build enables
-// exactly one, so the function is still JS-exported there.
+// `browser` are mutually exclusive; a real glue build enables exactly one,
+// so the function is still JS-exported there.
 #[cfg_attr(all(feature = "node", not(feature = "browser"), not(coverage)), napi)]
 #[cfg_attr(
     all(feature = "browser", not(feature = "node"), not(coverage)),

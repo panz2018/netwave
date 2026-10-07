@@ -1,7 +1,7 @@
-//! Vocabulary tests for `FrequencyUnit` (spec: frequency-unit,
-//! "frequency unit vocabulary single source").
+//! Vocabulary tests for `FrequencyUnit`: the enum definition is the single
+//! source of unit spellings.
 //!
-//! Expected values are independent literals (spec contract), never derived
+//! Expected values are independent literals, never derived
 //! from the code under test (ironclad rule 2: no tautology).
 
 use netwave::frequency::{FrequencyUnit, IntoEnumIterator, frequency_units};
@@ -54,8 +54,8 @@ fn parse_error_carries_the_offending_input() {
 #[test]
 fn multipliers_are_exact_powers_of_ten() {
     // Exact constants (SI prefixes 10^3n, bit-representable in f64):
-    // compared with ==, never a tolerance (LL-042 — core_tol governs
-    // computed results across platforms, not exact constants).
+    // compared with ==, never a tolerance — manifest tolerances govern
+    // computed results across platforms, not exact constants.
     assert_eq!(FrequencyUnit::Hz.multiplier(), 1e0);
     assert_eq!(FrequencyUnit::kHz.multiplier(), 1e3);
     assert_eq!(FrequencyUnit::MHz.multiplier(), 1e6);

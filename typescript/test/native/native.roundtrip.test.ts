@@ -52,7 +52,7 @@ describe("native roundtrip", () => {
     expect(await readElement(handle, 3)).toBe(-2.5);
     await release(handle);
     await expect(readElement(handle, 0)).rejects.toThrow(new RegExp(String(handle)));
-    // Double release rejects too (handle table no longer holds it).
+    // Double release rejects too: the handle table has already dropped it.
     await expect(release(handle)).rejects.toThrow(new RegExp(String(handle)));
   });
 

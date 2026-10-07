@@ -1,8 +1,8 @@
-/** Node binding vocabulary test (RED first: shell lacks the export → red).
+/** Node binding vocabulary test.
  *
- * Expected names are independent literals (spec: frequency-unit "vocabulary
- * single source"); if core renames a variant this test trips — its job as a
- * contract tripwire, not hand-copied drift (grep gate exempts tests). */
+ * Expected names are independent literals — the enum definition in core is
+ * the single source of spellings; if core renames a variant this test trips,
+ * which is its job as a contract tripwire, not hand-copied drift. */
 import { describe, expect, it } from "vitest";
 import { FrequencyUnit, frequencyUnits } from "../../src/index.node.ts";
 

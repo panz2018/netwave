@@ -69,7 +69,7 @@ describe("resident worker contract", () => {
     const handle = await m.upload(new Float64Array([7, -7]));
     await m.release(handle);
     await expect(m.readElement(handle, 0)).rejects.toThrow(new RegExp(String(handle)));
-    // Double release rejects too (handle table no longer holds it).
+    // Double release rejects too: the handle table has already dropped it.
     await expect(m.release(handle)).rejects.toThrow(new RegExp(String(handle)));
   });
 

@@ -4,8 +4,8 @@
  * harness. `frequencyUnits()` is async (resident-worker command, ironclad
  * rule 8: the main thread never runs wasm); `FrequencyUnit` is a numeric
  * constant re-exported from the glue (importing a constant does not init
- * wasm). Expected names are independent literals (spec: frequency-unit
- * "vocabulary single source") — a rename trips this test by design. */
+ * wasm). Expected names are independent literals — the core enum is the
+ * single source of spellings, so a rename trips this test by design. */
 import { beforeAll, describe, expect, it } from "vitest";
 import { installResidentWorkerHarness } from "./harness.ts";
 

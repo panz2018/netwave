@@ -12,9 +12,9 @@ import {
 } from "../dist/index.node.generated.mjs";
 import type { Handle, NetwaveBuffer } from "./types.js";
 
-// Vocabulary re-exports (spec: frequency-unit "zero hand-copy"): the enum
-// (numeric JS object) and the passthrough function come straight from the
-// napi-generated glue, never re-declared here.
+// Vocabulary re-exports: the enum (numeric JS object) and the passthrough
+// function come straight from the napi-generated glue, never re-declared
+// here — a second copy of the name list could drift from core.
 export { FrequencyUnit, frequencyUnits };
 
 /**

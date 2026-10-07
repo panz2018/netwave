@@ -80,7 +80,7 @@ describe("memory lifecycle (browser double-realm)", () => {
     const m = await shell();
     const wrapper = await m.newFrequency(new Float64Array([5e9]), FrequencyUnit.GHz);
     await m.drop(wrapper);
-    // Second drop names the freed handle (worker address table no longer holds it).
+    // Second drop names the freed handle (it is gone from the worker table).
     await expect(m.drop(wrapper)).rejects.toThrow(new RegExp(String(wrapper.handle)));
   });
 });

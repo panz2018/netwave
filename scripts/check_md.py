@@ -25,6 +25,13 @@ Checks:
   not leak into live documents or TS sources — reference decisions by
   their heading text instead. LL-033 gate. Archive is frozen history and
   is exempt.
+- STAGE WORD: roadmap stage numbers (Chinese stage word + digit, English
+  `stage N` / `phase-N` / `phase N`) must not appear in any Markdown —
+  live specs, Plan/, archive, and READMEs alike; name content by what it
+  is, not by a roadmap position. Zero exemptions (governance meta-rule).
+- ARCHIVE PATH: an inline-code path of the form
+  `openspec/changes/archive/<name>/` must point at an existing directory
+  (renamed archives leave no stale pointers behind).
 """
 
 import os
@@ -35,6 +42,8 @@ from glob import glob
 
 LINK = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 HEADING = re.compile(r"#{1,6} (.*)")
+STAGE_WORDS = re.compile(r"阶段\s*[0-9]|stage [0-9]|phase[- ][0-9]")
+ARCHIVE_PATH = re.compile(r"openspec/changes/archive/([A-Za-z0-9._-]+)/?`")
 
 
 def slug(title: str) -> str:
@@ -79,9 +88,9 @@ def main() -> int:
         )
     }
     ledger_heading = re.compile(r"^#{1,6} .*(Implementation notes|Gotchas)")
-    # LL-033 gate: decision-number tags (D1/D2/...) are ephemeral — they
-    # only make sense inside the single document that defines them, and
-    # never inside code comments. Reference decisions by heading text.
+    # Decision-number tags (D1/D2/...) are ephemeral — they only make
+    # sense inside the single document that defines them, and never inside
+    # code comments. Reference decisions by heading text.
     decision_tag = re.compile(r"design D\d|[（(]D\d[）)、，,]|按 D\d|见 D\d")
     # TS sources: decision-tag scan only (markdown link/backtick rules
     # do not apply to code; template literals would false-positive).
@@ -110,7 +119,7 @@ def main() -> int:
                     continue
                 if in_code:
                     continue
-                # LL-033 gate: no ephemeral decision-number tags
+                # no ephemeral decision-number tags
                 # (ledger exempt: it quotes the violation as evidence)
                 if (
                     not in_archive
@@ -119,6 +128,19 @@ def main() -> int:
                 ):
                     print(f"DECISION TAG   {f}:{i} {line.rstrip()[:70]}")
                     bad += 1
+                # governance meta-rule: roadmap stage numbers are banned in
+                # every Markdown, zero exemptions (archive included)
+                if STAGE_WORDS.search(line):
+                    print(f"STAGE WORD     {f}:{i} {line.rstrip()[:70]}")
+                    bad += 1
+                # archive pointers in inline code must resolve to a live dir
+                for m in ARCHIVE_PATH.finditer(line + "`"):
+                    tgt = os.path.normpath(
+                        os.path.join(root, "openspec/changes/archive", m.group(1))
+                    )
+                    if not os.path.isdir(tgt):
+                        print(f"ARCHIVE PATH   {f}:{i} {m.group(1)} (no such directory)")
+                        bad += 1
                 # LL gate: child READMEs must not carry notes/gotchas
                 if is_child_readme and ledger_heading.match(line):
                     print(f"LEDGER SECTION {f}:{i} {line.rstrip()[:70]}")

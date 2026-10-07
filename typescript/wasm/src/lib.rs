@@ -52,7 +52,7 @@ impl Frequency {
     /// `unit` is a plain `u8`, not `FrequencyUnit`: the FFI signature must
     /// not name the core enum, because under `cargo clippy --workspace` the
     /// `node` and `browser` features merge onto one `netwave` build and
-    /// neither binding macro applies (LL-044) — the same reason
+    /// neither binding macro applies — the same reason
     /// `fill_pattern`/`frequency_units` use primitives. The ordinal maps back
     /// to the variant in core (`from_ordinal`), so no name list is copied.
     #[wasm_bindgen]

@@ -1,7 +1,6 @@
-/** Real-browser-only assertions (ironclad rule 8, LL-030 recurrence
- * check). These CANNOT run under Node — they assert the browser main
- * thread has no wasm and that the resident worker is the single data
- * authority. Run via `pnpm test:browser` (vitest browser mode, Chromium). */
+/** Real-browser-only assertions: the browser main thread never runs wasm
+ * and the resident worker is the single data authority. These CANNOT run
+ * under Node. Run via `pnpm test:browser` (vitest browser mode, Chromium). */
 import { describe, expect, it } from "vitest";
 
 describe("real browser: main thread has no wasm (LL-030)", () => {

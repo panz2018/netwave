@@ -1,5 +1,5 @@
-/** Node napi memory-lifecycle tripwire (spec: memory-lifecycle "node napi
- * finalizer auto-Drop"). Drives the generated glue directly: the napi class
+/** Node napi memory-lifecycle tripwire: the napi finalizer must run `Drop`
+ * automatically. Drives the generated glue directly: the napi class
  * is internalized (the shell does NOT re-export it), but the glue build
  * artifact is the real object under test — the same three assertions as the
  * browser line, witnessed by the same core `live_count`. `--expose-gc` comes

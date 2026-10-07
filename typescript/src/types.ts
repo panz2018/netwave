@@ -30,8 +30,8 @@ export interface NetwaveBuffer {
 }
 
 /** Worker command envelope (main thread -> resident worker). Generalized
- * dispatch per api-contract spec: `{id, cmd, args}`; adding a core verb
- * only extends the worker's static cmds table. */
+ * dispatch: `{id, cmd, args}`; adding a core verb only extends the worker's
+ * static cmds table. */
 export interface WorkerRequest {
   id: number;
   cmd: string;

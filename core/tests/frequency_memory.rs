@@ -1,6 +1,6 @@
-//! Memory-lifecycle witness for the core `Frequency`
-//! (spec: memory-lifecycle "Rust `Drop` 经见证计数器可证"). One test per
-//! binary so the global `LIVE` counter has no intra-binary contention.
+//! Memory-lifecycle witness for the core `Frequency`: dropping an instance
+//! must decrement the live allocation counter. One test per binary so the
+//! global `LIVE` counter has no intra-binary contention.
 
 use netwave::frequency::{Frequency, FrequencyUnit, live_count};
 

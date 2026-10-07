@@ -1,4 +1,4 @@
-//! `.pyi` generator entry point (task 3.3).
+//! `.pyi` generator entry point.
 //!
 //! Run from `python/` so pyo3-stub-gen finds `pyproject.toml`:
 //!
@@ -7,8 +7,8 @@
 //! ```
 //!
 //! The stub is generated, never hand-written: the vocabulary single-source
-//! rule (spec: frequency-unit) forbids a second copy of any name list, and
-//! the exports test (task 6.1) asserts the generated members match core.
+//! rule forbids a second copy of any name list, and the exports test asserts
+//! the generated members match core.
 
 use std::fs;
 use std::path::Path;
