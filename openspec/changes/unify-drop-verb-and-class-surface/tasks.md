@@ -27,21 +27,25 @@
 
 ## 2. core：浏览器资源表（cfg=browser）
 
-- [x] 2.1 资源表模块（`cfg(feature = "browser")`）改**类型擦除泛型表**：
-      `Mutex<BTreeMap<u32, Box<dyn Any + Send>>>` + 单一计数器；模块只有
-      `insert<T>`/`with<T>`/`remove` 三泛型操作，不认识任何具体资源类型
-      （旧 `Resource` enum 否决：每加资源改表模块，违反开闭）；注册焊死在
-      各工厂入口内，无独立注册函数。验证：`cargo check -p netwave` 非
-      browser 绿（证 cfg 隔离）；`cargo test -p netwave --features browser`
-      句柄表用例（注册/查表/`drop` 触发 `Drop`/未知句柄报错/错类型 downcast
-      报错）全绿（本机未装 wasm32 target：表逻辑拆纯函数 native 验证，
-      `#[wasm_bindgen]` 适配层由组 5 worker 往返覆盖）。
-- [x] 2.2 各资源的 `#[wasm_bindgen]` 句柄入口写回**各自模块**（同 feature
-      门控）：`network_upload`/`network_fill_pattern`/`network_read_element`
-      入 `network.rs`，`frequency_from_f` 入 `frequency.rs`，`drop`/
-      `frequency_units`/`live_count` 留 `resources.rs`（类型无关）；
-      `drop(handle)` = `remove` 直接触发 Rust `Drop`，不经 JS 对象中转。
-      验证：2.1 同一套测试全绿；未来新资源只在自己模块加入口。
+- [ ] 2.1 资源表模块（`cfg(feature = "browser")`）改**泛型分发表**：
+      `Mutex<Registry>`，内含实例表（`u32 → Box<dyn Resource>`）、命名空间表
+      （`&'static str → NamespaceFn`）与单一计数器；`Resource` trait 只有一个
+      `call` 方法（收方法名与 `JsValue` 参数数组）；命名空间函数指针承接工厂
+      与模块自由函数；分发器 `#[wasm_bindgen] call` 收 handle/方法名/参数：
+      数字 → 实例表（`method=="drop"` → `remove` 触发 `Drop`），字符串 →
+      命名空间表；无哨兵 handle。表模块不认识任何具体资源类型，加动词零改动。
+      验证：`cargo check -p netwave` 非 browser 绿（证 cfg 隔离）；表逻辑
+      （insert/remove/命名空间路由/未知句柄报错）拆纯 Rust 函数 native 测绿，
+      `JsValue` 适配层由组 5 worker 往返覆盖。
+- [ ] 2.2 删除逐动词 `#[wasm_bindgen]` 入口（`network_upload`/
+      `network_fill_pattern`/`network_read_element`/`frequency_from_f`/
+      `frequency_npoints`），改为各资源模块实现 `Resource::call` 手写 `match`
+      （方案 A；闭包注册表否决：为不存在的自省需求写 downcast 管道；属性宏
+      `#[resource]` 缓建为方法面膨胀后的升级路径）+ `call_namespace` 工厂
+      `match`；`#[wasm_bindgen(start)]` 在 `lib.rs` 调 `network::register()`/
+      `frequency::register()` 挂命名空间。验证：wasm 导出面 grep 逐动词入口
+      零命中（glue `.d.ts` 只剩 `call` + `FrequencyUnit` + 词汇函数）；
+      加方法 = 该模块 match 加一臂，worker/壳/types 零改动（往返测试证明）。
 
 ## 3. Python：`Network`/`Frequency` pyclass 首次导出
 
@@ -73,29 +77,31 @@
 
 ## 5. 浏览器：壳类 + worker 零状态
 
-- [x] 5.1 `typescript/src/netwave.worker.ts`：删除 `hosted`/`frequencies`/
-      `nextHandle`（JS 零状态）；命令表改为机械 camelCase 转发 core 句柄入口
-      （`networkUpload`/`networkFillPattern`/`networkReadElement`/
-      `frequencyFromF`/`drop`/`frequencyUnits`/`liveCount`）；`release`/
-      `dropFrequency`/`newFrequency` 消失；错误文案 `unknown or released handle`
-      →`unknown or dropped handle`（错误源由 core throw 透传）。验证：worker
-      往返测试全绿。
-- [x] 5.2 `typescript/src/index.browser.ts`：导出 `Network`/`Frequency` 壳类
-      （实例持 `@internal` 数字 handle，方法体纯 `postMessage`；
-      `Network.upload(view, nfreq, nports)` 显式传 shape）；
-      `FinalizationRegistry` 挂壳实例、held 为数字 handle、回调发
-      `{cmd:"drop", handle}`；`internals` 测试缝退役；自由函数
-      `frequencyUnits`/`liveCount` 保留。验证：`pnpm -C typescript typecheck`
-      通过、`typescript/src` grep `release`/`dropFrequency`/`newFrequency` 零命中。
-- [x] 5.3 `typescript/src/index.node.ts`：删除 `hosted` Map 与 `lastHandle`，
-      `upload`/`release`/`readElement` 自由函数退役，改由 4.1 的 napi 类搬运
-      导出；`typescript/src/types.ts` 同步（`Handle` 降 `@internal` 或删除）。
-      验证：typecheck 通过、node 壳 grep `hosted`/`release` 零命中。
-- [x] 5.4 测试改写：`typescript/test/wasm` 下 `worker`/`memory-lifecycle`/
+- [ ] 5.1 `typescript/src/netwave.worker.ts`：删除 `hosted`/`frequencies`/
+      `nextHandle` 与逐动词 `cmds` 表（`networkUpload`/`networkFillPattern`/
+      `networkReadElement`/`frequencyFromF`/`frequencyNpoints`/`drop`/
+      `frequencyUnits`/`liveCount`），退为**单条固定模板**：收到
+      `{id, handle, method, args}` 后 await wasm ready、原样转发 core
+      `call(handle, method, args)`，结果/错误机械回传——与动词数量无关，
+      以后加方法本文件零改动。验证：worker 往返测试全绿；本文件 grep 动词名
+      零命中。
+- [ ] 5.2 `typescript/src/index.browser.ts`：壳类方法改发泛化消息——工厂/
+      静态方法发字符串 handle（`{handle:"network", method:"upload"}`，命名空间
+      = core 模块名；方法名 = core 名机械 camelCase，不重命名），实例方法发
+      数字 handle（`{handle:7, method:"readElement"}`）；
+      `FinalizationRegistry` 回调发 `{handle, method:"drop", args:[]}`；
+      自由函数 `frequencyUnits`/`liveCount` 经 `"frequency"` 命名空间路由。
+      验证：typecheck 通过、grep `cmd` 零命中。
+- [ ] 5.3 `typescript/src/types.ts`：`WorkerRequest` 从 `{id, cmd, args}` 改
+      `{id, handle: Handle | string, method: string, args: unknown[]}`
+      （`Handle` 保持 `number`，字符串 handle = 命名空间名，均 `@internal`）；
+      `index.node.ts` 不受影响（已在 4.x 改完）。验证：typecheck 通过。
+- [ ] 5.4 测试改写：`typescript/test/wasm` 下 `worker`/`memory-lifecycle`/
       `browser-roundtrip`/`browser-surface` 与 `typescript/test/browser/`
-      `browser-resident.test.ts`（句柄函数流改壳类实例方法、导出名断言列表
-      同步为 `Network`/`Frequency`）。验证：`pnpm -C typescript test:wasm` 与
-      `test:browser` 全绿（真 Chromium 常驻 worker）。
+      `browser-resident.test.ts`（消息断言改 `{handle, method, args}` 形态；
+      新增「加动词零改动」哨兵：对 worker 源码 grep 动词名零命中）。
+      验证：`pnpm -C typescript test:wasm` 与 `test:browser` 全绿（真 Chromium
+      常驻 worker）。
 
 ## 6. 门禁：三端动词集合相等
 
@@ -124,14 +130,16 @@
       示例改用 `Network`/`Frequency` 类形态。验证：根/子 README 与 CONTRIBUTING
       grep 旧动词仅剩非动词用法（如 release 版本）。
 
-## 8. 全量验收
+## 8. 全量验收（泛化分发返工后重跑）
 
-- [x] 8.1 `pnpm check` 全绿（md/ts/rs/py/meta）。
-- [x] 8.2 `pnpm check:cross` 全绿（四端 dump 对拍 + 动词集合相等）。
-- [x] 8.3 四端测试全绿：`cargo test --workspace`、pytest、
+- [ ] 8.1 `pnpm check` 全绿（md/ts/rs/py/meta）。
+- [ ] 8.2 `pnpm check:cross` 全绿（四端 dump 对拍 + 动词集合相等）。
+- [ ] 8.3 四端测试全绿：`cargo test --workspace`、pytest、
       `pnpm -C typescript test:native`、`test:wasm`、`test:browser`。
-- [x] 8.4 全仓 grep 验收：core/python/typescript 的 `.rs`/`.py`/`.ts` 中
+- [ ] 8.4 全仓 grep 验收：core/python/typescript 的 `.rs`/`.py`/`.ts` 中
       `.free()` 与 `release(` 用户可见面零命中（豁免：`mem::forget`、
       `free list` 注释、`target/release` 路径——句柄表下沉 core 后 wasm 生成物
       `free()` 已无调用点）；`dropFrequency`/`newFrequency`、JS 侧 `hosted`/
-      `frequencies`/`nextHandle` 全仓零命中；node/Python 公开面无 `upload`。
+      `frequencies`/`nextHandle` 全仓零命中；node/Python 公开面无 `upload`；
+      worker 与 wasm 导出面逐动词入口（`network_*`/`frequency_from_f`/
+      `frequency_npoints`）零命中（泛化 `call` 是唯一分发入口）。

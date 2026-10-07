@@ -80,3 +80,19 @@
   否则 `-D warnings` 报 unexpected_cfgs
 - 复发检测：`cargo llvm-cov --workspace --fail-under-lines 100`（rust job）；
   改绑定属性后必跑，且须验证真实 glue 构建（maturin/napi/wasm-pack）仍导出
+
+### LL-052 泛化表不等于泛化分发
+
+- 犯过：句柄表下沉 core 时只把表做成 `insert<T>`/`with<T>` 类型擦除泛型，
+  入口仍按动词逐个导出 `network_upload`/`frequency_npoints` 等
+  `#[wasm_bindgen]` 函数、worker 维护逐动词 `cmds` 表——加一个方法要改
+  core 入口 + worker 表 + 壳三处，违反 api-contract「worker 泛化分发与
+  单常驻拓扑」（人工纠正）
+- 规则：wasm 导出恒为单条 `call(handle, method, args)`；分发落点是 core 通用
+  `call` + 各资源模块手写 `match`（Rust 无反射，名字→函数必须手写；闭包
+  注册表为不存在的自省需求写 downcast 管道，否决）；handle 是
+  `number | string`（字符串 = core 模块命名空间，数字 = 实例），禁哨兵值；
+  加方法 = 该模块 match 加一臂，worker/壳/types 零改动
+- 复发检测：`typescript/src/netwave.worker.ts` 与 wasm glue `.d.ts` grep 逐动词
+  入口零命中；worker 往返测试覆盖 `call` 分发（`JsValue` 非 wasm 不可构造，
+  分发层原生不可单测）

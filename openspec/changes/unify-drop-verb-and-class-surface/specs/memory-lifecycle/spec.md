@@ -72,22 +72,24 @@ node 端 `Frequency` MUST 由 napi cleanup finalizer 在 JS 对象被 GC 时自�
 浏览器端 `Network`/`Frequency` 真数据活在常驻 worker（铁律八），主线程仅持
 `Network`/`Frequency` 壳类实例（壳内数字 handle，`@internal`）。主线程 MUST 自建
 `FinalizationRegistry`，其 held 值 MUST 是**不反向引用壳实例**的数字 handle；壳被
-GC 时回调 MUST 经 `postMessage {cmd:"drop", handle}` 通知 worker，worker MUST
-零状态纯转发——句柄注册、查表、释放 MUST 全部发生在 **core 内唯一一张资源表**
-（cfg 门控 browser feature，`handle → Box<dyn Any + Send>` 类型擦除表：表本身
-不认识任何具体资源类型，只有 `insert<T>`/`with<T>`/`drop` 三个泛型操作，各资源
-的入口写在自己的模块里自注册）；`drop(handle)` MUST 在 core 侧
-`remove(handle)` 直接触发 Rust `Drop`，MUST NOT 经 JS 对象中转。worker JS MUST
-NOT 存在任何句柄 `Map` 或 `nextHandle` 计数器（现有 `hosted`/`frequencies` 两表
-废止）；释放动词唯一为 `drop`（句柄全局唯一，单表查找无歧义）；`postMessage`
-协议名 `dropFrequency`/`newFrequency` MUST NOT 存在。句柄表本身 MUST NOT 被删除
-（跨边界只传数字 handle，core 靠它路由消息）。
+GC 时回调 MUST 经 `postMessage {handle, method:"drop", args:[]}` 通知 worker，
+worker MUST 零状态纯转发——句柄注册、查表、分发、释放 MUST 全部发生在 **core 内
+唯一一张资源表**（cfg 门控 browser feature：数字 handle → `Box<dyn Resource>`
+实例表，字符串 handle → 命名空间表（类工厂 + 模块自由函数），各资源在自己的
+模块里手写 `match` 分发并在 `#[wasm_bindgen(start)]` 注册）；
+`{handle, method:"drop"}` MUST 在 core 侧 `remove(handle)` 直接触发 Rust `Drop`，
+MUST NOT 经 JS 对象中转。worker JS MUST NOT 存在任何句柄 `Map`、`nextHandle`
+计数器或逐动词命令表（现有 `hosted`/`frequencies` 两表与逐动词 `cmds` 表废止，
+wasm 导出恒为单条泛化 `call`，见 api-contract「worker 泛化分发与单常驻拓扑」）；
+释放动词唯一为 `drop`（句柄全局唯一，单表查找无歧义）；`postMessage` 协议名
+`dropFrequency`/`newFrequency` MUST NOT 存在。句柄表本身 MUST NOT 被删除
+（跨边界只传 handle，core 靠它路由消息）。
 
 #### Scenario: 壳被 GC 触发 worker 释放
 
 - **WHEN** 丢弃主线程壳最后一个引用并强制 GC
-- **THEN** registry 回调 → worker 转发 core `drop(handle)` → core 资源表
-  `remove` 触发 Rust `Drop` → `live_count()` 归零
+- **THEN** registry 回调 → worker 转发 core `call(handle, "drop", [])` → core
+  资源表 `remove` 触发 Rust `Drop` → `live_count()` 归零
 
 #### Scenario: held 不钉活 wrapper
 
@@ -97,16 +99,16 @@ NOT 存在任何句柄 `Map` 或 `nextHandle` 计数器（现有 `hosted`/`frequ
 #### Scenario: 表数量恒为一
 
 - **WHEN** 未来 Circuit 等新增句柄资源类型
-- **THEN** 只在新资源自己的模块加自注册入口，资源表模块（泛型）与释放动词
-  均零修改
+- **THEN** 只在新资源自己的模块加 `match` 与命名空间注册，资源表模块与释放
+  动词均零修改
 
 #### Scenario: worker JS 零状态
 
 - **WHEN** 检查 worker JS 源码
-- **THEN** 无任何句柄 `Map` 与 `nextHandle` 计数器；注册与查表全在 core，
-  wasm `Frequency` 实例不浮出 JS（生成物 `free()` 无 JS 调用点）
+- **THEN** 无任何句柄 `Map`、`nextHandle` 计数器与逐动词命令表；注册、查表与
+  分发全在 core，wasm `Frequency` 实例不浮出 JS（生成物 `free()` 无 JS 调用点）
 
 #### Scenario: dropFrequency 消失
 
 - **WHEN** grep worker 命令面与壳
-- **THEN** 无 `dropFrequency`，仅单一 `drop` 命令
+- **THEN** 无 `dropFrequency`，释放消息唯一形态 `{handle, method:"drop"}`

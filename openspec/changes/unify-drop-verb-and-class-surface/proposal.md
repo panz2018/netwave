@@ -26,16 +26,19 @@ handle 退回 `@internal` 协议细节。
   三端静态（core `from_f` 机械映射，临时名 `newFrequency` 退役）。无状态自由
   函数 `frequencyUnits()`/`liveCount()` 保持不包类。
 - **BREAKING** 公开面 `release(handle)` 退役：浏览器主线程持壳类实例，释放
-  形态统一 `obj.drop()`；worker 命令 `release`/`dropFrequency` 收拢为单一
-  `drop(handle)`（仅存在于 `postMessage` 内部协议）；错误文案
-  `unknown or released handle` → `unknown or dropped handle`。
+  形态统一 `obj.drop()`；错误文案 `unknown or released handle` →
+  `unknown or dropped handle`。
 - **BREAKING** 常驻 worker 两张 JS 句柄表 `hosted`（裸字节缓冲）+ `frequencies`
-  （wasm `Frequency` 实例）**整体下沉 core Rust**（cfg 门控 browser feature）：
-  core 内唯一一张资源表（`handle → Box<dyn Any + Send>` 类型擦除泛型表，
-  句柄由 core 单一计数器递增，表模块不认识具体资源类型）；
-  释放命令收拢为**单一 `drop(handle)`**（废止 `dropFrequency`），core 侧
-  `remove` 直接触发 Rust `Drop`；worker JS 零状态纯转发，未来 Network/Circuit
-  只在自己模块加自注册入口，表模块零修改、表数量恒为 1。
+  （wasm `Frequency` 实例）**整体下沉 core Rust**（cfg 门控 browser feature），
+  并落实泛化分发（api-contract「worker 泛化分发与单常驻拓扑」）：worker 命令面
+  退为**单条固定模板 `call(handle, method, args)`**，逐动词入口
+  （`network_upload`/`network_fill_pattern`/`network_read_element`/
+  `frequency_from_f`/`frequency_npoints`）与逐动词 `cmds` 表全删；
+  handle 是 `number | string`（字符串 = core 模块命名空间，数字 = 实例句柄，
+  无哨兵值）；core 侧 `Resource` trait + 各资源模块手写 `match` 分发（方案 A，
+  闭包注册表与属性宏否决/缓建），`method=="drop"` 由分发器 `remove` 直接触发
+  Rust `Drop`；加方法 = 该资源模块 match 加一臂，worker/壳/types 零改动；
+  加新资源类型 = `#[wasm_bindgen(start)]` 注册一行 + 新模块自带 match。
 - 公开形态统一为实例方法 `obj.drop()`；数字 handle 是 `@internal` 协议细节，
   `drop(handle)` 仅作为 worker `postMessage` 命令形态，不上浮公开 API
   （node/python 直接持对象，无 handle）。
@@ -63,7 +66,7 @@ handle 退回 `@internal` 协议细节。
 - `memory-lifecycle`：显式释放 Requirement 从「JS-only `drop()`」改为「全端
   `drop()`」；删除 Python/Rust 禁令；node `free()` 措辞改 `drop()`；「主线程
   registry 驱动 worker 释放」改为句柄表下沉 core（cfg=browser）+ worker JS
-  零状态纯转发 + 单一 `drop` 命令（废止 `dropFrequency` 与 `hosted`/
+  零状态单 `call` 泛化转发（废止 `dropFrequency`/逐动词 cmd 与 `hosted`/
   `frequencies` 两表）。
 - `api-contract`：「显式托管入口与显式内存回收」明确 `upload` 为浏览器专属
   入口（worker 边界），node/Python 以构造器为数据入口；回收为实例方法
@@ -91,8 +94,9 @@ handle 退回 `@internal` 协议细节。
 ## Impact
 
 - 代码：`core/src/frequency.rs`、core 新增 `network.rs`（骨架）与资源表模块
-  （cfg=browser：`Box<dyn Any + Send>` 类型擦除泛型句柄表，各资源入口写在
-  自己模块自注册，`drop(handle)` = `remove` 触发 `Drop`）、
+  （cfg=browser：`Resource` trait + 实例表 + 命名空间表 + 通用 `call` 分发器，
+  各资源模块自带 `match` 并在 `#[wasm_bindgen(start)]` 注册命名空间，
+  `method=="drop"` = `remove` 触发 `Drop`）、
   `typescript/native/src/lib.rs`（`Network` napi 类）、
   `typescript/src/{index.browser,index.node,types,netwave.worker}.ts`（壳类 +
   worker 零状态转发）、`python/src/lib.rs`（`Network`/`Frequency` pyclass 首次
@@ -107,6 +111,6 @@ handle 退回 `@internal` 协议细节。
   销账）、`openspec/specs/lessons-learned/`（新增 LL + INDEX）、
   `typescript/README.md` / `python/README.md` 若有动词示例。
 - 门禁：`scripts/check_verbs.py`（三端动词集合相等）、`pnpm check` 全量绿。
-- 受影响铁律：铁律八（worker 命令名）、铁律九（协议钩子不受影响，机械映射豁免）、
+- 受影响铁律：铁律八（worker 零状态 + 泛化分发）、铁律九（协议钩子不受影响，机械映射豁免）、
   铁律十（`drop` 非 skrf 概念，属 JS 平台特有约束的已立案偏离）、铁律十一
   （薄壳——本次新增的铁律是其名字维度的补集）。

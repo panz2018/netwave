@@ -57,3 +57,4 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-049 | typescript | 手动释放全端唯一 `drop()`，wasm 生成物 `free()` 禁上浮可见面     |
 | LL-050 | typescript | 入口全下沉 core 后 glue 须 `extern crate netwave` 强制链接       |
 | LL-051 | typescript | napi 跨端整数返回用 u32，usize→bigint 破坏三端类型平价           |
+| LL-052 | core       | 泛化表≠泛化分发：wasm 导出恒单条 `call`，加方法只改资源 match    |

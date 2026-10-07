@@ -32,3 +32,36 @@ registry 驱动 worker 释放、node napi finalizer、共享不误删）见
 
 - **WHEN** 检查 node/Python 公开导出面
 - **THEN** 无 `upload`；数据入口是构造器，实例上亦无 `upload`
+
+### Requirement: worker 泛化分发与单常驻拓扑
+
+worker 消息协议 MUST 是 `{handle, method, args}` 泛化分发
+（`objects.get(handle)[method](...)`），是与动词数量无关的固定模板——core 加
+方法时三端壳与 worker 零改动。`handle` MUST 是 `number | string`：数字 =
+core 计数器分配的实例句柄；字符串 = core 模块命名空间名（类工厂与模块自由
+函数经 `{handle:"network"|"frequency", method:<core 名机械 camelCase>}` 路由，
+命名空间只做路由不重命名方法）——MUST NOT 用哨兵值（如 `handle==0`）表达
+"构造"语义。wasm 导出 MUST 恒为单条通用 `call(handle, method, args)`，
+MUST NOT 存在逐动词导出入口；Rust 无反射，名字→函数的分派 MUST 由各资源
+模块手写 `match` 实现并在 `#[wasm_bindgen(start)]` 注册命名空间——加方法 =
+该模块 `match` 加一臂，worker/壳/types 零改动。`_` 前缀逃生口方法 MUST 被
+自动过滤不进 worker 命令面。自常驻 worker 落地起至绑定高级能力立项前 MUST
+维持单常驻 worker 拓扑；多 worker 分桶 MUST 推迟到绑定高级能力立项之后且
+有实测需求才立项。
+
+#### Scenario: 加动词零改动
+
+- **WHEN** core 新增一个域动词并完成三端绑定
+- **THEN** `netwave.worker.js` 分发器代码无需任何修改即可路由该动词
+
+#### Scenario: 构造经命名空间 handle 而非哨兵
+
+- **WHEN** 浏览器壳调用 `Network.upload(view, nfreq, nports)`
+- **THEN** 发出的消息是 `{handle:"network", method:"upload", args:[...]}`
+- **AND** 协议中不存在以 `handle==0` 等哨兵值表达构造的形态
+
+#### Scenario: 逐动词 wasm 入口不存在
+
+- **WHEN** grep wasm glue `.d.ts` 与 worker 源码
+- **THEN** 除单条 `call`（与词汇/常量导出）外无任何逐动词入口
+  （`network_upload`/`frequency_npoints` 等）

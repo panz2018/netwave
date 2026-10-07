@@ -5,14 +5,14 @@
 动机见 [proposal.md](proposal.md#why)。当前同一语义（手动立即释放）的四个名字与
 其所在层：
 
-| 层                  | 现名                        | 用户可见                                     |
-| ------------------- | --------------------------- | -------------------------------------------- |
-| core Rust           | `Frequency::release()`      | ❌                                           |
-| node napi           | `Frequency.free()`          | ✅                                           |
-| 浏览器 TS 壳        | `internals.drop(ref)`       | ✅（测试缝）                                 |
-| worker 命令         | `dropFrequency` / `release` | ❌（本 change 收拢为单一 `drop`，转发 core） |
-| JS 句柄函数         | `release(handle)`           | ✅（本 change 退为实例方法）                 |
-| wasm-bindgen 生成物 | `free()`                    | ❌（本 change 后连调用点都不存在）           |
+| 层                  | 现名                        | 用户可见                              |
+| ------------------- | --------------------------- | ------------------------------------- |
+| core Rust           | `Frequency::release()`      | ❌                                    |
+| node napi           | `Frequency.free()`          | ✅                                    |
+| 浏览器 TS 壳        | `internals.drop(ref)`       | ✅（测试缝）                          |
+| worker 命令         | `dropFrequency` / `release` | ❌（本 change 收拢为单条泛化 `call`） |
+| JS 句柄函数         | `release(handle)`           | ✅（本 change 退为实例方法）          |
+| wasm-bindgen 生成物 | `free()`                    | ❌（本 change 后连调用点都不存在）    |
 
 另一层结构问题：脚手架公开面是自由函数 + 裸数字 handle（`upload(view) -> number`、
 `readElement(target, idx)`、`release(handle)`），数字无法挂方法，释放只能写成函数
@@ -30,6 +30,8 @@
 - 用户可见面「手动释放」只有一个名字：`drop`，且形态统一为实例方法 `obj.drop()`。
 - 清理逻辑在 Rust 只有一份实现，手动路径与 RAII 路径共用。
 - `Network`/`Frequency` 类骨架三端落地，数字 handle 退回 `@internal`。
+- worker 协议与动词数量无关：单条泛化 `call`，加方法时 worker/壳/types 零改动
+  （api-contract「worker 泛化分发与单常驻拓扑」）。
 - 名字漂移可门禁化：三端公开动词集合相等断言进 CI。
 
 **Non-Goals:**
@@ -115,53 +117,87 @@ pub fn drop(&mut self) {
   类型 `Dropped` 定义在 core `lib.rs`，全资源共享（旧名 `Released` 随动词
   统一改名，铁律十二）。
 
-### worker 资源表：下沉 core（cfg=browser）+ worker JS 零状态
+### worker 泛化分发：单 `call` 模板 + 每资源 match（cfg=browser）
 
 常驻 worker 原有两张 JS 句柄表——`hosted`（`upload` 移入的裸字节缓冲）与
 `frequencies`（worker 内 wasm `Frequency` 实例），释放动词分裂为 `release`(buffer)
-与 `dropFrequency`(Frequency)。本 change 把句柄表**整体下沉到 core Rust**：
+与 `dropFrequency`(Frequency)。本 change 把句柄表**整体下沉到 core Rust**，并
+落实 api-contract「worker 泛化分发与单常驻拓扑」：JS 的
+`objects.get(handle)[method](...)` 天然按名字分发，Rust 无反射，故分发落点是
+core 通用 `call` + 各资源模块自己的手写 `match`。
+
+**handle 是 `number | string`，无哨兵值**（`handle == 0` 式暗号否决——读消息
+的人不该先背暗号）：
+
+| handle                 | 指向                              | 例                         |
+| ---------------------- | --------------------------------- | -------------------------- |
+| 字符串 = core 模块名   | 命名空间（类工厂 + 模块自由函数） | `"network"`、`"frequency"` |
+| 数字 = core 计数器句柄 | 表内实例                          | `7`                        |
+
+| 消息                                                            | 语义                                                                     |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `{handle:"network", method:"upload", args:[view,nfreq,nports]}` | 类工厂                                                                   |
+| `{handle:"frequency", method:"frequencyUnits", args:[]}`        | 模块自由函数（方法名 = core 名机械 camelCase，命名空间只做路由不重命名） |
+| `{handle:7, method:"readElement", args:[idx]}`                  | 实例方法                                                                 |
+| `{handle:7, method:"drop", args:[]}`                            | 释放（分发器拦截 → `remove` → Rust `Drop`）                              |
 
 ```rust
-// core，cfg 门控 browser feature。表是类型擦除的（Rust 的泛型 T）：
-// 它不认识任何具体资源类型，新增资源时本模块零修改。
-pub struct Registry {
-    table: BTreeMap<u32, Box<dyn Any + Send>>,
+// resources.rs —— 通用分发器：不认识任何资源类型，永不因加动词而改
+pub trait Resource {
+    fn call(&mut self, method: &str, args: &[JsValue]) -> Result<JsValue, JsValue>;
+}
+type NamespaceFn = fn(&str, &[JsValue]) -> Result<JsValue, JsValue>;
+struct Registry {
+    instances: BTreeMap<u32, Box<dyn Resource>>,
+    namespaces: BTreeMap<&'static str, NamespaceFn>,
     next_handle: u32,
 }
-impl Registry {
-    fn insert<T: Any + Send>(&mut self, resource: T) -> u32 { /* 计数器递增+插入 */ }
-    fn with<T: Any, R>(&self, handle: u32, f: impl FnOnce(&T) -> R) -> Result<R, String> { /* downcast */ }
-    fn remove(&mut self, handle: u32) -> Result<(), String> { /* 触发 Rust Drop */ }
+#[wasm_bindgen]
+pub fn call(handle: JsValue, method: &str, args: &[JsValue]) -> Result<JsValue, JsValue> {
+    // 数字 → instances；method=="drop" → remove（触发 Drop）
+    // 字符串 → namespaces
 }
 
-// 各资源的 #[wasm_bindgen] 入口写在自己的模块里（network.rs/frequency.rs），
-// 调用泛型表自注册；JS 侧只见数字句柄。
-#[wasm_bindgen]
-pub fn network_upload(view: &[f64], nfreq: u32, nports: u32) -> Result<u32, JsValue> {
-    Ok(insert(Network::from_f64(nfreq as usize, nports as usize, view.to_vec())))
+// network.rs —— 加方法 = 这里 match 加一臂，其余全零改动
+impl Resource for Network {
+    fn call(&mut self, method: &str, args: &[JsValue]) -> Result<JsValue, JsValue> {
+        match method {
+            "readElement" => { /* 解 args → self.read_element */ }
+            _ => Err(unknown_method(method)),
+        }
+    }
+}
+pub fn call_namespace(method: &str, args: &[JsValue]) -> Result<JsValue, JsValue> {
+    match method { /* "upload" | "fillPattern" 工厂 */ }
 }
 ```
 
-- **单一一张表，且类型无关**：`handle → Box<dyn Any + Send>`（等价于 TS/
-  Python 的泛型 `T`），句柄由 core 单一计数器递增、全局唯一；表模块只有
-  `insert<T>`/`with<T>`/`drop` 三个泛型函数，不认识 Network/Frequency——
-  未来 Circuit 等新资源只在自己的模块加入口自注册，表模块零修改（旧
-  `Resource` enum 方案否决：每加一种资源都要改表模块，违反开闭）。
-- **单一 `drop(handle)`**：core 侧 `remove(handle)` 直接触发 Rust `Drop`（RAII），
-  不经 JS 对象中转——wasm `Frequency` 实例不再浮出 JS，连生成物 `free()` 的
-  JS 调用点都不存在（工具链生成物豁免因此自动满足）。
-- **worker JS 零状态**：`hosted`/`frequencies`/`nextHandle` 全删；命令表
-  （`networkUpload`/`networkFillPattern`/`networkReadElement`/`frequencyFromF`/
-  `drop`/`frequencyUnits`/`liveCount`）退化为把参数/句柄原样转发给 core 的
-  `#[wasm_bindgen]` 入口，零分派零状态（铁律八：worker 内 wasm 是唯一数据权威，
-  表也应在 wasm 内而非 JS）；cmd 名是 core snake 名的机械 camelCase（铁律九豁免）。
-- **主线程壳类**：`index.browser.ts` 导出 `Network`/`Frequency` 壳类，实例持
-  数字 handle，方法体只发 `postMessage`（纯传输，铁律十一）；
-  `FinalizationRegistry` held 为数字 handle、挂壳实例上。
-- **cfg 只门控浏览器**：表代码写在 core crate、只编进 wasm；node/python 编译时
-  不启用该 cfg，直接持对象、无句柄表，不会被拖去实现注册表。三端统一的是
-  `drop` 这个名字与行为契约，不是那张表；公开形态统一实例方法 `obj.drop()`，
-  `drop(handle)` 仅是浏览器 `postMessage` 协议的内部命令形态，不上浮公开 API。
+- **wasm 导出恒为一个 `call`**：逐动词入口（`network_upload`/
+  `network_fill_pattern`/`network_read_element`/`frequency_from_f`/
+  `frequency_npoints`）全部删除——表泛型不等于分发泛化，逐动词入口加动词必改
+  worker，违反「加动词零改动」（LL-052）。
+- **方案 A（手写 match）而非闭包注册表**：闭包表能自省"有哪些方法"，但 Rust 要
+  把不同签名的函数套同一层 downcast 壳才能入表——为不存在的自省需求写管道是过度
+  工程。`#[resource]` 属性宏（同 `#[pymethods]` 原理，编译期扫 impl 自动生成
+  match）是方法面膨胀后的升级路径，届时对外协议零改动。
+- **注册触发 = `#[wasm_bindgen(start)]`**（wasm 加载时自动执行一次）：`lib.rs`
+  的 start 调 `network::register()`/`frequency::register()` 把命名空间挂进表——
+  加新资源类型 = start 加一行 + 新模块自带 match；加新方法 = 该模块 match 加一臂。
+- **`drop` 由分发器拦截**：移除条目是表的操作，故 `method=="drop"` 在分发器处
+  `remove(handle)` 直接触发 Rust `Drop`，不经 JS 对象中转；资源自身的固有
+  `drop()` 仍是清理单源。wasm `Frequency` 实例不浮出 JS，生成物 `free()` 连
+  JS 调用点都不存在。
+- **worker JS 零状态 + 零动词表**：`hosted`/`frequencies`/`nextHandle` 与逐动词
+  `cmds` 表全删；worker 只剩一条固定模板——await wasm ready 后把
+  `{handle, method, args}` 原样转发 core `call`（铁律八：worker 内 wasm 是唯一
+  数据权威，表与分发都在 wasm 内而非 JS）。
+- **主线程壳类**：`index.browser.ts` 导出 `Network`/`Frequency` 壳类，工厂/静态
+  方法发字符串 handle、实例方法发数字 handle，方法体只发一条 `postMessage`
+  （纯传输，铁律十一）；`FinalizationRegistry` held 为数字 handle、挂壳实例上。
+- **cfg 只门控浏览器**：表与分发代码写在 core crate、只编进 wasm；node/python
+  编译时不启用该 cfg，直接持对象、无句柄表。三端统一的是 `drop` 这个名字与行为
+  契约，不是那张表；公开形态统一实例方法 `obj.drop()`，`{handle, method:"drop"}`
+  仅是浏览器 `postMessage` 协议的内部消息形态，不上浮公开 API。
 
 ### 门禁：三端动词集合相等
 
@@ -180,8 +216,9 @@ pub fn network_upload(view: &[f64], nfreq: u32, nports: u32) -> Result<u32, JsVa
   语义都不进；扩大的是命名归位，不是功能面。
 - **[生成物残留旧名]** `.pyi`/`.d.mts` 缓存旧签名 → 重新生成并 grep 旧名零命中
   作为验收项（LL-008 同类坑）。
-- **[worker 命令名与壳不同步]** 壳发 `drop` 而 worker 表仍是 `release` → 运行期
-  "unknown command"；同一 PR 内两处同改 + 往返测试覆盖。
+- **[分发层原生不可测]** `call` 以 `JsValue` 收发，非 wasm 构建不可构造 →
+  纯逻辑（`read_element`/`npoints`/表的 insert/remove）保持原生单测，`call`
+  分发与命名空间路由由 worker 往返测试覆盖（`worker.test.ts`）。
 - **[句柄表下沉 core 的波及]** `upload`/`readElement` 从 JS Map 读写改为 core
   句柄入口（字节移进 core `Vec<f64>`），是行为等价的搬运 → 往返测试逐 bit 对拍
   托管/未托管两路径不变即证明；wasm 体积增量（一张表 + Mutex）可忽略。
