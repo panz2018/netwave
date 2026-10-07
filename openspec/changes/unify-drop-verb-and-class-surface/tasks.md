@@ -90,8 +90,12 @@
       = core 模块名；方法名 = core 名机械 camelCase，不重命名），实例方法发
       数字 handle（`{handle:7, method:"readElement"}`）；
       `FinalizationRegistry` 回调发 `{handle, method:"drop", args:[]}`；
-      自由函数 `frequencyUnits`/`liveCount` 经 `"frequency"` 命名空间路由。
-      验证：typecheck 通过、grep `cmd` 零命中。
+      自由函数 `frequencyUnits`/`liveCount` 经 `"frequency"` 命名空间路由进
+      worker（名单在 Rust 拼、计数在 Rust 读，壳只发一条 `postMessage`，
+      **零计算**——铁律十一；`liveCount` 数的就是 `Frequency`，同归 `"frequency"`
+      不新造 `"system"`）；`FrequencyUnit` 常量对象保持主线程直 import glue
+      （普通常量对象，import 不实例化 wasm，不走 worker）。验证：typecheck
+      通过、grep `cmd` 零命中、壳内无 `Object.keys` 等派生计算。
 - [ ] 5.3 `typescript/src/types.ts`：`WorkerRequest` 从 `{id, cmd, args}` 改
       `{id, handle: Handle | string, method: string, args: unknown[]}`
       （`Handle` 保持 `number`，字符串 handle = 命名空间名，均 `@internal`）；
@@ -115,6 +119,11 @@
       与一个 `release` 自由函数后该脚本各红一次（已实测，自检）。
 - [x] 6.2 `pnpm check:cross` 串起 6.1（LL-037/LL-047）。验证：
       `pnpm check:cross` 全绿且 CI 对应 job 存在（`scripts/check_ci.py` 绿）。
+- [ ] 6.3 `scripts/check_verbs.py` 加钉死 wasm glue 导出面：解析 glue `.d.ts`，
+      顶层导出集合 MUST 恰为 `call` + `FrequencyUnit`（+ wasm-pack 生成的
+      init/默认导出）——多一个少一个都红。这是「单条 `call`」不变式的机械钉子：
+      谁再给某函数挂 `#[wasm_bindgen]` 直导出即红（LL-052 复发检测）。
+      验证：当前绿；人为给 `live_count` 加回 `#[wasm_bindgen]` 后该检查红一次。
 
 ## 7. 文档与账本
 

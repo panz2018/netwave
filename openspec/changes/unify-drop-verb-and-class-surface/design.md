@@ -134,12 +134,13 @@ core 通用 `call` + 各资源模块自己的手写 `match`。
 | 字符串 = core 模块名   | 命名空间（类工厂 + 模块自由函数） | `"network"`、`"frequency"` |
 | 数字 = core 计数器句柄 | 表内实例                          | `7`                        |
 
-| 消息                                                            | 语义                                                                     |
-| --------------------------------------------------------------- | ------------------------------------------------------------------------ |
-| `{handle:"network", method:"upload", args:[view,nfreq,nports]}` | 类工厂                                                                   |
-| `{handle:"frequency", method:"frequencyUnits", args:[]}`        | 模块自由函数（方法名 = core 名机械 camelCase，命名空间只做路由不重命名） |
-| `{handle:7, method:"readElement", args:[idx]}`                  | 实例方法                                                                 |
-| `{handle:7, method:"drop", args:[]}`                            | 释放（分发器拦截 → `remove` → Rust `Drop`）                              |
+| 消息                                                            | 语义                                                                                                       |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `{handle:"network", method:"upload", args:[view,nfreq,nports]}` | 类工厂                                                                                                     |
+| `{handle:"frequency", method:"frequencyUnits", args:[]}`        | 模块自由函数（方法名 = core 名机械 camelCase，命名空间只做路由不重命名）                                   |
+| `{handle:"frequency", method:"liveCount", args:[]}`             | 诊断探针：`live_count` 定义在 `frequency.rs`、数的就是 `Frequency`，各归各的命名空间，不新造 `"system"` 槽 |
+| `{handle:7, method:"readElement", args:[idx]}`                  | 实例方法                                                                                                   |
+| `{handle:7, method:"drop", args:[]}`                            | 释放（分发器拦截 → `remove` → Rust `Drop`）                                                                |
 
 ```rust
 // resources.rs —— 通用分发器：不认识任何资源类型，永不因加动词而改
@@ -187,6 +188,15 @@ pub fn call_namespace(method: &str, args: &[JsValue]) -> Result<JsValue, JsValue
   `remove(handle)` 直接触发 Rust `Drop`，不经 JS 对象中转；资源自身的固有
   `drop()` 仍是清理单源。wasm `Frequency` 实例不浮出 JS，生成物 `free()` 连
   JS 调用点都不存在。
+- **命名空间无实例语义，零特判**：命名空间表不登记 `drop`，字符串 handle 收到
+  `method=="drop"` 自然落进命名空间 `match` 的未知方法兜底报错——不写一行
+  "命名空间不支持 drop"专属文案（这条消息只可能来自 bug，错误精确度无用户差异）。
+- **自由函数经命名空间路由，壳零计算**：`frequencyUnits`/`liveCount` 不再直出
+  wasm，全部经 `{handle:"frequency", method:...}` 走 worker——名单在 Rust 里拼、
+  计数在 Rust 里读，壳只发一条 `postMessage`（铁律十一：壳内不算数，无论算的是
+  词汇还是数值）。例外：`FrequencyUnit` 常量对象保持主线程直 import glue——它是
+  glue JS 里的普通常量对象，import 不实例化 wasm，不经 worker 中转（中转才是
+  无意义的搬运）。
 - **worker JS 零状态 + 零动词表**：`hosted`/`frequencies`/`nextHandle` 与逐动词
   `cmds` 表全删；worker 只剩一条固定模板——await wasm ready 后把
   `{handle, method, args}` 原样转发 core `call`（铁律八：worker 内 wasm 是唯一
@@ -199,12 +209,17 @@ pub fn call_namespace(method: &str, args: &[JsValue]) -> Result<JsValue, JsValue
   契约，不是那张表；公开形态统一实例方法 `obj.drop()`，`{handle, method:"drop"}`
   仅是浏览器 `postMessage` 协议的内部消息形态，不上浮公开 API。
 
-### 门禁：三端动词集合相等
+### 门禁：三端动词集合相等 + wasm 导出面钉死
 
 新增 `scripts/check_verbs.py`（与 `check_vocab_types.py` 同范式：静态门禁与
 二进制对拍器 `cross_compare.py` 职责分离）：从三份生成物提取 `Network`/
 `Frequency` 类方法名（含静态与实例）与自由函数名，做 camelCase 机械映射归一后
 断言等于唯一动词集；`upload` 仅浏览器；`free`/`release` 出现在任一用户可见面即红。
+
+另钉死 wasm glue 导出面：解析 glue `.d.ts`，顶层导出集合 MUST 恰为 `call` +
+`FrequencyUnit`（+ wasm-pack 生成的 init/默认导出）——多一个少一个都红。这是
+「单条 `call`」不变式的机械钉子：谁再给某个函数挂上 `#[wasm_bindgen]` 直导出，
+当场红，不靠 review 肉眼。
 
 ## Risks / Trade-offs
 

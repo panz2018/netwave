@@ -49,6 +49,14 @@ MUST NOT 存在逐动词导出入口；Rust 无反射，名字→函数的分派
 维持单常驻 worker 拓扑；多 worker 分桶 MUST 推迟到绑定高级能力立项之后且
 有实测需求才立项。
 
+自由函数（如 `frequencyUnits`/`liveCount`）MUST 经命名空间 handle 走 worker
+（名单在 Rust 拼、计数在 Rust 读），主线程壳 MUST NOT 在 JS 里派生名单或自存
+计数（铁律十一：壳零计算）；二者同归 `"frequency"` 命名空间（`live_count` 定义
+在 `frequency.rs`、数的就是 `Frequency`），MUST NOT 为诊断函数新造 `"system"` 槽。
+**例外**：`FrequencyUnit` 常量对象 MUST 由主线程直 import glue——它是 glue JS 的
+普通常量对象，import 不实例化 wasm，经 worker 中转反而是无意义搬运（铁律八防的
+是"主线程执行 wasm"，读常量不碰 wasm）。
+
 #### Scenario: 加动词零改动
 
 - **WHEN** core 新增一个域动词并完成三端绑定
@@ -60,8 +68,17 @@ MUST NOT 存在逐动词导出入口；Rust 无反射，名字→函数的分派
 - **THEN** 发出的消息是 `{handle:"network", method:"upload", args:[...]}`
 - **AND** 协议中不存在以 `handle==0` 等哨兵值表达构造的形态
 
-#### Scenario: 逐动词 wasm 入口不存在
+#### Scenario: wasm 导出面恰为 call + 常量枚举
 
-- **WHEN** grep wasm glue `.d.ts` 与 worker 源码
-- **THEN** 除单条 `call`（与词汇/常量导出）外无任何逐动词入口
-  （`network_upload`/`frequency_npoints` 等）
+- **WHEN** 解析 wasm glue `.d.ts` 的顶层导出集合
+- **THEN** 导出恰为 `call` + `FrequencyUnit`（+ wasm-pack 生成的 init/默认导出）
+- **AND** 无任何逐动词入口（`network_upload`/`frequency_npoints` 等）
+- **AND** 无任何自由函数直导出（`frequency_units`/`live_count` 经命名空间路由）
+- **AND** `check_verbs.py` 钉死该集合，多一个少一个即红
+
+#### Scenario: 词汇常量主线程直读不经 worker
+
+- **WHEN** 浏览器主线程 import `FrequencyUnit`
+- **THEN** 不实例化 wasm、不产生 worker 消息（普通常量对象直读）
+- **AND** `frequencyUnits()` 名单仍来自该枚举、由 Rust 拼接经 worker 返回，
+  壳内无 `Object.keys` 等派生计算

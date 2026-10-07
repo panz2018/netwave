@@ -24,7 +24,9 @@ handle 退回 `@internal` 协议细节。
   `Network(data)` 即数据入口，`Network.fillPattern(nfreq, nports)` 三端静态，
   实例方法 `readElement(idx)`/`drop()` 三端；`Frequency.fromF(view, unit)`
   三端静态（core `from_f` 机械映射，临时名 `newFrequency` 退役）。无状态自由
-  函数 `frequencyUnits()`/`liveCount()` 保持不包类。
+  函数 `frequencyUnits()`/`liveCount()` 保持不包类（浏览器端经 `"frequency"`
+  命名空间 handle 走 worker，名单与计数在 Rust，壳零计算；`FrequencyUnit`
+  常量对象主线程直 import glue 不经 worker）。
 - **BREAKING** 公开面 `release(handle)` 退役：浏览器主线程持壳类实例，释放
   形态统一 `obj.drop()`；错误文案 `unknown or released handle` →
   `unknown or dropped handle`。
