@@ -20,6 +20,39 @@
 use num_complex::Complex64;
 
 pub mod frequency;
+pub mod network;
+// Same guard as the wasm entries below: under `cargo clippy --workspace`
+// the node and browser features merge onto one build, and the handle table
+// must not compile its wasm_bindgen glue there.
+#[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
+pub mod resources;
+
+/// wasm instantiation hook: mount every resource namespace into the handle
+/// table once, before any worker message arrives. Adding a new resource TYPE
+/// = one line here (plus the new module's own `match`es); adding a METHOD to
+/// an existing resource touches only that module — never this hook, never the
+/// worker, never the shells (api-contract spec "worker generic dispatch and
+/// single-resident topology", LL-052).
+#[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
+#[wasm_bindgen::prelude::wasm_bindgen(start)]
+pub fn register_resources() {
+    network::register();
+    frequency::register();
+}
+
+/// Access-after-drop error, shared by every resource type. Post-drop access
+/// erroring IS the contract on every platform — no separate `is_dropped`
+/// witness exists anywhere (single source of truth).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Dropped;
+
+impl std::fmt::Display for Dropped {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "data has been dropped")
+    }
+}
+
+impl std::error::Error for Dropped {}
 
 /// Allocate an `(nfreq, nports, nports)` interleaved complex f64 buffer
 /// and fill it with a predictable pattern.

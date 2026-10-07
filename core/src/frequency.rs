@@ -31,7 +31,7 @@ use napi_derive::napi;
 // the enum becomes a numeric JS constant object in the glue, so importing a
 // unit name never instantiates the wasm module.
 #[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
-use wasm_bindgen::prelude::wasm_bindgen;
+use wasm_bindgen::prelude::*;
 
 /// Re-exported so callers can invoke [`FrequencyUnit::iter`] without adding
 /// a direct `strum` dependency (the trait must be in scope for method call
@@ -164,16 +164,11 @@ impl FrequencyUnit {
     gen_stub_pyfunction(module = "netwave._netwave")
 )]
 #[cfg_attr(all(feature = "python", not(coverage)), pyfunction)]
-// `not(coverage)` drops the runtime-only registration glue (pytest/vitest
-// cover it). napi and wasm_bindgen cannot both decorate one function (napi's
-// macro rejects an item that also carries `#[wasm_bindgen]`), so `node` and
-// `browser` are mutually exclusive; a real glue build enables exactly one,
-// so the function is still JS-exported there.
 #[cfg_attr(all(feature = "node", not(feature = "browser"), not(coverage)), napi)]
-#[cfg_attr(
-    all(feature = "browser", not(feature = "node"), not(coverage)),
-    wasm_bindgen
-)]
+// Browser: NOT wasm_bindgen-exported. The browser reaches it through the
+// `"frequency"` namespace (`call_namespace`), so the wasm export surface
+// stays the single generic `call` plus the `FrequencyUnit` constant — the
+// shell never computes the list itself (ironclad rule 11).
 pub fn frequency_units() -> Vec<String> {
     FrequencyUnit::iter()
         .map(|u| u.as_ref().to_owned())
@@ -196,11 +191,14 @@ static LIVE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0)
 ///
 /// Read-only diagnostic probe: holds no data, no side effects. Always
 /// compiled (see [`LIVE`]).
-#[cfg_attr(all(feature = "node", not(feature = "browser"), not(coverage)), napi)]
 #[cfg_attr(
-    all(feature = "browser", not(feature = "node"), not(coverage)),
-    wasm_bindgen
+    feature = "pyo3-stub-gen",
+    gen_stub_pyfunction(module = "netwave._netwave")
 )]
+#[cfg_attr(all(feature = "python", not(coverage)), pyfunction)]
+#[cfg_attr(all(feature = "node", not(feature = "browser"), not(coverage)), napi)]
+// Browser: NOT wasm_bindgen-exported — reached through the `"frequency"`
+// namespace so the wasm export surface stays `call` + `FrequencyUnit`.
 pub fn live_count() -> u32 {
     LIVE.load(std::sync::atomic::Ordering::SeqCst)
 }
@@ -236,7 +234,7 @@ pub struct Frequency {
     /// hence the allow.
     #[allow(dead_code)]
     unit: FrequencyUnit,
-    /// Set once [`Frequency::release`] has run, so the later RAII `Drop`
+    /// Set once [`Frequency::drop`] has run, so the later RAII `Drop`
     /// does not double-decrement [`LIVE`].
     dropped: bool,
 }
@@ -254,18 +252,30 @@ impl Frequency {
         }
     }
 
-    /// Number of frequency points.
-    pub fn npoints(&self) -> usize {
-        self.f_hz.len()
+    /// Number of frequency points. Errors after `drop()` — the post-drop
+    /// access contract lives here in core, single-source, so no binding
+    /// re-implements the check (node once returned 0 because the check
+    /// existed only in the JS layer).
+    pub fn npoints(&self) -> Result<usize, crate::Dropped> {
+        if self.dropped {
+            return Err(crate::Dropped);
+        }
+        Ok(self.f_hz.len())
     }
 
-    /// Free the sweep and decrement the witness exactly once. Idempotent: a
+    /// Drop the sweep and decrement the witness exactly once. Idempotent: a
     /// later RAII `Drop` (or a second call) is a no-op for the witness.
     ///
-    /// The glue `free` escape hatch calls this for deterministic early
-    /// release; RAII `Drop` calls it too, so the witness never
-    /// double-decrements.
-    pub fn release(&mut self) {
+    /// This inherent method is the single cleanup implementation: the manual
+    /// `drop()` escape hatch and RAII [`Drop`] both call it, so the witness
+    /// never double-decrements. Inherent methods resolve before trait
+    /// methods, so `self.drop()` inside `Drop::drop` lands here (no
+    /// recursion).
+    // The cross-end naming contract (ironclad rule 12) mandates this exact
+    // name on every platform; clippy's trait-suggestion cannot be honored
+    // without renaming the unified verb.
+    #[allow(clippy::should_implement_trait)]
+    pub fn drop(&mut self) {
         if !self.dropped {
             self.f_hz = Vec::new();
             LIVE.fetch_sub(1, std::sync::atomic::Ordering::SeqCst);
@@ -278,6 +288,69 @@ impl Drop for Frequency {
     /// RAII reclamation: frees the `Vec` and decrements the witness counter.
     /// This is the single reclamation path — no manual free exists.
     fn drop(&mut self) {
-        self.release();
+        self.drop();
     }
+}
+
+// ---------------------------------------------------------------------------
+// Browser dispatch (cfg=browser): the worker forwards `{handle, method,
+// args}` to the single generic `resources::call`; this module owns the
+// name→function `match`es (Rust has no reflection — the arm list IS the
+// method table). Adding a method = one arm here; `resources.rs`, the
+// worker, the shells and `types.ts` never change (LL-052).
+// ---------------------------------------------------------------------------
+
+/// Instance dispatch: the numeric-handle half of the shell's `Frequency`.
+/// `drop` never reaches here — the dispatcher intercepts it.
+#[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
+impl crate::resources::Resource for Frequency {
+    fn call(&mut self, method: &str, _args: &[JsValue]) -> Result<JsValue, JsValue> {
+        use crate::resources::{js, unknown_method};
+        match method {
+            // Post-drop access errors here — core is the single source of
+            // the contract (no binding re-implements the check).
+            "npoints" => self
+                .npoints()
+                .map(|n| JsValue::from_f64(n as u32 as f64))
+                .map_err(|e| js(e.to_string())),
+            _ => Err(unknown_method("frequency", method)),
+        }
+    }
+}
+
+/// Namespace dispatch: the `"frequency"` namespace's factory and free
+/// functions. `live_count` lives here because it counts `Frequency`
+/// instances (the witness is defined in this module) — no separate
+/// diagnostic namespace.
+#[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
+pub fn call_namespace(method: &str, args: &[JsValue]) -> Result<JsValue, JsValue> {
+    use crate::resources::{arg_f64_vec, arg_u32, insert, js, unknown_method};
+    match method {
+        // `unit` is a plain ordinal: the glue enum is numeric and the
+        // feature-merge build must not put the enum in an FFI signature.
+        "fromF" => {
+            let view = arg_f64_vec(args, 0)?;
+            let unit = FrequencyUnit::from_ordinal(arg_u32(args, 1)? as u8)
+                .ok_or_else(|| js("invalid frequency unit ordinal"))?;
+            let f = Frequency::from_f(view, unit);
+            Ok(JsValue::from_f64(insert(Box::new(f)) as f64))
+        }
+        "frequencyUnits" => {
+            let units = frequency_units();
+            let arr = js_sys::Array::new();
+            for u in units {
+                arr.push(&JsValue::from_str(&u));
+            }
+            Ok(arr.into())
+        }
+        "liveCount" => Ok(JsValue::from_f64(live_count() as f64)),
+        _ => Err(unknown_method("frequency", method)),
+    }
+}
+
+/// Mount the `"frequency"` namespace. Called once from the
+/// `#[wasm_bindgen(start)]` hook in `lib.rs`.
+#[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
+pub fn register() {
+    crate::resources::register_namespace("frequency", call_namespace);
 }
