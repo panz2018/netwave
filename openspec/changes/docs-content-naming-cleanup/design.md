@@ -7,7 +7,7 @@
 豁免 governance/lessons-learned/archive；`scripts/check_md.py` 扫全部 Markdown 的
 链接/锚点/结构。存量：活 spec 17 处「阶段 N」、`Plan/` 39 处、archive 60+ 处、
 代码注释 9 处开发文档指针（`core/src/frequency.rs`、`typescript/src/`）。归档目录
-`2026-09-27-phase0-monorepo-scaffold` 含阶段词。
+脚手架归档目录原名带路线图数字代号。
 
 ## Goals / Non-Goals
 
@@ -42,8 +42,9 @@ md 结构与 md 词表同属文档面、同一批文件，拆开只增维护面�
 
 ### 归档改名与引用同步
 
-`git mv` 将 `archive/2026-09-27-phase0-monorepo-scaffold` 改为
-`archive/2026-09-27-monorepo-scaffold`。全仓 grep 旧名逐处更新。
+`git mv` 将脚手架归档目录（原名带路线图数字代号）改为
+`archive/2026-09-27-monorepo-scaffold`。全仓 grep 旧名逐处更新为散文式
+说明（老名字已改名）或新名。
 现存规则「不得向 archive 发 markdown 链接」保留不变；活文档中的归档指针均为
 行内代码路径，文档面新增校验：行内代码形态的 `openspec/changes/archive/<name>/`
 完整路径 MUST 指向现存目录（改名后残留旧路径即红）。`check_comments.py` 的

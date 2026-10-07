@@ -29,8 +29,8 @@
 - **Plan/ 路线图去数字**：`总体计划.md`「分阶段路线图」标题改「路线图」、条目改内容
   命名有序列表、「阶段模型铁则」改写；`Plan/` 其余文档的 `#分阶段路线图` 锚点与
   阶段号引用同步改。
-- **归档目录改名**：`openspec/changes/archive/2026-09-27-phase0-monorepo-scaffold/`
-  改名 `2026-09-27-monorepo-scaffold/`（去阶段词），全仓引用同步指新名。
+- **归档目录改名**：脚手架归档目录原名带路线图数字代号，改为
+  `openspec/changes/archive/2026-09-27-monorepo-scaffold/`，全仓引用同步指新名。
 - **archive 内容去阶段词**：`openspec/changes/archive/**` 的「阶段 N」全部改写为
   内容命名（其余历史叙述不动）。
 - **governance 反例词去触发**：governance 元规则正文中作为反例出现的字面触发词
@@ -70,7 +70,8 @@
   避免同一事实跨层重复）。
 - 不改 `package.json` 的 `scripts` 命令名与聚合结构（`check:meta`/`check:md` 名字不变，
   只换内部实现）。
-- 不改归档目录的日期前缀与除 `phase0-monorepo-scaffold` 外的其余归档名（已自解释）。
+- 不改归档目录的日期前缀与除脚手架归档目录（原名带路线图数字代号，
+  本次改名）外的其余归档名（已自解释）。
 - 不重写 archive 文档中除「阶段 N」外的历史叙述（冻结内容仅去阶段词）。
 
 ## Impact

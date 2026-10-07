@@ -44,9 +44,15 @@
 #### Scenario: 文档面阶段词命中即红
 
 - **WHEN** 任一 Markdown（含 `openspec/specs/`、`Plan/`、
-  `openspec/changes/archive/`）出现「阶段」后接数字、英文 `stage`/`phase`
-  后接数字、或 `openspec/changes/` 下任一目录名
+  `openspec/changes/archive/`）出现「阶段」后接数字或英文 `stage`/`phase`
+  后接数字
 - **THEN** `pnpm check:md` 失败（`scripts/check_md.py` 命中报告）
+
+#### Scenario: 归档指针指向不存在目录即红
+
+- **WHEN** Markdown 出现行内代码形态的 `openspec/changes/archive/<name>/`
+  完整路径而该目录不存在
+- **THEN** `pnpm check:md` 失败（改名后残留旧路径被捕获）
 
 #### Scenario: 治理 spec 反例不触发自身门禁
 
