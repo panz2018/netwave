@@ -35,7 +35,7 @@ pub mod resources;
 /// single-resident topology", LL-052).
 #[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
 #[wasm_bindgen::prelude::wasm_bindgen(start)]
-pub fn register_resources() {
+fn register_resources() {
     network::register();
     frequency::register();
 }

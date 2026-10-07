@@ -621,6 +621,7 @@ name = "netwave"
 version = "0.0.1"
 dependencies = [
  "criterion",
+ "js-sys",
  "napi",
  "napi-derive",
  "num-complex",
