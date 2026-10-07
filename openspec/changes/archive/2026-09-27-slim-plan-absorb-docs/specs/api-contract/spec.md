@@ -80,7 +80,7 @@ core 频率轴主数据 MUST 永远存 f64 Hz，单位歧义 MUST NOT 进入计�
 第二份主数据存储，绑定层 MUST NOT 自存单位状态或自实现换算（三层契约
 推论）。`unit` 的存放位置（core 元数据 vs 绑定层）、`f_scaled` 的命名与
 暴露形态（property vs 方法）、`Frequency` 独立类 vs `Network` 属性属设计
-决策，由阶段 1/2 的 design.md 定案（跟踪于总体计划待决细节清单），
+决策，由测试基础设施 / Touchstone 核心的 design.md 定案（跟踪于总体计划待决细节清单），
 本 spec 不提前焊死。
 
 #### Scenario: 单位换算在解析时完成
@@ -90,7 +90,7 @@ core 频率轴主数据 MUST 永远存 f64 Hz，单位歧义 MUST NOT 进入计�
 
 #### Scenario: 单位形态未定案不得实现
 
-- **WHEN** 阶段 1/2 design.md 尚未定案 `unit`/`f_scaled` 形态，有人提议
+- **WHEN** 测试基础设施 / Touchstone 核心 design.md 尚未定案 `unit`/`f_scaled` 形态，有人提议
   在绑定层实现单位换算或自存 unit
 - **THEN** code-review Standards 轴拒绝（违反三层契约：绑定层不自存状态、
   不自算数值）
@@ -118,8 +118,8 @@ MUST NOT 提供单独的频率轴 setter。新增频点 MUST 经
 worker 消息协议 MUST 是 `{handle, method, args}` 泛化分发
 （`objects.get(handle)[method](...)`），是与动词数量无关的固定模板——core 加
 方法时三端壳与 worker 零改动；`_` 前缀逃生口方法 MUST 被自动过滤不进 worker
-命令面。阶段 3–6 MUST 维持单常驻 worker 拓扑；多 worker 分桶 MUST 推迟到
-阶段 6+ 且有实测需求才立项。
+命令面。自 wasm 性能定标起至绑定高级能力 MUST 维持单常驻 worker 拓扑；多 worker 分桶 MUST 推迟到
+绑定高级能力起且有实测需求才立项。
 
 #### Scenario: 加动词零改动
 

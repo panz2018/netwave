@@ -37,7 +37,7 @@
       `re=f*100+p*10+q, im=-re`；断言长度 128B（nfreq=2,nports=2）、每频点 64B 连续、re 前 im 后；
       运行 `cargo test -p netwave` 看到编译失败/断言红
 - [x] 2.2 [GREEN] `core/src/lib.rs` 实现 `fill_pattern`（num-complex，
-      教学式 rustdoc：交错布局、图案公式、"临时 API 阶段 2 替换"声明）→ 测试绿
+      教学式 rustdoc：交错布局、图案公式、"临时 API Touchstone 核心替换"声明）→ 测试绿
 - [x] 2.3 criterion 基准占位 `core/benches/scaffold.rs`（fill_pattern 小尺寸）
       → `cargo bench` 通过
 - [x] 验证：`cargo llvm-cov -p netwave --fail-under-lines 100` 通过；

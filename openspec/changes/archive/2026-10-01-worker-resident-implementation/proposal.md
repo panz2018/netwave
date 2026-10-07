@@ -63,10 +63,10 @@ LL-031），但主 spec 与代码仍是旧契约：`zero-copy-roundtrip spec` �
 
 ## Non-goals
 
-- 不做多 worker 分桶/池（api-contract spec 强制阶段 3–6 单常驻 worker；分桶移入
+- 不做多 worker 分桶/池（api-contract spec 强制自 wasm 性能定标起至绑定高级能力单常驻 worker；分桶移入
   总体计划待决清单，门槛 = 数据分片归属 + 实测需求）。
 - 不做 npm bundler（Vite/webpack）支持（按需触发，移入总体计划待办）。
 - 不引入 `@playwright/test`；不做多浏览器矩阵（待浏览器特异 bug 出现再加）。
-- 不做 wthreads 多线程 wasm / SharedArrayBuffer 原地写（阶段 3 可选增强）。
+- 不做 wthreads 多线程 wasm / SharedArrayBuffer 原地写（wasm 性能定标与提速可选增强）。
 - 不改 node 端 API 面（`_` 保留）、不改 Python 端、不改 core Rust 数值逻辑。
 - 不做 IndexedDB 等 worker 崩溃数据恢复（worker 异常终止数据丢失为已接受行为）。

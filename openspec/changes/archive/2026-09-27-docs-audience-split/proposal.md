@@ -2,11 +2,11 @@
 
 ## Why
 
-阶段 0 复盘发现两类结构性问题：其一，文档按"文件"而非"受众"组织——
+脚手架复盘发现两类结构性问题：其一，文档按"文件"而非"受众"组织——
 `CONTRIBUTING.md` 里塞满了 AI 执行约束（闸门、坑、反返工清单），人类贡献者
 读到的有效信息被稀释，而 AI 又不会主动去翻散落在 4 个子 README 里的
 Implementation notes / Gotchas（无人阅读即等于不存在）；其二，AI 被人工纠正后
-没有反思机制，同类错误跨会话重复犯（阶段 0 同类纠正出现 2 次以上：关闸门求绿、
+没有反思机制，同类错误跨会话重复犯（脚手架同类纠正出现 2 次以上：关闸门求绿、
 CI push-and-pray、自造命名等）。本 change 按受众重划文档归属，并建立
 lessons-learned 纠错账本，使"被纠正一次"变成"永不再犯"。
 
@@ -15,7 +15,7 @@ lessons-learned 纠错账本，使"被纠正一次"变成"永不再犯"。
 - 新建 `openspec/specs/lessons-learned/` 纠错账本：机制 spec + `INDEX.md`
   一行一条索引 + 按 scope 分片小文件（ci/core/python/typescript/docs/
   testdata，单文件 ≤50 行）；条目固定四要素（LL-NNN / scope / 犯过证据 /
-  规则+复发检测）；首批收录阶段 0 人工纠正 + CONTRIBUTING 环境坑 + 4 个子
+  规则+复发检测）；首批收录脚手架人工纠正 + CONTRIBUTING 环境坑 + 4 个子
   README 的 Implementation notes / Gotchas（共 7 节）全部内容。
 - `AGENTS.md` 新增反思铁律：动手前扫账本索引；被人工纠正当轮登记（已有同类
   条目 = 承认未遵守，无 = 新增 LL）；可门禁化的条目落进 `pnpm check`。

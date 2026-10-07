@@ -2,7 +2,8 @@
 
 ## Why
 
-阶段 0 已归档（`phase0-monorepo-scaffold`、`migrate-constitution-to-openspec`），
+脚手架已归档（`monorepo-scaffold`——原名带路线图数字代号，已改名，追溯见
+`git log`；`migrate-constitution-to-openspec`），
 但 `Plan/` 五份规划仍大量保留**已被 openspec spec 吸收的定案正文**（数据布局理由、
 仓库结构、版本底线、异步/Worker 边界契约）与**已放弃/已完成的历史内容**（GPU 评估
 过程、旧库对比表、已销账待办），与"Plan/ 只放未执行任务、终态删除"的生命周期
@@ -20,13 +21,13 @@
 - **`总体计划.md` 瘦身**：删除已被 `workspace-layout` / `project-governance` /
   `zero-copy-roundtrip` spec 吸收的正文（语言选型对比、数据布局理由、仓库结构树、
   License/版本底线、GPU 评估全文、已销账待办），只保留项目定位一句话、分阶段
-  路线图（阶段 1–8 未执行部分）、待办/待核实与待决细节清单（仅未销项），其余改
+  路线图（测试基础设施至光学适配验证未执行部分）、待办/待核实与待决细节清单（仅未销项），其余改
   为 spec 指针。
 - **`测试规划.md` 瘦身**：删除旧库方案对比表（历史）、精度标准表（已由铁律三 +
   manifest 承载）、与 `ci-matrix` spec 重复的 CI 集成表；保留各阶段测试交付、
-  unit/property 用例清单、criterion 基线持久化方案（阶段 2 未执行）。
+  unit/property 用例清单、criterion 基线持久化方案（Touchstone 核心未执行）。
 - **`功能覆盖规划.md` 瘦身**：rf-touchstone 处置定案压成一行（理由已在 spec/旧库
-  README）；保留核心 crate 模块布局、延后清单、阶段映射（阶段 2–8 未执行）。
+  README）；保留核心 crate 模块布局、延后清单、阶段映射（Touchstone 核心至光学适配验证未执行）。
 - **`Plan/README.md` 更正**：文件表补漏掉的 `typescript源码化规划.md`，更新各文件
   状态描述。
 - **`typescript源码化规划.md` 保留**：源码改写未执行，仍是在途计划；仅核对无过时

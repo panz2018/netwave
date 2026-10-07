@@ -89,7 +89,7 @@ core `enum Error { UnknownFrequencyUnit(String) }` + `impl From<Error> for PyErr
 （→`PyValueError`）；node `env.throw_type_error`；wasm-bindgen 对 `Result<T, E: Debug>`
 自动 throw。不自定义异常层级（YAGNI，将来需精确捕获再走 OpenSpec 变更升格）。
 本 change 无字符串入参公开入口（解析在 core 内部），跨端映射属契约冻结（spec 定死
-映射关系），实现随阶段 1/2 首个字符串入参入口落地，避免无人可调的死代码（铁律七）。
+映射关系），实现随测试基础设施 / Touchstone 核心首个字符串入参入口落地，避免无人可调的死代码（铁律七）。
 
 ### 精确常量比较不引用容差
 
@@ -111,7 +111,7 @@ core `enum Error { UnknownFrequencyUnit(String) }` + `impl From<Error> for PyErr
 
 ## Migration Plan
 
-阶段 0 脚手架期引入：加 strum 依赖 → 写 enum + match + FromStr + Error +
+脚手架期引入：加 strum 依赖 → 写 enum + match + FromStr + Error +
 `frequency_units()` → 三端 glue 注册 → 生成 `.pyi`/`.d.ts` → exports 测试 +
 cross_compare 对拍。无存量数据，无回滚负担；若 strum 与工具链冲突，回退到手写
 `as_ref`/`iter`（保留 enum 单源不变）。
@@ -119,4 +119,4 @@ cross_compare 对拍。无存量数据，无回滚负担；若 strum 与工具�
 ## Open Questions
 
 - `Frequency` 类持 `unit` 的字段形态（`FrequencyUnit` vs `Option<FrequencyUnit>`）——
-  随 `Frequency` 本体在阶段 1 design.md 定，不影响本 change 的 enum 契约。
+  随 `Frequency` 本体在测试基础设施 design.md 定，不影响本 change 的 enum 契约。

@@ -2,7 +2,7 @@
 
 ## 总体思路
 
-阶段 0 的唯一技术风险点是**三绑定零拷贝机制能否走通**，其余是机械脚手架。
+脚手架的唯一技术风险点是**三绑定零拷贝机制能否走通**，其余是机械脚手架。
 设计围绕一个最小载体：core 的
 `fill_pattern(nfreq, nports) -> Vec<Complex64>`（实为返回自有缓冲的所有权包装），
 三绑定各自把这块内存以
@@ -31,10 +31,10 @@ core/src/lib.rs
   验证方式：同一 ndarray 二次传回 Rust 函数
   `sum_first_element(arr: &Readonly<PyArray<Complex64,_>>)` 读回——内存从未拷贝，视图即数据。
   - 说明：**实施决策修订（2026-09-22）**：经用户确认"直接实现最终的目标"，
-    阶段 0 即落借用终态——`PyArray3::borrow_from_array` + frozen `Owner`
+    脚手架即落借用终态——`PyArray3::borrow_from_array` + frozen `Owner`
     pyclass 挂 base object（numpy 0.25 无 `from_borrowed_data`，
     `borrow_from_array` 为其等价替代），ndarray `owndata=False`，Python
-    改写直接落进 core 内存。**假设记录**：阶段 0 的"写回 core 可见"以
+    改写直接落进 core 内存。**假设记录**：脚手架的"写回 core 可见"以
     "Python 改写 → 传回 Rust 读回一致"为验收形态。
 - `pyproject.toml`：name=`netwave`，requires-python=">=3.10"（底线；开发/CI
   钉 3.14，`.python-version` 进 git，abi3 一个 wheel 覆盖 3.10–3.14），
@@ -91,20 +91,20 @@ typescript/
 - **单一 async 面**（2026-09-22 修订）：JS 计算动词不加后缀直接返回 `Promise`，
   用户唯一写法 `await toY(x)`；同步直通版降级为 `_` 前缀逃生口（`@internal`，
   铁律七覆盖率照常计入）；属性读取保持同步。Worker 分流库内自动（小数据立即
-  resolve，大数据进 Worker 池/napi AsyncTask，阈值阶段 3/6 按 benchmark 定）。
+  resolve，大数据进 Worker 池/napi AsyncTask，阈值 wasm 性能定标与提速 / 绑定高级能力按 benchmark 定）。
 - **Worker**：`netwave.worker.js` 是**单一命令分发器**——显式静态表
   `cmds = { toY, toZ, ... }`（构建脚本生成，加函数只改表不加文件，零数值逻辑），
   由库的 async 壳内部 `new Worker(new URL("netwave.worker.js", import.meta.url))`
   托管，普通用户不直接接触；高级用户可经 `netwave/worker` 子路径自建。
   边界契约（普通调用输入克隆进入、`upload` 才 transfer、结果一律 transfer、
   SAB 可选升级）见
-  [zero-copy-roundtrip spec](specs/zero-copy-roundtrip/spec.md#requirement-异步与-worker-边界契约阶段-0-定契约实现在阶段-36)。
+  [zero-copy-roundtrip spec](specs/zero-copy-roundtrip/spec.md#requirement-异步与-worker-边界契约脚手架定契约实现在-wasm-性能定标与提速--绑定高级能力)。
   Node `worker_threads` 加载 `.node` addon 无障碍。
 - **tree-shaking**：包入口禁 `export *`（打包器保守处理会整模块保留），显式
   具名导出（构建脚本从 `.d.ts` 生成防漏）；Worker 分发禁动态属性访问命名空间。
   wasm 二进制不受 JS 摇树，体积靠 Rust 侧 `lto = true` + wasm-opt 控制。
-- 阶段 0 冒烟：vitest 断言 exports 字段结构 + node 环境解析到 napi 壳；
-  浏览器/Worker 实测属阶段 6。构建：`napi build` 与 `wasm-pack build` 输出
+- 脚手架冒烟：vitest 断言 exports 字段结构 + node 环境解析到 napi 壳；
+  浏览器/Worker 实测属绑定高级能力。构建：`napi build` 与 `wasm-pack build` 输出
   统一落 `dist/`，壳/胶水文件由构建脚本从 `src/` 拷入 `dist/`。
 
 ## Node 绑定（napi-rs，`typescript/native/`）
@@ -125,14 +125,14 @@ typescript/
   lazily-initialized 静态线性内存，返回 offset/length；JS 侧
   `new Float64Array(memory.buffer, offset, len)` 取视图；`read_element(idx)`
   从线性内存读回。
-  - wasm 内存增长（memory.grow）会 detach 旧视图——阶段 0 缓冲固定小尺寸，
-    不触发增长；失效强制机制属阶段 6。
+  - wasm 内存增长（memory.grow）会 detach 旧视图——脚手架缓冲固定小尺寸，
+    不触发增长；失效强制机制属绑定高级能力。
 - `wasm-pack build --target web`（browser 条件产物；2026-09-23 实施决策修订：
   原计划 bundler+nodejs 双 target，但 bundler 胶水含裸 wasm import，vitest
-  （node）无法加载，阶段 0 又不做浏览器实测——web 胶水在浏览器（fetch）与
+  （node）无法加载，脚手架又不做浏览器实测——web 胶水在浏览器（fetch）与
   node（vitest）双环境均可加载，单 target 覆盖两端，壳只维护一份）；
-  阶段 0 不做浏览器实测。
-- 多线程 wasm（阶段 3）：core rayon 代码不变，加 wthreads 适配 +
+  脚手架不做浏览器实测。
+- 多线程 wasm（wasm 性能定标与提速）：core rayon 代码不变，加 wthreads 适配 +
   `+atomics,+bulk-memory,+mutable-globals` 编译 flag；JS Worker 池胶水由
   wasm-bindgen/wthreads 自动生成；无 COOP/COEP 自动单线程回退。
 
@@ -144,7 +144,7 @@ typescript/
 - node/wasm：vitest（往返 + byteOffset/buffer 同一性断言 + coverage lines 100）。
 - cross-binding：同一 `(nfreq=2, nports=2)` 与同一写入值，四端各跑一遍，
   原生三端逐 bit 比对（CI 同机 job 内比对 JSON 输出），wasm 相对容差
-  （`testdata/manifest.json` 登记 `core_tol` 占位，阶段 1 正式化）。
+  （`testdata/manifest.json` 登记 `core_tol` 占位，测试基础设施正式化）。
 
 ## CI 结构
 
@@ -160,7 +160,7 @@ typescript/
   不需要 zig；zigbuild 仅发版交叉编译 Linux glibc 老版本时用（已装备用）。
 - rust-toolchain.toml 钉 stable（当前 1.98.1）；edition 2024（自 Rust 1.85 起
   稳定，greenfield 无兼容包袱直接用最新）；MSRV 底线即当前 stable 1.98，
-  升版走 OpenSpec 变更；MSRV 检查 job 留到阶段 2 有真实代码后加。
+  升版走 OpenSpec 变更；MSRV 检查 job 留到 Touchstone 核心有真实代码后加。
 - 覆盖率：`cargo llvm-cov --workspace --fail-under-lines 100`；
   hello 代码全被测试执行即天然 100%。
 

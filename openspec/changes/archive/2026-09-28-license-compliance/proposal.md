@@ -13,7 +13,7 @@ SignalIntegrity（GPL-3.0，唯一具传染性的红线源）、Touchstone 规�
 Integrity》（Cambridge University Press 全版权）。将来 `testdata/` 的
 golden 数据有相当部分来自 scikit-rf。目前没有任何 spec 级规则约束"借鉴
 不越界"，一次逐行翻译 GPL 代码就会让整个项目的许可被迫改 GPL——这是
-事故级风险，必须在写实质代码前（阶段 1/2 之前）把规则钉进宪法。
+事故级风险，必须在写实质代码前（测试基础设施 / Touchstone 核心之前）把规则钉进宪法。
 
 ## What Changes
 
@@ -48,10 +48,10 @@ golden 数据有相当部分来自 scikit-rf。目前没有任何 spec 级规则
 
 ## Non-goals
 
-- 不做代码级第三方混入扫描（grep GPL 特征头等）——阶段 1/2 有真实借鉴
+- 不做代码级第三方混入扫描（grep GPL 特征头等）——测试基础设施 / Touchstone 核心有真实借鉴
   代码后再立项；本次只落元数据一致性门禁。
 - 不上 CLA/EasyCLA——当前无外部贡献者，Apache-2.0 §5 默认机制足够。
-- 不改 `testdata/` 现有数据文件——登记模板先行，实际登记随阶段 1 golden
+- 不改 `testdata/` 现有数据文件——登记模板先行，实际登记随测试基础设施 golden
   数据入库。
 - 不引入 CLA、DCO、贡献者协议等新治理文件。
 - 网页版 UI 的商标声明落点（页脚文案）属前端阶段，本次只在 spec 中定

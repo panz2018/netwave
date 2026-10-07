@@ -2,10 +2,10 @@
 
 ## Why
 
-netwave 的一切功能（阶段 2 起的 Touchstone/Network/Circuit）都要求"地基从阶段 0 就是
+netwave 的一切功能（Touchstone 核心起的 Touchstone/Network/Circuit）都要求"地基从脚手架就是
 四端的"（core + python + node + wasm 同仓同步发版）。没有 monorepo 骨架、三绑定 hello
 world 与 CI 矩阵，后续每个功能变更都无处落地，零拷贝这一立项卖点也无法被验证。
-本变更立起这套骨架，是路线图的阶段 0。
+本变更立起这套骨架，是路线图的脚手架。
 
 ## What Changes
 
@@ -26,21 +26,21 @@ world 与 CI 矩阵，后续每个功能变更都无处落地，零拷贝这一�
   component）、`@netwave/touchstone`（Touchstone 显示等网页插件）。
   本变更只写清单字段，不发布。
 - core 暴露唯一临时 API `fill_pattern()`：分配 `(nfreq, nports, nports)` 交错复数
-  f64 缓冲并写入可预测图案，作为零拷贝往返验证的载体（阶段 2 被真实数据模型替换）。
+  f64 缓冲并写入可预测图案，作为零拷贝往返验证的载体（Touchstone 核心被真实数据模型替换）。
 - 三绑定各暴露 `hello` + buffer 视图获取函数：Python `PyArray` 视图、Node
   `ArrayBuffer`/External、wasm `Float64Array` 视图；四端测试改视图元素 → 回读
   core 验证同一块内存（cross-binding 对拍的最早形态）。
-- 异步/Worker 契约钉死（2026-09-22 修订；阶段 0 只写契约与 exports 骨架，
-  实现在阶段 3/6）：**JS 公开计算面单一 async**——计算动词不加后缀、直接返回
+- 异步/Worker 契约钉死（2026-09-22 修订；脚手架只写契约与 exports 骨架，
+  实现在 wasm 性能定标与提速 / 绑定高级能力）：**JS 公开计算面单一 async**——计算动词不加后缀、直接返回
   `Promise`，用户统一 `await`，不存在"同步/异步选哪个"的困惑；同步直通版降级为
   `_` 前缀逃生口（外部可调用、`.d.ts` 标 `@internal`、铁律七覆盖率照常计入）；
   属性/元数据读取保持同步。**Worker 分流库内自动**：小数据立即 resolve，
-  大数据进 Worker 池/napi AsyncTask，用户代码不变（阈值阶段 3/6 按 benchmark 定）。
+  大数据进 Worker 池/napi AsyncTask，用户代码不变（阈值 wasm 性能定标与提速 / 绑定高级能力按 benchmark 定）。
   边界 transfer 决策表：普通调用输入结构化克隆进入（输入永不消耗）、`upload`
   显式托管才 transfer、结果 buffer 一律 transfer 送回、`await` 后从返回值重建
   视图（wasm memory.grow 会 detach 旧视图）；SAB 可选升级，接口不变。
   Worker 容器归宿主 JS：预置 `netwave.worker.js` 由 async 壳内部托管，
-  普通用户不直接接触；多线程 wasm（wthreads + COOP/COEP）属阶段 3。
+  普通用户不直接接触；多线程 wasm（wthreads + COOP/COEP）属 wasm 性能定标与提速。
   **tree-shaking**：包入口禁 `export *`，显式具名导出；Worker 用显式静态分发表；
   wasm 体积靠 Rust 侧 LTO + wasm-opt（JS 摇树摇不掉 wasm 二进制，诚实声明）。
 - CI 五格矩阵全铺：linux-x64、linux-arm64、windows-x64、darwin-arm64、
@@ -76,9 +76,9 @@ world 与 CI 矩阵，后续每个功能变更都无处落地，零拷贝这一�
 
 ## Non-goals
 
-- 不做任何真实数值功能：Touchstone 解析、Network/Circuit 均属阶段 2+；
+- 不做任何真实数值功能：Touchstone 解析、Network/Circuit 均属 Touchstone 核心起；
   `fill_pattern()` 是临时脚手架 API，非契约的一部分。
 - 不发布任何注册表包（抢注/发版是账号侧独立动作，另行跟踪）。
-- 不做 `viewer/`（独立立项）、不做 Calibration/Vector Fitting（阶段 7+）。
-- 不做 wasm 性能定标（阶段 3）；本变更只保证 wasm 能构建、往返能验证。
-- 不建 `testdata/` 的 manifest/golden 内容（阶段 1），只建目录骨架。
+- 不做 `viewer/`（独立立项）、不做 Calibration/Vector Fitting（高级功能）。
+- 不做 wasm 性能定标（wasm 性能定标与提速）；本变更只保证 wasm 能构建、往返能验证。
+- 不建 `testdata/` 的 manifest/golden 内容（测试基础设施），只建目录骨架。

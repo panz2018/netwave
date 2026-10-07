@@ -25,7 +25,7 @@ core 频率轴主数据 MUST 永远存 f64 Hz，单位歧义 MUST NOT 进入计�
 推论）。`unit` 的存放位置已定案：core 以 `FrequencyUnit` enum 作元数据
 （词汇与倍率权威见 `frequency-unit` capability），绑定层不自存。`f_scaled`
 的命名与暴露形态（property vs 方法）、`Frequency` 独立类 vs `Network` 属性
-属设计决策，由阶段 1/2 的 design.md 定案（跟踪于总体计划待决细节清单），
+属设计决策，由测试基础设施 / Touchstone 核心的 design.md 定案（跟踪于总体计划待决细节清单），
 本 spec 不提前焊死。
 
 #### Scenario: 单位换算在解析时完成
@@ -35,7 +35,7 @@ core 频率轴主数据 MUST 永远存 f64 Hz，单位歧义 MUST NOT 进入计�
 
 #### Scenario: 单位形态未定案不得实现
 
-- **WHEN** 阶段 1/2 design.md 尚未定案 `f_scaled` 形态，有人提议
+- **WHEN** 测试基础设施 / Touchstone 核心 design.md 尚未定案 `f_scaled` 形态，有人提议
   在绑定层实现单位换算或自存 unit
 - **THEN** code-review Standards 轴拒绝（违反三层契约：绑定层不自存状态、
   不自算数值）

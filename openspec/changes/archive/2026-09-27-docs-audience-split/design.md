@@ -4,7 +4,7 @@
 
 见 `proposal.md` 的 Why。当前状态：坑与实现笔记散在 4 个子 README（7 节）与
 CONTRIBUTING 的 Environment gotchas；反返工清单在 CONTRIBUTING；AI 行为准则在
-AGENTS.md（每次对话自动注入）；硬约束在 project-governance spec。阶段 0 归档
+AGENTS.md（每次对话自动注入）；硬约束在 project-governance spec。脚手架归档
 后人工纠正仍反复出现，说明"写进文档"≠"被读到"。
 
 ## Goals / Non-Goals

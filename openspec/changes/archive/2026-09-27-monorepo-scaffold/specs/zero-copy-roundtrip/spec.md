@@ -12,7 +12,7 @@ core 持有的缓冲是同一块内存，视图改写对 core 立即可见。这
 
 core MUST 暴露一个临时脚手架函数，分配并返回形状为 `(nfreq, nports, nports)` 的
 交错复数 f64（complex128，`[re, im, re, im, ...]`）缓冲，并写入可预测图案
-（pattern）供四端断言。该函数是阶段 0 临时 API，阶段 2 被真实数据模型替换，
+（pattern）供四端断言。该函数是脚手架临时 API，Touchstone 核心被真实数据模型替换，
 不属于长期契约。
 
 #### Scenario: 缓冲布局逐字节符合铁律一
@@ -49,9 +49,9 @@ Node 为 `ArrayBuffer`/`Float64Array`（经 napi External 后端）；wasm 为
 - **THEN** 再次经 wasm 函数从 core 线性内存读取返回写入值
 - **AND** 视图 `buffer` 即 wasm `Memory.buffer`
 
-### Requirement: 异步与 Worker 边界契约（阶段 0 定契约，实现在阶段 3/6）
+### Requirement: 异步与 Worker 边界契约（脚手架定契约，实现在 wasm 性能定标与提速 / 绑定高级能力）
 
-跨线程/异步面 MUST 遵守以下契约（阶段 0 写入 API 文档与类型骨架，不做实现）：
+跨线程/异步面 MUST 遵守以下契约（脚手架写入 API 文档与类型骨架，不做实现）：
 
 1. **JS 公开计算面单一 async**（2026-09-22 修订，取代"同步动词为权威 +
    `Async` 后缀"）：core 内部全部同步；JS 绑定层计算动词**不加后缀、直接返回
@@ -62,7 +62,7 @@ Node 为 `ArrayBuffer`/`Float64Array`（经 napi External 后端）；wasm 为
    Python 端不受影响（同步 + `allow_threads`）。不提供 callback 风格。
 2. **Worker 分流库内自动**：`await toY(x)` 内部按输入规模分流——小数据直接调
    同步核心并立即 resolve（不起 Worker）；大数据进 Worker 池（浏览器）/ napi
-   AsyncTask（Node）。分流阈值与 Worker 池大小由 benchmark 定（阶段 3/6），
+   AsyncTask（Node）。分流阈值与 Worker 池大小由 benchmark 定（wasm 性能定标与提速 / 绑定高级能力），
    用户代码两种分支完全相同。
 3. **结果 buffer 一律 transfer，输入永不静默消耗**：计算结果 buffer 是新分配的、
    无主的，MUST 以 transfer 零拷贝送回；纯计算动词 MUST NOT 消耗调用方的输入
@@ -81,19 +81,19 @@ Node 为 `ArrayBuffer`/`Float64Array`（经 napi External 后端）；wasm 为
    （显式静态表 `cmds = { toY, toZ, ... }`，零数值逻辑，加函数只改表不加文件），
    由库的 async 壳内部托管，普通用户不直接接触；高级用户可经 `netwave/worker`
    子路径自建 Worker。多线程 wasm（wthreads + SharedArrayBuffer +
-   `+atomics,+bulk-memory`）属阶段 3；Node 防阻塞走 napi AsyncTask 属阶段 6。
+   `+atomics,+bulk-memory`）属 wasm 性能定标与提速；Node 防阻塞走 napi AsyncTask 属绑定高级能力。
 7. **tree-shaking**：包入口 MUST NOT 用 `export *`（打包器保守处理会整模块
    保留），MUST 显式具名导出；Worker 分发 MUST NOT 用动态属性访问命名空间。
    wasm 二进制不受 JS 摇树，体积靠 Rust 侧 `lto = true` + wasm-opt 控制。
 
-#### Scenario: Worker 往返——输入不消耗、结果零拷贝（阶段 6 实测，阶段 0 仅契约文本评审）
+#### Scenario: Worker 往返——输入不消耗、结果零拷贝（绑定高级能力实测，脚手架仅契约文本评审）
 
 - **WHEN** 主线程对同一输入 buffer 先后两次 `await toZ(x)` 跨 Worker 执行
 - **THEN** 两次调用后主线程原输入 buffer 仍有效且数据未变（输入未被消耗）
 - **AND** 两次结果 buffer 均以 transfer 零拷贝送回，主线程从返回值重建的
   `Float64Array` 数据正确
 
-#### Scenario: async 面分流测试（阶段 3/6 实现，阶段 0 仅契约文本评审）
+#### Scenario: async 面分流测试（wasm 性能定标与提速 / 绑定高级能力实现，脚手架仅契约文本评审）
 
 - **WHEN** 小数据 `await toY(x)`（低于阈值）
 - **THEN** Promise 立即 resolve，结果与 `_toY(x)` 数值一致，未起 Worker

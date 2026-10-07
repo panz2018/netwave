@@ -2,7 +2,7 @@
 
 ## REMOVED Requirements
 
-### Requirement: 异步与 Worker 边界契约（阶段 0 定契约，实现在阶段 3/6）
+### Requirement: 异步与 Worker 边界契约（脚手架定契约，实现在 wasm 性能定标与提速 / 绑定高级能力）
 
 **Reason**: worker 常驻架构定案——按规模分流与浏览器 `_` 逃生口废止，主线程无
 wasm，元数据搭结果便车；旧契约文本整体由新契约取代。
@@ -26,7 +26,7 @@ async 动词签名不变，仅浏览器端 `_` 同步函数删除、`upload`/`re
    wasm 执行，MUST NOT 按输入规模分流（"小数据主线程算"废止）。worker 由库的
    async 壳内部托管、常驻至页面关闭；`standalone.js` 内部自起常驻 worker，
    Pages / `<script type="module">` 零配置体验不变。Node 端计算在进程内 napi
-   core 执行，大计算入口防阻塞走 napi AsyncTask（阶段 6）。
+   core 执行，大计算入口防阻塞走 napi AsyncTask（绑定高级能力）。
 3. **结果 buffer 一律 transfer，输入移动仅经显式 transfer**：计算结果 buffer 是新
    分配的、无主的，MUST 以 transfer 零拷贝送回；纯计算动词 MUST NOT 消耗调用方的
    输入 buffer——输入要么已通过 `upload` 显式托管在常驻 worker（托管后反复可用），
@@ -47,7 +47,7 @@ async 动词签名不变，仅浏览器端 `_` 同步函数删除、`upload`/`re
    由库的 async 壳内部托管，普通用户不直接接触；高级用户可经 `netwave/worker`
    子路径自建 Worker。拓扑为单常驻 worker（api-contract spec"worker 泛化分发与
    单常驻拓扑"），多 worker 分桶推迟到有实测需求再立项。多线程 wasm（wthreads +
-   SharedArrayBuffer + `+atomics,+bulk-memory`）属阶段 3。worker 异常终止数据
+   SharedArrayBuffer + `+atomics,+bulk-memory`）属 wasm 性能定标与提速。worker 异常终止数据
    丢失为已接受行为，不引入持久化恢复。
 7. **tree-shaking**：包入口 MUST NOT 用 `export *`（打包器保守处理会整模块
    保留），MUST 显式具名导出；Worker 分发 MUST NOT 用动态属性访问命名空间。

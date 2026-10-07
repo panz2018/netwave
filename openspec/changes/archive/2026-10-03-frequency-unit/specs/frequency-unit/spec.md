@@ -90,7 +90,7 @@ core 解析入口 MUST 是手写 `impl FromStr`（strum `EnumString` 生成的 `
 含非法输入原文。该错误映射到各端 MUST 用内置异常类：Python `ValueError`、
 Node `TypeError`、浏览器 `TypeError`；MUST NOT 自定义跨端异常类层级。本 change 无
 字符串入参公开入口，跨端映射属**契约冻结**（本 spec 定死映射关系，review 据此
-判定，不得偏离），实现随阶段 1/2 首个字符串入参入口落地；本 change 在 core 层
+判定，不得偏离），实现随测试基础设施 / Touchstone 核心首个字符串入参入口落地；本 change 在 core 层
 验证错误含原文。
 
 #### Scenario: 解析非法单位报错并含原文

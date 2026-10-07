@@ -3,7 +3,7 @@
 ## Why
 
 `api-contract` 把"频率轴主数据恒为 f64 Hz"钉为铁律，但明确把 `unit` 的存放位置、
-`f_scaled` 形态、`FrequencyUnit` 的词汇与倍率定义推给阶段 1/2 design.md（见
+`f_scaled` 形态、`FrequencyUnit` 的词汇与倍率定义推给测试基础设施 / Touchstone 核心 design.md（见
 [api-contract 频率轴主数据恒为 f64 Hz](../../../specs/api-contract/spec.md)）。这块悬空
 会让绑定层各自长出单位表，撕开漂移面。本 change 定案 `FrequencyUnit` 的单一真相源
 形态：词汇、倍率、跨端暴露与错误契约，杜绝 py/ts 手抄。
@@ -14,7 +14,7 @@
   strum derive 生成 `as_ref`/`iter`/`FromStr`。
 - 倍率以穷尽 `match` 落地（Rust 内部查表，键=变体、值=倍率），被 `Frequency.f_scaled`
   消费，不作为公开函数、不在 py/ts 出现。
-- THz 入表（当前支持）；Touchstone 文件头不支持 THz 属阶段 2 解析层约束，与本词汇定义无关。
+- THz 入表（当前支持）；Touchstone 文件头不支持 THz 属 Touchstone 核心解析层约束，与本词汇定义无关。
 - py/ts 绑定零手抄：pyo3 `add_class` 一行 + napi/wasm-bindgen feature 门控 + re-export
   一行；成员与字符串靠运行时反射与构建期生成的 `.d.ts`/`.pyi` 自我发现。
   `.pyi` 直接接入 pyo3-stub-gen 终态工具链（不再手写，提前兑现绑定壳省力化，
@@ -57,10 +57,10 @@
 
 ## Non-goals
 
-- 不实现 `Frequency` 类本体（阶段 1）——本 change 只定 `FrequencyUnit` 词汇与契约形态。
+- 不实现 `Frequency` 类本体（测试基础设施）——本 change 只定 `FrequencyUnit` 词汇与契约形态。
 - 不做 `f_scaled` 的 property/方法命名与 `Frequency` 独立类 vs `Network` 属性归属
-  （阶段 1/2 design.md）。
-- 不做 Touchstone `#` 行单位白名单拒绝（阶段 2 解析层）。
+  （测试基础设施 / Touchstone 核心 design.md）。
+- 不做 Touchstone `#` 行单位白名单拒绝（Touchstone 核心解析层）。
 - 不自定义跨端异常类层级（用各端内置异常）。
 - 不引入 py/ts 侧任何单位表、倍率或校验逻辑。
 - 不改 worker 消息信封字段（api-contract spec 的 `{handle, method, args}` 措辞与

@@ -29,7 +29,7 @@ red/green"简化路径）；验收 = `pnpm check:md` + `openspec validate` 全�
 - [x] 3.2 「跨语言 API 面契约」整节替换为指向 `openspec/specs/api-contract/`
       的指针 + 仅保留未销账的待决细节清单（未打勾条目）
       → 验证：待决清单无 `[x]` 项
-- [x] 3.3 保留并核对：项目定位、分阶段路线图（阶段 1–8）、未销账待办
+- [x] 3.3 保留并核对：项目定位、分阶段路线图（测试基础设施至光学适配验证）、未销账待办
       （抢注、faer 选型、待决清单销账）
       → 验证：`pnpm check:md` 通过
 
@@ -39,7 +39,7 @@ red/green"简化路径）；验收 = `pnpm check:md` + `openspec validate` 全�
       CI 集成表（→ci-matrix spec）
       → 验证：三表删除处各留一行指针
 - [x] 4.2 保留：测试分层总览、unit/property 用例清单、golden/manifest 契约、
-      cross-binding、criterion 基线持久化（阶段 2）、覆盖率标准、阶段映射
+      cross-binding、criterion 基线持久化（Touchstone 核心）、覆盖率标准、阶段映射
       → 验证：`pnpm check:md` 通过
 
 ## 5. 功能覆盖规划.md 瘦身

@@ -2,7 +2,7 @@
 
 ## Why
 
-阶段 0 已归档，`openspec/` 按 AGENTS.md 约定成为唯一事实源，但全部硬约束
+脚手架已归档，`openspec/` 按 AGENTS.md 约定成为唯一事实源，但全部硬约束
 （七条铁律 + 元规则）仍留在 `Plan/constitution.md`——一个生命周期终点为"删除"
 的目录里。宪法不迁入 openspec，Plan/ 就永远删不掉，"唯一真相源"就是空话。
 

@@ -74,7 +74,7 @@ manifest 实际值为准）。放宽任何容差 MUST 在 manifest 注明原因�
 scikit-rf 是数值权威，MUST 只出现在离线 `gen_golden.py`，golden 结果提交进
 git。主 CI（cargo test / pytest / vitest）MUST 只读 `testdata/`，零 skrf
 依赖。skrf 升级由每周 `golden-refresh` job 重生成 + diff 守护，数值漂移显式
-暴露（golden-refresh 属阶段 1，本 spec 钉契约、落地见总体计划）。
+暴露（golden-refresh 属测试基础设施，本 spec 钉契约、落地见总体计划）。
 
 #### Scenario: 主 CI 无 skrf
 
@@ -95,7 +95,7 @@ git。主 CI（cargo test / pytest / vitest）MUST 只读 `testdata/`，零 skrf
 ### Requirement: 铁律六 大文件性能底线
 
 50MB s4p 解析 < 100ms 是底线（memmap2 + rayon，原生端 Python/Node；浏览器
-wasm 单线程回退场景阶段 3 实测定标后回写本 spec）。criterion 基准 MUST 进
+wasm 单线程回退场景 wasm 性能定标与提速实测定标后回写本 spec）。criterion 基准 MUST 进
 CI，显著劣化（>20%）MUST 失败。
 
 #### Scenario: 基准回归即红
