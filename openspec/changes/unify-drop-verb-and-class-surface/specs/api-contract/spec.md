@@ -71,7 +71,10 @@ MUST NOT 存在逐动词导出入口；Rust 无反射，名字→函数的分派
 #### Scenario: wasm 导出面恰为 call + 常量枚举
 
 - **WHEN** 解析 wasm glue `.d.ts` 的顶层导出集合
-- **THEN** 导出恰为 `call` + `FrequencyUnit`（+ wasm-pack 生成的 init/默认导出）
+- **THEN** 导出恰为 `call` + `FrequencyUnit` + `register_resources`（+ wasm-pack
+  生成的 init/默认导出；`register_resources` 是 `#[wasm_bindgen(start)]` 注册
+  钩子，wasm-bindgen 无视 Rust 可见性必按名导出——它是注册入口不是动词，钉死
+  的本意是"无逐动词入口"）
 - **AND** 无任何逐动词入口（`network_upload`/`frequency_npoints` 等）
 - **AND** 无任何自由函数直导出（`frequency_units`/`live_count` 经命名空间路由）
 - **AND** `check_verbs.py` 钉死该集合，多一个少一个即红
