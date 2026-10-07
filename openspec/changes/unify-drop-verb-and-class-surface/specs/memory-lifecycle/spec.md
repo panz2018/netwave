@@ -69,16 +69,17 @@ node 端 `Frequency` MUST 由 napi cleanup finalizer 在 JS 对象被 GC 时自�
 
 ### Requirement: 主线程 registry 驱动 worker 释放（浏览器双 realm）
 
-浏览器端 `Frequency` 真数据活在常驻 worker（铁律八），主线程仅持数字 handle 壳。
-主线程 MUST 自建 `FinalizationRegistry`，其 held 值 MUST 是**不反向引用 wrapper**
-的数字 handle；壳被 GC 时回调 MUST 经 `postMessage {cmd:"drop", handle}` 通知
-worker，worker MUST 零状态纯转发——句柄注册、查表、释放 MUST 全部发生在 **core
-内唯一一张资源表**（cfg 门控 browser feature，`handle → Resource`，`Resource`
-为 enum：裸字节缓冲 / `Frequency` / 未来 Network 等变体）；`drop(handle)` MUST
-在 core 侧 `remove(handle)` 直接触发 Rust `Drop`，MUST NOT 经 JS 对象中转。
-worker JS MUST NOT 存在任何句柄 `Map` 或 `nextHandle` 计数器（现有 `hosted`/
-`frequencies` 两表废止）；释放动词唯一为 `drop`（句柄全局唯一，单表查找无歧义）；
-`postMessage` 协议名 `dropFrequency` MUST NOT 存在。句柄表本身 MUST NOT 被删除
+浏览器端 `Network`/`Frequency` 真数据活在常驻 worker（铁律八），主线程仅持
+`Network`/`Frequency` 壳类实例（壳内数字 handle，`@internal`）。主线程 MUST 自建
+`FinalizationRegistry`，其 held 值 MUST 是**不反向引用壳实例**的数字 handle；壳被
+GC 时回调 MUST 经 `postMessage {cmd:"drop", handle}` 通知 worker，worker MUST
+零状态纯转发——句柄注册、查表、释放 MUST 全部发生在 **core 内唯一一张资源表**
+（cfg 门控 browser feature，`handle → Resource`，`Resource` 为 enum：`Network` /
+`Frequency`，注册焊死在各工厂入口内）；`drop(handle)` MUST 在 core 侧
+`remove(handle)` 直接触发 Rust `Drop`，MUST NOT 经 JS 对象中转。worker JS MUST
+NOT 存在任何句柄 `Map` 或 `nextHandle` 计数器（现有 `hosted`/`frequencies` 两表
+废止）；释放动词唯一为 `drop`（句柄全局唯一，单表查找无歧义）；`postMessage`
+协议名 `dropFrequency`/`newFrequency` MUST NOT 存在。句柄表本身 MUST NOT 被删除
 （跨边界只传数字 handle，core 靠它路由消息）。
 
 #### Scenario: 壳被 GC 触发 worker 释放
@@ -94,7 +95,7 @@ worker JS MUST NOT 存在任何句柄 `Map` 或 `nextHandle` 计数器（现有 
 
 #### Scenario: 表数量恒为一
 
-- **WHEN** 未来 Network/Circuit 等新增句柄资源类型
+- **WHEN** 未来 Circuit 等新增句柄资源类型
 - **THEN** 只加 core 资源表 `Resource` enum 变体，不新增表、不新增释放动词
 
 #### Scenario: worker JS 零状态

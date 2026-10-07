@@ -46,9 +46,9 @@
 #### Scenario: 统一形态为实例方法
 
 - **WHEN** 检查三端手动释放的调用形态
-- **THEN** 公开形态统一为实例方法 `obj.drop()`；浏览器主线程只有数字 handle，
-  `drop(handle)` 仅作为 worker 内部 `postMessage` 命令形态存在，MUST NOT 上浮为
-  公开 API
+- **THEN** 公开形态统一为实例方法 `obj.drop()`（浏览器主线程持 `Network`/
+  `Frequency` 壳实例，壳内是数字 handle）；`drop(handle)` 仅作为 worker 内部
+  `postMessage` 命令形态存在，MUST NOT 上浮为公开 API
 
 ### Requirement: 元规则 冻结非不可变——有问题必修正
 
