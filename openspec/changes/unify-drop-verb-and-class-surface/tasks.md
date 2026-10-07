@@ -2,56 +2,71 @@
 
 ## 1. core：`drop()` 改名 + `Network` 骨架
 
-- [ ] 1.1 `core/src/frequency.rs`：`Frequency::release()` 重命名为 `drop()`，
+- [x] 1.1 `core/src/frequency.rs`：`Frequency::release()` 重命名为 `drop()`，
       `impl Drop::drop` 一行委托固有方法 `self.drop()`；同步更新 rustdoc 与字段
       注释。验证：`cargo test -p netwave` 全绿；`cargo clippy` 配
       `--workspace --all-targets -D warnings` 零警告（固有方法优先解析，无递归）。
-- [ ] 1.2 core 单测：`drop()` 后 `npoints()` 为 0、二次 `drop()` 幂等、
-      `live_count()` 只减一次；RAII 路径（离开作用域）行为不变。验证：
-      `cargo test -p netwave` 新增用例先 red 后 green。
-- [ ] 1.3 `core/src/network.rs`（新增骨架）：`Network` 持频率/端口维度与
-      `Vec<f64>` 数据 + `dropped` 见证；`from_f64(view)` 构造、
-      `fill_pattern(nfreq, nports)` 工厂、`read_element(idx)`、`drop()`
-      （`Drop::drop` 同款委托）。零计算/解析/端口语义。验证：
+- [x] 1.2 core 单测：`drop()` 后 `npoints()` 报错（非返回 0）、二次
+      `drop()` 幂等、`live_count()` 只减一次；RAII 路径（离开作用域）行为
+      不变。验证：`cargo test -p netwave` 新增用例先 red 后 green。
+- [x] 1.3 `core/src/network.rs`（新增骨架）：`Network` 持频率/端口维度与
+      `Vec<f64>` 数据 + `dropped` 见证；`from_f64(nfreq, nports, data)`
+      构造、`fill_pattern(nfreq, nports)` 工厂、`read_element(idx)`、
+      `drop()`（`Drop::drop` 同款委托）。零计算/解析/端口语义。验证：
       `cargo test -p netwave` 骨架用例（构造/读/释放/释放后读报错）先 red
       后 green。
+- [ ] 1.4 core 收尾（裁决：无 `isDropped` 见证、释放后报错 core 单源、
+      动词零残留）：错误类型 `Released` 改名 `Dropped` 并提到 `lib.rs`
+      全资源共享；删除 `Network::is_dropped`/`Frequency::is_dropped`
+      （释放后访问报错即契约，不另设第二套真相源）；`Frequency::npoints()`
+      释放后返回 `Err(Dropped)`（修 node 曾返回 0 的 bug，判断不在绑定层
+      重写）；rustdoc 散文里 release/released 措辞全改 drop/dropped。
+      验证：`cargo test -p netwave` 全绿；`cargo clippy` 配
+      `--workspace --all-targets -- -D warnings` 零警告；core/src grep
+      `release` 零命中。
 
 ## 2. core：浏览器资源表（cfg=browser）
 
-- [ ] 2.1 新增资源表模块（`cfg(feature = "browser")`）：`Resource` enum
-      （`Network` / `Frequency`）、单张 `Mutex<BTreeMap<u32, Resource>>` +
-      单一 `next_handle()` 计数器；注册焊死在各工厂入口内，无独立注册函数。
-      验证：`cargo check -p netwave` 非 browser target 绿（证 cfg 隔离）；
-      `cargo test -p netwave --features browser --target wasm32-unknown-unknown`
-      句柄表用例（注册/查表/`drop` 触发 `Drop`/未知句柄报错）先 red 后 green。
-- [ ] 2.2 `#[wasm_bindgen]` 句柄入口（同 feature 门控）：`network_upload`/
-      `network_fill_pattern`/`network_read_element`/`frequency_from_f`/`drop`/
-      `frequency_units`/`live_count`；`drop(handle)` = `remove` 直接触发 Rust
-      `Drop`，不经 JS 对象中转。验证：2.1 同一套 wasm 测试全绿。
+- [ ] 2.1 资源表模块（`cfg(feature = "browser")`）改**类型擦除泛型表**：
+      `Mutex<BTreeMap<u32, Box<dyn Any + Send>>>` + 单一计数器；模块只有
+      `insert<T>`/`with<T>`/`remove` 三泛型操作，不认识任何具体资源类型
+      （旧 `Resource` enum 否决：每加资源改表模块，违反开闭）；注册焊死在
+      各工厂入口内，无独立注册函数。验证：`cargo check -p netwave` 非
+      browser 绿（证 cfg 隔离）；`cargo test -p netwave --features browser`
+      句柄表用例（注册/查表/`drop` 触发 `Drop`/未知句柄报错/错类型 downcast
+      报错）全绿（本机未装 wasm32 target：表逻辑拆纯函数 native 验证，
+      `#[wasm_bindgen]` 适配层由组 5 worker 往返覆盖）。
+- [ ] 2.2 各资源的 `#[wasm_bindgen]` 句柄入口写回**各自模块**（同 feature
+      门控）：`network_upload`/`network_fill_pattern`/`network_read_element`
+      入 `network.rs`，`frequency_from_f` 入 `frequency.rs`，`drop`/
+      `frequency_units`/`live_count` 留 `resources.rs`（类型无关）；
+      `drop(handle)` = `remove` 直接触发 Rust `Drop`，不经 JS 对象中转。
+      验证：2.1 同一套测试全绿；未来新资源只在自己模块加入口。
 
 ## 3. Python：`Network`/`Frequency` pyclass 首次导出
 
-- [ ] 3.1 先写失败测试 `python/tests/test_memory_lifecycle.py`：`Network(data)`
+- [x] 3.1 先写失败测试 `python/tests/test_memory_lifecycle.py`：`Network(data)`
       构造后 `read_element(idx)` 正确、`drop()` 后访问抛 `ValueError`、二次
       `drop()` 不报错、不调 `drop()` 时引用计数回收后 `live_count()` 归零；
       `Frequency.from_f(...)` 同套断言。验证：pytest 该文件 red（类未导出）。
-- [ ] 3.2 `python/src/lib.rs`：注册 `Network`（构造器 + `read_element` +
-      `drop`）与 `Frequency`（`from_f` + `drop`）pyclass，`#[pymethods]` 直接
+- [x] 3.2 `python/src/lib.rs`：注册 `Network`（构造器收数据 + `nfreq`/
+      `nports` shape + `read_element` + `drop`）与 `Frequency`（`from_f` +
+      `drop`）pyclass，`#[pymethods]` 直接
       命名（零名字映射）；`python/netwave/__init__.py` 再导出。验证：3.1 转
       green；公开面无 `upload`。
-- [ ] 3.3 重新生成 `.pyi`（stub_gen）。验证：`_netwave.pyi` grep `release` 与
+- [x] 3.3 重新生成 `.pyi`（stub_gen）。验证：`_netwave.pyi` grep `release` 与
       `free` 零命中，新签名含 `drop`/`read_element`/`from_f`。
 
 ## 4. node：napi 类形态 + `free()` 改名
 
-- [ ] 4.1 `typescript/native/src/lib.rs`：`Frequency` wrapper 的 `pub fn free`
+- [x] 4.1 `typescript/native/src/lib.rs`：`Frequency` wrapper 的 `pub fn free`
       重命名 `pub fn drop`（wrapper 无 `impl Drop`，无遮蔽）；新增 `Network`
-      napi 类（构造器收 Float64Array + `readElement` + `drop`），rustdoc 同步。
+      napi 类（构造器收 Float64Array + `nfreq`/`nports` shape + `readElement` + `drop`），rustdoc 同步。
       验证：重建后 native 源码与 `.d.mts` 用户可见面 grep `free` 零命中。
-- [ ] 4.2 重建 node glue（`pnpm -C typescript build:native`，带 `--dts`，
+- [x] 4.2 重建 node glue（`pnpm -C typescript build:native`，带 `--dts`，
       LL-043）。验证：`.d.mts` 中 `Network`/`Frequency` 均有 `drop(): void` 与
       `readElement`、无 `free`、无 `upload`。
-- [ ] 4.3 测试改写：`typescript/test/native/memory-lifecycle.test.ts`
+- [x] 4.3 测试改写：`typescript/test/native/memory-lifecycle.test.ts`
       （`f.free()`→`f.drop()`）、`typescript/test/native/`
       `native.roundtrip.test.ts`（`upload`/`release` 句柄流改 `new Network()` +
       实例 `readElement`/`drop()`）。验证：`pnpm -C typescript test:native` 全绿。
@@ -66,7 +81,8 @@
       →`unknown or dropped handle`（错误源由 core throw 透传）。验证：worker
       往返测试全绿。
 - [ ] 5.2 `typescript/src/index.browser.ts`：导出 `Network`/`Frequency` 壳类
-      （实例持 `@internal` 数字 handle，方法体纯 `postMessage`）；
+      （实例持 `@internal` 数字 handle，方法体纯 `postMessage`；
+      `Network.upload(view, nfreq, nports)` 显式传 shape）；
       `FinalizationRegistry` 挂壳实例、held 为数字 handle、回调发
       `{cmd:"drop", handle}`；`internals` 测试缝退役；自由函数
       `frequencyUnits`/`liveCount` 保留。验证：`pnpm -C typescript typecheck`

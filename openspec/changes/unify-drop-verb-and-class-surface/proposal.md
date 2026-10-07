@@ -31,10 +31,11 @@ handle 退回 `@internal` 协议细节。
   `unknown or released handle` → `unknown or dropped handle`。
 - **BREAKING** 常驻 worker 两张 JS 句柄表 `hosted`（裸字节缓冲）+ `frequencies`
   （wasm `Frequency` 实例）**整体下沉 core Rust**（cfg 门控 browser feature）：
-  core 内唯一一张资源表（`handle → Resource` enum，句柄由 core 单一计数器递增）；
+  core 内唯一一张资源表（`handle → Box<dyn Any + Send>` 类型擦除泛型表，
+  句柄由 core 单一计数器递增，表模块不认识具体资源类型）；
   释放命令收拢为**单一 `drop(handle)`**（废止 `dropFrequency`），core 侧
   `remove` 直接触发 Rust `Drop`；worker JS 零状态纯转发，未来 Network/Circuit
-  只加 enum 变体，表数量恒为 1。
+  只在自己模块加自注册入口，表模块零修改、表数量恒为 1。
 - 公开形态统一为实例方法 `obj.drop()`；数字 handle 是 `@internal` 协议细节，
   `drop(handle)` 仅作为 worker `postMessage` 命令形态，不上浮公开 API
   （node/python 直接持对象，无 handle）。
@@ -90,8 +91,9 @@ handle 退回 `@internal` 协议细节。
 ## Impact
 
 - 代码：`core/src/frequency.rs`、core 新增 `network.rs`（骨架）与资源表模块
-  （cfg=browser：`Resource` enum 句柄表，注册焊死工厂入口，`drop(handle)` =
-  `remove` 触发 `Drop`）、`typescript/native/src/lib.rs`（`Network` napi 类）、
+  （cfg=browser：`Box<dyn Any + Send>` 类型擦除泛型句柄表，各资源入口写在
+  自己模块自注册，`drop(handle)` = `remove` 触发 `Drop`）、
+  `typescript/native/src/lib.rs`（`Network` napi 类）、
   `typescript/src/{index.browser,index.node,types,netwave.worker}.ts`（壳类 +
   worker 零状态转发）、`python/src/lib.rs`（`Network`/`Frequency` pyclass 首次
   导出含 `drop()`）。
@@ -99,10 +101,10 @@ handle 退回 `@internal` 协议细节。
   `typescript/test/wasm/{memory-lifecycle,browser-roundtrip,browser-surface,worker}.test.ts`、
   `typescript/test/browser/browser-resident.test.ts`（改名，断言逻辑不变）。
 - 生成物：`.pyi`（stub_gen）与 `.d.mts`（napi dts）重新生成。
-- 文档：`openspec/specs/{project-governance,memory-lifecycle,api-contract,
-  zero-copy-roundtrip}/spec.md`、`Plan/总体计划.md`（公开面收敛与 Network 骨架
-  部分销账）、`Plan/频率类设计.md`（待裁决条目销账）、
-  `openspec/specs/lessons-learned/`（新增 LL + INDEX）、
+- 文档：`openspec/specs/` 下 `project-governance`、`memory-lifecycle`、
+  `api-contract`、`zero-copy-roundtrip` 四份 `spec.md`、`Plan/总体计划.md`
+  （公开面收敛与 Network 骨架部分销账）、`Plan/频率类设计.md`（待裁决条目
+  销账）、`openspec/specs/lessons-learned/`（新增 LL + INDEX）、
   `typescript/README.md` / `python/README.md` 若有动词示例。
 - 门禁：`scripts/cross_compare.py`（三端动词集合相等）、`pnpm check` 全量绿。
 - 受影响铁律：铁律八（worker 命令名）、铁律九（协议钩子不受影响，机械映射豁免）、

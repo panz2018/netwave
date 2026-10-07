@@ -74,8 +74,9 @@ node 端 `Frequency` MUST 由 napi cleanup finalizer 在 JS 对象被 GC 时自�
 `FinalizationRegistry`，其 held 值 MUST 是**不反向引用壳实例**的数字 handle；壳被
 GC 时回调 MUST 经 `postMessage {cmd:"drop", handle}` 通知 worker，worker MUST
 零状态纯转发——句柄注册、查表、释放 MUST 全部发生在 **core 内唯一一张资源表**
-（cfg 门控 browser feature，`handle → Resource`，`Resource` 为 enum：`Network` /
-`Frequency`，注册焊死在各工厂入口内）；`drop(handle)` MUST 在 core 侧
+（cfg 门控 browser feature，`handle → Box<dyn Any + Send>` 类型擦除表：表本身
+不认识任何具体资源类型，只有 `insert<T>`/`with<T>`/`drop` 三个泛型操作，各资源
+的入口写在自己的模块里自注册）；`drop(handle)` MUST 在 core 侧
 `remove(handle)` 直接触发 Rust `Drop`，MUST NOT 经 JS 对象中转。worker JS MUST
 NOT 存在任何句柄 `Map` 或 `nextHandle` 计数器（现有 `hosted`/`frequencies` 两表
 废止）；释放动词唯一为 `drop`（句柄全局唯一，单表查找无歧义）；`postMessage`
@@ -96,7 +97,8 @@ NOT 存在任何句柄 `Map` 或 `nextHandle` 计数器（现有 `hosted`/`frequ
 #### Scenario: 表数量恒为一
 
 - **WHEN** 未来 Circuit 等新增句柄资源类型
-- **THEN** 只加 core 资源表 `Resource` enum 变体，不新增表、不新增释放动词
+- **THEN** 只在新资源自己的模块加自注册入口，资源表模块（泛型）与释放动词
+  均零修改
 
 #### Scenario: worker JS 零状态
 

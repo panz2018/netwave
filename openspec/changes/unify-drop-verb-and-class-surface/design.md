@@ -83,15 +83,18 @@ pub fn drop(&mut self) {
 
 公开面归位表（名字全由 core 单源，TS 仅机械 camelCase）：
 
-| 公开面                                     | 形态               | 端          |
-| ------------------------------------------ | ------------------ | ----------- |
-| `Network.upload(view)`                     | 静态，返回壳实例   | 仅浏览器    |
-| `new Network(view)` / `Network(data)`      | 构造器             | node/Python |
-| `Network.fillPattern(nfreq, nports)`       | 静态，返回实例     | 三端        |
-| `net.readElement(idx)` / `net.drop()`      | 实例方法           | 三端        |
-| `Frequency.fromF(view, unit)` / `f.drop()` | 静态 + 实例        | 三端        |
-| `frequencyUnits()` / `liveCount()`         | 自由函数（无状态） | 三端        |
+| 公开面                                                              | 形态               | 端          |
+| ------------------------------------------------------------------- | ------------------ | ----------- |
+| `Network.upload(view, nfreq, nports)`                               | 静态，返回壳实例   | 仅浏览器    |
+| `new Network(view, nfreq, nports)` / `Network(data, nfreq, nports)` | 构造器             | node/Python |
+| `Network.fillPattern(nfreq, nports)`                                | 静态，返回实例     | 三端        |
+| `net.readElement(idx)` / `net.drop()`                               | 实例方法           | 三端        |
+| `Frequency.fromF(view, unit)` / `f.drop()`                          | 静态 + 实例        | 三端        |
+| `frequencyUnits()` / `liveCount()`                                  | 自由函数（无状态） | 三端        |
 
+- **shape 显式传入**：裸 `Float64Array` 长度无法唯一分解出维度，所有
+  数据入口（`upload`/构造器）MUST 显式收 `nfreq`/`nports`，
+  由 core 断言 `len == nfreq*nports*nports*2`。
 - **`upload` 浏览器专属**：只有浏览器存在 worker 线性内存边界，才需要"显式移交"
   入口；node/Python 构造器即数据入口，MUST NOT 另造 `upload`（铁律十二管"同一
   语义同名"，不管"别的平台没有的边界硬造入口"）。
@@ -103,6 +106,14 @@ pub fn drop(&mut self) {
   直接挂壳实例，不再需要单独的 ref 包装测试缝。
 - **不加整块取回出口**（`toBuffer()` 等）：整块回传属计算动词零拷贝契约，随
   Touchstone 核心立项；骨架期测试用 `readElement` 抽查。
+- **无 `isDropped` 见证**：释放后访问报错本身就是契约（全端一致），额外的
+  `isDropped()`/`is_dropped` 属性是第二套真相源，公开面与内部面都不存在；
+  释放状态由 core 内部 `dropped` 见证字段支撑，不外露。
+- **释放后报错在 core 层单源**：数据访问方法（`npoints`/`read_element`）在
+  core 就返回 `Err(Dropped)`，绑定层原样透传——不在各绑定里各写一份
+  post-drop 判断（node 曾返回 0 即因判断只存在于 JS 层的反面教材）。错误
+  类型 `Dropped` 定义在 core `lib.rs`，全资源共享（旧名 `Released` 随动词
+  统一改名，铁律十二）。
 
 ### worker 资源表：下沉 core（cfg=browser）+ worker JS 零状态
 
@@ -111,21 +122,31 @@ pub fn drop(&mut self) {
 与 `dropFrequency`(Frequency)。本 change 把句柄表**整体下沉到 core Rust**：
 
 ```rust
-// core，cfg 门控 browser feature
-pub enum Resource { Network(Network), Frequency(Frequency) }
-static RESOURCES: Mutex<BTreeMap<u32, Resource>>; // 句柄计数器同表递增
+// core，cfg 门控 browser feature。表是类型擦除的（Rust 的泛型 T）：
+// 它不认识任何具体资源类型，新增资源时本模块零修改。
+pub struct Registry {
+    table: BTreeMap<u32, Box<dyn Any + Send>>,
+    next_handle: u32,
+}
+impl Registry {
+    fn insert<T: Any + Send>(&mut self, resource: T) -> u32 { /* 计数器递增+插入 */ }
+    fn with<T: Any, R>(&self, handle: u32, f: impl FnOnce(&T) -> R) -> Result<R, String> { /* downcast */ }
+    fn remove(&mut self, handle: u32) -> Result<(), String> { /* 触发 Rust Drop */ }
+}
 
-// 注册焊死在工厂入口，无专门注册函数；JS 侧只见数字句柄
+// 各资源的 #[wasm_bindgen] 入口写在自己的模块里（network.rs/frequency.rs），
+// 调用泛型表自注册；JS 侧只见数字句柄。
 #[wasm_bindgen]
-pub fn network_upload(view: &[f64]) -> u32 {
-    let h = next_handle();
-    RESOURCES.lock().insert(h, Resource::Network(Network::from_f64(view)));
-    h
+pub fn network_upload(view: &[f64], nfreq: u32, nports: u32) -> Result<u32, JsValue> {
+    Ok(insert(Network::from_f64(nfreq as usize, nports as usize, view.to_vec())))
 }
 ```
 
-- **单一一张表**：`handle → Resource` enum，句柄由 core 单一计数器递增、全局
-  唯一，单表查找无歧义；未来 Circuit 等只加 enum 变体，表数量恒为 1。
+- **单一一张表，且类型无关**：`handle → Box<dyn Any + Send>`（等价于 TS/
+  Python 的泛型 `T`），句柄由 core 单一计数器递增、全局唯一；表模块只有
+  `insert<T>`/`with<T>`/`drop` 三个泛型函数，不认识 Network/Frequency——
+  未来 Circuit 等新资源只在自己的模块加入口自注册，表模块零修改（旧
+  `Resource` enum 方案否决：每加一种资源都要改表模块，违反开闭）。
 - **单一 `drop(handle)`**：core 侧 `remove(handle)` 直接触发 Rust `Drop`（RAII），
   不经 JS 对象中转——wasm `Frequency` 实例不再浮出 JS，连生成物 `free()` 的
   JS 调用点都不存在（工具链生成物豁免因此自动满足）。
