@@ -2,7 +2,7 @@
 
 ## Purpose
 
-定义阶段 0 的 CI 质量闸门：五格构建矩阵、lint/格式/基准/覆盖率门槛，
+定义 netwave 的 CI 质量闸门：五格构建矩阵、lint/格式/基准/覆盖率门槛，
 保证任何平台的构建断裂与质量劣化在 PR 上即时暴露。
 
 ## Requirements
@@ -33,8 +33,9 @@ CI MUST 运行 `cargo clippy --workspace --all-targets -- -D warnings` 与
 
 ### Requirement: criterion 基准进 CI
 
-CI MUST 运行 criterion 基准 job（阶段 0 允许空基准/极小基准，但 job 必须存在且
-通过），为铁律六的阈值回归守护提供对比基线。显著劣化（>20%）MUST 失败。
+CI MUST 运行 criterion 基准 job（在真实基准落地前允许空基准/极小基准，
+但 job 必须存在且通过），为铁律六的阈值回归守护提供对比基线。显著劣化
+（>20%）MUST 失败。
 
 #### Scenario: 基准 job 存在且记录基线
 
@@ -66,7 +67,7 @@ Rust MUST 只跑单一 stable（`rust-toolchain.toml` 钉死当前 stable）—�
 
 CI MUST 启用覆盖率采集并使 100% 行覆盖门槛从第一天生效：Rust 用
 `cargo llvm-cov --fail-under-lines 100`（或等效 `--fail-under-lines` 参数），
-Python 用 `pytest-cov --cov-fail-under=100`（阶段 0 python 侧仅胶水则豁免项
+Python 用 `pytest-cov --cov-fail-under=100`（python 侧仅胶水时豁免项
 逐条标注），Node/wasm 用 vitest coverage `lines: 100` 阈值写进配置。
 结构性不可达代码 MUST 逐条标注豁免（`#[coverage(off)]` /
 `# pragma: no cover` / `/* v8 ignore start/stop */`，vitest v8 provider）并附理由。
@@ -79,7 +80,7 @@ Python 用 `pytest-cov --cov-fail-under=100`（阶段 0 python 侧仅胶水则�
 
 #### Scenario: 空 crate 即 100%
 
-- **WHEN** 阶段 0 各 crate/包只有最小 hello/往返代码且全部被测试执行
+- **WHEN** 各 crate/包只有最小 hello/往返代码且全部被测试执行
 - **THEN** 覆盖率 job 通过（lines = 100%）
 
 #### Scenario: 未测代码即红
@@ -91,7 +92,7 @@ Python 用 `pytest-cov --cov-fail-under=100`（阶段 0 python 侧仅胶水则�
 
 `ci.yml` 的构建/测试 job MUST NOT 安装或调用 scikit-rf；Python 仅出现在
 `python/` 绑定自身的测试 job（pytest 读 `testdata/`），golden 生成
-（`golden-refresh.yml`）属阶段 1，不在本变更。
+（`golden-refresh.yml`）另行立项，不在本变更。
 
 #### Scenario: ci.yml 无 skrf
 

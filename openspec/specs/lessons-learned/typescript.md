@@ -32,7 +32,7 @@
   transfer 会 detach instance，须 `.slice()` 出新 ArrayBuffer 再 transfer；
   `src/` shell import `"../dist/..."`，`publish_shell.mjs` 复制进 `dist/`
   时改写为 `"./..."`——只改 `src/` 禁手改 `dist/`；平台分包
-  （`netwave-{os}-{arch}`）发布时才创建，phase-0 禁列进
+  （`netwave-{os}-{arch}`）发布时才创建，脚手架期禁列进
   `optionalDependencies`（未发布名破坏 frozen-lockfile）
 - 规则：按上列约束实现；napi 升级后重查旗标
 - 复发检测：`pnpm -C typescript build:native && build:wasm` + vitest 双套件

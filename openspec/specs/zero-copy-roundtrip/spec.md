@@ -12,7 +12,7 @@ core 持有的缓冲是同一块内存，视图改写对 core 立即可见。这
 
 core MUST 暴露一个临时脚手架函数，分配并返回形状为 `(nfreq, nports, nports)` 的
 交错复数 f64（complex128，`[re, im, re, im, ...]`）缓冲，并写入可预测图案
-（pattern）供四端断言。该函数是阶段 0 临时 API，阶段 2 被真实数据模型替换，
+（pattern）供四端断言。该函数是脚手架期临时 API，真实数据模型落地后被替换，
 不属于长期契约。
 
 #### Scenario: 缓冲布局逐字节符合铁律一
@@ -64,7 +64,7 @@ Node 为 `ArrayBuffer`/`Float64Array`（经 napi External 后端）；wasm 为
    wasm 执行，MUST NOT 按输入规模分流（"小数据主线程算"废止）。worker 由库的
    async 壳内部托管、常驻至页面关闭；`standalone.js` 内部自起常驻 worker，
    Pages / `<script type="module">` 零配置体验不变。Node 端计算在进程内 napi
-   core 执行，大计算入口防阻塞走 napi AsyncTask（阶段 6）。
+   core 执行，大计算入口防阻塞走 napi AsyncTask（绑定高级能力立项时落地）。
 3. **结果 buffer 一律 transfer，输入移动仅经显式 transfer**：计算结果 buffer 是新
    分配的、无主的，MUST 以 transfer 零拷贝送回；纯计算动词 MUST NOT 消耗调用方的
    输入 buffer——输入要么已通过 `upload` 显式托管在常驻 worker（托管后反复可用），
@@ -85,7 +85,7 @@ Node 为 `ArrayBuffer`/`Float64Array`（经 napi External 后端）；wasm 为
    由库的 async 壳内部托管，普通用户不直接接触；高级用户可经 `netwave/worker`
    子路径自建 Worker。拓扑为单常驻 worker（api-contract spec"worker 泛化分发与
    单常驻拓扑"），多 worker 分桶推迟到有实测需求再立项。多线程 wasm（wthreads +
-   SharedArrayBuffer + `+atomics,+bulk-memory`）属阶段 3。worker 异常终止数据
+   SharedArrayBuffer + `+atomics,+bulk-memory`）属后续性能优化立项。worker 异常终止数据
    丢失为已接受行为，不引入持久化恢复。
 7. **tree-shaking**：包入口 MUST NOT 用 `export *`（打包器保守处理会整模块
    保留），MUST 显式具名导出；Worker 分发 MUST NOT 用动态属性访问命名空间。

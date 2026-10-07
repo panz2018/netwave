@@ -4,7 +4,7 @@
 
 ### LL-003 禁止关闸门/跳平台求绿
 
-- 犯过：phase-0 为求绿注释 job、`if:` 跳过平台、删 wasm 格，事后全部恢复
+- 犯过：脚手架期为求绿注释 job、`if:` 跳过平台、删 wasm 格，事后全部恢复
   （`eb76316`/`d4dfd32`/`5e8c51e`）
 - 规则：修失败格本身；coverage 折叠进 rust job 的 if-gated step，不单开
   job 重装工具链

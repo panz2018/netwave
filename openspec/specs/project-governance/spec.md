@@ -74,7 +74,7 @@ manifest 实际值为准）。放宽任何容差 MUST 在 manifest 注明原因�
 scikit-rf 是数值权威，MUST 只出现在离线 `gen_golden.py`，golden 结果提交进
 git。主 CI（cargo test / pytest / vitest）MUST 只读 `testdata/`，零 skrf
 依赖。skrf 升级由每周 `golden-refresh` job 重生成 + diff 守护，数值漂移显式
-暴露（golden-refresh 属阶段 1，本 spec 钉契约、落地见总体计划）。
+暴露（golden-refresh 另行立项，本 spec 钉契约）。
 
 #### Scenario: 主 CI 无 skrf
 
@@ -95,7 +95,7 @@ git。主 CI（cargo test / pytest / vitest）MUST 只读 `testdata/`，零 skrf
 ### Requirement: 铁律六 大文件性能底线
 
 50MB s4p 解析 < 100ms 是底线（memmap2 + rayon，原生端 Python/Node；浏览器
-wasm 单线程回退场景阶段 3 实测定标后回写本 spec）。criterion 基准 MUST 进
+wasm 单线程回退场景待 wasm 性能定标实测定标后回写本 spec）。criterion 基准 MUST 进
 CI，显著劣化（>20%）MUST 失败。
 
 #### Scenario: 基准回归即红
@@ -266,26 +266,69 @@ spec/plan/tasks，不改铁律（修铁律走独立最高级变更并评估三�
 - **THEN** code-review Standards 轴打回，改用 README References 的书名+链接
   格式
 
-### Requirement: 元规则 注释只写当前事实
+### Requirement: 元规则 代码只写使用信息
 
-代码注释与文档 MUST 只描述当前契约（做什么、为什么、触发条件）；MUST NOT
-写改动名（`openspec/changes/` 下的目录名）、路线图阶段词（`stage N`、
-`phase-N`、`skeleton`、`arrives with`）、讨论代号、`replaces X`/`no longer`/
-`deviation filed` 等考古叙述——历史靠 git log 追溯，不靠注释。稳定契约指针
-（铁律编号、LL 编号、`spec: <capability>`）不属考古，允许保留。本规则 MUST
-门禁化：脚本扫描 `.rs`/`.py`/`.ts` 注释与 `openspec/specs/**/*.md`，改动名
-由 `openspec/changes/`（含 archive）目录名动态生成，命中即红；治理 spec 本文、
-lessons-learned 账本与 archive 豁免（引用反例作证据）。
+代码面向最终用户。`.rs`/`.py`/`.ts` 的注释与 rustdoc/docstring/JSDoc MUST
+只描述当前契约（做什么、为什么、触发条件），MUST NOT 含任何开发过程信息：
+MUST NOT 写改动名（`openspec/changes/` 下的目录名）、路线图数字代号（中文
+「阶段」后接数字、英文 `stage`/`phase` 后接数字、表示"未成形的临时骨架"或
+"某功能稍后到来"的英文词）、讨论代号、"取代 X"/"不再是"/"已立案偏差"等
+考古叙述；MUST NOT 含指向开发文档的指针（`spec: <capability>`、`LL-` 编号、
+铁律编号、`openspec/`、`Plan/`）——读代码者无需打开任何规划文档即可使用 API。
+历史靠 git log 追溯，不靠注释。本规则 MUST 门禁化：`scripts/check_comments.py`
+（命令 `pnpm check:meta`）扫描 `.rs`/`.py`/`.ts` 注释，改动名由
+`openspec/changes/`（含 archive）现存目录名动态生成，命中即红，零豁免。
 
-#### Scenario: 注释写改动名即红
+#### Scenario: 代码注释写开发文档指针即红
 
-- **WHEN** 代码注释或主 spec 出现 `openspec/changes/` 下任一目录名
+- **WHEN** `.rs`/`.py`/`.ts` 注释或 rustdoc/docstring/JSDoc 出现
+  `spec: <capability>`、`LL-` 编号、铁律编号、`openspec/` 或 `Plan/` 指针
 - **THEN** `pnpm check:meta` 失败（`scripts/check_comments.py` 命中报告）
 
-#### Scenario: 契约指针不误伤
+#### Scenario: 代码注释写改动名或阶段代号即红
 
-- **WHEN** 注释含铁律编号、LL 编号或现存 spec 能力名指针
-- **THEN** 门禁通过（稳定契约指针不属考古叙述）
+- **WHEN** 代码注释出现 `openspec/changes/` 下任一目录名、中文「阶段」后接
+  数字、或英文 `stage`/`phase` 后接数字
+- **THEN** `pnpm check:meta` 失败（`scripts/check_comments.py` 命中报告）
+
+### Requirement: 元规则 开发者文档引用自解释
+
+开发者文档（`openspec/specs/`、`AGENTS.md`、`CONTRIBUTING.md`、`Plan/`）中的
+引用 MUST 一眼可懂、不依赖读者再去定位可能已归档或终将删除的文档：跨文档引用
+MUST 用标题跳转链接（`[标题](文件.md#锚点)`）而非章节序号或代号；指向归档的
+引用 MUST 是完整路径且该目录 MUST 现存（改名时全仓同步更新）；MUST NOT 以
+「见某规划文档第 N 节」「跟踪于某待决清单」等需二次定位的表述替代可直接读出
+的结论。路线图数字代号（中文「阶段」后接数字、英文 `stage`/`phase` 后接数字）
+MUST NOT 出现在任何 Markdown。本规则 MUST 门禁化：`scripts/check_md.py`
+（命令 `pnpm check:md`）扫描全部 Markdown（`openspec/specs/`、`Plan/`、
+`openspec/changes/archive/`、根与子 README），治理 spec 本文、lessons-learned
+账本与 archive 均不豁免——治理 spec 正文描述被禁词时 MUST 用描述性表达（不含
+字面触发词），使门禁可零豁免扫描全仓。
+
+#### Scenario: 文档面阶段代号命中即红
+
+- **WHEN** 任一 Markdown（含 `openspec/specs/`、`Plan/`、
+  `openspec/changes/archive/`）出现「阶段」后接数字或英文 `stage`/`phase`
+  后接数字
+- **THEN** `pnpm check:md` 失败（`scripts/check_md.py` 命中报告）
+
+#### Scenario: 归档指针指向不存在目录即红
+
+- **WHEN** Markdown 出现行内代码形态的 `openspec/changes/archive/<name>/`
+  完整路径而该目录不存在
+- **THEN** `pnpm check:md` 失败（改名后残留旧路径被捕获）
+
+#### Scenario: 治理 spec 反例不触发自身门禁
+
+- **WHEN** 治理 spec 正文描述被禁止的考古词
+- **THEN** 以描述性语言表达（如"英文阶段词后接数字"），不含字面触发词，
+  `pnpm check:md` 通过
+
+#### Scenario: 引用需二次定位即打回
+
+- **WHEN** code-review Standards 轴发现开发者文档用章节序号、讨论代号或
+  "见某规划文档"式表述指代结论，而结论未就地写出
+- **THEN** 判不完成，要求改写为自包含表述或标题跳转链接
 
 ### Requirement: 元规则 文档受众分层
 

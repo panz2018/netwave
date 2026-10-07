@@ -32,7 +32,7 @@
 
 ### LL-021 真实基准必须 `black_box` 包裹输入输出
 
-- 犯过：未包裹被优化器折叠，数字失真（阶段 2 真实基准落地时适用）
+- 犯过：未包裹被优化器折叠，数字失真（真实基准落地时适用）
 - 规则：criterion 基准输入输出均 `black_box`；`scaffold_noop` 为有意 no-op
   不受影响
 - 复发检测：review Standards 轴检查 bench 函数体含 `black_box`
