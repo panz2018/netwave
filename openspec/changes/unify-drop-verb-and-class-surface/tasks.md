@@ -15,7 +15,7 @@
       `drop()`（`Drop::drop` 同款委托）。零计算/解析/端口语义。验证：
       `cargo test -p netwave` 骨架用例（构造/读/释放/释放后读报错）先 red
       后 green。
-- [ ] 1.4 core 收尾（裁决：无 `isDropped` 见证、释放后报错 core 单源、
+- [x] 1.4 core 收尾（裁决：无 `isDropped` 见证、释放后报错 core 单源、
       动词零残留）：错误类型 `Released` 改名 `Dropped` 并提到 `lib.rs`
       全资源共享；删除 `Network::is_dropped`/`Frequency::is_dropped`
       （释放后访问报错即契约，不另设第二套真相源）；`Frequency::npoints()`
@@ -27,7 +27,7 @@
 
 ## 2. core：浏览器资源表（cfg=browser）
 
-- [ ] 2.1 资源表模块（`cfg(feature = "browser")`）改**类型擦除泛型表**：
+- [x] 2.1 资源表模块（`cfg(feature = "browser")`）改**类型擦除泛型表**：
       `Mutex<BTreeMap<u32, Box<dyn Any + Send>>>` + 单一计数器；模块只有
       `insert<T>`/`with<T>`/`remove` 三泛型操作，不认识任何具体资源类型
       （旧 `Resource` enum 否决：每加资源改表模块，违反开闭）；注册焊死在
@@ -36,7 +36,7 @@
       句柄表用例（注册/查表/`drop` 触发 `Drop`/未知句柄报错/错类型 downcast
       报错）全绿（本机未装 wasm32 target：表逻辑拆纯函数 native 验证，
       `#[wasm_bindgen]` 适配层由组 5 worker 往返覆盖）。
-- [ ] 2.2 各资源的 `#[wasm_bindgen]` 句柄入口写回**各自模块**（同 feature
+- [x] 2.2 各资源的 `#[wasm_bindgen]` 句柄入口写回**各自模块**（同 feature
       门控）：`network_upload`/`network_fill_pattern`/`network_read_element`
       入 `network.rs`，`frequency_from_f` 入 `frequency.rs`，`drop`/
       `frequency_units`/`live_count` 留 `resources.rs`（类型无关）；
@@ -73,25 +73,25 @@
 
 ## 5. 浏览器：壳类 + worker 零状态
 
-- [ ] 5.1 `typescript/src/netwave.worker.ts`：删除 `hosted`/`frequencies`/
+- [x] 5.1 `typescript/src/netwave.worker.ts`：删除 `hosted`/`frequencies`/
       `nextHandle`（JS 零状态）；命令表改为机械 camelCase 转发 core 句柄入口
       （`networkUpload`/`networkFillPattern`/`networkReadElement`/
       `frequencyFromF`/`drop`/`frequencyUnits`/`liveCount`）；`release`/
       `dropFrequency`/`newFrequency` 消失；错误文案 `unknown or released handle`
       →`unknown or dropped handle`（错误源由 core throw 透传）。验证：worker
       往返测试全绿。
-- [ ] 5.2 `typescript/src/index.browser.ts`：导出 `Network`/`Frequency` 壳类
+- [x] 5.2 `typescript/src/index.browser.ts`：导出 `Network`/`Frequency` 壳类
       （实例持 `@internal` 数字 handle，方法体纯 `postMessage`；
       `Network.upload(view, nfreq, nports)` 显式传 shape）；
       `FinalizationRegistry` 挂壳实例、held 为数字 handle、回调发
       `{cmd:"drop", handle}`；`internals` 测试缝退役；自由函数
       `frequencyUnits`/`liveCount` 保留。验证：`pnpm -C typescript typecheck`
       通过、`typescript/src` grep `release`/`dropFrequency`/`newFrequency` 零命中。
-- [ ] 5.3 `typescript/src/index.node.ts`：删除 `hosted` Map 与 `lastHandle`，
+- [x] 5.3 `typescript/src/index.node.ts`：删除 `hosted` Map 与 `lastHandle`，
       `upload`/`release`/`readElement` 自由函数退役，改由 4.1 的 napi 类搬运
       导出；`typescript/src/types.ts` 同步（`Handle` 降 `@internal` 或删除）。
       验证：typecheck 通过、node 壳 grep `hosted`/`release` 零命中。
-- [ ] 5.4 测试改写：`typescript/test/wasm` 下 `worker`/`memory-lifecycle`/
+- [x] 5.4 测试改写：`typescript/test/wasm` 下 `worker`/`memory-lifecycle`/
       `browser-roundtrip`/`browser-surface` 与 `typescript/test/browser/`
       `browser-resident.test.ts`（句柄函数流改壳类实例方法、导出名断言列表
       同步为 `Network`/`Frequency`）。验证：`pnpm -C typescript test:wasm` 与
@@ -99,35 +99,38 @@
 
 ## 6. 门禁：三端动词集合相等
 
-- [ ] 6.1 `scripts/cross_compare.py`：新增公开动词集合提取（core `pub fn` /
-      pyo3 `#[pymethods]` / napi `#[napi]` / TS 壳导出，含类静态与实例方法），
-      camelCase 机械映射归一后断言相等；`free`/`release` 出现在用户可见面即红。
-      验证：本地 `python3 scripts/cross_compare.py .cross-tmp` 绿；人为注入一个
-      `free` 别名后该脚本红（自检）。
-- [ ] 6.2 确认 `pnpm check:cross` 已串起 6.1（LL-037/LL-047）。验证：
+- [x] 6.1 新增 `scripts/check_verbs.py`（与 `check_vocab_types.py` 同范式：
+      二进制对拍器 `cross_compare.py` 只吃 `.bin`，静态动词门禁独立成脚本才能
+      职责单一）：从三份生成物（`.pyi` / node `.d.mts` / browser `.d.mts`）提取
+      `Network`/`Frequency` 类方法名（含静态与实例）与模块级自由函数名，
+      camelCase 机械映射归一后断言等于唯一动词集；`upload` 仅浏览器；
+      `free`/`release` 作为名字出现在任一用户可见产物即红。
+      验证：`python3 scripts/check_verbs.py` 绿；人为注入一个 `free` 方法别名
+      与一个 `release` 自由函数后该脚本各红一次（已实测，自检）。
+- [x] 6.2 `pnpm check:cross` 串起 6.1（LL-037/LL-047）。验证：
       `pnpm check:cross` 全绿且 CI 对应 job 存在（`scripts/check_ci.py` 绿）。
 
 ## 7. 文档与账本
 
-- [ ] 7.1 lessons-learned 账本：新增 LL（typescript scope）「node 曾暴露
+- [x] 7.1 lessons-learned 账本：新增 LL（typescript scope）「node 曾暴露
       `free()` 偏离 memory-lifecycle spec 的 `drop()`——实现偏离 spec 时当轮登记
       并改名回归」+ INDEX 行。验证：`pnpm check:md` 绿。
-- [ ] 7.2 `Plan/频率类设计.md`：「待裁决」条目销账（裁决=全端 `drop()` +
+- [x] 7.2 `Plan/频率类设计.md`：「待裁决」条目销账（裁决=全端 `drop()` +
       `Frequency.fromF`）；`Plan/总体计划.md`：`upload`/`release` 改
       `upload`/`drop`、Network 释放措辞 `dispose()` 改 `drop()`、「worker 资源表
       收拢」与「公开面收敛」中已由本 change 兑现的部分销账。验证：
       `pnpm check:md` 绿。
-- [ ] 7.3 README/CONTRIBUTING 中 `release`/`free` 旧动词示例同步改 `drop`，
+- [x] 7.3 README/CONTRIBUTING 中 `release`/`free` 旧动词示例同步改 `drop`，
       示例改用 `Network`/`Frequency` 类形态。验证：根/子 README 与 CONTRIBUTING
       grep 旧动词仅剩非动词用法（如 release 版本）。
 
 ## 8. 全量验收
 
-- [ ] 8.1 `pnpm check` 全绿（md/ts/rs/py/meta）。
-- [ ] 8.2 `pnpm check:cross` 全绿（四端 dump 对拍 + 动词集合相等）。
-- [ ] 8.3 四端测试全绿：`cargo test --workspace`、pytest、
+- [x] 8.1 `pnpm check` 全绿（md/ts/rs/py/meta）。
+- [x] 8.2 `pnpm check:cross` 全绿（四端 dump 对拍 + 动词集合相等）。
+- [x] 8.3 四端测试全绿：`cargo test --workspace`、pytest、
       `pnpm -C typescript test:native`、`test:wasm`、`test:browser`。
-- [ ] 8.4 全仓 grep 验收：core/python/typescript 的 `.rs`/`.py`/`.ts` 中
+- [x] 8.4 全仓 grep 验收：core/python/typescript 的 `.rs`/`.py`/`.ts` 中
       `.free()` 与 `release(` 用户可见面零命中（豁免：`mem::forget`、
       `free list` 注释、`target/release` 路径——句柄表下沉 core 后 wasm 生成物
       `free()` 已无调用点）；`dropFrequency`/`newFrequency`、JS 侧 `hosted`/

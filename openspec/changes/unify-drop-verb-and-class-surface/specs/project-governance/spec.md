@@ -34,7 +34,7 @@
 
 #### Scenario: 三端动词集合相等即绿
 
-- **WHEN** CI 运行 `scripts/cross_compare.py` 提取三端公开动词集合
+- **WHEN** CI 运行 `scripts/check_verbs.py` 提取三端公开动词集合
 - **THEN** 三端集合逐名相等（机械 camelCase 映射后比较），任一名字漂移即失败
 
 #### Scenario: 生成物不上浮公开面

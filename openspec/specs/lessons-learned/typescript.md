@@ -91,3 +91,33 @@
   `getOwnPropertyNames` 非 `Object.keys`
 - 复发检测：`pnpm -C typescript typecheck`（缺 `--dts` 时 `@ts-expect-error`
   unused 即红）；`vocabulary-consistency.test.ts` 断言三端生成物成员集合相等
+
+### LL-049 node 曾暴露 `free()` 偏离 memory-lifecycle spec 的 `drop()`
+
+- 犯过：node napi 绑定的手动释放叫 `free()`（wasm-bindgen 生成物名上浮到
+  node 用户可见面），偏离 memory-lifecycle spec 已定的统一动词 `drop()`；
+  实现偏离 spec 未被当轮发现，直到统一动词 change 才纠正
+- 规则：手动释放全端唯一名 `drop()`；wasm-bindgen 为导出类自动生成的
+  `free()` 属工具链产物，MUST NOT 上浮 node/浏览器用户可见面——句柄表下沉
+  core 后 wasm 类不再浮出 JS，该生成物连调用点都不存在
+- 复发检测：`python3 scripts/check_verbs.py`（`free`/`release` 作名字出现在
+  任一生成物即红）；review Spec 轴对照 memory-lifecycle spec 动词表
+
+### LL-050 wasm glue 清空后须 `extern crate` 强制链接 core
+
+- 犯过：把 wasm 入口全部下沉 core 后，glue crate `lib.rs` 只剩文档注释、
+  无任何对 `netwave` 的引用，Rust 不再把 core 链进 cdylib，`wasm-pack build`
+  产出的 `.js`/`.d.ts` 导出面为空（worker 全部命令 unknown）
+- 规则：入口全在 core 时，glue `lib.rs` MUST 保留 `extern crate netwave;`
+  强制链接，否则 core 的 `#[wasm_bindgen]` 导出全部丢失
+- 复发检测：`pnpm -C typescript build:wasm` 后 grep glue 的
+  `netwave_wasm.d.ts` 含 `network_upload` 等入口；worker 往返测试即红
+
+### LL-051 napi `usize` 映射 bigint 破坏三端类型平价
+
+- 犯过：node `Frequency::npoints()` 返回 `usize`，napi 映射成 JS `bigint`，
+  而 wasm/Python 同方法返回 `number`/`int`，三端类型不一致（铁律九）
+- 规则：跨端返回整数一律 `u32`（f64 精确可表示），MUST NOT 用 `usize`/
+  `isize`（napi→bigint）；与 `live_count` 同因（见 frequency.rs 注释）
+- 复发检测：review Standards 轴 grep napi 签名中的 `usize`/`isize`；
+  `check_vocab_types.py` 扩类型断言时覆盖返回类型

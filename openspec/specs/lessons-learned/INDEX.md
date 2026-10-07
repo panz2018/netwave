@@ -54,3 +54,6 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-046 | core       | 绑定宏 glue 计入 core 覆盖率，属性+导入须 not(coverage) 剥离     |
 | LL-047 | ci         | 跨端一致性检查归构建各端产物的集成步骤，勿下沉单端测试段         |
 | LL-048 | ci         | 跨平台步骤用 bash 子 shell 语义须钉 `shell: bash`（Win 默认 PS） |
+| LL-049 | typescript | 手动释放全端唯一 `drop()`，wasm 生成物 `free()` 禁上浮可见面     |
+| LL-050 | typescript | 入口全下沉 core 后 glue 须 `extern crate netwave` 强制链接       |
+| LL-051 | typescript | napi 跨端整数返回用 u32，usize→bigint 破坏三端类型平价           |

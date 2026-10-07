@@ -47,7 +47,7 @@ handle 退回 `@internal` 协议细节。
   改名 MUST 连实现带名字一起改，MUST NOT 留旧名兼容别名。
 - 新增元规则「冻结非不可变」：已归档/已冻结/已完成 MUST NOT 作为拒绝修正已知
   缺陷的理由，发现即当轮修正（走 spec delta + 同步更新冻结测试断言）。
-- `scripts/cross_compare.py` 纳入三端公开动词集合相等断言，名字漂移 CI 直接红。
+- 新增 `scripts/check_verbs.py`：三端公开动词集合相等断言，名字漂移 CI 直接红。
 - 登记 LL：node 曾暴露 `free()` 偏离 memory-lifecycle spec 的 `drop()` 措辞。
 
 ## Capabilities
@@ -106,7 +106,7 @@ handle 退回 `@internal` 协议细节。
   （公开面收敛与 Network 骨架部分销账）、`Plan/频率类设计.md`（待裁决条目
   销账）、`openspec/specs/lessons-learned/`（新增 LL + INDEX）、
   `typescript/README.md` / `python/README.md` 若有动词示例。
-- 门禁：`scripts/cross_compare.py`（三端动词集合相等）、`pnpm check` 全量绿。
+- 门禁：`scripts/check_verbs.py`（三端动词集合相等）、`pnpm check` 全量绿。
 - 受影响铁律：铁律八（worker 命令名）、铁律九（协议钩子不受影响，机械映射豁免）、
   铁律十（`drop` 非 skrf 概念，属 JS 平台特有约束的已立案偏离）、铁律十一
   （薄壳——本次新增的铁律是其名字维度的补集）。

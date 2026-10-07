@@ -165,9 +165,10 @@ pub fn network_upload(view: &[f64], nfreq: u32, nports: u32) -> Result<u32, JsVa
 
 ### 门禁：三端动词集合相等
 
-`scripts/cross_compare.py` 扩展：提取 core `pub fn` / pyo3 `#[pymethods]` /
-napi `#[napi]` / 浏览器 TS 壳导出的公开动词集合，做 camelCase 机械映射归一后
-断言相等；`free`/`release` 出现在任一用户可见面即红。
+新增 `scripts/check_verbs.py`（与 `check_vocab_types.py` 同范式：静态门禁与
+二进制对拍器 `cross_compare.py` 职责分离）：从三份生成物提取 `Network`/
+`Frequency` 类方法名（含静态与实例）与自由函数名，做 camelCase 机械映射归一后
+断言等于唯一动词集；`upload` 仅浏览器；`free`/`release` 出现在任一用户可见面即红。
 
 ## Risks / Trade-offs
 
