@@ -50,7 +50,7 @@ BROWSER_DTS = ROOT / "typescript" / "dist" / "index.browser.d.mts"
 # `register_resources` start hook (a registration entry, not a verb —
 # wasm-bindgen exports the `start` fn by name regardless of Rust visibility),
 # and the wasm-pack generated init/default. Any per-verb `#[wasm_bindgen]`
-# export reappearing here is the LL-052 relapse this pin detects.
+# export reappearing here is the relapse this pin detects.
 WASM_GLUE_DTS = ROOT / "typescript" / "dist" / "wasm-web" / "netwave_wasm.d.ts"
 WASM_GLUE_EXPORTS = {"call", "FrequencyUnit", "register_resources"}
 
@@ -213,8 +213,8 @@ def main() -> int:
                 bad += 1
 
     # The wasm glue export set is pinned: the single generic `call` plus the
-    # `FrequencyUnit` constant enum — no per-verb entry may reappear
-    # (LL-052 relapse detector).
+    # `FrequencyUnit` constant enum and the start hook — no per-verb entry may
+    # reappear (relapse detector).
     try:
         glue = read(WASM_GLUE_DTS)
     except FileNotFoundError as exc:
@@ -224,7 +224,10 @@ def main() -> int:
     if got != WASM_GLUE_EXPORTS:
         extra = sorted(got - WASM_GLUE_EXPORTS)
         missing = sorted(WASM_GLUE_EXPORTS - got)
-        print(f"VERBS: wasm glue exports {sorted(got)} != {sorted(WASM_GLUE_EXPORTS)} (extra={extra} missing={missing})")
+        print(
+            f"VERBS: wasm glue exports {sorted(got)} != {sorted(WASM_GLUE_EXPORTS)}"
+            f" (extra={extra} missing={missing})"
+        )
         bad += 1
 
     if bad:
