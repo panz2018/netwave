@@ -12,8 +12,8 @@
 //! factories + module free functions). Rust has no reflection, so
 //! name→function dispatch is a hand-written `match` inside each resource
 //! module (`network.rs`, `frequency.rs`, …): adding a method adds one arm
-//! there and changes nothing else (LL-052 — a generic table is not a
-//! generic dispatch).
+//! there and changes nothing else (a generic table is not a generic
+//! dispatch).
 //!
 //! Structure: the table logic is plain Rust and natively callable under
 //! `--features browser` (host/remove/namespace lookup/unknown-handle
@@ -151,7 +151,10 @@ pub fn namespace(name: &str) -> Result<NamespaceFn, String> {
 
 /// Dispatch one call against the instance behind `handle`.
 pub fn instance_call(handle: u32, method: &str, args: &[JsValue]) -> Result<JsValue, String> {
-    registry().lock().unwrap().instance_call(handle, method, args)
+    registry()
+        .lock()
+        .unwrap()
+        .instance_call(handle, method, args)
 }
 
 /// The single wasm entry: the verb-count-independent fixed template.
@@ -174,7 +177,9 @@ pub fn call(handle: JsValue, method: &str, args: Box<[JsValue]>) -> Result<JsVal
     if let Some(name) = handle.as_string() {
         return namespace(&name).map_err(js)?(method, args);
     }
-    Err(js("handle must be a number (instance) or a string (namespace)"))
+    Err(js(
+        "handle must be a number (instance) or a string (namespace)",
+    ))
 }
 
 /// A `JsValue` error carrying a plain message.

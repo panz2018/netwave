@@ -72,7 +72,10 @@ fn network_and_frequency_host_through_the_same_table() {
     // 2 freq x 2 ports x 2 ports x 2 (re/im) = 16 f64
     let data: Vec<f64> = (0..16).map(|i| i as f64).collect();
     let h_net = insert(Box::new(Network::from_f64(2, 2, data)));
-    let h_freq = insert(Box::new(Frequency::from_f(vec![1e9, 2e9], FrequencyUnit::GHz)));
+    let h_freq = insert(Box::new(Frequency::from_f(
+        vec![1e9, 2e9],
+        FrequencyUnit::GHz,
+    )));
     assert_ne!(h_net, h_freq, "one counter serves every resource type");
     remove(h_net).unwrap();
     remove(h_freq).unwrap();

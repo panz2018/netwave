@@ -111,7 +111,7 @@ impl Drop for Network {
 // args}` to the single generic `resources::call`; this module owns the
 // name→function `match`es (Rust has no reflection — the arm list IS the
 // method table). Adding a method = one arm here; `resources.rs`, the
-// worker, the shells and `types.ts` never change (LL-052).
+// worker, the shells and `types.ts` never change.
 // ---------------------------------------------------------------------------
 
 /// Instance dispatch: the numeric-handle half of the shell's `Network`.

@@ -31,8 +31,8 @@ pub mod resources;
 /// table once, before any worker message arrives. Adding a new resource TYPE
 /// = one line here (plus the new module's own `match`es); adding a METHOD to
 /// an existing resource touches only that module — never this hook, never the
-/// worker, never the shells (api-contract spec "worker generic dispatch and
-/// single-resident topology", LL-052).
+/// worker, never the shells (worker generic dispatch and single-resident
+/// topology).
 #[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
 #[wasm_bindgen::prelude::wasm_bindgen(start)]
 fn register_resources() {
