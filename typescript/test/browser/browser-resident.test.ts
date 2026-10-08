@@ -11,27 +11,25 @@ describe("real browser: main thread has no wasm (LL-030)", () => {
     expect(g.__netwaveWasmMemory).toBeUndefined();
     // The only wasm-adjacent global is the worker singleton handle.
     const m = await import("../../src/index.browser.ts");
-    await m.fillPattern(2, 2);
+    await m.Network.fillPattern(2, 2);
     expect(g.__netwaveWasmMemory).toBeUndefined();
     expect(g.__netwaveWorker).toBeInstanceOf(Worker);
   });
 
-  it("compute happens in the resident worker, result transferred back", async () => {
+  it("compute happens in the resident worker, handle rides the reply", async () => {
     const m = await import("../../src/index.browser.ts");
-    const r = await m.fillPattern(2, 2);
-    // Result buffer is a transferred ArrayBuffer owned by the main thread
-    // now (it was copied out of worker linear memory and moved).
-    expect(r.buffer).toBeInstanceOf(ArrayBuffer);
-    const view = new Float64Array(r.buffer, r.byteOffset, r.length * 2);
-    expect(view[2]).toBe(1); // re(0,0,1), closed form
-    expect(r.shape).toEqual([2, 2, 2]);
+    const net = await m.Network.fillPattern(2, 2);
+    // The shell holds only a numeric handle; the data never crosses into
+    // the main thread (readElement round-trips through the worker).
+    expect(net.handle).toBeTypeOf("number");
+    expect(await net.readElement(2)).toBe(1); // re(0,0,1), closed form
     // upload detaches the caller buffer (single ownership moved in).
     const src = new Float64Array([1, -1, 2, -2]);
-    const handle = await m.upload(src);
+    const uploaded = await m.Network.upload(src, 2, 1);
     expect(src.buffer.byteLength).toBe(0);
-    expect(await m.readElement(handle, 2)).toBe(2);
-    await m.release(handle);
-    await expect(m.readElement(handle, 0)).rejects.toThrow(new RegExp(String(handle)));
+    expect(await uploaded.readElement(2)).toBe(2);
+    await uploaded.drop();
+    await expect(uploaded.readElement(0)).rejects.toThrow(new RegExp(String(uploaded.handle)));
   });
 
   it("no `_` sync escape hatch on the browser entry", async () => {

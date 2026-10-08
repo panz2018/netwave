@@ -11,16 +11,13 @@ beforeAll(async () => {
 });
 
 describe("browser entry", () => {
-  it("upload -> readElement -> release via the resident worker", async () => {
+  it("upload -> readElement -> drop via the resident worker", async () => {
     const m = await import("../../src/index.browser.ts");
-    const r = await m.fillPattern(2, 2);
-    expect(r.length).toBe(8);
-    expect(r.shape).toEqual([2, 2, 2]);
-    const view = new Float64Array(r.buffer, r.byteOffset, r.length * 2);
-    expect(await m.readElement(view, 2)).toBe(1); // re(0,0,1)
-    const handle = await m.upload(new Float64Array([3, -3]));
-    expect(await m.readElement(handle, 0)).toBe(3);
-    await m.release(handle);
+    const net = await m.Network.fillPattern(2, 2);
+    expect(await net.readElement(2)).toBe(1); // re(0,0,1)
+    const uploaded = await m.Network.upload(new Float64Array([3, -3]), 1, 1);
+    expect(await uploaded.readElement(0)).toBe(3);
+    await uploaded.drop();
     expect(h.workerInstances()).toBe(1);
   });
 });

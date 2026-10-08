@@ -28,20 +28,29 @@ writeFileSync(nodePath, Buffer.from(nv.buffer, nv.byteOffset, nv.byteLength));
 // wasm side — drive the DIST worker module through a faked worker scope
 // (ironclad rule 8: wasm lives only in the resident worker; plain Node has
 // no Worker global, so fake `self` and call its onmessage directly — the
-// same code path the browser runs).
-let resolveReply;
-const replied = new Promise((r) => {
-  resolveReply = r;
-});
+// same code path the browser runs). The handle table lives in core: the
+// reply carries a u32 handle, elements are read back through it. A fresh
+// promise per roundtrip: a promise resolves exactly once.
+let pending;
+const reply = () =>
+  new Promise((r) => {
+    pending = r;
+  });
 globalThis.self = {
   onmessage: null,
-  postMessage: (msg) => resolveReply(msg),
+  postMessage: (msg) => pending(msg),
 };
 await import("../dist/netwave.worker.js");
-self.onmessage({ data: { id: 1, cmd: "fillPattern", args: [NFREQ, NPORTS] } });
-const reply = await replied;
-if (reply.error) throw new Error(`worker error: ${reply.error}`);
-const wv = new Float64Array(reply.result.buffer, reply.result.byteOffset, reply.result.length * 2);
+const ask = async (handle, method, args) => {
+  const p = reply();
+  self.onmessage({ data: { id: 1, handle, method, args } });
+  const res = await p;
+  if (res.error) throw new Error(`worker error: ${res.error}`);
+  return res.result;
+};
+const handle = await ask("network", "fillPattern", [NFREQ, NPORTS]);
+const wv = new Float64Array(NFREQ * NPORTS * NPORTS * 2);
+for (let i = 0; i < wv.length; i++) wv[i] = await ask(handle, "readElement", [i]);
 const wasmPath = join(out, "wasm.bin");
 writeFileSync(wasmPath, Buffer.from(wv.buffer, wv.byteOffset, wv.byteLength));
 

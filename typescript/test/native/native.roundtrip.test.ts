@@ -1,16 +1,11 @@
 /** Node binding roundtrip test (RED first: missing napi artifact / shell
- * throws → red). Single async surface: public verbs awaited; `_`-prefixed
+ * throws → red). Single async surface: compute verbs awaited; `_`-prefixed
  * sync escape hatch compared against. Node keeps `_` (in-process napi
- * core); upload copies bytes (no detach — there is no worker boundary). */
+ * core). Data entry is the `Network` constructor (no `upload` — node has no
+ * worker boundary, the constructor copies bytes and the caller's buffer
+ * survives); reclamation is the instance method `drop()`. */
 import { describe, expect, it } from "vitest";
-import {
-  _fillPattern,
-  _readElement,
-  fillPattern,
-  readElement,
-  release,
-  upload,
-} from "../../src/index.node.ts";
+import { _fillPattern, _readElement, fillPattern, Network } from "../../src/index.node.ts";
 
 const NFREQ = 2;
 const NPORTS = 2;
@@ -33,7 +28,7 @@ describe("native roundtrip", () => {
           expect(view[i + 1]).toBe(im);
         }
     view[2] = 3.5; // re of f=0,p=0,q=1
-    expect(await readElement(view, 2)).toBe(3.5);
+    expect(_readElement(view, 2)).toBe(3.5);
   });
 
   it("_ escape hatch sync passthrough matches the async surface", () => {
@@ -43,17 +38,16 @@ describe("native roundtrip", () => {
     expect(_readElement(view, 0)).toBe(0);
   });
 
-  it("upload copies (no detach on node); handle reads; release invalidates", async () => {
+  it("Network constructor copies (no detach on node); instance reads; drop invalidates", async () => {
     const src = new Float64Array([1.5, -1.5, 2.5, -2.5]);
-    const handle = await upload(src);
-    // Node has no worker boundary: upload copies, caller buffer survives.
+    const net = new Network(src, 2, 1); // shape 2×1×1×2 = 4 f64
+    // Node has no worker boundary: the constructor copies, caller buffer survives.
     expect(src.buffer.byteLength).toBe(32);
-    expect(await readElement(handle, 2)).toBe(2.5);
-    expect(await readElement(handle, 3)).toBe(-2.5);
-    await release(handle);
-    await expect(readElement(handle, 0)).rejects.toThrow(new RegExp(String(handle)));
-    // Double release rejects too: the handle table has already dropped it.
-    await expect(release(handle)).rejects.toThrow(new RegExp(String(handle)));
+    expect(net.readElement(2)).toBe(2.5);
+    expect(net.readElement(3)).toBe(-2.5);
+    net.drop();
+    expect(() => net.readElement(0)).toThrow(/dropped/);
+    net.drop(); // double drop: idempotent, no throw
   });
 
   it("CJS twin shell exposes the same contract", async () => {
@@ -63,8 +57,12 @@ describe("native roundtrip", () => {
     const cjs = require("../../dist/index.node.cjs");
     const r = await cjs.fillPattern(NFREQ, NPORTS);
     expect(r.length).toBe(NFREQ * NPORTS * NPORTS);
-    expect(await cjs.readElement(new Float64Array(r.buffer, 0, r.length * 2), 2)).toBe(1); // re(0,0,1)
+    expect(cjs._readElement(new Float64Array(r.buffer, 0, r.length * 2), 2)).toBe(1); // re(0,0,1)
     expect(cjs._fillPattern(NFREQ, NPORTS).length).toBe(8);
     expect(cjs._readElement(new Float64Array(1), 0)).toBe(0);
+    // The Network class rides the CJS twin too (constructor = data entry).
+    const net = new cjs.Network(new Float64Array([1.5, -1.5, 2.5, -2.5]), 2, 1);
+    expect(net.readElement(2)).toBe(2.5);
+    net.drop();
   });
 });

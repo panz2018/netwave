@@ -46,11 +46,11 @@ describe("native memory lifecycle (napi finalizer)", () => {
     expect(liveCount()).toBe(base); // last ref gone -> Drop
   });
 
-  it("explicit free(): immediate, no GC needed", async () => {
+  it("explicit drop(): immediate, no GC needed", async () => {
     const base = liveCount();
     const f = Frequency.fromF([4e9], FrequencyUnit.GHz);
     expect(liveCount()).toBe(base + 1);
-    f.free(); // deterministic release, no gc() call (matches wasm `free`)
+    f.drop(); // deterministic reclamation, no gc() call (the unified verb)
     expect(liveCount()).toBe(base);
   });
 });

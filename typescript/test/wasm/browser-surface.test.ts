@@ -16,18 +16,14 @@ describe("browser entry surface", () => {
     expect(syncHatches).toEqual([]);
   });
 
-  it("exports the async surface + upload/release handles + vocabulary", async () => {
+  it("exports the async class surface + vocabulary", async () => {
     const m = await import("../../src/index.browser.ts");
     expect(Object.keys(m).sort()).toEqual([
+      "Frequency",
       "FrequencyUnit",
-      "fillPattern",
+      "Network",
       "frequencyUnits",
-      // Internalized memory test seam; NOT public API. Async-only, so it
-      // is not a sync compute escape hatch.
-      "internals",
-      "readElement",
-      "release",
-      "upload",
+      "liveCount",
     ]);
   });
 });
