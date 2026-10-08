@@ -27,7 +27,7 @@
 
 ## 2. core：浏览器资源表（cfg=browser）
 
-- [ ] 2.1 资源表模块（`cfg(feature = "browser")`）改**泛型分发表**：
+- [x] 2.1 资源表模块（`cfg(feature = "browser")`）改**泛型分发表**：
       `Mutex<Registry>`，内含实例表（`u32 → Box<dyn Resource>`）、命名空间表
       （`&'static str → NamespaceFn`）与单一计数器；`Resource` trait 只有一个
       `call` 方法（收方法名与 `JsValue` 参数数组）；命名空间函数指针承接工厂
@@ -37,14 +37,15 @@
       验证：`cargo check -p netwave` 非 browser 绿（证 cfg 隔离）；表逻辑
       （insert/remove/命名空间路由/未知句柄报错）拆纯 Rust 函数 native 测绿，
       `JsValue` 适配层由组 5 worker 往返覆盖。
-- [ ] 2.2 删除逐动词 `#[wasm_bindgen]` 入口（`network_upload`/
+- [x] 2.2 删除逐动词 `#[wasm_bindgen]` 入口（`network_upload`/
       `network_fill_pattern`/`network_read_element`/`frequency_from_f`/
       `frequency_npoints`），改为各资源模块实现 `Resource::call` 手写 `match`
       （方案 A；闭包注册表否决：为不存在的自省需求写 downcast 管道；属性宏
       `#[resource]` 缓建为方法面膨胀后的升级路径）+ `call_namespace` 工厂
       `match`；`#[wasm_bindgen(start)]` 在 `lib.rs` 调 `network::register()`/
       `frequency::register()` 挂命名空间。验证：wasm 导出面 grep 逐动词入口
-      零命中（glue `.d.ts` 只剩 `call` + `FrequencyUnit` + 词汇函数）；
+      零命中（glue `.d.ts` 只剩 `call` + `FrequencyUnit` + `register_resources`
+      start 钩子）；
       加方法 = 该模块 match 加一臂，worker/壳/types 零改动（往返测试证明）。
 
 ## 3. Python：`Network`/`Frequency` pyclass 首次导出
@@ -77,7 +78,7 @@
 
 ## 5. 浏览器：壳类 + worker 零状态
 
-- [ ] 5.1 `typescript/src/netwave.worker.ts`：删除 `hosted`/`frequencies`/
+- [x] 5.1 `typescript/src/netwave.worker.ts`：删除 `hosted`/`frequencies`/
       `nextHandle` 与逐动词 `cmds` 表（`networkUpload`/`networkFillPattern`/
       `networkReadElement`/`frequencyFromF`/`frequencyNpoints`/`drop`/
       `frequencyUnits`/`liveCount`），退为**单条固定模板**：收到
@@ -85,7 +86,7 @@
       `call(handle, method, args)`，结果/错误机械回传——与动词数量无关，
       以后加方法本文件零改动。验证：worker 往返测试全绿；本文件 grep 动词名
       零命中。
-- [ ] 5.2 `typescript/src/index.browser.ts`：壳类方法改发泛化消息——工厂/
+- [x] 5.2 `typescript/src/index.browser.ts`：壳类方法改发泛化消息——工厂/
       静态方法发字符串 handle（`{handle:"network", method:"upload"}`，命名空间
       = core 模块名；方法名 = core 名机械 camelCase，不重命名），实例方法发
       数字 handle（`{handle:7, method:"readElement"}`）；
@@ -96,11 +97,11 @@
       不新造 `"system"`）；`FrequencyUnit` 常量对象保持主线程直 import glue
       （普通常量对象，import 不实例化 wasm，不走 worker）。验证：typecheck
       通过、grep `cmd` 零命中、壳内无 `Object.keys` 等派生计算。
-- [ ] 5.3 `typescript/src/types.ts`：`WorkerRequest` 从 `{id, cmd, args}` 改
+- [x] 5.3 `typescript/src/types.ts`：`WorkerRequest` 从 `{id, cmd, args}` 改
       `{id, handle: Handle | string, method: string, args: unknown[]}`
       （`Handle` 保持 `number`，字符串 handle = 命名空间名，均 `@internal`）；
       `index.node.ts` 不受影响（已在 4.x 改完）。验证：typecheck 通过。
-- [ ] 5.4 测试改写：`typescript/test/wasm` 下 `worker`/`memory-lifecycle`/
+- [x] 5.4 测试改写：`typescript/test/wasm` 下 `worker`/`memory-lifecycle`/
       `browser-roundtrip`/`browser-surface` 与 `typescript/test/browser/`
       `browser-resident.test.ts`（消息断言改 `{handle, method, args}` 形态；
       新增「加动词零改动」哨兵：对 worker 源码 grep 动词名零命中）。
@@ -119,10 +120,11 @@
       与一个 `release` 自由函数后该脚本各红一次（已实测，自检）。
 - [x] 6.2 `pnpm check:cross` 串起 6.1（LL-037/LL-047）。验证：
       `pnpm check:cross` 全绿且 CI 对应 job 存在（`scripts/check_ci.py` 绿）。
-- [ ] 6.3 `scripts/check_verbs.py` 加钉死 wasm glue 导出面：解析 glue `.d.ts`，
-      顶层导出集合 MUST 恰为 `call` + `FrequencyUnit`（+ wasm-pack 生成的
+- [x] 6.3 `scripts/check_verbs.py` 加钉死 wasm glue 导出面：解析 glue `.d.ts`，
+      顶层导出集合 MUST 恰为 `call` + `FrequencyUnit` + `register_resources`
+      start 钩子（+ wasm-pack 生成的
       init/默认导出）——多一个少一个都红。这是「单条 `call`」不变式的机械钉子：
-      谁再给某函数挂 `#[wasm_bindgen]` 直导出即红（LL-052 复发检测）。
+      谁再给某函数挂 `#[wasm_bindgen]` 直导出即红（复发检测）。
       验证：当前绿；人为给 `live_count` 加回 `#[wasm_bindgen]` 后该检查红一次。
 
 ## 7. 文档与账本
@@ -141,11 +143,11 @@
 
 ## 8. 全量验收（泛化分发返工后重跑）
 
-- [ ] 8.1 `pnpm check` 全绿（md/ts/rs/py/meta）。
-- [ ] 8.2 `pnpm check:cross` 全绿（四端 dump 对拍 + 动词集合相等）。
-- [ ] 8.3 四端测试全绿：`cargo test --workspace`、pytest、
+- [x] 8.1 `pnpm check` 全绿（md/ts/rs/py/meta）。
+- [x] 8.2 `pnpm check:cross` 全绿（四端 dump 对拍 + 动词集合相等）。
+- [x] 8.3 四端测试全绿：`cargo test --workspace`、pytest、
       `pnpm -C typescript test:native`、`test:wasm`、`test:browser`。
-- [ ] 8.4 全仓 grep 验收：core/python/typescript 的 `.rs`/`.py`/`.ts` 中
+- [x] 8.4 全仓 grep 验收：core/python/typescript 的 `.rs`/`.py`/`.ts` 中
       `.free()` 与 `release(` 用户可见面零命中（豁免：`mem::forget`、
       `free list` 注释、`target/release` 路径——句柄表下沉 core 后 wasm 生成物
       `free()` 已无调用点）；`dropFrequency`/`newFrequency`、JS 侧 `hosted`/
