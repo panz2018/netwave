@@ -68,7 +68,7 @@ Node 为 `ArrayBuffer`/`Float64Array`（经 napi External 后端）；wasm 为
 3. **结果 buffer 一律 transfer，输入移动仅经显式 transfer**：计算结果 buffer 是新
    分配的、无主的，MUST 以 transfer 零拷贝送回；纯计算动词 MUST NOT 消耗调用方的
    输入 buffer——输入要么已通过 `upload` 显式托管在常驻 worker（托管后反复可用），
-   要么边界拷贝进入 worker；只有名字里明说"移交/消耗"（如 `upload`/`release`）的
+   要么边界拷贝进入 worker；只有名字里明说"移交/消耗"（如 `upload`/`drop`）的
    API 才 transfer 调用方的输入（调用后原视图 detached）。元数据（shape、
    frequency 等）MUST 搭结果便车随计算结果同消息回传，MUST NOT 为元数据单开
    worker 往返。

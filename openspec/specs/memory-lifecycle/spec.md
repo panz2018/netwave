@@ -27,22 +27,49 @@
 
 ### Requirement: 主线程 registry 驱动 worker 释放（浏览器双 realm）
 
-浏览器端 `Frequency` 真数据活在常驻 worker（铁律八），主线程仅持数字 handle 壳。
-主线程 MUST 自建 `FinalizationRegistry`，其 held 值 MUST 是**不反向引用 wrapper**
-的数字 handle；壳被 GC 时回调 MUST 经 `postMessage {cmd:"dropFrequency", handle}`
-通知 worker，worker MUST 执行 `frequencies.get(handle).free()` +
-`frequencies.delete(handle)` 触发 Rust `Drop`。worker 的 `frequencies` 地址表
-MUST NOT 被删除（跨边界只传数字 handle，worker 靠它路由消息）。
+浏览器端 `Network`/`Frequency` 真数据活在常驻 worker（铁律八），主线程仅持
+`Network`/`Frequency` 壳类实例（壳内数字 handle，`@internal`）。主线程 MUST 自建
+`FinalizationRegistry`，其 held 值 MUST 是**不反向引用壳实例**的数字 handle；壳被
+GC 时回调 MUST 经 `postMessage {handle, method:"drop", args:[]}` 通知 worker，
+worker MUST 零状态纯转发——句柄注册、查表、分发、释放 MUST 全部发生在 **core 内
+唯一一张资源表**（cfg 门控 browser feature：数字 handle → `Box<dyn Resource>`
+实例表，字符串 handle → 命名空间表（类工厂 + 模块自由函数），各资源在自己的
+模块里手写 `match` 分发并在 `#[wasm_bindgen(start)]` 注册）；
+`{handle, method:"drop"}` MUST 在 core 侧 `remove(handle)` 直接触发 Rust `Drop`，
+MUST NOT 经 JS 对象中转。worker JS MUST NOT 存在任何句柄 `Map`、`nextHandle`
+计数器或逐动词命令表（现有 `hosted`/`frequencies` 两表与逐动词 `cmds` 表废止，
+wasm 导出恒为单条泛化 `call`，见 api-contract「worker 泛化分发与单常驻拓扑」）；
+释放动词唯一为 `drop`（句柄全局唯一，单表查找无歧义）；`postMessage` 协议名
+`dropFrequency`/`newFrequency` MUST NOT 存在。句柄表本身 MUST NOT 被删除
+（跨边界只传 handle，core 靠它路由消息）。
 
 #### Scenario: 壳被 GC 触发 worker 释放
 
 - **WHEN** 丢弃主线程壳最后一个引用并强制 GC
-- **THEN** registry 回调 → worker `free()` + `delete` → `live_count()` 归零
+- **THEN** registry 回调 → worker 转发 core `call(handle, "drop", [])` → core
+  资源表 `remove` 触发 Rust `Drop` → `live_count()` 归零
 
 #### Scenario: held 不钉活 wrapper
 
 - **WHEN** 检查 registry 的 held 值
 - **THEN** held 为数字 handle，不含对 wrapper 的强引用（否则 wrapper 永不回收）
+
+#### Scenario: 表数量恒为一
+
+- **WHEN** 未来 Circuit 等新增句柄资源类型
+- **THEN** 只在新资源自己的模块加 `match` 与命名空间注册，资源表模块与释放
+  动词均零修改
+
+#### Scenario: worker JS 零状态
+
+- **WHEN** 检查 worker JS 源码
+- **THEN** 无任何句柄 `Map`、`nextHandle` 计数器与逐动词命令表；注册、查表与
+  分发全在 core，wasm `Frequency` 实例不浮出 JS（生成物 `free()` 无 JS 调用点）
+
+#### Scenario: dropFrequency 消失
+
+- **WHEN** grep worker 命令面与壳
+- **THEN** 无 `dropFrequency`，释放消息唯一形态 `{handle, method:"drop"}`
 
 ### Requirement: 共享所有权不误删
 
@@ -60,30 +87,41 @@ MUST 在**全部**引用消失前保持存活。释放部分引用 MUST NOT 触�
 - **WHEN** 再释放最后一个引用并强制 GC
 - **THEN** `live_count()` 归零
 
-### Requirement: 显式 `drop()` 确定性即时（JS-only）
+### Requirement: 显式 `drop()` 确定性即时（全端）
 
-JS 端（浏览器 + node）MUST 提供 `drop()` 作确定性逃生口：调用后 MUST **不**依赖
-GC 即时触发 Rust `Drop`。`drop()` 是铁律十（skrf 兼容）的**已立案偏离**——其
-「更强收获」为：JS GC 时机非确定性是平台特有约束，skrf 无对应物因其不跑
-worker-realm wasm。Python/Rust MUST NOT 加
-`drop()`（引用计数/RAII 全自动，加 = footgun 且违铁律十）。
+Python/node/浏览器三端 MUST 提供 `drop()` 作确定性手动释放口：调用后 MUST **不**
+依赖 GC 即时触发 Rust `Drop`。`drop()` MUST 幂等（重复调用无害），释放后访问数据
+MUST 报错（Python `ValueError` / JS `Error`，消息含对象标识），不调用则由自动回收
+（Python 引用计数 / JS GC finalizer / Rust RAII）兜底——手动与自动两种用法共存且
+结果一致。`drop()` 是铁律十（skrf 兼容）的**已立案偏离**：其「更强收获」为 GC
+时机非确定性是 JS 平台特有约束、而跨端统一动词的可记忆性收益覆盖 Python 端
+冗余（幂等 + 释放后报错已封死误用 footgun）。Rust 侧 `Drop`（RAII）与同名固有
+方法 `drop()` 共用一份清理实现（固有方法优先解析，`Drop::drop` 一行委托）。
 
 #### Scenario: drop 不依赖 GC 即时回收
 
-- **WHEN** 调 `drop()` 后**不**强制 GC
+- **WHEN** 任一端调 `drop()` 后**不**强制 GC
 - **THEN** `live_count()` 立即减（确定性，不等 GC）
 
-#### Scenario: Python/Rust 无 drop
+#### Scenario: Python 手动 drop 与自动回收共存
 
-- **WHEN** 检查 Python 与 Rust 的 `Frequency` 公开面
-- **THEN** 无 `drop()` 方法（自动回收，手动 drop 是 footgun）
+- **WHEN** Python 端对 `Frequency` 调 `drop()` 后再访问 `f`/`npoints`
+- **THEN** 抛 `ValueError`；不调 `drop()` 时引用计数归零自动回收，`live_count()`
+  同样归零
+
+#### Scenario: 重复 drop 幂等
+
+- **WHEN** 对同一对象二次调 `drop()`
+- **THEN** 不报错、`live_count()` 不二次递减
 
 ### Requirement: node napi finalizer 自动回收（单 realm）
 
 node 端 `Frequency` MUST 由 napi cleanup finalizer 在 JS 对象被 GC 时自动跑 Rust
-`Drop`（单 realm，无压制）。node `Frequency` MUST NOT 进入 `hosted` Map（用户直接
-持 napi 实例，无 Map 强引用 → 自带 finalizer 正常工作，与浏览器 worker 压制场景相反）。
-`drop()` 在 node 可选（finalizer 已自动，`drop()` 仅供确定性提前释放）。
+`Drop`（单 realm，无压制）。node `Frequency` MUST NOT 进入任何句柄资源表（core
+资源表 cfg 不编译进 node；用户直接持 napi 实例，无强引用中转 → 自带 finalizer
+正常工作，与浏览器 worker 压制场景相反）。node MUST 暴露 `drop()` 作确定性提前
+释放（与浏览器同名；napi 侧 MUST NOT 以 `free()` 命名——wasm-bindgen 生成物名
+不上浮用户可见面）。
 
 #### Scenario: node 壳 GC 自动 Drop
 
@@ -93,4 +131,9 @@ node 端 `Frequency` MUST 由 napi cleanup finalizer 在 JS 对象被 GC 时自�
 #### Scenario: node 对象不进 hosted Map
 
 - **WHEN** 检查 node 端 `Frequency` 的持有方式
-- **THEN** 不经 `hosted` Map 强引用（否则重蹈 worker 压制陷阱）
+- **THEN** 不经任何句柄资源表强引用（否则重蹈 worker 压制陷阱）
+
+#### Scenario: node 手动释放命名统一
+
+- **WHEN** 检查 node `Frequency` 公开面
+- **THEN** 有 `drop()`、无 `free()`
