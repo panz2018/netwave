@@ -1,32 +1,17 @@
 // netwave/worker — the resident worker: the single wasm instance and the
 // single data authority (governance spec ironclad rule 8). wasm is inited
-// HERE, never on the main thread. Hosted data lives in a handle table
-// (handle -> Float64Array); handles are monotonically increasing and are
-// invalidated by `release`. Zero numeric logic: cmds-table dispatch into
-// the wasm glue; adding a core verb means editing the table only.
-//
-// Transfer decision table (zero-copy-roundtrip spec):
-//   - upload: the caller's buffer arrives via the shell's transfer list
-//     (single ownership moved in; the main-thread view is detached there)
-//   - unhosted readElement: plain view, structured-cloned in (copied, NOT
-//     consumed)
-//   - results: buffer-bearing results are copied out of wasm linear memory
-//     into a fresh ArrayBuffer and transferred back (linear memory itself
-//     must never be transferred — that would detach the wasm instance);
-//     metadata (shape/frequency) rides the same reply message.
-// Explicit static table (no dynamic property access on the namespace,
-// preserves tree-shaking). `.ts` specifier is legal under noEmit;
-// publish_shell.mjs rewrites glue specifiers in the dist output.
+// HERE, never on the main thread. The handle table lives in core Rust
+// (cfg=browser, type-erased): worker JS keeps ZERO state and every message
+// is a mechanical forward of `{handle, method, args}` to the single core
+// entry `call` (api-contract spec "worker generic dispatch and
+// single-resident topology"). `handle` is a number (an instance in the core
+// table) or a string (a core module namespace); `drop` removes the entry and
+// runs the resource's Rust `Drop` — no wasm object ever floats up to JS.
+// This template is verb-count-independent: adding a method — or a whole
+// resource type — changes nothing here.
 
-import type { FrequencyUnit as FrequencyUnitType } from "../dist/wasm-web/netwave_wasm.js";
-import wasmInit, {
-  Frequency as _WasmFrequency,
-  fill_pattern as _wasmFill,
-  frequency_units as _wasmFrequencyUnits,
-  live_count as _wasmLiveCount,
-  read_element as _wasmRead,
-} from "../dist/wasm-web/netwave_wasm.js";
-import type { Handle, NetwaveBuffer, WorkerRequest, WorkerResponse } from "./types.ts";
+import wasmInit, { call as _wasmCall } from "../dist/wasm-web/netwave_wasm.js";
+import type { WorkerRequest, WorkerResponse } from "./types.ts";
 
 // wasm init: the web-target glue fetches the .wasm relative to its own
 // URL in browsers; under Node (vitest) fetch has no file: support, so read
@@ -44,90 +29,6 @@ const wasmSource = async (): Promise<Uint8Array | undefined> => {
 
 const ready = (async () => wasmInit({ module_or_path: await wasmSource() }))();
 
-// Handle table: the worker is the single data authority (ironclad rule 8).
-const hosted = new Map<Handle, Float64Array>();
-// Frequency address table: handle -> wasm class instance.
-// The strong ref here is what suppresses wasm-bindgen's own Finalization-
-// Registry, so reclamation is driven ONLY by the main-thread registry's
-// `dropFrequency` message (or explicit `drop`) — never by worker-side GC.
-const frequencies = new Map<Handle, _WasmFrequency>();
-let nextHandle: Handle = 1;
-
-// `frequency` stays empty until the real data model populates it; it still
-// rides every reply so the piggyback contract holds from day one.
-const emptyFreq = (): Float64Array => new Float64Array(0);
-
-const cmds: Record<
-  string,
-  (args: unknown[]) => Promise<NetwaveBuffer | number | Handle | string[]>
-> = {
-  fillPattern: async (args) => {
-    const [nfreq, nports] = args as [number, number];
-    await ready;
-    const d = _wasmFill(nfreq, nports) as unknown as {
-      buffer: ArrayBuffer;
-      byteOffset: number;
-      length: number;
-    };
-    return {
-      // Copy out of live linear memory into a fresh detachable buffer.
-      buffer: new Uint8Array(d.buffer, d.byteOffset, d.length * 16).slice().buffer,
-      byteOffset: 0,
-      length: d.length,
-      shape: [nfreq, nports, nports],
-      frequency: emptyFreq(),
-    };
-  },
-  upload: async (args) => {
-    await ready;
-    const handle = nextHandle++;
-    hosted.set(handle, args[0] as Float64Array);
-    return handle;
-  },
-  release: async (args) => {
-    await ready;
-    const handle = args[0] as Handle;
-    if (!hosted.delete(handle)) {
-      throw new Error(`unknown or released handle: ${handle}`);
-    }
-    return 0;
-  },
-  readElement: async (args) => {
-    await ready;
-    const [target, idx] = args as [Handle | Float64Array, number];
-    if (typeof target === "number") {
-      const view = hosted.get(target);
-      if (!view) throw new Error(`unknown or released handle: ${target}`);
-      return _wasmRead(view, idx);
-    }
-    return _wasmRead(target, idx);
-  },
-  frequencyUnits: async () => {
-    await ready;
-    return _wasmFrequencyUnits() as string[];
-  },
-  newFrequency: async (args) => {
-    await ready;
-    const [view, unit] = args as [Float64Array, FrequencyUnitType];
-    const handle = nextHandle++;
-    frequencies.set(handle, _WasmFrequency.from_f(view, unit));
-    return handle;
-  },
-  dropFrequency: async (args) => {
-    await ready;
-    const handle = args[0] as Handle;
-    const f = frequencies.get(handle);
-    if (!f) throw new Error(`unknown or dropped frequency handle: ${handle}`);
-    f.free(); // runs Rust Drop (RAII) — the single reclamation path
-    frequencies.delete(handle);
-    return 0;
-  },
-  liveCount: async () => {
-    await ready;
-    return _wasmLiveCount();
-  },
-};
-
 // The DOM lib types `self` as `Window` (postMessage requires targetOrigin);
 // this module only ever runs inside a Worker, so pin the scope type.
 interface WorkerScope {
@@ -136,21 +37,14 @@ interface WorkerScope {
 }
 const workerScope = self as unknown as WorkerScope;
 
+// The fixed template: await wasm ready, forward `{handle, method, args}`
+// verbatim to core `call`, relay the result or the error. No tables, no
+// maps, no counters — core's handle table is the single data authority.
 workerScope.onmessage = async ({ data }: MessageEvent<WorkerRequest>) => {
-  const fn = cmds[data.cmd];
-  if (!fn) {
-    workerScope.postMessage({ id: data.id, error: `unknown cmd: ${data.cmd}` });
-    return;
-  }
+  await ready;
   try {
-    const result = await fn(data.args);
-    // Buffer-bearing results (NetwaveBuffer) transfer their buffer back;
-    // scalars and string arrays (frequencyUnits) ride the message as-is.
-    if (typeof result === "object" && result !== null && "buffer" in result) {
-      workerScope.postMessage({ id: data.id, result }, [(result as NetwaveBuffer).buffer]);
-    } else {
-      workerScope.postMessage({ id: data.id, result });
-    }
+    const result = _wasmCall(data.handle, data.method, data.args);
+    workerScope.postMessage({ id: data.id, result });
   } catch (err) {
     workerScope.postMessage({ id: data.id, error: String(err) });
   }

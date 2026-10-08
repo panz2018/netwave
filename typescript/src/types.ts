@@ -5,10 +5,10 @@
 // index.node.ts); the browser entry exports none (main thread has no
 // wasm, ironclad rule 8).
 
-/** Opaque handle to data hosted inside the resident worker (ironclad
- * rule 8: the worker is the single data authority). Handles are assigned
- * by the worker, monotonically increasing. A handle is invalid after
- * `release` or after the worker dies. */
+/** @internal Protocol detail: opaque handle to a resource inside the
+ * resident worker's core table (ironclad rule 8). Handles are allocated by
+ * core's single counter and are invalidated by `drop`. Shells hold one;
+ * users never pass a handle across the public API. */
 export type Handle = number;
 
 /** Buffer + view-rebuild metadata. Views MUST be rebuilt from this after
@@ -29,12 +29,15 @@ export interface NetwaveBuffer {
   frequency: Float64Array;
 }
 
-/** Worker command envelope (main thread -> resident worker). Generalized
- * dispatch: `{id, cmd, args}`; adding a core verb only extends the worker's
- * static cmds table. */
+/** Worker request envelope (main thread -> resident worker). Generic
+ * dispatch (api-contract spec): `{id, handle, method, args}` forwarded
+ * verbatim to the single core entry `call`. A numeric handle addresses an
+ * instance in the core table; a string handle names a core module namespace
+ * (factories + free functions). Adding a method changes no protocol type. */
 export interface WorkerRequest {
   id: number;
-  cmd: string;
+  handle: Handle | string;
+  method: string;
   args: unknown[];
 }
 
@@ -53,23 +56,3 @@ export interface WorkerResponse {
  * view can be rebuilt.
  */
 export declare function fillPattern(nfreq: number, nports: number): Promise<NetwaveBuffer>;
-
-/**
- * Host a copy of `view` inside the resident worker and return its handle.
- * Browser: the view's buffer is moved via explicit transfer — the caller's
- * buffer is detached afterwards (single ownership, ironclad rule 8).
- * Node: the bytes are copied into the in-process core (no detach).
- */
-export declare function upload(view: Float64Array): Promise<Handle>;
-
-/** Drop hosted data and invalidate its handle. Later calls through the
- * handle MUST reject (the error message contains the handle number). */
-export declare function release(handle: Handle): Promise<void>;
-
-/**
- * Read one f64 element (re/im interleaved index) from hosted data
- * (handle) or from an unhosted view (browser: the view's bytes are
- * boundary-copied into the worker, the caller's buffer is NOT consumed;
- * node: read directly in-process).
- */
-export declare function readElement(target: Handle | Float64Array, idx: number): Promise<number>;
