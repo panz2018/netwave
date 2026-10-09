@@ -55,6 +55,17 @@ describe("browser frequency functional surface", () => {
     await expect(m.Frequency.fromF(new Float64Array([1.0]), "Hzz" as never)).rejects.toThrow(/Hzz/);
   });
 
+  it("setter swallows an illegal unit rejection (fire-and-forget)", async () => {
+    const m = await import("../../src/index.browser.ts");
+    const f = await m.Frequency.fromF(new Float64Array([1.0]), m.FrequencyUnit.GHz);
+    // The setter's .catch(() => {}) must run when the worker rejects the
+    // illegal unit (no unhandled rejection escapes to the test runner).
+    f.unit = "Hzz" as never;
+    await new Promise((r) => setTimeout(r, 0)); // let the rejection settle
+    expect(await f.unit).toBe(m.FrequencyUnit.GHz); // unit unchanged
+    await f.drop();
+  });
+
   it("wavelength round-trips to Hz (manifest core_tol)", async () => {
     const m = await import("../../src/index.browser.ts");
     const coreTol = 1e-12;

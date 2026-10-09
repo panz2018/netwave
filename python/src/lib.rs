@@ -35,6 +35,9 @@ fn arg_f64_vec(obj: &Bound<'_, PyAny>) -> PyResult<Vec<f64>> {
 
 /// Read a `FrequencyUnit` from an enum member OR a string (case-insensitive,
 /// core `FromStr` carries the offending input in the error).
+// `not(coverage)`: core drops the pyclass attribute under cfg(coverage),
+// so the cast below cannot compile there (two-sided glue sync).
+#[cfg(not(coverage))]
 fn arg_frequency_unit(obj: &Bound<'_, PyAny>) -> PyResult<FrequencyUnit> {
     if let Ok(u) = obj.cast::<FrequencyUnit>() {
         return Ok(*u.borrow());
@@ -45,6 +48,7 @@ fn arg_frequency_unit(obj: &Bound<'_, PyAny>) -> PyResult<FrequencyUnit> {
 
 /// Read a `WavelengthUnit` from an enum member OR a string (same shape as
 /// [`arg_frequency_unit`]).
+#[cfg(not(coverage))]
 fn arg_wavelength_unit(obj: &Bound<'_, PyAny>) -> PyResult<WavelengthUnit> {
     if let Ok(u) = obj.cast::<WavelengthUnit>() {
         return Ok(*u.borrow());
@@ -169,6 +173,11 @@ impl Network {
 #[pyclass]
 pub struct Frequency(CoreFrequency);
 
+// `not(coverage)`: the method signatures reference core's
+// FrequencyUnit/WavelengthUnit, whose pyclass attributes core drops under
+// cfg(coverage) — the pymethods cannot compile there (two-sided glue sync;
+// the class registration in the module is gated the same way).
+#[cfg(not(coverage))]
 #[cfg_attr(feature = "stub-gen", gen_stub_pymethods)]
 #[pymethods]
 impl Frequency {

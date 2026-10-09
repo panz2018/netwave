@@ -104,5 +104,21 @@ fn accessors_error_after_drop() {
     assert!(f.f().is_err());
     assert!(f.f_scaled().is_err());
     assert!(f.w().is_err());
+    assert!(f.unit().is_err());
+    assert!(f.copy().is_err());
     assert!(f.wavelength(WavelengthUnit::m, 1.0).is_err());
+}
+
+#[test]
+fn display_formats_non_integral_values() {
+    // fmt_axis_value's non-integral branch: no forced `.0` padding.
+    let f = Frequency::from_f(vec![1.5, 2.25], FrequencyUnit::GHz);
+    assert_eq!(f.to_string(), "Frequency(1.5-2.25 GHz, 2 pts)");
+}
+
+#[test]
+fn dropped_error_display_is_stable() {
+    // The shared access-after-drop message is part of the cross-end error
+    // text surfaced by every binding (single source of truth).
+    assert_eq!(netwave::Dropped.to_string(), "data has been dropped");
 }

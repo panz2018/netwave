@@ -76,6 +76,9 @@
   在普通构建覆盖。python 侧须**两端同步**：core 剥属性后，glue crate
   （`python/src/lib.rs`）的 `add_class`/`wrap_pyfunction` 调用也要 `#[cfg(not(coverage))]`，
   否则 glue 编译不过（glue 的 lib.rs 本就在 llvm-cov 排除正则内）。
+  门控范围不止注册调用：glue 里 `cast::<被门控 pyclass>()` 的**辅助函数**与
+  签名含被门控枚举的 **`#[pymethods]` 整块**同样要 `not(coverage)`，
+  否则 E0599/E0277（Frequency pyclass 复发一次）。
   `cfg(coverage)` 须在用到的每个 crate 的 `[lints.rust]` 声明 `check-cfg`，
   否则 `-D warnings` 报 unexpected_cfgs
 - 复发检测：`cargo llvm-cov --workspace --fail-under-lines 100`（rust job）；
