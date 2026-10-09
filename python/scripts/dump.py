@@ -20,7 +20,15 @@ def main() -> int:
     arr = netwave.fill_pattern(2, 2)
     path = out / "python.bin"
     path.write_bytes(arr.tobytes())
-    print(f"dumped {path.resolve()}")
+    # λ↔f round-trip axis: f -> wavelength -> f.
+    # The unit is the enum member, never a hand-copied string literal
+    # (vocabulary single source).
+    f = netwave.Frequency.from_f([1.0, 2.0, 5.0], netwave.FrequencyUnit.GHz)
+    wl = f.wavelength(netwave.WavelengthUnit.mm, 2.2)
+    back = netwave.Frequency.from_wavelength(wl, netwave.WavelengthUnit.mm, 2.2)
+    fpath = out / "python_freq.bin"
+    fpath.write_bytes(back.f.tobytes())
+    print(f"dumped {path.resolve()} {fpath.resolve()}")
     return 0
 
 

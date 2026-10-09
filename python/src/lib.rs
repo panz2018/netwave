@@ -6,14 +6,52 @@
 //! drops (freeing the memory) when the array is garbage collected (numpy's
 //! base reference guarantees the view never outlives the data).
 
+use std::str::FromStr;
+
 use netwave::fill_pattern as core_fill_pattern;
 use netwave::frequency::Frequency as CoreFrequency;
 use netwave::frequency::FrequencyUnit;
+use netwave::frequency::WavelengthUnit;
 use netwave::network::Network as CoreNetwork;
 use numpy::Complex64;
 use numpy::ndarray;
-use numpy::{PyArray3, PyReadonlyArray1, PyReadonlyArray3};
+use numpy::{PyArray1, PyArray3, PyReadonlyArray1, PyReadonlyArray3};
+use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+
+/// Read a frequency/wavelength argument that may be an array OR a scalar
+/// (a scalar is a single point). Tries the 1-D array first, falls back to
+/// a scalar f64. The union lives here in the binding (ironclad rule 11:
+/// the shell never computes, the搬运 is in the rust binding段).
+fn arg_f64_vec(obj: &Bound<'_, PyAny>) -> PyResult<Vec<f64>> {
+    if let Ok(arr) = obj.extract::<PyReadonlyArray1<f64>>() {
+        return Ok(arr.as_slice()?.to_vec());
+    }
+    if let Ok(v) = obj.extract::<Vec<f64>>() {
+        return Ok(v);
+    }
+    Ok(vec![obj.extract::<f64>()?])
+}
+
+/// Read a `FrequencyUnit` from an enum member OR a string (case-insensitive,
+/// core `FromStr` carries the offending input in the error).
+fn arg_frequency_unit(obj: &Bound<'_, PyAny>) -> PyResult<FrequencyUnit> {
+    if let Ok(u) = obj.cast::<FrequencyUnit>() {
+        return Ok(*u.borrow());
+    }
+    FrequencyUnit::from_str(&obj.extract::<String>()?)
+        .map_err(|e| PyValueError::new_err(e.to_string()))
+}
+
+/// Read a `WavelengthUnit` from an enum member OR a string (same shape as
+/// [`arg_frequency_unit`]).
+fn arg_wavelength_unit(obj: &Bound<'_, PyAny>) -> PyResult<WavelengthUnit> {
+    if let Ok(u) = obj.cast::<WavelengthUnit>() {
+        return Ok(*u.borrow());
+    }
+    WavelengthUnit::from_str(&obj.extract::<String>()?)
+        .map_err(|e| PyValueError::new_err(e.to_string()))
+}
 
 // Stub generation (feature `stub-gen` only): registers the public functions
 // and classes with pyo3-stub-gen so `stub_gen` emits `netwave/_netwave.pyi`.
@@ -121,9 +159,12 @@ impl Network {
     }
 }
 
-/// A frequency sweep. `from_f` is the data entry (static factory, core
-/// name verbatim); `drop` is the deterministic manual reclamation shared
-/// with RAII. Post-drop access raises `ValueError`.
+/// A frequency sweep. `from_f`/`from_wavelength` are the data entries
+/// (static factories, core names verbatim); the accessors are read-only
+/// properties (`f` returns a COPY — scikit-rf `f` is a pure getter); `unit`
+/// is a getter (returns the enum) + setter (enum | str); `drop` is the
+/// deterministic manual reclamation shared with RAII. Post-drop access
+/// raises `ValueError`.
 #[cfg_attr(feature = "stub-gen", gen_stub_pyclass(module = "netwave._netwave"))]
 #[pyclass]
 pub struct Frequency(CoreFrequency);
@@ -131,21 +172,129 @@ pub struct Frequency(CoreFrequency);
 #[cfg_attr(feature = "stub-gen", gen_stub_pymethods)]
 #[pymethods]
 impl Frequency {
-    /// Build a sweep from hertz points + unit (the enum member, passed by
-    /// member — never coerced, validation stays in core). `unit` is
-    /// downcast rather than `FromPyObject` because the enum pyclass opts
-    /// out of arbitrary-object coercion (`skip_from_py_object`).
+    /// Build a sweep from points in `unit` (enum | str, required — never
+    /// defaults to Hz) stored as f64 hertz. `f` accepts an array or a
+    /// scalar (single point).
     #[staticmethod]
-    fn from_f<'py>(f_hz: PyReadonlyArray1<f64>, unit: &Bound<'py, PyAny>) -> PyResult<Self> {
-        let unit = *unit.cast::<FrequencyUnit>()?.borrow();
-        Ok(Self(CoreFrequency::from_f(f_hz.as_slice()?.to_vec(), unit)))
+    fn from_f(f: &Bound<'_, PyAny>, unit: &Bound<'_, PyAny>) -> PyResult<Self> {
+        let v = arg_f64_vec(f)?;
+        let unit = arg_frequency_unit(unit)?;
+        Ok(Self(CoreFrequency::from_f(v, unit)))
+    }
+
+    /// Build a sweep from wavelength points in `wl_unit` (enum | str) through
+    /// a medium of phase index `n` (required): `f = c / (n × λ)`.
+    #[staticmethod]
+    fn from_wavelength(
+        wl: &Bound<'_, PyAny>,
+        wl_unit: &Bound<'_, PyAny>,
+        n: f64,
+    ) -> PyResult<Self> {
+        let v = arg_f64_vec(wl)?;
+        let wl_unit = arg_wavelength_unit(wl_unit)?;
+        Ok(Self(CoreFrequency::from_wavelength(v, wl_unit, n)))
+    }
+
+    /// The frequency axis in hertz — a fresh COPY (read-only contract).
+    #[getter]
+    fn f<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray1<f64>>> {
+        Ok(PyArray1::from_slice(
+            py,
+            &self
+                .0
+                .f()
+                .map_err(|e| PyValueError::new_err(e.to_string()))?,
+        ))
+    }
+
+    /// The axis in the current display unit (`f / multiplier`), derived.
+    #[getter]
+    fn f_scaled<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray1<f64>>> {
+        Ok(PyArray1::from_slice(
+            py,
+            &self
+                .0
+                .f_scaled()
+                .map_err(|e| PyValueError::new_err(e.to_string()))?,
+        ))
+    }
+
+    /// Angular frequency ω = 2πf (rad/s), derived.
+    #[getter]
+    fn w<'py>(&self, py: Python<'py>) -> PyResult<Bound<'py, PyArray1<f64>>> {
+        Ok(PyArray1::from_slice(
+            py,
+            &self
+                .0
+                .w()
+                .map_err(|e| PyValueError::new_err(e.to_string()))?,
+        ))
+    }
+
+    /// The display unit (getter returns the enum, not a string — ironclad
+    /// rule 10 deviation, filed in design.md).
+    #[getter]
+    fn unit(&self) -> PyResult<FrequencyUnit> {
+        self.0
+            .unit()
+            .map_err(|e| PyValueError::new_err(e.to_string()))
+    }
+
+    /// Set the display unit (enum | str, case-insensitive; illegal string
+    /// raises `ValueError` quoting the input). Only metadata changes.
+    #[setter]
+    fn set_unit(&mut self, unit: &Bound<'_, PyAny>) -> PyResult<()> {
+        let unit = arg_frequency_unit(unit)?;
+        self.0.set_unit(unit);
+        Ok(())
+    }
+
+    /// Wavelength λ = c / (n × f) in `wl_unit` (enum | str); DC → inf.
+    fn wavelength<'py>(
+        &self,
+        py: Python<'py>,
+        wl_unit: &Bound<'_, PyAny>,
+        n: f64,
+    ) -> PyResult<Bound<'py, PyArray1<f64>>> {
+        let wl_unit = arg_wavelength_unit(wl_unit)?;
+        Ok(PyArray1::from_slice(
+            py,
+            &self
+                .0
+                .wavelength(wl_unit, n)
+                .map_err(|e| PyValueError::new_err(e.to_string()))?,
+        ))
+    }
+
+    /// An independent copy with the same axis and unit.
+    fn copy(&self) -> PyResult<Self> {
+        self.0
+            .copy()
+            .map(Self)
+            .map_err(|e| PyValueError::new_err(e.to_string()))
     }
 
     /// Number of frequency points. Raises `ValueError` after `drop()`.
     fn npoints(&self) -> PyResult<usize> {
         self.0
             .npoints()
-            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e.to_string()))
+            .map_err(|e| PyValueError::new_err(e.to_string()))
+    }
+
+    /// `len(f)` — the protocol hook delegating one line to `npoints`
+    /// (ironclad rule 9).
+    fn __len__(&self) -> PyResult<usize> {
+        self.npoints()
+    }
+
+    /// The cross-end uniform display string (core `Display`, single source).
+    fn __str__(&self) -> String {
+        self.0.to_string()
+    }
+
+    /// `repr(f)` — same string as `__str__` (design.md D6).
+    fn __repr__(&self) -> String {
+        self.0.to_string()
     }
 
     /// Deterministic manual reclamation (the unified cross-end verb).
@@ -160,6 +309,9 @@ impl Frequency {
 fn netwave_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add_function(wrap_pyfunction!(fill_pattern, m)?)?;
     m.add_function(wrap_pyfunction!(read_element, m)?)?;
+    // Physical constant re-exported from core (ironclad rules 11/12: the
+    // value is defined once in core::constants, never hand-copied here).
+    m.add("SPEED_OF_LIGHT", netwave::constants::SPEED_OF_LIGHT)?;
     #[cfg(not(coverage))]
     m.add_class::<Network>()?;
     #[cfg(not(coverage))]
@@ -172,6 +324,8 @@ fn netwave_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Python surface in a normal (non-coverage) build.
     #[cfg(not(coverage))]
     m.add_class::<netwave::frequency::FrequencyUnit>()?;
+    #[cfg(not(coverage))]
+    m.add_class::<netwave::frequency::WavelengthUnit>()?;
     #[cfg(not(coverage))]
     m.add_function(wrap_pyfunction!(netwave::frequency::frequency_units, m)?)?;
     Ok(())
