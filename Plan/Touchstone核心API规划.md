@@ -74,7 +74,9 @@
 - 写出接口全平铺、无 opts 包（与构造器同规）：
   `writeTouchstone(parameter, format)` / `writeFile(path, parameter, format)`——
   `parameter`/`format` 必填（与构造器对称）；**无 `version` 选项**（由 z0
-  推导，实证 skrf `write_touchstone` 签名亦无 version 参）；**无 `rRef` 选项**
+  推导；注：skrf `write_touchstone` 实有 `version` 参（实证 network.py:2615
+  `Literal["1.0","2.0","2.1"]="1.0"`），netwave 刻意不收——version 是 z0 的
+  派生量，双入口必漂移）；**无 `rRef` 选项**
   （skrf 的 `r_ref` 是写出时覆盖参考电阻用，与 `z0` 冗余——`z0` 是唯一权威，
   要改参考阻抗就改对象再写出）。
 - MA/DB 语义钉死（五源交叉验证，无歧义）：角度恒**度**（规范原文 "All
@@ -192,7 +194,9 @@
 - `parameter`：**必填**（S/Z/Y/G/H，声明 `data` 是什么域，core 内换算成 S）。
 - `name`/`comments`：可选，默认空串/无注释。
 - 构造时校验：维度自洽（`frequency.npoints × nports² == data.len()`）、
-  频点无重复（乱序则内部排序）、G/H 仅 2 端口。
+  `z0` 长度必须为 1（全端口共用）或 `nports`（每端口），否则直接报错
+  （实证旧库 `touchstone.ts:668–675` 同法校验）；频点无重复（乱序则内部排序）、
+  G/H 仅 2 端口。
 
 **format 为什么不在构造器**：RI/MA/DB 是文本文件里复数的两种书写方式，
 内存里永远是复数——解析时按文件 `#` 行换算成复数入库，写出时按
@@ -228,11 +232,11 @@ enum 反射（跨端词汇零手抄），无字符串拼写风险。skrf 的 `fr
 
 ### 写出
 
-| 方法                                                      | 语义                                                                                                                                                                                                                                                                                                                |
-| --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `writeTouchstone(parameter, format)` / `write_touchstone` | 吐 Touchstone 文本；全平铺必填 `parameter`(S/Y/Z/G/H)、`format`(RI/MA/DB)，与构造器对称。无 `version`（z0 推导，skrf 同法）、无 `rRef`（`z0` 唯一权威）。shortest-roundtrip，写出→读回 bit 级一致（测试规划已定）。三库写出名：skrf `write_touchstone`、SI `Text`/`WriteToFile`、旧库 `writeContent`——本名对齐 skrf |
-| `writeFile(path, parameter, format)` / `write_file`       | 原生端写文件；**浏览器端导出但调用即抛"浏览器不支持"**（实证：旧库根本无 `writeFile`，只有 `writeContent()` 返回文本，落盘/下载归调用方 GUI——`URL.createObjectURL` + `<a download>` 是 GUI 行为不属核心库；选"导出但抛错"保三端 API 面一致）                                                                        |
-| `drop()` / `drop`                                         | 统一释放动词（已定案，见 memory-lifecycle spec）                                                                                                                                                                                                                                                                    |
+| 方法                                                      | 语义                                                                                                                                                                                                                                                                                                                                                              |
+| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `writeTouchstone(parameter, format)` / `write_touchstone` | 吐 Touchstone 文本；全平铺必填 `parameter`(S/Y/Z/G/H)、`format`(RI/MA/DB)，与构造器对称。无 `version`（z0 推导；skrf 有 `version` 参，netwave 刻意不收，见已定裁决）、无 `rRef`（`z0` 唯一权威）。shortest-roundtrip，写出→读回 bit 级一致（测试规划已定）。三库写出名：skrf `write_touchstone`、SI `Text`/`WriteToFile`、旧库 `writeContent`——本名对齐 skrf      |
+| `writeFile(path, parameter, format)` / `write_file`       | 三端都导出。原生端 core 内 std::fs 落盘；**浏览器端 = 绑定壳层平台胶**：壳调 core `writeTouchstone(parameter, format)` 拿文本（文本渲染 100% 在 core，铁律十一不破——平台 I/O 胶正是壳层的职责），再做 `Blob` + `URL.createObjectURL` + `<a download>` 触发下载。不建第二个 wasm 实例、不复制任何业务逻辑（实证旧库同法：`writeContent()` 返回文本、落盘归调用方） |
+| `drop()` / `drop`                                         | 统一释放动词（已定案，见 memory-lifecycle spec）                                                                                                                                                                                                                                                                                                                  |
 
 ### 属性承载字段（core `Touchstone` struct——公开属性的后端存储）
 
@@ -307,6 +311,11 @@ SI `Text(formatString)` 同法；旧库 `format` setter + `writeContent` 按 for
   （mag,deg / db,deg）——只是把复数换成实数对。角度恒度、dB = 20×log₁₀(幅度)
   （规范原文钉死，见已定裁决）。底层存储恒扁平 f64（铁律一），多维是
   零拷贝视图（Python reshape / JS shape 元数据）；未来改多维则 `s` 一起改。
+- JS/wasm 扁平索引公式（三端共享寻址真相，进绑定文档与对拍测试）：
+  元素 `(f, r, c)`（`n` = nports）实部在 `idx = ((f * n + r) * n + c) * 2`、
+  虚部 `idx + 1`；MA/DB 实数对时 `idx + 0` = mag/db、`idx + 1` = deg。
+  Python 端该公式由 ndarray 形状隐藏；JS/wasm 端 shape 元数据 + 本公式
+  即完整寻址，`s` 与 `data()` 同一公式不另立。
 - 换算全部私有（`s_to_domain`/`to_ma`/`to_db`），外部只见属性与方法、
   无需理解换算——入口与换算是整体。
 - 存储仍只有 `s` 一份（铁律一布局不变），非默认入口每次现算。
