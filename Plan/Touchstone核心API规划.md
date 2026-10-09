@@ -24,8 +24,9 @@
   Version 1.1 files"）。
   `功能覆盖规划.md` 中"噪声数据行（`[Number of Noise Frequencies]`）"的表述
   有误，需修正为"1.0/1.1 的 2 端口文件尾部噪声行"。
-  **v1 决策：解析并保留噪声原始行（`noise`），噪声计算延后**——与覆盖规划
-  "解析保留、计算延后"一致。
+  **v1 决策：不支持噪声**——旧库 `touchstone.ts` 全文无 noise（实证），故 netwave
+  v1 不设 `noise`/`noise_freq` 属性；解析时遇到噪声行**静默跳过、不报错**，
+  属性与计算随噪声模块整体延后。
 
 ## 已定裁决（本轮对话拍板）
 
@@ -41,7 +42,19 @@
 - `from_url` 要做：三端统一入口（浏览器 fetch 的 CORS 是用户站点责任，
   错误原样抛出；实现路线见「I/O 归属」节）。
 - 旧库对齐口径 = **功能 100% 覆盖**，不要求函数名/签名一致；
-  `fromUrl`/`validate` 等按新 API 重新实现即可。
+  `fromUrl` 等按新 API 重新实现即可。
+- 不设 `validate()`：skrf 无此方法；旧库有是因为其 setter 允许拼出半成品状态，
+  netwave 构造即解析完成，非法状态构造不出来，一致性由解析器抛错兜底。
+- 只保存 `s` 主数据：文件为 Y/Z/G/H 时解析时即换算成 S 存储（对齐 skrf——
+  skrf `Network` 只存 `s`，`y`/`z` 为现算 property）；`parameter` 仅记录文件
+  原始类型作元数据。
+- `nports` 推断：`fromFile`/`fromUrl` 从扩展名 `.sNp` 抠（skrf `_parse_file`
+  同法，正则 `[ghsyz](\d+)p`）；`fromText` 无文件名时 MUST 显式传 `nports`
+  （或传 `name` 由扩展名推）——纯数据行列数存在歧义（一行 10 个数可为
+  1 频点×3 端口或 2 频点×2 端口），信息论上无法自推，必须有一个来源。
+- v1.0 与 v1.1 语法唯一差别是参考阻抗：1.0 的 `R` 仅标量、1.1 可每端口且可
+  复数；解析层归一成每端口数组即同时覆盖两版，成本极低。**建议 v1 同时支持
+  1.0+1.1**（只支持 1.0 反而要多写"检测到多 R 即报错"的拒绝逻辑）。
 - `Touchstone` 是主类：需随 Touchstone 核心 change 提交 api-contract spec
   delta，修订"无状态一次性变换（如 Touchstone 文本解析）MUST 是模块级函数"
   条款——`Touchstone` 归入"持有解析结果的状态类"。
@@ -50,37 +63,35 @@
 
 ### 属性（名字对齐 skrf `Network`，TS 端机械 camelCase）
 
-| 属性        | 语义                                                                                                                             | 来源/理由                                                 |
-| ----------- | -------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| `s`         | 交错复数扁平 f64，`(nfreq, nports, nports)`；文件里若是 Y/Z/G/H，解析后按 `parameter` 记录原始类型，`s` 存换算前数据由 design 定 | skrf `Network.s`；铁律一布局                              |
-| `f`         | 转发内部 `Frequency` 实例，恒 f64 Hz                                                                                             | skrf `Network.f`                                          |
-| `z0`        | 每端口复数数组（`#` 行 `R` 归一后的唯一权威）                                                                                    | skrf `Network.z0`                                         |
-| `nports`    | 端口数                                                                                                                           | skrf `Network.nports`                                     |
-| `name`      | 文件名（无扩展名）                                                                                                               | skrf `Network.name`                                       |
-| `comments`  | `!` 注释合并文本                                                                                                                 | skrf `Network.comments`                                   |
-| `version`   | `"1.0"` / `"1.1"`                                                                                                                | skrf `Touchstone.version`（Network 无，借 Touchstone 名） |
-| `parameter` | 文件记录的参数类型 S/Y/Z/G/H（G/H 仅 2 端口）                                                                                    | skrf `Touchstone.parameter`；旧库功能覆盖                 |
-| `format`    | 文件数值格式 RI/MA/DB                                                                                                            | skrf `Touchstone.format`                                  |
-| `noise`     | 2 端口文件尾部噪声原始行（解析保留，计算延后）                                                                                   | 规范 1.0/1.1 允许；skrf `Network.noise` 名                |
+| 属性        | 语义                                                                                                  | 来源/理由                                                 |
+| ----------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
+| `s`         | 交错复数扁平 f64，`(nfreq, nports, nports)`；文件为 Y/Z/G/H 时解析时即换算成 S 存储，`s` 是唯一主数据 | skrf `Network.s`；铁律一布局                              |
+| `f`         | 转发内部 `Frequency` 实例，恒 f64 Hz                                                                  | skrf `Network.f`                                          |
+| `z0`        | 每端口复数数组（`#` 行 `R` 归一后的唯一权威）                                                         | skrf `Network.z0`                                         |
+| `nports`    | 端口数                                                                                                | skrf `Network.nports`                                     |
+| `name`      | 文件名（无扩展名）                                                                                    | skrf `Network.name`                                       |
+| `comments`  | `!` 注释合并文本                                                                                      | skrf `Network.comments`                                   |
+| `version`   | `"1.0"` / `"1.1"`                                                                                     | skrf `Touchstone.version`（Network 无，借 Touchstone 名） |
+| `parameter` | 文件记录的参数类型 S/Y/Z/G/H（G/H 仅 2 端口）                                                         | skrf `Touchstone.parameter`；旧库功能覆盖                 |
+| `format`    | 文件数值格式 RI/MA/DB                                                                                 | skrf `Touchstone.format`                                  |
 
 ### 数据入口（静态工厂）
 
-| 方法                                  | 语义                                                                                          |
-| ------------------------------------- | --------------------------------------------------------------------------------------------- |
-| `fromText(text, name?)` / `from_text` | 解析字符串（对齐 skrf `Network.from_string`，命名取旧库 fromText 语义、函数名在 design 定稿） |
-| `fromFile(path)` / `from_file`        | 原生端 std::fs/memmap2 流式（铁律六）；浏览器收 `File`/`Blob`                                 |
-| `fromUrl(url)` / `from_url`           | async；浏览器 = core 内 cfg 门控 `web_sys::fetch`，原生端 HTTP 客户端选型见待决               |
+| 方法                                           | 语义                                                                                              |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `fromText(text, nports?, name?)` / `from_text` | 解析字符串（对齐 skrf `Network.from_string`）；无 `name` 扩展名可推时 `nports` 必填（见已定裁决） |
+| `fromFile(path)` / `from_file`                 | 原生端 std::fs/memmap2 流式（铁律六）；浏览器收 `File`/`Blob`                                     |
+| `fromUrl(url)` / `from_url`                    | async；浏览器 = core 内 cfg 门控 `web_sys::fetch`，原生端 HTTP 客户端选型见待决                   |
 
 三入口构造即解析完成（对齐旧库"构造即解析"与 skrf `Network('x.s2p')`），
 不存在二段式 `load_file` / `read_touchstone` 动词。
 
-### 写出与校验
+### 写出
 
 | 方法                                          | 语义                                                                                                                                                                                                        |
 | --------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `writeTouchstone(opts?)` / `write_touchstone` | 吐 Touchstone 文本；选项：`form`(RI/MA/DB)、`parameter`(S/Y/Z/G/H)、`version`(1.0/1.1)、`rRef`。默认 shortest-roundtrip，写出→读回 bit 级一致（测试规划已定）。skrf `Network.write_touchstone` 整体下沉至此 |
 | `writeFile(path, opts?)` / `write_file`       | 原生端写文件；浏览器拿 `writeTouchstone` 文本自行落盘                                                                                                                                                       |
-| `validate()` / `validate`                     | 维度/格式/频点数一致性自检（旧库功能覆盖，名字自定）                                                                                                                                                        |
 | `drop()` / `drop`                             | 统一释放动词（已定案，见 memory-lifecycle spec）                                                                                                                                                            |
 
 ### Network 侧的桥
@@ -92,17 +103,18 @@
 
 ## v1 不做清单（含理由）
 
-| 项                                                                                     | 理由                                       |
-| -------------------------------------------------------------------------------------- | ------------------------------------------ |
-| `port_names`                                                                           | 非标准语法（厂商注释方言，见标准核实结论） |
-| `comments_after_option_line`                                                           | 已裁决放弃                                 |
-| `resistance`/`reference`/`frequency_unit`/`frequency_nb`/`filename`                    | 派生量或重复存储，已裁决                   |
-| Touchstone 2.0/2.1（`[Port]`、`[Noise Data]`、`[Number of Frequencies]` 等方括号语法） | 覆盖规划已定延后                           |
-| 噪声计算（NFmin→噪声矩阵换算）                                                         | 解析保留、计算延后（覆盖规划）             |
-| HFSS 注释抠 gamma/z0（skrf `hfss_touchstone_2_*`）                                     | 厂商方言，非硬约束                         |
-| `get_sparameter_data` 等 dict 松散访问器                                               | api-contract 三层契约拒绝                  |
-| zip 包读取（skrf `zipped_touchstone`）                                                 | 旧库无此功能，非功能覆盖项                 |
-| `s_def` / `port_modes` / `s_traveling` 等参考定义换算                                  | 计算层语义，归 Network 且牵涉 2.x，延后    |
+| 项                                                                                     | 理由                                                                          |
+| -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| `port_names`                                                                           | 非标准语法（厂商注释方言，见标准核实结论）                                    |
+| `comments_after_option_line`                                                           | 已裁决放弃                                                                    |
+| `resistance`/`reference`/`frequency_unit`/`frequency_nb`/`filename`                    | 派生量或重复存储，已裁决                                                      |
+| Touchstone 2.0/2.1（`[Port]`、`[Noise Data]`、`[Number of Frequencies]` 等方括号语法） | 覆盖规划已定延后                                                              |
+| `noise`/`noise_freq` 属性与噪声计算                                                    | 旧库不支持噪声（实证）；v1 遇噪声行静默跳过、不报错，属性与计算随噪声模块延后 |
+| HFSS 注释抠 gamma/z0（skrf `hfss_touchstone_2_*`）                                     | 厂商方言，非硬约束                                                            |
+| `get_sparameter_data` 等 dict 松散访问器                                               | api-contract 三层契约拒绝                                                     |
+| zip 包读取（skrf `zipped_touchstone`）                                                 | 旧库无此功能，非功能覆盖项                                                    |
+| `s_def` / `port_modes` / `s_traveling` 等参考定义换算                                  | 计算层语义，归 Network 且牵涉 2.x，延后                                       |
+| `validate()`                                                                           | skrf 无；构造即解析完成，非法状态构造不出来（见已定裁决）                     |
 
 ## I/O 归属（from_url 实现路线）
 
@@ -117,12 +129,9 @@
 
 ## 待决
 
-- [ ] `s` 对 Y/Z/G/H 文件的存放语义：存原始参数数据（`s` 名不符实）还是
-      解析时即换算成 S？涉及"解析层不做计算"边界，design.md 定案。
 - [ ] 频率轴非单调/重复频点拒绝规则（总体计划待决清单已登记，归本项）。
 - [ ] 原生端 HTTP 客户端选型（见 I/O 归属节）。
-- [ ] `fromText` 是否需要 nports 显式参数：1.0/1.1 可由数据行列数自推端口数，
-      建议不要求用户传，design.md 确认。
+- [ ] v1 是否同时支持 1.0+1.1（建议是，见已定裁决），待最终确认。
 
 ## 波及文档（落地时同步改）
 
