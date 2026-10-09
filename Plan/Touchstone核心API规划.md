@@ -48,6 +48,19 @@
 - 只保存 `s` 主数据：文件为 Y/Z/G/H 时解析时即换算成 S 存储（对齐 skrf——
   skrf `Network` 只存 `s`，`y`/`z` 为现算 property）；`parameter` 仅记录文件
   原始类型作元数据。
+- 域×格式统一访问器 `data(parameter, format)`（合并原则）：不拆
+  `s_ri`/`s_ma`/`z_ri`… 20 个属性，单一公开方法 `data(parameter?, format?)`
+  覆盖 S/Z/Y/G/H × RI/MA/DB 全部组合，返回扁平 f64；默认 `(S, RI)` 零拷贝
+  返回 `s` 本体；换算函数全部私有，外部无需理解换算；存储仍只有 `s` 一份。
+  `s` 保留为快捷 property（skrf 兼容）。文件参数域恰为 S/Z/Y/G/H 五种
+  （规范 `#` 行 keyword），a/t 非文件域、归 Network。GUI 显示任意域/格式
+  的数组值即调 `data()`（见「统一数据访问器」节）。
+- 抠端口数/取名进公开静态函数：`nportsFromName`/`nameFromPath`（覆盖旧库
+  `parsePorts`/`getFilename`/`getBasename` 功能，实证旧库即公开静态）。
+- 大文件窗口化接口 v1 不定义：>100 MB 解析后仍是扁平 f64 的
+  `(nfreq, nports, nports)` 自寻址布局，GUI 取"某几行某几列"直接切片即可，
+  无需新 API；
+  三库均无分页访问器（实证）。真实需求（如 worker 端流式窗口）出现再立项。
 - `nports` 推断：`fromFile`/`fromUrl` 从扩展名 `.sNp` 抠（skrf `_parse_file`
   同法，正则 `[ghsyz](\d+)p`）；`fromText` 无文件名时 MUST 显式传 `nports`
   （或传 `name` 由扩展名推）——纯数据行列数存在歧义（一行 10 个数可为
@@ -80,25 +93,28 @@
 
 ### 属性（名字对齐 skrf `Network`，TS 端机械 camelCase）
 
-| 属性        | 语义                                                                                                  | 来源/理由                                                 |
-| ----------- | ----------------------------------------------------------------------------------------------------- | --------------------------------------------------------- |
-| `s`         | 交错复数扁平 f64，`(nfreq, nports, nports)`；文件为 Y/Z/G/H 时解析时即换算成 S 存储，`s` 是唯一主数据 | skrf `Network.s`；铁律一布局                              |
-| `f`         | 转发内部 `Frequency` 实例，恒 f64 Hz                                                                  | skrf `Network.f`                                          |
-| `z0`        | 每端口复数数组（`#` 行 `R` 归一后的唯一权威）                                                         | skrf `Network.z0`                                         |
-| `nports`    | 端口数                                                                                                | skrf `Network.nports`                                     |
-| `name`      | 文件名（无扩展名）                                                                                    | skrf `Network.name`                                       |
-| `comments`  | `!` 注释合并文本                                                                                      | skrf `Network.comments`                                   |
-| `version`   | `"1.0"` / `"1.1"`                                                                                     | skrf `Touchstone.version`（Network 无，借 Touchstone 名） |
-| `parameter` | 文件记录的参数类型 S/Y/Z/G/H（G/H 仅 2 端口）                                                         | skrf `Touchstone.parameter`；旧库功能覆盖                 |
-| `format`    | 文件数值格式 RI/MA/DB                                                                                 | skrf `Touchstone.format`                                  |
+| 属性                        | 语义                                                                                                                                | 来源/理由                                                                                                     |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `s`                         | 交错复数扁平 f64，`(nfreq, nports, nports)`；文件为 Y/Z/G/H 时解析时即换算成 S 存储，`s` 是唯一主数据；即 `data()` 默认值的快捷入口 | skrf `Network.s`；铁律一布局                                                                                  |
+| `f`                         | 转发内部 `Frequency` 实例，恒 f64 Hz                                                                                                | skrf `Network.f`                                                                                              |
+| `z0`                        | 每端口复数数组（`#` 行 `R` 归一后的唯一权威）                                                                                       | skrf `Network.z0`                                                                                             |
+| `nports`                    | 端口数                                                                                                                              | skrf `Network.nports`                                                                                         |
+| `name`                      | 文件名（无扩展名）                                                                                                                  | skrf `Network.name`                                                                                           |
+| `comments`                  | `!` 注释合并文本                                                                                                                    | skrf `Network.comments`                                                                                       |
+| `version`                   | `"1.0"` / `"1.1"`                                                                                                                   | skrf `Touchstone.version`（Network 无，借 Touchstone 名）                                                     |
+| `parameter`                 | 文件记录的参数类型 S/Y/Z/G/H（G/H 仅 2 端口）                                                                                       | skrf `Touchstone.parameter`；旧库功能覆盖                                                                     |
+| `format`                    | 文件数值格式 RI/MA/DB                                                                                                               | skrf `Touchstone.format`                                                                                      |
+| `data(parameter?, format?)` | 统一数据访问器：S/Z/Y/G/H × RI/MA/DB 全组合，返回扁平 f64；默认 `(S, RI)` 零拷贝返回 `s` 本体；其余现算不缓存                       | 20 组合不拆 20 属性；skrf `get_sparameter_data(format)` 同法（io/touchstone.py:775）；GUI 表格任意域/格式显示 |
 
-### 数据入口（静态工厂）
+### 静态函数（全部，无遗漏）
 
 | 方法                                           | 语义                                                                                              |
 | ---------------------------------------------- | ------------------------------------------------------------------------------------------------- |
 | `fromText(text, nports?, name?)` / `from_text` | 解析字符串（对齐 skrf `Network.from_string`）；无 `name` 扩展名可推时 `nports` 必填（见已定裁决） |
 | `fromFile(path)` / `from_file`                 | 原生端 std::fs/memmap2 流式（铁律六）；浏览器收 `File`/`Blob`                                     |
 | `fromUrl(url)` / `from_url`                    | async；浏览器 = core 内 cfg 门控 `web_sys::fetch`，原生端已选 reqwest                             |
+| `nportsFromName(name)` / `nports_from_name`    | `.sNp` 扩展名抠端口数（覆盖旧库公开静态 `parsePorts`）；三工厂内部共用                            |
+| `nameFromPath(path)` / `name_from_path`        | 路径/URL → 无扩展名文件名（覆盖旧库公开静态 `getFilename`/`getBasename`）                         |
 
 三入口构造即解析完成（对齐旧库"构造即解析"与 skrf `Network('x.s2p')`），
 不存在二段式 `load_file` / `read_touchstone` 动词。
@@ -164,7 +180,10 @@ enum 反射（跨端词汇零手抄），无字符串拼写风险。skrf 的 `fr
 | `writeFile(path, opts?)` / `write_file`       | 原生端写文件；浏览器拿 `writeTouchstone` 文本自行落盘                                                                                                                                                       |
 | `drop()` / `drop`                             | 统一释放动词（已定案，见 memory-lifecycle spec）                                                                                                                                                            |
 
-### 内部状态（私有，core `Touchstone` struct）
+### 属性承载字段（core `Touchstone` struct——公开属性的后端存储）
+
+Rust 字段级私有，但每个字段都有上表公开 property 对应——本节是公开属性的
+存储清单，不是隐藏状态；真正的私有件只有下一节的函数。
 
 | 字段        | 类型               | 说明                                   |
 | ----------- | ------------------ | -------------------------------------- |
@@ -185,32 +204,56 @@ enum 反射（跨端词汇零手抄），无字符串拼写风险。skrf 的 `fr
 
 ### 私有函数（core `Touchstone`，均不公开）
 
-| 函数                | 职责                                                  |
-| ------------------- | ----------------------------------------------------- |
-| `parse_text`        | 逐行解析主循环（fromText/fromFile/fromUrl 共用）      |
-| `parse_option_line` | `#` 行：单位/参数域/格式/R（标量或每端口，归一进 z0） |
-| `parse_data_line`   | 数据行 → 复数（按 format 换算；RI/MA/DB 三分支）      |
-| `skip_noise_lines`  | 2 端口尾部噪声行识别并静默跳过（已定裁决）            |
-| `sort_and_check_f`  | 乱序排序入库；重复频点报错                            |
-| `convert_to_s`      | Y/Z/G/H → S 换算（构造器与解析器共用，唯一实现）      |
-| `infer_nports`      | 扩展名 `.sNp` 抠端口数                                |
-| `infer_version`     | 由 z0 推导 1.0/1.1（全端口同实数→1.0）                |
-| `format_number`     | shortest-roundtrip 数字格式化（写出 bit 级一致）      |
-| `render_text`       | 写出文本拼装（writeTouchstone 内部）                  |
+三库对标（实证）：skrf `Touchstone` 私有件恰为解析家族
+（`_parse_n_floats`/`_parse_float_block`/`_parse_port`/`_parse_file`/
+`_hfss_port_values`），其换算 `s2z`/`z2s` 等是模块级函数（network.py:7128 起）
+不是类私有；SI `SParameters` 零私有（全公开）；旧库解析内联在公开
+`readContent`、静态件全公开。netwave 取 skrf 私有解析家族，并把换算收进
+类私有——因为统一访问器 `data(parameter, format)` 是本类唯一公开数据面
+（合并原则），换算知识不外泄。
 
-### 衍生数值（不属 Touchstone，归 Network——列此钉死归属）
+| 函数                | 职责                                                                         |
+| ------------------- | ---------------------------------------------------------------------------- |
+| `parse_text`        | 逐行解析主循环（fromText/fromFile/fromUrl 共用）                             |
+| `parse_option_line` | `#` 行：单位/参数域/格式/R（标量或每端口，归一进 z0）                        |
+| `parse_data_line`   | 数据行 → 复数（按 format 换算；RI/MA/DB 三分支）                             |
+| `skip_noise_lines`  | 2 端口尾部噪声行识别并静默跳过（已定裁决）                                   |
+| `sort_and_check_f`  | 乱序排序入库；重复频点报错                                                   |
+| `convert_to_s`      | Y/Z/G/H → S 换算（构造器与解析器共用，唯一实现）                             |
+| `s_to_domain`       | S → Z/Y/G/H 换算（`data('Z'/'Y'/'G'/'H', …)` 的现算后端）                    |
+| `to_ma` / `to_db`   | 复数 → (mag,deg)/(db,deg) 实数对（`data(…, 'MA'/'DB')` 后端；RI 即存储布局） |
+| `infer_version`     | 由 z0 推导 1.0/1.1（全端口同实数→1.0）                                       |
+| `format_number`     | shortest-roundtrip 数字格式化（写出 bit 级一致）                             |
+| `render_text`       | 写出文本拼装（writeTouchstone 内部）                                         |
 
-skrf `Network` 用笛卡尔积批量生成衍生 property（实证 `_generated_functions`：
-`PRIMARY_PROPERTIES × COMPONENT_FUNC_DICT`）：`s_re`/`s_im`/`s_mag`/`s_db`/
-`s_db10`/`s_rad`/`s_deg`/`s_deg_unwrap`… × `s/z/y/a/g/h/t` 每个参数域，
-外加 `step_response`/`impulse_response` 等时域量。
+抠端口数不入私有件——升为公开静态 `nportsFromName`（见「静态函数」节）。
 
-**netwave 裁决：这些全部不挂在 `Touchstone` 上**——三层契约既定：计算动词
-（`to_z`/`to_y` 及分量视图）是 `Network` 实例方法、每次现算不缓存；
-`Touchstone` 公开面只有 `s`。用户要 z/y：`Network.fromTouchstone(ts).to_z()`。
-`Touchstone` 内部只保留 `convert_to_s` 一个换算件（构造/解析必需），
-不反向养 z→s/s→y 全家桶。衍生面命名（`s_db`/`s_mag`/`s_deg` 等）在
-Network 立项时进四端命名映射表。
+### 统一数据访问器 `data(parameter, format)`（合并原则，换算全私有）
+
+三库对标（实证）：skrf `Touchstone` 就是"单一访问器 + format 参数"
+（`get_sparameter_data(format)`、`get_format(format)`，io/touchstone.py:775/738）；
+SI `Text(formatString)` 同法；旧库 `format` setter + `writeContent` 按 format 排版。
+
+**netwave 裁决：域×格式不拆 20 个属性（s_ri/s_ma/…/h_db 是命名灾难），
+合并为一个公开方法**：
+
+- `data(parameter?, format?)` / Python `data(parameter=..., format=...)`：
+  返回扁平 f64；`parameter` ∈ S/Z/Y/G/H（规范 `#` 行全部文件域），
+  `format` ∈ RI/MA/DB；默认 `(S, RI)` = 零拷贝返回 `s` 本体（存储布局即 RI）。
+  词汇全是 core enum 反射，无字符串拼写风险；与构造器参数名 `data` 对称
+  （收数据、还数据同一个名字）。
+- 换算全部私有（`s_to_domain`/`to_ma`/`to_db`），外部只调方法、无需理解换算
+  ——访问器与换算是整体。
+- `s` 保留为快捷 property（skrf 兼容 + 主数据高频入口），即 `data()` 默认值。
+- MA/DB 返回实数对序列 (mag,deg)/(db,deg)，GUI 表格任意域/格式显示即调此一个
+  方法，不碰换算细节。
+- 存储仍只有 `s` 一份（铁律一布局不变），非默认组合每次现算。
+
+a/t 非文件参数域，属计算层，归 Network。skrf `Network` 的笛卡尔积分量衍生面
+（实证 `_generated_functions`：`PRIMARY_PROPERTIES × COMPONENT_FUNC_DICT` →
+`s_re`/`s_mag`/`s_db`/`s_deg`… 及时域量 `step_response` 等）仍归 Network
+计算层，不进 Touchstone——GUI 需要的分量在实数对里已齐（RI=re/im、
+MA=mag/deg、DB=db/deg）。分量命名在 Network 立项时进四端命名映射表。
 
 ### Network 侧的桥
 
@@ -218,6 +261,8 @@ Network 立项时进四端命名映射表。
   `(f, s, z0, name, comments)` 接过来构造 `Network`。
 - `Network` 公开面上 MUST NOT 出现 `read_touchstone` / `write_touchstone` /
   `from_string` / `zipped_touchstone`——文件知识全在 `Touchstone`。
+- 域换算不在 Network 重复造轮：Network 的 z/y 直接消费 `Touchstone` 的
+  `data('Z')`/`data('Y')`；Network 只保留计算层动词（级连/去嵌/时域等）。
 
 ## v1 不做清单（含理由）
 
@@ -319,4 +364,5 @@ netwave `touchstone.rs` 只定义：
 - `总体计划.md`：待决细节清单 I/O 条目销账；`fromTouchstone` 命名进
   四端命名映射表。
 - `openspec/specs/api-contract/spec.md`：随 Touchstone 核心 change 提 delta，
-  修订"Touchstone 文本解析 MUST 是模块级函数"条款。
+  修订"Touchstone 文本解析 MUST 是模块级函数"条款；统一访问器
+  `data(parameter, format)`（换算私有）的归属调整一并进 delta。
