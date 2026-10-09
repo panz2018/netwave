@@ -287,10 +287,9 @@ pub fn live_count() -> u32 {
 /// A frequency sweep: the in-memory data model's frequency axis.
 ///
 /// The core owns the sweep's `Vec<f64>` and reclaims it through `Drop`
-/// (RAII). The class is deliberately NOT exported from the package entry
-/// yet: the functional surface (`f`/`f_scaled`/`w`/`wavelength`/`Display`)
-/// is not complete, and a half-public class would violate ironclad rules
-/// 9/10.
+/// (RAII). The class is exported from all three package entries (Python
+/// pyclass, node napi, browser wasm + TS shell) with its functional surface
+/// (`f`/`f_scaled`/`w`/`wavelength`/`unit`/`copy`/`Display`) complete.
 ///
 /// # Memory contract
 ///
@@ -305,15 +304,13 @@ pub fn live_count() -> u32 {
 // The Rust type is plain (no binding attributes): the wasm/napi class
 // wrappers live in the glue crates, where each binding's macro decorates the
 // impl its own way (wasm_bindgen marks the impl block, napi marks each
-// method — they cannot share one cfg_attr'd impl). "Internalized" means the
-// TS shell does not re-export the class, not that it is uncompiled.
+// method — they cannot share one cfg_attr'd impl).
 pub struct Frequency {
     /// Frequency points in hertz (canonical storage unit, governance rule 1).
     f_hz: Vec<f64>,
     /// Display unit carried alongside the data. Read by the functional
-    /// accessors (`f_scaled`/`set_unit`), not yet by the memory surface,
-    /// hence the allow.
-    #[allow(dead_code)]
+    /// accessors (`f_scaled`/`set_unit`/`Display`); the master Hz axis is
+    /// never touched by it (governance rule 1).
     unit: FrequencyUnit,
     /// Set once [`Frequency::drop`] has run, so the later RAII `Drop`
     /// does not double-decrement [`LIVE`].
