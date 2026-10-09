@@ -19,6 +19,7 @@
 
 use num_complex::Complex64;
 
+pub mod constants;
 pub mod frequency;
 pub mod network;
 // Same guard as the wasm entries below: under `cargo clippy --workspace`

@@ -15,6 +15,21 @@ fn main() -> std::io::Result<()> {
     let path = std::path::Path::new(&out).join("core.bin");
     let mut f = std::fs::File::create(&path)?;
     f.write_all(bytes)?;
-    println!("dumped {}", std::fs::canonicalize(&path)?.display());
+    // λ↔f round-trip axis: f -> wavelength -> f,
+    // dumped so the four ends compare (native bit-exact, wasm within tol).
+    use netwave::frequency::{Frequency, FrequencyUnit, WavelengthUnit};
+    let f0 = Frequency::from_f(vec![1.0, 2.0, 5.0], FrequencyUnit::GHz);
+    let wl = f0.wavelength(WavelengthUnit::mm, 2.2).unwrap();
+    let back = Frequency::from_wavelength(wl, WavelengthUnit::mm, 2.2);
+    let axis = back.f().unwrap();
+    let fbytes: &[u8] =
+        unsafe { std::slice::from_raw_parts(axis.as_ptr() as *const u8, axis.len() * 8) };
+    let fpath = std::path::Path::new(&out).join("core_freq.bin");
+    std::fs::File::create(&fpath)?.write_all(fbytes)?;
+    println!(
+        "dumped {} {}",
+        std::fs::canonicalize(&path)?.display(),
+        std::fs::canonicalize(&fpath)?.display()
+    );
     Ok(())
 }

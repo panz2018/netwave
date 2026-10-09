@@ -46,6 +46,8 @@ pub use strum::IntoEnumIterator;
 pub enum Error {
     /// A unit string did not match any [`FrequencyUnit`] spelling.
     UnknownFrequencyUnit(String),
+    /// A unit string did not match any [`WavelengthUnit`] spelling.
+    UnknownWavelengthUnit(String),
 }
 
 impl std::fmt::Display for Error {
@@ -53,6 +55,9 @@ impl std::fmt::Display for Error {
         match self {
             Error::UnknownFrequencyUnit(input) => {
                 write!(f, "unknown frequency unit: {input:?}")
+            }
+            Error::UnknownWavelengthUnit(input) => {
+                write!(f, "unknown wavelength unit: {input:?}")
             }
         }
     }
@@ -152,6 +157,82 @@ impl FrequencyUnit {
     }
 }
 
+impl FromStr for WavelengthUnit {
+    type Err = Error;
+
+    /// Parse a wavelength unit name case-insensitively (`"MM"`/`"mm"` both
+    /// yield [`WavelengthUnit::mm`]). Hand-written over strum's `EnumString`
+    /// for the same reason as [`FrequencyUnit::from_str`]: the error must
+    /// carry the offending input, and the loop over `iter()` keeps the
+    /// vocabulary in the enum definition only.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        WavelengthUnit::iter()
+            .find(|u| u.as_ref().eq_ignore_ascii_case(s))
+            .ok_or_else(|| Error::UnknownWavelengthUnit(s.to_owned()))
+    }
+}
+
+/// A wavelength unit: SI prefix + metre.
+///
+/// Mirrors [`FrequencyUnit`] exactly (same reflection shape, same helper
+/// set). The variant name IS the canonical spelling; this enum is the only
+/// place a wavelength unit name appears. Scoped to the wavelength API and
+/// deliberately NOT named `LengthUnit` — in RF contexts "length" means
+/// transmission-line length, a different quantity.
+#[allow(non_camel_case_types)]
+#[cfg_attr(
+    feature = "pyo3-stub-gen",
+    gen_stub_pyclass_enum(module = "netwave._netwave")
+)]
+#[cfg_attr(all(feature = "python", not(coverage)), pyclass(skip_from_py_object))]
+#[cfg_attr(all(feature = "node", not(feature = "browser"), not(coverage)), napi)]
+#[cfg_attr(
+    all(feature = "browser", not(feature = "node"), not(coverage)),
+    wasm_bindgen
+)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, AsRefStr, EnumIter)]
+pub enum WavelengthUnit {
+    /// Metre, 10^0 — the canonical SI unit of wavelength.
+    m,
+    /// Centimetre, 10^-2.
+    cm,
+    /// Millimetre, 10^-3.
+    mm,
+    /// Micrometre, 10^-6.
+    um,
+    /// Nanometre, 10^-9.
+    nm,
+}
+
+impl WavelengthUnit {
+    /// Multiply a value expressed in this unit to obtain metres.
+    ///
+    /// The multiplier of an SI prefix is exactly 10^−n by definition (centi
+    /// 10^-2 … nano 10^-9); the decimal literals here are the nearest f64
+    /// and every comparison in the suite uses the same literal, so the
+    /// contract is bit-exact (ironclad rule 3). Internal helper: NOT
+    /// exposed to py/ts — bindings see names via reflection only.
+    ///
+    /// The `match` is exhaustive on purpose: adding a variant without a
+    /// multiplier fails to compile.
+    pub const fn multiplier(self) -> f64 {
+        match self {
+            WavelengthUnit::m => 1e0,
+            WavelengthUnit::cm => 1e-2,
+            WavelengthUnit::mm => 1e-3,
+            WavelengthUnit::um => 1e-6,
+            WavelengthUnit::nm => 1e-9,
+        }
+    }
+
+    /// Reconstruct a unit from its definition-order ordinal (0 = m, 1 = cm,
+    /// …). Same role as [`FrequencyUnit::from_ordinal`] at the JS boundary.
+    /// Internal helper: deliberately not exposed to py/ts.
+    pub fn from_ordinal(ordinal: u8) -> Option<Self> {
+        Self::iter().nth(ordinal as usize)
+    }
+}
+
 /// List every unit in canonical spelling, definition order.
 ///
 /// One-line passthrough of [`FrequencyUnit::iter`] mapped through `as_ref` —
@@ -240,14 +321,48 @@ pub struct Frequency {
 }
 
 impl Frequency {
-    /// Build a sweep from frequency points already in hertz.
+    /// Build a sweep from frequency points expressed in `unit`.
     ///
-    /// Takes ownership of `f_hz`; bumps [`LIVE`] (witness only).
-    pub fn from_f(f_hz: Vec<f64>, unit: FrequencyUnit) -> Self {
+    /// The input values are in `unit`; they are multiplied by
+    /// [`FrequencyUnit::multiplier`] and stored as f64 hertz (governance
+    /// rule 1: the master axis is always Hz). `unit` is kept as display
+    /// metadata (read by [`Frequency::f_scaled`]). Takes ownership of the
+    /// vector; bumps [`LIVE`] (witness only).
+    ///
+    /// This is the ONLY frequency constructor (scikit-rf shape: one
+    /// constructor whose `unit` describes the input). Points already in
+    /// hertz pass `FrequencyUnit::Hz` — its multiplier is exactly 1e0, so
+    /// the axis is stored bit-verbatim (the browser `copy` factory relies
+    /// on this). Changing the display unit afterwards is [`Frequency::
+    /// set_unit`], which never touches the master axis.
+    pub fn from_f(f_in_unit: Vec<f64>, unit: FrequencyUnit) -> Self {
+        let m = unit.multiplier();
+        LIVE.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        Self {
+            f_hz: f_in_unit.into_iter().map(|v| v * m).collect(),
+            unit,
+            dropped: false,
+        }
+    }
+
+    /// Build a sweep from wavelength points expressed in `wl_unit`, through
+    /// a medium of phase index `n`.
+    ///
+    /// `f = SPEED_OF_LIGHT / (n × λ)`, with λ first converted to metres via
+    /// [`WavelengthUnit::multiplier`]. `n` (phase index, n = c/v_p =
+    /// √ε_eff) is required by the API contract — defaulting to n=1 on a
+    /// medium is physically wrong, and a silent wrong beats a loud error.
+    /// The result is stored as f64 hertz (governance rule 1).
+    pub fn from_wavelength(wl_in_unit: Vec<f64>, wl_unit: WavelengthUnit, n: f64) -> Self {
+        let m = wl_unit.multiplier();
+        let f_hz = wl_in_unit
+            .into_iter()
+            .map(|wl| crate::constants::SPEED_OF_LIGHT / (n * (wl * m)))
+            .collect();
         LIVE.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
         Self {
             f_hz,
-            unit,
+            unit: FrequencyUnit::Hz,
             dropped: false,
         }
     }
@@ -261,6 +376,95 @@ impl Frequency {
             return Err(crate::Dropped);
         }
         Ok(self.f_hz.len())
+    }
+
+    /// The frequency axis in hertz, as a fresh `Vec<f64>` COPY.
+    ///
+    /// Copy, not a borrowed view: scikit-rf's `f` is a pure getter with no
+    /// setter (the axis is read-only, there is no write-back), so a copy is
+    /// the honest shape and keeps [`Frequency::drop`] able to free the
+    /// master data immediately (no live view can dangle). Mutating the
+    /// returned vector never touches core. Errors after `drop()`.
+    pub fn f(&self) -> Result<Vec<f64>, crate::Dropped> {
+        if self.dropped {
+            return Err(crate::Dropped);
+        }
+        Ok(self.f_hz.clone())
+    }
+
+    /// The frequency axis in the current display unit: `f / multiplier`.
+    ///
+    /// Derived on every call — never stored (api-contract: derived values
+    /// are not master data). Errors after `drop()`.
+    pub fn f_scaled(&self) -> Result<Vec<f64>, crate::Dropped> {
+        if self.dropped {
+            return Err(crate::Dropped);
+        }
+        let m = self.unit.multiplier();
+        Ok(self.f_hz.iter().map(|v| v / m).collect())
+    }
+
+    /// Angular frequency ω = 2πf (rad/s), derived on every call.
+    ///
+    /// Errors after `drop()`.
+    pub fn w(&self) -> Result<Vec<f64>, crate::Dropped> {
+        if self.dropped {
+            return Err(crate::Dropped);
+        }
+        let tau = std::f64::consts::TAU;
+        Ok(self.f_hz.iter().map(|v| tau * v).collect())
+    }
+
+    /// The display unit (getter returns the enum, not a string — ironclad
+    /// rule 10 deviation, filed in design.md: the gain is IDE vocabulary
+    /// checking + zero hand-copied name lists). Errors after `drop()`.
+    pub fn unit(&self) -> Result<FrequencyUnit, crate::Dropped> {
+        if self.dropped {
+            return Err(crate::Dropped);
+        }
+        Ok(self.unit)
+    }
+
+    /// Set the display unit. Only the metadata changes — the f64 Hz master
+    /// axis is untouched (governance rule 1).
+    pub fn set_unit(&mut self, unit: FrequencyUnit) {
+        self.unit = unit;
+    }
+
+    /// Wavelength λ = SPEED_OF_LIGHT / (n × f), expressed in `wl_unit`.
+    ///
+    /// `n` is the phase index (n = c/v_p = √ε_eff), required by the API
+    /// contract. A DC point (f = 0) yields `inf` (skrf/numpy semantics: DC
+    /// is a legal frequency, its wavelength is infinite), never NaN.
+    /// Errors after `drop()`.
+    pub fn wavelength(&self, wl_unit: WavelengthUnit, n: f64) -> Result<Vec<f64>, crate::Dropped> {
+        if self.dropped {
+            return Err(crate::Dropped);
+        }
+        let m = wl_unit.multiplier();
+        Ok(self
+            .f_hz
+            .iter()
+            .map(|f| crate::constants::SPEED_OF_LIGHT / (n * f) / m)
+            .collect())
+    }
+
+    /// An independent copy with the same axis and unit. Errors after
+    /// `drop()` (a dropped axis must not be cloned back to life).
+    ///
+    /// The copy is a live instance in its own right, so it bumps [`LIVE`]
+    /// exactly like [`Frequency::from_f`] — otherwise its RAII `Drop` would
+    /// decrement a count that was never incremented (witness corruption).
+    pub fn copy(&self) -> Result<Self, crate::Dropped> {
+        if self.dropped {
+            return Err(crate::Dropped);
+        }
+        LIVE.fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+        Ok(Self {
+            f_hz: self.f_hz.clone(),
+            unit: self.unit,
+            dropped: false,
+        })
     }
 
     /// Drop the sweep and decrement the witness exactly once. Idempotent: a
@@ -292,6 +496,46 @@ impl Drop for Frequency {
     }
 }
 
+/// Format an f64 the way Python's `str()` does for the display string:
+/// integral values keep one decimal (`1.0`, not `1`), so the cross-end
+/// display string matches scikit-rf character for character.
+fn fmt_axis_value(v: f64) -> String {
+    if v.is_finite() && v.fract() == 0.0 {
+        format!("{v:.1}")
+    } else {
+        format!("{v}")
+    }
+}
+
+/// The cross-end uniform display string: `Frequency(start-stop unit,
+/// N pts)` (start/stop in the current display unit), or
+/// `Frequency([no freqs])` for an empty axis. Single source (design.md
+/// D6): every binding's protocol hook delegates here (ironclad rule 9).
+impl std::fmt::Display for Frequency {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if self.f_hz.is_empty() {
+            return write!(f, "Frequency([no freqs])");
+        }
+        let m = self.unit.multiplier();
+        let start = fmt_axis_value(self.f_hz[0] / m);
+        let stop = fmt_axis_value(self.f_hz[self.f_hz.len() - 1] / m);
+        write!(
+            f,
+            "Frequency({start}-{stop} {}, {} pts)",
+            self.unit.as_ref(),
+            self.f_hz.len()
+        )
+    }
+}
+
+/// `Debug` emits the same string as `Display` (design.md D6: one display
+/// string, no second format to keep in sync).
+impl std::fmt::Debug for Frequency {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        std::fmt::Display::fmt(self, f)
+    }
+}
+
 // ---------------------------------------------------------------------------
 // Browser dispatch (cfg=browser): the worker forwards `{handle, method,
 // args}` to the single generic `resources::call`; this module owns the
@@ -302,9 +546,47 @@ impl Drop for Frequency {
 
 /// Instance dispatch: the numeric-handle half of the shell's `Frequency`.
 /// `drop` never reaches here — the dispatcher intercepts it.
+// Read a unit argument that is either a numeric enum ordinal or a string
+// (case-insensitive, core FromStr quotes the offending input). Inlined here
+// (not in resources.rs) so the generic dispatcher stays unit-agnostic.
+#[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
+fn js_freq_unit(v: &JsValue) -> Result<FrequencyUnit, JsValue> {
+    use std::str::FromStr;
+    if let Some(s) = v.as_string() {
+        return FrequencyUnit::from_str(&s).map_err(|e| crate::resources::js(e.to_string()));
+    }
+    let n = v
+        .as_f64()
+        .ok_or_else(|| crate::resources::js("unit must be a number or a string"))?
+        as u8;
+    FrequencyUnit::from_ordinal(n).ok_or_else(|| crate::resources::js("invalid unit ordinal"))
+}
+
+#[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
+fn js_wl_unit(v: &JsValue) -> Result<WavelengthUnit, JsValue> {
+    use std::str::FromStr;
+    if let Some(s) = v.as_string() {
+        return WavelengthUnit::from_str(&s).map_err(|e| crate::resources::js(e.to_string()));
+    }
+    let n = v
+        .as_f64()
+        .ok_or_else(|| crate::resources::js("unit must be a number or a string"))?
+        as u8;
+    WavelengthUnit::from_ordinal(n).ok_or_else(|| crate::resources::js("invalid unit ordinal"))
+}
+
+/// Wrap an owned f64 axis as a `Float64Array` for the worker reply. The
+/// worker's `postMessage` structured-clones it (a copy across the realm
+/// boundary — matching the `f` copy semantics; the wasm buffer is not
+/// transferred, so the high-water mark is the live-object peak, see docs).
+#[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
+fn f64_array(v: &[f64]) -> JsValue {
+    js_sys::Float64Array::from(v).into()
+}
+
 #[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
 impl crate::resources::Resource for Frequency {
-    fn call(&mut self, method: &str, _args: &[JsValue]) -> Result<JsValue, JsValue> {
+    fn call(&mut self, method: &str, args: &[JsValue]) -> Result<JsValue, JsValue> {
         use crate::resources::{js, unknown_method};
         match method {
             // Post-drop access errors here — core is the single source of
@@ -313,6 +595,48 @@ impl crate::resources::Resource for Frequency {
                 .npoints()
                 .map(|n| JsValue::from_f64(n as u32 as f64))
                 .map_err(|e| js(e.to_string())),
+            "f" => self
+                .f()
+                .map(|v| f64_array(&v))
+                .map_err(|e| js(e.to_string())),
+            "fScaled" => self
+                .f_scaled()
+                .map(|v| f64_array(&v))
+                .map_err(|e| js(e.to_string())),
+            "w" => self
+                .w()
+                .map(|v| f64_array(&v))
+                .map_err(|e| js(e.to_string())),
+            "unit" => self
+                .unit()
+                .map(|u| JsValue::from_f64(u as u32 as f64))
+                .map_err(|e| js(e.to_string())),
+            "setUnit" => {
+                let u = args
+                    .first()
+                    .map(js_freq_unit)
+                    .ok_or_else(|| js("unit argument required"))??;
+                self.set_unit(u);
+                Ok(JsValue::NULL)
+            }
+            "wavelength" => {
+                let wu = args
+                    .first()
+                    .map(js_wl_unit)
+                    .ok_or_else(|| js("wl_unit argument required"))??;
+                let n = args
+                    .get(1)
+                    .and_then(|v| v.as_f64())
+                    .ok_or_else(|| js("n must be a number"))?;
+                self.wavelength(wu, n)
+                    .map(|v| f64_array(&v))
+                    .map_err(|e| js(e.to_string()))
+            }
+            // `copy` is NOT dispatched here: it must allocate a NEW handle
+            // via `insert`, which re-locks the registry that instance
+            // dispatch already holds (std Mutex is not reentrant -> panic).
+            // `copy` is a factory, so it rides the namespace channel below.
+            "toString" => Ok(JsValue::from_str(&self.to_string())),
             _ => Err(unknown_method("frequency", method)),
         }
     }
@@ -324,15 +648,53 @@ impl crate::resources::Resource for Frequency {
 /// diagnostic namespace.
 #[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
 pub fn call_namespace(method: &str, args: &[JsValue]) -> Result<JsValue, JsValue> {
-    use crate::resources::{arg_f64_vec, arg_u32, insert, js, unknown_method};
+    use crate::resources::{arg_f64_vec, arg_u32, insert, instance_call, js, unknown_method};
     match method {
         // `unit` is a plain ordinal: the glue enum is numeric and the
         // feature-merge build must not put the enum in an FFI signature.
         "fromF" => {
             let view = arg_f64_vec(args, 0)?;
-            let unit = FrequencyUnit::from_ordinal(arg_u32(args, 1)? as u8)
-                .ok_or_else(|| js("invalid frequency unit ordinal"))?;
+            let unit = args
+                .get(1)
+                .map(js_freq_unit)
+                .ok_or_else(|| js("unit argument required"))??;
             let f = Frequency::from_f(view, unit);
+            Ok(JsValue::from_f64(insert(Box::new(f)) as f64))
+        }
+        "fromWavelength" => {
+            let view = arg_f64_vec(args, 0)?;
+            let wl_unit = args
+                .get(1)
+                .map(js_wl_unit)
+                .ok_or_else(|| js("wl_unit argument required"))??;
+            let n = args
+                .get(2)
+                .and_then(|v| v.as_f64())
+                .ok_or_else(|| js("n must be a number"))?;
+            let f = Frequency::from_wavelength(view, wl_unit, n);
+            Ok(JsValue::from_f64(insert(Box::new(f)) as f64))
+        }
+        // `copy` is a factory (it allocates a new handle), so it lives on
+        // the namespace channel: the axis + unit are read back through
+        // `instance_call` (each briefly locks and releases the registry),
+        // then re-hosted verbatim — never re-locked while held (the
+        // instance-dispatch path would deadlock here).
+        "copy" => {
+            let handle = arg_u32(args, 0)?;
+            let axis = instance_call(handle, "f", &[]).map_err(js)?;
+            let unit = instance_call(handle, "unit", &[]).map_err(js)?;
+            let arr = axis
+                .dyn_ref::<js_sys::Float64Array>()
+                .ok_or_else(|| js("expected Float64Array"))?;
+            let u = FrequencyUnit::from_ordinal(
+                unit.as_f64().ok_or_else(|| js("unit must be a number"))? as u8,
+            )
+            .ok_or_else(|| js("invalid unit ordinal"))?;
+            // The axis read back is Hz, so `from_f` with unit Hz stores it
+            // bit-verbatim (multiplier 1e0); the display unit is then set
+            // as metadata only.
+            let mut f = Frequency::from_f(arr.to_vec(), FrequencyUnit::Hz);
+            f.set_unit(u);
             Ok(JsValue::from_f64(insert(Box::new(f)) as f64))
         }
         "frequencyUnits" => {
