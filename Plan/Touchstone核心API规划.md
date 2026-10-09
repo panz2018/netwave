@@ -53,8 +53,13 @@
   （或传 `name` 由扩展名推）——纯数据行列数存在歧义（一行 10 个数可为
   1 频点×3 端口或 2 频点×2 端口），信息论上无法自推，必须有一个来源。
 - v1.0 与 v1.1 语法唯一差别是参考阻抗：1.0 的 `R` 仅标量、1.1 可每端口且可
-  复数；解析层归一成每端口数组即同时覆盖两版，成本极低。**建议 v1 同时支持
-  1.0+1.1**（只支持 1.0 反而要多写"检测到多 R 即报错"的拒绝逻辑）。
+  复数；解析层归一成每端口数组即同时覆盖两版，成本极低。**已定：v1 同时支持
+  1.0+1.1 的多 z0 与复数 z0**。
+- 普通数据构造器 `new Touchstone(...)` 必选：三入口只覆盖"已有文件/文本"，
+  计算结果拼 Touchstone 与纯数据写入都需要直接收 `(f, s, z0)` 的构造器
+  （对标三库，见「数据构造器」节）。
+- 频率轴规则：解析与构造均 MUST 校验严格单调递增，非单调/重复频点直接报错
+  （拒绝而非静默删行，见「频率轴规则」节）。
 - `Touchstone` 是主类：需随 Touchstone 核心 change 提交 api-contract spec
   delta，修订"无状态一次性变换（如 Touchstone 文本解析）MUST 是模块级函数"
   条款——`Touchstone` 归入"持有解析结果的状态类"。
@@ -85,6 +90,27 @@
 
 三入口构造即解析完成（对齐旧库"构造即解析"与 skrf `Network('x.s2p')`），
 不存在二段式 `load_file` / `read_touchstone` 动词。
+
+### 数据构造器（普通构造）
+
+`new Touchstone(f, s, z0, opts?)` / `Touchstone(f, s, z0, opts?)`：直接收
+计算结果拼成 Touchstone 对象——`f`（Hz 频率轴或 `Frequency` 实例）、`s`
+（交错 f64，shape 校验）、`z0`（标量或每端口），opts：`name`/`comments`/
+`version`/`parameter`/`format`（写出偏好，缺省 1.0/S/RI）。构造时校验：
+维度自洽（`len(f)×nports×nports == s.len()`）、频率严格单调递增，不过即报错。
+
+三库对标（实证）：
+
+- skrf：`Network.__init__` 不传 `file` 时走 kwargs 直收数据——
+  `Network(f=..., s=..., z0=...)`（docstring 原文 "directly from data"）；
+  另有 `Network.from_z(z, ...)` 等 alternate 构造器收非 S 参数。
+- SignalIntegrity：`SParameters.__init__(f, data, Z0=50.0, header=[])`
+  即纯数据构造器，文件解析在 App 层完成后喂进来。
+- rf-touchstone：无纯数据构造器（只有 fromText/fromFile/fromUrl），
+  用户只能先 writeContent 拼文本——netwave 的数据构造器是对旧库短板的补齐。
+
+写文件路径闭环：内存数据 → `new Touchstone(...)` → `writeFile(path)` /
+`writeTouchstone()`；或已解析对象改完再写。
 
 ### 写出
 
@@ -121,17 +147,46 @@
 - 铁律十一（绑定薄壳）：fetch 调用写在 core 源码内，cfg 分后端——
   browser feature 用 `web_sys::fetch` + `wasm_bindgen_futures`（返回 Promise），
   node 走 napi AsyncTask，Python 阻塞 + `allow_threads`。壳零改动。
-- 原生端 HTTP 客户端选型（reqwest / ureq / 不引入依赖只支持 file:）
-  在 Touchstone 核心 design.md 定案。
+- 浏览器端不引入任何 Rust HTTP 库：`web_sys::fetch` 就是浏览器原生 fetch 的
+  thin binding（JS 侧无新依赖），这是 wasm 端唯一正路。
+- 原生端 HTTP 客户端分析（crates.io 实时 API 在本环境被 403 拦截，下载量按
+  crates.io 公开常识排序，落地前复核）：
+
+  | 库                | 使用量                            | 适配 netwave 否 | 理由                                                                                                                                                                 |
+  | ----------------- | --------------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `reqwest`         | crates.io HTTP 类第一（事实标准） | **推荐**        | 异步 tokio 原生——与 napi AsyncTask 同构；HTTPS（rustls）纯 Rust 不依赖系统 OpenSSL，交叉编译友好（CI 已有 aarch64/wasm 多目标）；支持流式 body，接 memmap 式分块解析 |
+  | `ureq`            | 第二梯队                          | 备选            | 同步阻塞、依赖极少，但无 async——node 端 AsyncTask 里包同步请求可行但浪费；HTTPS 同样走 rustls                                                                        |
+  | `hyper`           | 底层库                            | 不选            | 太底层，要自己拼 TLS/连接池/重定向，违背简洁优先                                                                                                                     |
+  | `curl`/`isahc` 等 | —                                 | 不选            | 引系统依赖或生态小，交叉编译坑多                                                                                                                                     |
+
+  代价声明：reqwest 拖 tokio 进依赖树——python/浏览器 feature 不编译它
+  （cfg 门控到 native+url feature），wasm 产物零影响。
+
 - 浏览器 CORS/COOP-COEP 失败原样抛错，库不吞不重试；文档声明这层差异。
 - 落地后销账：总体计划「待决细节清单」中"网络/文件 I/O 归属与异步边界"
   条目由本规划 + design.md 承接。
 
+## 频率轴规则（三库对标 + 推荐）
+
+- 标准原文（v2.1 规范）：网络参数数据 "shall be arranged in increasing order
+  of frequency"——**标准本身要求递增**。
+- skrf：不拒绝——检测到非单调/重复频点只发 `InvalidFrequencyWarning`，
+  提供 `drop_non_monotonic_increasing()` 让用户手动删掉坏行（实证
+  `frequency.py`）。
+- SignalIntegrity：无显式校验（实证：FrequencyList 无 sort/monotonic 检查）。
+- rf-touchstone：无显式校验（`validate()` 只查维度不查频率序）。
+- **netwave 推荐：解析与构造均严格单调递增校验，违规直接报错**。
+  理由：① 标准原文就是 shall increasing，拒绝=守标准；② skrf 的"警告+手动删"
+  把烂数据问题推给用户的后续计算（插值/IFFT 遇到乱序轴结果静默错）；
+  ③ 报错实现最便宜（解析循环里一个比较），静默排序则篡改用户数据不可接受；
+  ④ 错误三端映射进既有 PyErr/napi Error/throw 机制，无新面。
+  若日后真实用户文件确有乱序需求，再加显式 opt-in `sort_frequencies()` 动词。
+
 ## 待决
 
-- [ ] 频率轴非单调/重复频点拒绝规则（总体计划待决清单已登记，归本项）。
-- [ ] 原生端 HTTP 客户端选型（见 I/O 归属节）。
-- [ ] v1 是否同时支持 1.0+1.1（建议是，见已定裁决），待最终确认。
+- [ ] 原生端 HTTP 客户端最终确认（推荐 reqwest，见 I/O 归属节分析）。
+- [ ] 数据构造器参数形态：位置参数 `(f, s, z0)` vs options 对象，design.md
+      定稿（Python 侧 kwargs 天然兼容两者）。
 
 ## 波及文档（落地时同步改）
 
