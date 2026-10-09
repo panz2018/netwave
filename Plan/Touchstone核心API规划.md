@@ -79,6 +79,26 @@
   派生量，双入口必漂移）；**无 `rRef` 选项**
   （skrf 的 `r_ref` 是写出时覆盖参考电阻用，与 `z0` 冗余——`z0` 是唯一权威，
   要改参考阻抗就改对象再写出）。
+- **写出文件名规则（扩展名永远由 nports 说了算）**：落盘文件名 =
+  去扩展名后的 basename + `.sNp`（`N` = 真实 `nports`，私有 `file_name()`
+  拼，业务规则归 core 不进壳）——用户传的扩展名不管对不对（`.s2p` 写成
+  `.s3p`）一律剥掉重拼，文件名里的 n 写错在机制上不可能发生。
+  `path` 分端语义：**原生端必填**（至少要知道保存目录；可传目录、
+  目录+文件名、目录+文件名+扩展名三种形态）；**浏览器端可选**（无目录概念；
+  空 = 用内部 `name` + `nports` 拼默认名，非空 = 取 basename 去扩展名重拼）。
+  `writeTouchstone` 返回值**不改**（纯文本渲染器，单独调用时用户要的
+  就是文本）；浏览器端 worker 响应一次性带回 `{text, fileName}` 避免二次往返。
+- **I/O 异步边界（各端用各端原生并发机制，不强求签名统一）**：
+  node MUST async（Promise + napi AsyncTask，事件循环不可阻塞）；
+  Python 保持同步 + `allow_threads` 放 GIL（等 NAS 时其他 Python 线程照跑，
+  无需把用户拖进 asyncio）；Rust core 同步 `std::fs`，调用方要并发自己
+  `spawn_blocking`；浏览器端 writeFile/fromFile 必 async（跨线程通信无法
+  同步阻塞主线程，平台物理差异非设计选择）。`writeFile`/`fromFile`/
+  `fromUrl` 同此规则。
+- **不设 `format` 属性**（修正早前裁决）：format 只在解析文本（按文件 `#` 行
+  换算入库）与写出参数（`writeTouchstone(parameter, format)` 必填）两个时刻
+  有意义，都不是对象状态，不存不暴露；enum `TouchstoneFormat` 保留（两处
+  文本边界仍用其词汇）。
 - MA/DB 语义钉死（五源交叉验证，无歧义）：角度恒**度**（规范原文 "All
   angles are measured in degrees"）。dB = **20×log₁₀(幅度)**，五源一致：
   规范 "decibel = 20 × log10 magnitude"；skrf `complex_2_db` = 20log₁₀|z|
@@ -157,18 +177,17 @@
 | `comments`                  | `!` 注释合并文本                                                                                                                                                                                  | skrf `Network.comments`                                                                                       |
 | `version`                   | `"1.0"` / `"1.1"`（字符串，未来 2.0/2.1 直接扩值不改类型）                                                                                                                                        | skrf `Touchstone.version` 裸 str（Network 无，借 Touchstone 名）                                              |
 | `parameter`                 | 文件记录的参数类型 S/Y/Z/G/H（G/H 仅 2 端口）                                                                                                                                                     | skrf `Touchstone.parameter`；旧库功能覆盖                                                                     |
-| `format`                    | 文件数值格式 RI/MA/DB                                                                                                                                                                             | skrf `Touchstone.format`                                                                                      |
 | `data(parameter?, format?)` | 统一数据访问器：S/Z/Y/G/H × RI/MA/DB 全组合；RI = `(nfreq, nports, nports)` 复数，MA/DB = 同形状 +2 维实数对（mag,deg / db,deg），与 `s` 对称；默认 `(S, RI)` 零拷贝返回 `s` 本体；其余现算不缓存 | 20 组合不拆 20 属性；skrf `get_sparameter_data(format)` 同法（io/touchstone.py:775）；GUI 表格任意域/格式显示 |
 
 ### 静态函数（全部，无遗漏）
 
-| 方法                                           | 语义                                                                                                            |
-| ---------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
-| `fromText(text, nports?, name?)` / `from_text` | 解析字符串（对齐 skrf `Network.from_string`）；无 `name` 扩展名可推时 `nports` 必填（见已定裁决）               |
-| `fromFile(path)` / `from_file`                 | 原生端 std::fs/memmap2 流式（铁律六）；浏览器收 `File`/`Blob`                                                   |
-| `fromUrl(url)` / `from_url`                    | async；浏览器 = core 内 cfg 门控 `web_sys::fetch`，原生端已选 reqwest                                           |
-| `nportsFromName(name)` / `nports_from_name`    | `.sNp` 扩展名抠端口数（覆盖旧库公开静态 `parsePorts`）；三工厂内部共用；匹配不到**直接报错**并指引显式传 nports |
-| `nameFromPath(path)` / `name_from_path`        | 路径/URL → 无扩展名文件名（覆盖旧库公开静态 `getFilename`/`getBasename`）                                       |
+| 方法                                           | 语义                                                                                                                                                                                                                                                                                                                                  |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fromText(text, nports?, name?)` / `from_text` | 解析字符串（对齐 skrf `Network.from_string`）；无 `name` 扩展名可推时 `nports` 必填（见已定裁决）                                                                                                                                                                                                                                     |
+| `fromFile(path)` / `from_file`                 | 分端签名（.d.ts 本就分端生成）：原生端收 `path`，core 内 std::fs/memmap2 流式（铁律六），node async / Python 同步放 GIL；**浏览器端 = TS 壳 `fromFile(file: File)`**（与 writeFile 同构，wasm core 无此动词）：壳 `await file.arrayBuffer()` → 字节 **transfer** 进 worker（零拷贝移动，实证 `index.browser.ts` 既有机制）→ core 解析 |
+| `fromUrl(url)` / `from_url`                    | async；浏览器 = core 内 cfg 门控 `web_sys::fetch`，原生端已选 reqwest                                                                                                                                                                                                                                                                 |
+| `nportsFromName(name)` / `nports_from_name`    | `.sNp` 扩展名抠端口数（覆盖旧库公开静态 `parsePorts`）；三工厂内部共用；匹配不到**直接报错**并指引显式传 nports                                                                                                                                                                                                                       |
+| `nameFromPath(path)` / `name_from_path`        | 路径/URL → 无扩展名文件名（覆盖旧库公开静态 `getFilename`/`getBasename`）                                                                                                                                                                                                                                                             |
 
 三入口构造即解析完成（对齐旧库"构造即解析"与 skrf `Network('x.s2p')`），
 不存在二段式 `load_file` / `read_touchstone` 动词。
@@ -232,11 +251,11 @@ enum 反射（跨端词汇零手抄），无字符串拼写风险。skrf 的 `fr
 
 ### 写出
 
-| 方法                                                      | 语义                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
-| --------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `writeTouchstone(parameter, format)` / `write_touchstone` | 吐 Touchstone 文本；全平铺必填 `parameter`(S/Y/Z/G/H)、`format`(RI/MA/DB)，与构造器对称。无 `version`（z0 推导；skrf 有 `version` 参，netwave 刻意不收，见已定裁决）、无 `rRef`（`z0` 唯一权威）。shortest-roundtrip，写出→读回 bit 级一致（测试规划已定）。三库写出名：skrf `write_touchstone`、SI `Text`/`WriteToFile`、旧库 `writeContent`——本名对齐 skrf                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
-| `writeFile(path, parameter, format)` / `write_file`       | 三端用户 API 面都有，但**实现分层不同**：原生端（Rust/Python/node）= core 内 std::fs 落盘，`writeFile` 编译进原生 crate（cfg 门控 native）；**浏览器 wasm core 不导出 `writeFile`**（浏览器无文件系统），该动词只存在于 TS 壳层。**浏览器端真实流程**（wasm 只在常驻 worker 内，主线程无 wasm，memory-lifecycle spec 既定）：① 主线程壳 `writeFile` 发既有 worker 消息 `{id, handle, method: "writeTouchstone", args: [parameter, format]}`；② worker 内 wasm core 执行 `writeTouchstone` 渲染出文本（文本渲染 100% 在 core，铁律十一不破）；③ worker `postMessage({id, result: text})` 把文本结构化克隆回主线程（字符串拷贝，非主数据，量级小）；④ 主线程壳拿文本做 `new Blob([text])` + `URL.createObjectURL` + `<a download>` 触发下载——纯平台 I/O 胶，正是壳层的职责，不复制任何业务逻辑（实证旧库同法：`writeContent()` 返回文本、落盘归调用方）。下载文件名 = `path` 的 basename（`path` 必填且自带文件名，零额外往返；**不需要**向 worker 另取 `name`/`nports` 拼名——`name.sNp` 式默认名只在 `path` 可选时才需要，而 `path` 必填） |
-| `drop()` / `drop`                                         | 统一释放动词（已定案，见 memory-lifecycle spec）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| 方法                                                      | 语义                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `writeTouchstone(parameter, format)` / `write_touchstone` | 吐 Touchstone 文本；全平铺必填 `parameter`(S/Y/Z/G/H)、`format`(RI/MA/DB)，与构造器对称。无 `version`（z0 推导；skrf 有 `version` 参，netwave 刻意不收，见已定裁决）、无 `rRef`（`z0` 唯一权威）。shortest-roundtrip，写出→读回 bit 级一致（测试规划已定）。三库写出名：skrf `write_touchstone`、SI `Text`/`WriteToFile`、旧库 `writeContent`——本名对齐 skrf                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| `writeFile(path, parameter, format)` / `write_file`       | 三端用户 API 面都有，但**实现分层不同**：原生端（Rust/Python/node）= core 内 std::fs 落盘，`writeFile` 编译进原生 crate（cfg 门控 native），node async / Python 同步放 GIL / Rust 同步；**浏览器 wasm core 不导出 `writeFile`**（浏览器无文件系统），该动词只存在于 TS 壳层（async）。**`path` 分端语义**：原生端必填（目录 / 目录+名 / 目录+名+扩展名三形态）；浏览器端可选（空 = 默认名）。**文件名永远正确**：落盘名 = 去扩展名 basename + `.sNp`（N = 真实 nports，私有 `file_name()` 拼，规则归 core），用户扩展名写错一律剥掉重拼。**浏览器端真实流程**（wasm 只在常驻 worker 内，主线程无 wasm，memory-lifecycle spec 既定）：① 主线程壳 `writeFile` 发既有 worker 消息 `{id, handle, method: "writeFile", args: [path?, parameter, format]}`（`writeFile` 是 core 内部分发臂，非 wasm 公开导出）；② worker 内 wasm core 执行 `writeTouchstone(parameter, format)` 渲染文本 + `file_name(path)` 定名（文本与命名 100% 在 core，铁律十一不破）；③ worker `postMessage({id, result: {text, fileName}})` 结构化克隆回主线程（字符串不可 transfer，克隆一次；峰值 ×2 只在下载触发前那一刻，之后主线程份 GC 自然回落）；④ 主线程壳 `new Blob([text])` + `URL.createObjectURL` + `<a download=fileName>` 触发下载——纯平台 I/O 胶，不复制业务逻辑（实证旧库同法：`writeContent()` 返回文本、落盘归调用方） |
+| `drop()` / `drop`                                         | 统一释放动词（已定案，见 memory-lifecycle spec）                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 
 ### 属性承载字段（core `Touchstone` struct——公开属性的后端存储）
 
@@ -253,10 +272,10 @@ Rust 字段级私有，但每个字段都有上表公开 property 对应——�
 | `comments`  | `String`           | `!` 注释合并文本                          |
 | `version`   | `bool`（是否 1.1） | 解析自文件记录；数据构造时由 `z0` 推导    |
 | `parameter` | enum（S/Y/Z/G/H）  | 文件原始参数类型，仅元数据                |
-| `format`    | enum（RI/MA/DB）   | 写出默认格式偏好                          |
 
 不存：频率单位（在 `Frequency.unit`）、频点数（`frequency.npoints`）、
-噪声（v1 不支持）、resistance/reference 原始值（已归一进 `z0`）。
+噪声（v1 不支持）、resistance/reference 原始值（已归一进 `z0`）、
+format（只在文本边界有意义，非对象状态，见已定裁决）。
 浏览器端：以上状态全在常驻 worker 内 core，主线程壳持 handle
 （memory-lifecycle spec 既定机制，非本类新增）。
 
@@ -270,19 +289,19 @@ Rust 字段级私有，但每个字段都有上表公开 property 对应——�
 类私有——因为统一访问器 `data(parameter, format)` 是本类唯一公开数据面
 （合并原则），换算知识不外泄。
 
-| 函数                | 职责                                                                               |
-| ------------------- | ---------------------------------------------------------------------------------- |
-| `parse_text`        | 逐行解析主循环（fromText/fromFile/fromUrl 共用）                                   |
-| `parse_option_line` | `#` 行：单位/参数域/格式/R（标量或每端口，归一进 z0）                              |
-| `parse_data_line`   | 数据行 → 复数（按 format 换算；RI/MA/DB 三分支）                                   |
-| `skip_noise_lines`  | 2 端口尾部噪声行识别并静默跳过（已定裁决）                                         |
-| `sort_and_check_f`  | 乱序排序入库；重复频点报错                                                         |
-| `convert_to_s`      | Y/Z/G/H → S 换算（构造器与解析器共用，唯一实现）                                   |
-| `s_to_domain`       | S → Z/Y/G/H 换算（`z`/`y`/`g`/`h` 快捷属性与 `data('Z'/'Y'/'G'/'H', …)` 共用后端） |
-| `to_ma` / `to_db`   | 复数 → (mag,deg)/(db,deg) 实数对（`data(…, 'MA'/'DB')` 后端；RI 即存储布局）       |
-| `infer_version`     | 由 z0 推导 1.0/1.1（全端口同实数→1.0）                                             |
-| `format_number`     | shortest-roundtrip 数字格式化（写出 bit 级一致）                                   |
-| `render_text`       | 写出文本拼装（writeTouchstone 内部）                                               |
+| 函数                | 职责                                                                                                                        |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `parse_text`        | 逐行解析主循环（fromText/fromFile/fromUrl 共用）                                                                            |
+| `parse_option_line` | `#` 行：单位/参数域/格式/R（标量或每端口，归一进 z0）                                                                       |
+| `parse_data_line`   | 数据行 → 复数（按 format 换算；RI/MA/DB 三分支）                                                                            |
+| `skip_noise_lines`  | 2 端口尾部噪声行识别并静默跳过（已定裁决）                                                                                  |
+| `sort_and_check_f`  | 乱序排序入库；重复频点报错                                                                                                  |
+| `convert_to_s`      | Y/Z/G/H → S 换算（构造器与解析器共用，唯一实现）                                                                            |
+| `s_to_domain`       | S → Z/Y/G/H 换算（`z`/`y`/`g`/`h` 快捷属性与 `data('Z'/'Y'/'G'/'H', …)` 共用后端）                                          |
+| `to_ma` / `to_db`   | 复数 → (mag,deg)/(db,deg) 实数对（`data(…, 'MA'/'DB')` 后端；RI 即存储布局）                                                |
+| `infer_version`     | 由 z0 推导 1.0/1.1（全端口同实数→1.0）                                                                                      |
+| `file_name`         | 落盘/下载文件名：去扩展名 basename + `.sNp`（N = 真实 nports，写错扩展名剥掉重拼）；原生 writeFile 与浏览器 worker 响应共用 |
+| `render_text`       | 写出文本拼装（writeTouchstone 内部）                                                                                        |
 
 抠端口数不入私有件——升为公开静态 `nportsFromName`（见「静态函数」节）。
 
@@ -426,16 +445,16 @@ netwave `touchstone.rs` 只定义：
 
 ## 三库命名对照（netwave vs skrf vs SI vs 旧库）
 
-| netwave                             | skrf                          | SI                   | 旧库 RF-Touchstone                       | 差异说明                         |
-| ----------------------------------- | ----------------------------- | -------------------- | ---------------------------------------- | -------------------------------- |
-| `s`/`z`/`y`/`g`/`h`                 | 同名（`Network` 公开属性）    | 无（`m_d` 内部）     | `data` 单一                              | netwave 对齐 skrf                |
-| `f`/`z0`/`nports`/`name`/`comments` | 同名（`Network`）             | `f`/`Z0`             | `frequency`/`ports`                      | netwave 对齐 skrf                |
-| `version`/`parameter`/`format`      | `Touchstone` 同名             | 无                   | `format`                                 | netwave 借 skrf `Touchstone`     |
-| `data(parameter, format)`           | `get_sparameter_data(format)` | `Text(formatString)` | `writeContent()`                         | 同法不同名，对齐旧库功能         |
-| `fromText`/`fromFile`/`fromUrl`     | `from_string`/构造器收路径    | `SParametersParser`  | `fromText`/`fromFile`/`fromUrl`          | netwave 同旧库名                 |
-| `writeTouchstone`/`writeFile`       | `write_touchstone`            | `WriteToFile`        | 无 `writeFile`（仅 `writeContent`）      | netwave 拆文本/落盘两动词        |
-| `nportsFromName`/`nameFromPath`     | 无（内联 `_parse_file`）      | 无                   | `parsePorts`/`getFilename`/`getBasename` | netwave 同旧库拆法               |
-| `drop()`                            | 无                            | 无                   | 无                                       | netwave 自有（memory-lifecycle） |
+| netwave                             | skrf                          | SI                   | 旧库 RF-Touchstone                       | 差异说明                                                       |
+| ----------------------------------- | ----------------------------- | -------------------- | ---------------------------------------- | -------------------------------------------------------------- |
+| `s`/`z`/`y`/`g`/`h`                 | 同名（`Network` 公开属性）    | 无（`m_d` 内部）     | `data` 单一                              | netwave 对齐 skrf                                              |
+| `f`/`z0`/`nports`/`name`/`comments` | 同名（`Network`）             | `f`/`Z0`             | `frequency`/`ports`                      | netwave 对齐 skrf                                              |
+| `version`/`parameter`               | `Touchstone` 同名             | 无                   | `format`                                 | netwave 借 skrf `Touchstone`；不设 `format` 属性（见已定裁决） |
+| `data(parameter, format)`           | `get_sparameter_data(format)` | `Text(formatString)` | `writeContent()`                         | 同法不同名，对齐旧库功能                                       |
+| `fromText`/`fromFile`/`fromUrl`     | `from_string`/构造器收路径    | `SParametersParser`  | `fromText`/`fromFile`/`fromUrl`          | netwave 同旧库名                                               |
+| `writeTouchstone`/`writeFile`       | `write_touchstone`            | `WriteToFile`        | 无 `writeFile`（仅 `writeContent`）      | netwave 拆文本/落盘两动词                                      |
+| `nportsFromName`/`nameFromPath`     | 无（内联 `_parse_file`）      | 无                   | `parsePorts`/`getFilename`/`getBasename` | netwave 同旧库拆法                                             |
+| `drop()`                            | 无                            | 无                   | 无                                       | netwave 自有（memory-lifecycle）                               |
 
 ## 内部命名备注
 
