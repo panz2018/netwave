@@ -58,8 +58,13 @@
 - 普通数据构造器 `new Touchstone(...)` 必选：三入口只覆盖"已有文件/文本"，
   计算结果拼 Touchstone 与纯数据写入都需要直接收 `(f, s, z0)` 的构造器
   （对标三库，见「数据构造器」节）。
-- 频率轴规则：解析与构造均 MUST 校验严格单调递增，非单调/重复频点直接报错
-  （拒绝而非静默删行，见「频率轴规则」节）。
+- 频率轴规则：**重复频点直接报错**（同频两值无法取舍，真歧义）；
+  **乱序（忽高忽低）可接受，内部静默排序成递增存储**，不报错不 warning——
+  排序是确定性操作，软件一行解决，不把工具能做的事推给用户
+  （见「频率轴规则」节）。
+- 非 S 参数数据入口：公开 `fromZ`/`fromY`/`fromG`/`fromH` 静态工厂（对齐 skrf
+  `Network.from_z`/`from_y` 命名），用户只有 Z/Y/G/H 数据时直接构造，
+  换算成 S 在 core 内完成（见「数据构造器」节）。
 - `Touchstone` 是主类：需随 Touchstone 核心 change 提交 api-contract spec
   delta，修订"无状态一次性变换（如 Touchstone 文本解析）MUST 是模块级函数"
   条款——`Touchstone` 归入"持有解析结果的状态类"。
@@ -97,7 +102,13 @@
 计算结果拼成 Touchstone 对象——`f`（Hz 频率轴或 `Frequency` 实例）、`s`
 （交错 f64，shape 校验）、`z0`（标量或每端口），opts：`name`/`comments`/
 `version`/`parameter`/`format`（写出偏好，缺省 1.0/S/RI）。构造时校验：
-维度自洽（`len(f)×nports×nports == s.len()`）、频率严格单调递增，不过即报错。
+维度自洽（`len(f)×nports×nports == s.len()`）、频点无重复（乱序则内部排序）。
+
+非 S 参数静态工厂：`fromZ(f, z, z0, opts?)` / `fromY(...)` / `fromG(...)` /
+`fromH(...)`（Python `from_z`/`from_y`/`from_g`/`from_h`，对齐 skrf
+`Network.from_z`/`from_y` 惯例）：用户只有 Z/Y/G/H 数据时直接构造，
+core 内换算成 S 后存储——换算函数本就是解析 Y/Z/G/H 文件的既有件，零新增数学。
+G/H 仅 2 端口（标准限制）。
 
 三库对标（实证）：
 
@@ -119,6 +130,25 @@
 | `writeTouchstone(opts?)` / `write_touchstone` | 吐 Touchstone 文本；选项：`form`(RI/MA/DB)、`parameter`(S/Y/Z/G/H)、`version`(1.0/1.1)、`rRef`。默认 shortest-roundtrip，写出→读回 bit 级一致（测试规划已定）。skrf `Network.write_touchstone` 整体下沉至此 |
 | `writeFile(path, opts?)` / `write_file`       | 原生端写文件；浏览器拿 `writeTouchstone` 文本自行落盘                                                                                                                                                       |
 | `drop()` / `drop`                             | 统一释放动词（已定案，见 memory-lifecycle spec）                                                                                                                                                            |
+
+### 内部状态（私有，core `Touchstone` struct）
+
+| 字段        | 类型                  | 说明                                   |
+| ----------- | --------------------- | -------------------------------------- |
+| `frequency` | `Frequency` 实例      | 频率轴唯一权威（Hz，递增存储）         |
+| `s`         | 交错复数扁平 f64      | 唯一主数据，`(nfreq, nports, nports)`  |
+| `z0`        | 每端口复数数组        | `#` 行 `R` 归一后的唯一权威            |
+| `nports`    | `u32`                 | 端口数（冗余自 z0 长度，热路径免间接） |
+| `name`      | `Option<String>`      | 文件/URL 名（无扩展名）                |
+| `comments`  | `String`              | `!` 注释合并文本                       |
+| `version`   | enum（`V1_0`/`V1_1`） | 写出时决定 `R` 能否每端口              |
+| `parameter` | enum（S/Y/Z/G/H）     | 文件原始参数类型，仅元数据             |
+| `format`    | enum（RI/MA/DB）      | 写出默认格式偏好                       |
+
+不存：频率单位（在 `Frequency.unit`）、频点数（`frequency.npoints`）、
+噪声（v1 不支持）、resistance/reference 原始值（已归一进 `z0`）。
+浏览器端：以上状态全在常驻 worker 内 core，主线程壳持 handle
+（memory-lifecycle spec 既定机制，非本类新增）。
 
 ### Network 侧的桥
 
@@ -149,24 +179,26 @@
   node 走 napi AsyncTask，Python 阻塞 + `allow_threads`。壳零改动。
 - 浏览器端不引入任何 Rust HTTP 库：`web_sys::fetch` 就是浏览器原生 fetch 的
   thin binding（JS 侧无新依赖），这是 wasm 端唯一正路。
-- 原生端 HTTP 客户端分析（crates.io 实时 API 在本环境被 403 拦截，下载量按
-  crates.io 公开常识排序，落地前复核）：
+- 原生端 HTTP 客户端分析（crates.io API 实测下载量，总下载/近期）：
 
-  | 库                | 使用量                            | 适配 netwave 否 | 理由                                                                                                                                                                 |
-  | ----------------- | --------------------------------- | --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-  | `reqwest`         | crates.io HTTP 类第一（事实标准） | **推荐**        | 异步 tokio 原生——与 napi AsyncTask 同构；HTTPS（rustls）纯 Rust 不依赖系统 OpenSSL，交叉编译友好（CI 已有 aarch64/wasm 多目标）；支持流式 body，接 memmap 式分块解析 |
-  | `ureq`            | 第二梯队                          | 备选            | 同步阻塞、依赖极少，但无 async——node 端 AsyncTask 里包同步请求可行但浪费；HTTPS 同样走 rustls                                                                        |
-  | `hyper`           | 底层库                            | 不选            | 太底层，要自己拼 TLS/连接池/重定向，违背简洁优先                                                                                                                     |
-  | `curl`/`isahc` 等 | —                                 | 不选            | 引系统依赖或生态小，交叉编译坑多                                                                                                                                     |
+  | 库        | 总下载  | 近期下载 | 适配 netwave 否 | 理由                                                                                                                                       |
+  | --------- | ------- | -------- | --------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+  | `hyper`   | 9.9 亿  | 2.3 亿   | 不选            | 下载量第一但是底层库，要自己拼 TLS/连接池/重定向，违背简洁优先                                                                             |
+  | `reqwest` | 7.8 亿  | 2.1 亿   | **推荐**        | 高层客户端事实标准；异步 tokio 与 napi AsyncTask 同构；HTTPS 走纯 Rust rustls 不依赖系统 OpenSSL，交叉编译友好（CI 多目标）；支持流式 body |
+  | `ureq`    | 2.2 亿  | 0.7 亿   | 备选            | 同步阻塞、依赖极少；无 async，node 端 AsyncTask 包同步请求可行但浪费                                                                       |
+  | `isahc`   | 0.18 亿 | 0.012 亿 | 不选            | 引 libcurl 系统依赖，交叉编译坑多                                                                                                          |
+  | `awc`     | 0.13 亿 | 0.010 亿 | 不选            | actix 生态绑定，为它拖整个 runtime 不值                                                                                                    |
+  | `surf`    | 0.05 亿 | 0.005 亿 | 不选            | 生态小且维护停滞                                                                                                                           |
 
-  代价声明：reqwest 拖 tokio 进依赖树——python/浏览器 feature 不编译它
-  （cfg 门控到 native+url feature），wasm 产物零影响。
+  代价声明：reqwest 拖 tokio 进依赖树，影响的是 **Python 与 node 两个原生产物**
+  （tokio 链进 .so/.node，用户无感，仅体积增大）；浏览器 wasm 产物 cfg 门控
+  不编译 reqwest，走 `web_sys::fetch`，零影响。
 
 - 浏览器 CORS/COOP-COEP 失败原样抛错，库不吞不重试；文档声明这层差异。
 - 落地后销账：总体计划「待决细节清单」中"网络/文件 I/O 归属与异步边界"
   条目由本规划 + design.md 承接。
 
-## 频率轴规则（三库对标 + 推荐）
+## 频率轴规则（三库对标 + 已定）
 
 - 标准原文（v2.1 规范）：网络参数数据 "shall be arranged in increasing order
   of frequency"——**标准本身要求递增**。
@@ -175,16 +207,15 @@
   `frequency.py`）。
 - SignalIntegrity：无显式校验（实证：FrequencyList 无 sort/monotonic 检查）。
 - rf-touchstone：无显式校验（`validate()` 只查维度不查频率序）。
-- **netwave 推荐：解析与构造均严格单调递增校验，违规直接报错**。
-  理由：① 标准原文就是 shall increasing，拒绝=守标准；② skrf 的"警告+手动删"
-  把烂数据问题推给用户的后续计算（插值/IFFT 遇到乱序轴结果静默错）；
-  ③ 报错实现最便宜（解析循环里一个比较），静默排序则篡改用户数据不可接受；
-  ④ 错误三端映射进既有 PyErr/napi Error/throw 机制，无新面。
-  若日后真实用户文件确有乱序需求，再加显式 opt-in `sort_frequencies()` 动词。
+- **netwave 已定：重复频点报错；乱序静默排序成递增存储**。
+  理由：① 重复频点是真歧义（同频两个值取哪个，无法替用户决定）→报错；
+  ② 乱序无歧义，排序是确定性操作，标准写的 increasing order 是存储要求，
+  内部排完即守标准——软件一行能解决的事不报错不警告不把活推给用户；
+  ③ 排序后写出即递增，往返一致；④ 报错仅重复频点一处，三端错误映射进既有
+  PyErr/napi Error/throw 机制。
 
 ## 待决
 
-- [ ] 原生端 HTTP 客户端最终确认（推荐 reqwest，见 I/O 归属节分析）。
 - [ ] 数据构造器参数形态：位置参数 `(f, s, z0)` vs options 对象，design.md
       定稿（Python 侧 kwargs 天然兼容两者）。
 
