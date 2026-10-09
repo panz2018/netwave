@@ -27,9 +27,10 @@
   },
   "scripts": {
     "build:shells": "tsdown && node scripts/publish_shell.mjs",
+    "gen:constants": "node scripts/gen_constants.mjs",
     "build:native": "napi build --platform --release --no-const-enum --manifest-path native/Cargo.toml --js index.node.generated.mjs --dts index.node.generated.d.mts -o dist --format esm && napi build --platform --release --no-const-enum --manifest-path native/Cargo.toml --js index.node.generated.cjs --dts index.node.generated.d.cts -o dist --format commonjs && pnpm build:shells",
     "build:native:debug": "napi build --platform --no-const-enum --manifest-path native/Cargo.toml --js index.node.generated.mjs --dts index.node.generated.d.mts -o dist --format esm && napi build --platform --no-const-enum --manifest-path native/Cargo.toml --js index.node.generated.cjs --dts index.node.generated.d.cts -o dist --format commonjs && pnpm build:shells",
-    "build:wasm": "cross-env CARGO_TARGET_DIR=../target-wasm wasm-pack build wasm --target web --out-dir ../dist/wasm-web",
+    "build:wasm": "pnpm gen:constants && cross-env CARGO_TARGET_DIR=../target-wasm wasm-pack build wasm --target web --out-dir ../dist/wasm-web",
     "test": "pnpm test:native && pnpm test:wasm && pnpm test:browser",
     "typecheck": "tsc --noEmit",
     "test:native": "vitest run --config vitest.native.config.ts",

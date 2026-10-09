@@ -6,11 +6,34 @@
 //! underlying ArrayBuffer. `read_element` passes a Float64Array view back
 //! into Rust and reads by pointer, proving it is the same memory.
 
+use std::str::FromStr;
+
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
 use netwave::fill_pattern as core_fill_pattern;
-use netwave::frequency::{Frequency as CoreFrequency, FrequencyUnit};
+use netwave::frequency::{Frequency as CoreFrequency, FrequencyUnit, WavelengthUnit};
 use netwave::network::Network as CoreNetwork;
+
+/// Resolve a `FrequencyUnit` from a numeric enum member OR a string (the
+/// union lives here in the binding, ironclad rule 11). The numeric arm is
+/// the JS enum value (ordinal); the string arm goes through core `FromStr`
+/// (case-insensitive, error quotes the input).
+fn resolve_freq_unit(u: Either<u8, String>) -> Result<FrequencyUnit> {
+    match u {
+        Either::A(n) => FrequencyUnit::from_ordinal(n)
+            .ok_or_else(|| Error::from_reason("invalid frequency unit ordinal")),
+        Either::B(s) => FrequencyUnit::from_str(&s).map_err(|e| Error::from_reason(e.to_string())),
+    }
+}
+
+/// Resolve a `WavelengthUnit` (same shape as [`resolve_freq_unit`]).
+fn resolve_wl_unit(u: Either<u8, String>) -> Result<WavelengthUnit> {
+    match u {
+        Either::A(n) => WavelengthUnit::from_ordinal(n)
+            .ok_or_else(|| Error::from_reason("invalid wavelength unit ordinal")),
+        Either::B(s) => WavelengthUnit::from_str(&s).map_err(|e| Error::from_reason(e.to_string())),
+    }
+}
 
 /// Allocate an interleaved complex f64 buffer, moving byte ownership
 /// zero-copy into a JS external Buffer.
@@ -34,6 +57,12 @@ pub fn fill_pattern(nfreq: u32, nports: u32) -> Buffer {
 pub fn read_element(view: Float64Array, idx: u32) -> Result<f64> {
     Ok(view.as_ref()[idx as usize])
 }
+
+/// Speed of light in vacuum (m/s): the core constant re-exported by name
+/// (ironclad rules 11/12 — the value is defined once in `core::constants`,
+/// the binding carries the name mechanically, no hand-copied literal).
+#[napi]
+pub const SPEED_OF_LIGHT: f64 = netwave::constants::SPEED_OF_LIGHT;
 
 /// napi binding for the core `Network`: the constructor is the data entry
 /// (no `upload` — that verb is browser-only, it names the worker linear-
@@ -102,19 +131,86 @@ pub struct Frequency(CoreFrequency);
 
 #[napi]
 impl Frequency {
-    /// Build a sweep from hertz points + unit ordinal (the JS enum value;
-    /// factory, not constructor).
-    ///
-    /// `unit` is a plain `u8`, not `FrequencyUnit`: the FFI signature must
-    /// not name the core enum, because under `cargo clippy --workspace` the
-    /// `node` and `browser` features merge onto one `netwave` build and
-    /// neither binding macro applies — the same reason
-    /// `fill_pattern`/`frequency_units` use primitives. The ordinal maps back
-    /// to the variant in core (`from_ordinal`), so no name list is copied.
+    /// Build a sweep from points in `unit` (enum member | string, required)
+    /// stored as f64 hertz. `unit` crosses as `number | string`: the numeric
+    /// arm is the JS enum ordinal, the string arm is core `FromStr` — the
+    /// core enum never enters an FFI signature (the `node`+`browser`
+    /// feature-merge build would drop its napi attribute).
     #[napi(factory)]
-    pub fn from_f(f_hz: Vec<f64>, unit: u8) -> Self {
-        let unit = FrequencyUnit::from_ordinal(unit).expect("invalid frequency unit ordinal");
-        Frequency(CoreFrequency::from_f(f_hz, unit))
+    pub fn from_f(f: Vec<f64>, unit: Either<u8, String>) -> Result<Self> {
+        let unit = resolve_freq_unit(unit)?;
+        Ok(Frequency(CoreFrequency::from_f(f, unit)))
+    }
+
+    /// Build a sweep from wavelength points in `wl_unit` (enum | string)
+    /// through a medium of phase index `n` (required): `f = c / (n × λ)`.
+    #[napi(factory)]
+    pub fn from_wavelength(wl: Vec<f64>, wl_unit: Either<u8, String>, n: f64) -> Result<Self> {
+        let wl_unit = resolve_wl_unit(wl_unit)?;
+        Ok(Frequency(CoreFrequency::from_wavelength(wl, wl_unit, n)))
+    }
+
+    /// The frequency axis in hertz — a fresh COPY (read-only contract).
+    #[napi(getter, js_name = "f")]
+    pub fn get_f(&self) -> Result<Vec<f64>> {
+        self.0.f().map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    /// The axis in the current display unit (`f / multiplier`), derived.
+    #[napi(getter, js_name = "fScaled")]
+    pub fn get_f_scaled(&self) -> Result<Vec<f64>> {
+        self.0
+            .f_scaled()
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    /// Angular frequency ω = 2πf (rad/s), derived.
+    #[napi(getter, js_name = "w")]
+    pub fn get_w(&self) -> Result<Vec<f64>> {
+        self.0.w().map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    /// The display unit as its numeric enum ordinal (the JS enum is numeric;
+    /// `f.unit === FrequencyUnit.GHz` holds). Errors after `drop`.
+    #[napi(getter, js_name = "unit")]
+    pub fn get_unit(&self) -> Result<u8> {
+        self.0
+            .unit()
+            .map(|u| u as u8)
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    /// Set the display unit (enum member | string, case-insensitive; illegal
+    /// string throws quoting the input). Only metadata changes.
+    #[napi(setter, js_name = "unit")]
+    pub fn set_unit(&mut self, unit: Either<u8, String>) -> Result<()> {
+        let unit = resolve_freq_unit(unit)?;
+        self.0.set_unit(unit);
+        Ok(())
+    }
+
+    /// Wavelength λ = c / (n × f) in `wl_unit` (enum | string); DC → inf.
+    #[napi]
+    pub fn wavelength(&self, wl_unit: Either<u8, String>, n: f64) -> Result<Vec<f64>> {
+        let wl_unit = resolve_wl_unit(wl_unit)?;
+        self.0
+            .wavelength(wl_unit, n)
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    /// An independent copy with the same axis and unit.
+    #[napi]
+    pub fn copy(&self) -> Result<Self> {
+        self.0
+            .copy()
+            .map(Frequency)
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    /// The cross-end uniform display string (core `Display`, single source).
+    #[napi(js_name = "toString")]
+    pub fn display(&self) -> String {
+        self.0.to_string()
     }
 
     /// Number of frequency points. Throws after `drop` (the post-drop

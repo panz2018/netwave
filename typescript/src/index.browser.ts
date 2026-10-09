@@ -21,11 +21,15 @@
 // worker's `"frequency"` namespace like every other verb — the list is
 // built in Rust, the shell never derives it.
 
-import type { FrequencyUnit as FrequencyUnitType } from "../dist/wasm-web/netwave_wasm.js";
-import { FrequencyUnit } from "../dist/wasm-web/netwave_wasm.js";
+import { SPEED_OF_LIGHT } from "../dist/constants.generated.mjs";
+import type {
+  FrequencyUnit as FrequencyUnitType,
+  WavelengthUnit as WavelengthUnitType,
+} from "../dist/wasm-web/netwave_wasm.js";
+import { FrequencyUnit, WavelengthUnit } from "../dist/wasm-web/netwave_wasm.js";
 import type { Handle, WorkerRequest, WorkerResponse } from "./types.js";
 
-export { FrequencyUnit };
+export { FrequencyUnit, SPEED_OF_LIGHT, WavelengthUnit };
 
 /** The shell's singleton worker, registered on globalThis. */
 declare global {
@@ -158,10 +162,73 @@ export class Frequency {
     return call<Handle>("frequency", "fromF", [fHz, unit]).then((handle) => new Frequency(handle));
   }
 
+  /** Build a sweep inside the worker from wavelength points in `wlUnit`
+   * through a medium of phase index `n` (required): `f = c / (n × λ)`. */
+  static fromWavelength(
+    wl: Float64Array,
+    wlUnit: WavelengthUnitType,
+    n: number,
+  ): Promise<Frequency> {
+    return call<Handle>("frequency", "fromWavelength", [wl, wlUnit, n]).then(
+      (handle) => new Frequency(handle),
+    );
+  }
+
   /** @internal Wrap a core handle in a shell and arm the GC fallback. */
   private constructor(handle: Handle) {
     this.handle = handle;
     registry.register(this, handle, this);
+  }
+
+  /** The frequency axis in hertz — a COPY built inside the worker and
+   * structured-cloned back (ironclad rule 8: the main thread never runs
+   * wasm; the copy crosses the realm boundary). */
+  get f(): Promise<Float64Array> {
+    return call<Float64Array>(this.handle, "f", []);
+  }
+
+  /** The axis in the current display unit (`f / multiplier`), derived in
+   * core. */
+  get fScaled(): Promise<Float64Array> {
+    return call<Float64Array>(this.handle, "fScaled", []);
+  }
+
+  /** Angular frequency ω = 2πf (rad/s), derived in core. */
+  get w(): Promise<Float64Array> {
+    return call<Float64Array>(this.handle, "w", []);
+  }
+
+  /** The display unit (numeric enum member). Async getter: `await f.unit`. */
+  get unit(): Promise<FrequencyUnitType> {
+    return call<FrequencyUnitType>(this.handle, "unit", []);
+  }
+
+  /** Set the display unit (enum member | string). Fire-and-forget: the
+   * resident worker is a single FIFO thread, so any later read observes the
+   * new unit. A rejected setUnit (illegal string) is swallowed here — the
+   * validation contract is observable on the awaited factory path
+   * (`fromF`/`fromWavelength`), which is how the browser surfaces it (the
+   * worker boundary makes a property setter inherently un-awaitable,
+   * ironclad rule 8). Pure transport (ironclad rule 11). */
+  set unit(value: FrequencyUnitType | string) {
+    call<void>(this.handle, "setUnit", [value]).catch(() => {});
+  }
+
+  /** Wavelength λ = c / (n × f) in `wl_unit`; DC → Infinity. */
+  wavelength(wlUnit: WavelengthUnitType, n: number): Promise<Float64Array> {
+    return call<Float64Array>(this.handle, "wavelength", [wlUnit, n]);
+  }
+
+  /** An independent copy (a new handle in the worker). `copy` is a
+   * factory (it allocates a new handle), so it rides the namespace channel
+   * with this shell's handle as the source argument. */
+  copy(): Promise<Frequency> {
+    return call<Handle>("frequency", "copy", [this.handle]).then((handle) => new Frequency(handle));
+  }
+
+  /** The cross-end uniform display string (async: worker roundtrip). */
+  toString(): Promise<string> {
+    return call<string>(this.handle, "toString", []);
   }
 
   /** Number of frequency points. Rejects after `drop`. */

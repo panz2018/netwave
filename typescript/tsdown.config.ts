@@ -7,7 +7,9 @@ import { defineConfig } from "tsdown";
 
 // Relative specifiers of the generated glue (kept external).
 const glue = (id: string) =>
-  id.includes("index.node.generated") || id.includes("wasm-web/netwave_wasm.js");
+  id.includes("index.node.generated") ||
+  id.includes("constants.generated") ||
+  id.includes("wasm-web/netwave_wasm.js");
 
 export default defineConfig([
   {

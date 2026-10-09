@@ -18,6 +18,15 @@ against the first copy's worker (version skew). The browser entry exports no
 `_`-prefixed sync compute (there is none without main-thread wasm); node
 keeps `_` because the napi core is in-process.
 
+wasm linear-memory high-water mark: the wasm heap only grows, never shrinks
+toward the host. `drop()` (and the GC fallback) runs the Rust destructor,
+which returns the freed bytes to the wasm allocator's free list for REUSE by
+later allocations — it does NOT hand memory back to the browser. So the
+process peak equals the largest set of simultaneously-live objects, not the
+cumulative total ever allocated. To lower the peak, drop handles you no
+longer need (the worker frees them deterministically); do not expect the
+wasm module's footprint to shrink after drops.
+
 ## Layout
 
 - `native/` — napi crate (`.node` addon), `build.rs` drives napi build
