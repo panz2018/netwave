@@ -32,8 +32,15 @@
 
 - `f` 不另存变量：`Touchstone` 内部持有 `Frequency` 实例，`f` 是转发 property；
   频率轴唯一权威在 `Frequency`（api-contract：主数据恒 f64 Hz，解析时换算）。
-- 不保存 `resistance`/`reference` 原始值：`#` 选项行 `R`（标量/每端口/复数）
-  解析时统一归一成每端口复数数组，只存 `z0` 一份。
+- 不保存 `resistance`/`reference` 原始值：`#` 选项行 `R`（标量/每端口）
+  解析时统一归一成每端口实数数组，只存 `z0` 一份。
+- **z0 恒实数（规范实证，修正早前"复数 z0"误判）**：规范原文 v1.1 的 R 是
+  "p **real, positive numbers**"（每端口实数）；v2.x `[Reference]` 节明文
+  "**complex and imaginary impedance values are not supported**"；混合模式节
+  重申 "complex reference impedances are not supported"。**任何版本都不存在
+  复数参考阻抗**。z0 合法形状仅两种：1.0 = 单实数全端口共用；1.1 = nports
+  个实数按端口序。内部存储 = 每端口 f64 实数数组；构造器收标量或实数数组
+  （三端同形，JS 无复数歧义自然消失）。未来 v2.x 扩展仍足实数域。
 - 不保存 `frequency_unit`：单位是 `Frequency.unit` 元数据，`Touchstone` 不复制。
 - 不保存 `frequency_nb`：频点数走 `f.npoints`，派生量不双存。
 - 不引入 `filename`：文件来源名统一用 skrf `Network` 的 `name`。
@@ -70,15 +77,21 @@
   推导，实证 skrf `write_touchstone` 签名亦无 version 参）；**无 `rRef` 选项**
   （skrf 的 `r_ref` 是写出时覆盖参考电阻用，与 `z0` 冗余——`z0` 是唯一权威，
   要改参考阻抗就改对象再写出）。
-- MA/DB 语义钉死（规范实证）：角度恒**度**（规范原文 "All angles are measured
-  in degrees"）；dB = **20×log₁₀(幅度)**（规范原文 "decibel = 20 × log10
-  magnitude"，电子书反变换 `10^(A/20)` 一致；S 参是幅值比用 20 不用 10）。
+- MA/DB 语义钉死（五源交叉验证，无歧义）：角度恒**度**（规范原文 "All
+  angles are measured in degrees"）。dB = **20×log₁₀(幅度)**，五源一致：
+  规范 "decibel = 20 × log10 magnitude"；skrf `complex_2_db` = 20log₁₀|z|
+  （mathFunctions.py:150，另有独立 `complex_2_db10` 专供功率量）；SI
+  `20*math.log10(abs(val))`（SParameters.py:159）；旧库注释 "DB: Decibel
+  (20*log10)"；电子书 `20*math.log10` 与反变换 `10^(A/20)`。电子书中的
+  10log 均为**功率量**（dBm 功率谱），幅度比一律 20log——S 参是幅度比。
 - `data()` 返回形状对称 skrf `s`（实证 skrf `s` = `(nfreq, nports, nports)`
   复数 ndarray）：RI = 同形状复数；MA/DB = `(nfreq, nports, nports, 2)`
   实数对（mag,deg / db,deg）——只是把复数换成实数对，与 `s` 对称。
-  底层存储恒扁平 f64（铁律一），多维是零拷贝视图：Python ndarray reshape
-  零拷贝；JS/wasm 返回 Float64Array + shape 元数据（或 wasm 端直接交
-  ndarray 视图）。未来若改多维，`s` 与 `data()` 一起改，不单独漂。
+  底层存储恒扁平 f64（铁律一），对外形状**现在就定，不留 reshape 给用户**：
+  Python 经 PyO3 直接交多维 ndarray（`(nfreq,nports,nports)` 或
+  `(nfreq,nports,nports,2)`，零拷贝视图，无需用户 reshape）；JS/wasm 无多维
+  typed array 类型，交 Float64Array + shape 元数据（平台物理限制，非选择）。
+  `s` 与 `data()` 同规则，不单独漂。
 - 跨端零拷贝边界（实证机制）：Python 经 buffer protocol 把 ndarray 内存
   直接交给 Rust `&[f64]`，零拷贝；node 经 napi `Buffer`/`Float64Array`
   同理零拷贝；浏览器 wasm 因 JS 堆与 wasm 线性内存分离，typed array 传入
@@ -95,9 +108,17 @@
   同法，正则 `[ghsyz](\d+)p`）；`fromText` 无文件名时 MUST 显式传 `nports`
   （或传 `name` 由扩展名推）——纯数据行列数存在歧义（一行 10 个数可为
   1 频点×3 端口或 2 频点×2 端口），信息论上无法自推，必须有一个来源。
-- v1.0 与 v1.1 语法唯一差别是参考阻抗：1.0 的 `R` 仅标量、1.1 可每端口且可
-  复数；解析层归一成每端口数组即同时覆盖两版，成本极低。**已定：v1 同时支持
-  1.0+1.1 的多 z0 与复数 z0**。
+  `name` 语义 = 无扩展名文件名（实证 skrf `self.name` 同义）；显式 `nports`
+  与 `name` 同传时**显式 `nports` 赢**（显式 > 推断），`name` 仅元数据不校验。
+- 词汇大小写：读入大小写均可（解析器 `to_ascii_uppercase` 归一，用户友好）；
+  写出、enum、文档、错误消息一律规范标准大写（RI/MA/DB、S/Z/Y/G/H）。
+- G/H 非 2 端口直接报错：规范 G/H 仅定义于 2 端口，skrf `g`/`h` docstring
+  钉死 shape `fx2x2`（实证）；构造器与 `data('G'/'H')` 运行时同一规则，
+  进 `TouchstoneError` 三端映射。
+- v1.0 与 v1.1 语法唯一差别是参考阻抗：1.0 的 `R` 仅标量、1.1 可每端口
+  （均实数，规范禁止复数）；解析层归一成每端口数组即同时覆盖两版，成本极低。
+  **已定：v1 同时支持 1.0+1.1 的单/多 z0**。version 推导同步简化：
+  全端口同值→1.0，存在不同值→1.1。
 - 普通数据构造器 `new Touchstone(...)` 必选：三入口只覆盖"已有文件/文本"，
   计算结果拼 Touchstone 与纯数据写入都需要直接收 `(f, s, z0)` 的构造器
   （对标三库，见「数据构造器」节）。
@@ -112,7 +133,7 @@
   **`format` 不是构造参数**（内存数据恒为实部/虚部交错复数，RI/MA/DB
   只在解析文本与写出文本时起作用，归 `writeTouchstone` 选项）；
   **`version` 不是构造参数**（由 `z0` 推导：全端口同一实数→1.0，
-  每端口不同或复数→1.1；解析入口则从文件记录）（见「数据构造器」节）。
+  每端口存在不同值→1.1；解析入口则从文件记录）（见「数据构造器」节）。
 - HTTP 客户端已定：**reqwest**（crates.io 实测下载量高层库第一，见
   「I/O 归属」节分析）。
 - `Touchstone` 是主类：需随 Touchstone 核心 change 提交 api-contract spec
@@ -128,7 +149,7 @@
 | `s`                         | 复数 `(nfreq, nports, nports)` 视图（底层扁平 f64，铁律一）；文件为 Y/Z/G/H 时解析时即换算成 S 存储，`s` 是唯一主数据；即 `data()` 默认值的快捷入口                                               | skrf `Network.s`；铁律一布局                                                                                  |
 | `z`/`y`/`g`/`h`             | 域快捷属性：复数 `(nfreq, nports, nports)` 视图，现算不缓存（后端 = 私有 `s_to_domain`）；skrf 用户 `ts.z` 肌肉记忆不断                                                                           | skrf `Network.z`/`y`/`g`/`h` 同名公开属性（实证 network.py:1046–1254）；全留与 `s` 对称                       |
 | `f`                         | 转发内部 `Frequency` 实例，恒 f64 Hz                                                                                                                                                              | skrf `Network.f`                                                                                              |
-| `z0`                        | 每端口复数数组（`#` 行 `R` 归一后的唯一权威）                                                                                                                                                     | skrf `Network.z0`                                                                                             |
+| `z0`                        | 每端口实数数组（f64 欧姆；`#` 行 `R` 归一后的唯一权威；规范禁止复数参考阻抗）                                                                                                                     | skrf `Network.z0`                                                                                             |
 | `nports`                    | 端口数                                                                                                                                                                                            | skrf `Network.nports`                                                                                         |
 | `name`                      | 文件名（无扩展名）                                                                                                                                                                                | skrf `Network.name`                                                                                           |
 | `comments`                  | `!` 注释合并文本                                                                                                                                                                                  | skrf `Network.comments`                                                                                       |
@@ -165,7 +186,9 @@
   `np.asarray(x, dtype=np.float64).ravel()`（PyO3 收 ndarray/任意序列，一行）；
   node/浏览器 `Float64Array`（普通数组 `Float64Array.from(arr)` 一行）。
   交错只是排列约定，扁平化即得，造转换函数=造第二份真相源。
-- `z0`：标量或每端口（可复数）。
+- `z0`：标量实数或每端口实数数组（规范禁止复数参考阻抗，三端同形：
+  Rust `Vec<f64>` + 标量 `impl Into` 归一；Python float/ndarray；
+  JS/TS `number \| Float64Array`——无复数则无歧义）。
 - `parameter`：**必填**（S/Z/Y/G/H，声明 `data` 是什么域，core 内换算成 S）。
 - `name`/`comments`：可选，默认空串/无注释。
 - 构造时校验：维度自洽（`frequency.npoints × nports² == data.len()`）、
@@ -173,14 +196,14 @@
 
 **format 为什么不在构造器**：RI/MA/DB 是文本文件里复数的两种书写方式，
 内存里永远是复数——解析时按文件 `#` 行换算成复数入库，写出时按
-`writeTouchstone({ form })` 排版，构造器收的是复数本身，声明 format 无意义。
+`writeTouchstone(parameter, format)` 排版，构造器收的是复数本身，声明 format 无意义。
 用户只有幅度/角度数组时的构造工具用各端原生即可（实证无需新增）：
 Python `cmath.rect` / `mag * np.exp(1j*np.deg2rad(angle))`；JS/TS
 `mag*(Math.cos(rad)+1j*Math.sin(rad))` 填交错位；Rust
 `num_complex::Complex::from_polar`。原生一行解决，不造 `fromPolar` 重复轮子。
 
 **version 为什么不在构造器**：由 `z0` 推导——全端口同一实数→1.0，
-每端口不同或含复数→1.1（1.1 的存在意义就是表达多/复参考阻抗）；
+每端口存在不同值→1.1（1.1 的存在意义就是表达每端口参考阻抗）；
 解析入口的 version 从文件本身记录，也不由用户传。
 
 **单一入口，不造工厂族**：不用 `fromZ`/`fromY`/`fromG`/`fromH` 四个工厂——
@@ -208,7 +231,7 @@ enum 反射（跨端词汇零手抄），无字符串拼写风险。skrf 的 `fr
 | 方法                                                      | 语义                                                                                                                                                                                                                                                                                                                |
 | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `writeTouchstone(parameter, format)` / `write_touchstone` | 吐 Touchstone 文本；全平铺必填 `parameter`(S/Y/Z/G/H)、`format`(RI/MA/DB)，与构造器对称。无 `version`（z0 推导，skrf 同法）、无 `rRef`（`z0` 唯一权威）。shortest-roundtrip，写出→读回 bit 级一致（测试规划已定）。三库写出名：skrf `write_touchstone`、SI `Text`/`WriteToFile`、旧库 `writeContent`——本名对齐 skrf |
-| `writeFile(path, parameter, format)` / `write_file`       | 原生端写文件；浏览器拿 `writeTouchstone` 文本自行落盘                                                                                                                                                                                                                                                               |
+| `writeFile(path, parameter, format)` / `write_file`       | 原生端写文件；**浏览器端导出但调用即抛"浏览器不支持"**（实证：旧库根本无 `writeFile`，只有 `writeContent()` 返回文本，落盘/下载归调用方 GUI——`URL.createObjectURL` + `<a download>` 是 GUI 行为不属核心库；选"导出但抛错"保三端 API 面一致）                                                                        |
 | `drop()` / `drop`                                         | 统一释放动词（已定案，见 memory-lifecycle spec）                                                                                                                                                                                                                                                                    |
 
 ### 属性承载字段（core `Touchstone` struct——公开属性的后端存储）
@@ -216,17 +239,17 @@ enum 反射（跨端词汇零手抄），无字符串拼写风险。skrf 的 `fr
 Rust 字段级私有，但每个字段都有上表公开 property 对应——本节是公开属性的
 存储清单，不是隐藏状态；真正的私有件只有下一节的函数。
 
-| 字段        | 类型               | 说明                                   |
-| ----------- | ------------------ | -------------------------------------- |
-| `frequency` | `Frequency` 实例   | 频率轴唯一权威（Hz，递增存储）         |
-| `s`         | 交错复数扁平 f64   | 唯一主数据，`(nfreq, nports, nports)`  |
-| `z0`        | 每端口复数数组     | `#` 行 `R` 归一后的唯一权威            |
-| `nports`    | `u32`              | 端口数（冗余自 z0 长度，热路径免间接） |
-| `name`      | `Option<String>`   | 文件/URL 名（无扩展名）                |
-| `comments`  | `String`           | `!` 注释合并文本                       |
-| `version`   | `bool`（是否 1.1） | 解析自文件记录；数据构造时由 `z0` 推导 |
-| `parameter` | enum（S/Y/Z/G/H）  | 文件原始参数类型，仅元数据             |
-| `format`    | enum（RI/MA/DB）   | 写出默认格式偏好                       |
+| 字段        | 类型               | 说明                                      |
+| ----------- | ------------------ | ----------------------------------------- |
+| `frequency` | `Frequency` 实例   | 频率轴唯一权威（Hz，递增存储）            |
+| `s`         | 交错复数扁平 f64   | 唯一主数据，`(nfreq, nports, nports)`     |
+| `z0`        | 每端口实数数组 f64 | `#` 行 `R` 归一后的唯一权威（规范禁复数） |
+| `nports`    | `u32`              | 端口数（冗余自 z0 长度，热路径免间接）    |
+| `name`      | `Option<String>`   | 文件/URL 名（无扩展名）                   |
+| `comments`  | `String`           | `!` 注释合并文本                          |
+| `version`   | `bool`（是否 1.1） | 解析自文件记录；数据构造时由 `z0` 推导    |
+| `parameter` | enum（S/Y/Z/G/H）  | 文件原始参数类型，仅元数据                |
+| `format`    | enum（RI/MA/DB）   | 写出默认格式偏好                          |
 
 不存：频率单位（在 `Frequency.unit`）、频点数（`frequency.npoints`）、
 噪声（v1 不支持）、resistance/reference 原始值（已归一进 `z0`）。
@@ -391,6 +414,19 @@ netwave `touchstone.rs` 只定义：
 `TouchstoneOptions`（参数已平铺，无选项包）、`SData`（直接用
 `Vec<Complex64>`/交错 f64 视图，别名是多余间接）。
 复用不重定义：`Frequency`/`FrequencyUnit`（frequency 模块既有）、`Complex64`（num-complex）。
+
+## 三库命名对照（netwave vs skrf vs SI vs 旧库）
+
+| netwave                             | skrf                          | SI                   | 旧库 RF-Touchstone                       | 差异说明                         |
+| ----------------------------------- | ----------------------------- | -------------------- | ---------------------------------------- | -------------------------------- |
+| `s`/`z`/`y`/`g`/`h`                 | 同名（`Network` 公开属性）    | 无（`m_d` 内部）     | `data` 单一                              | netwave 对齐 skrf                |
+| `f`/`z0`/`nports`/`name`/`comments` | 同名（`Network`）             | `f`/`Z0`             | `frequency`/`ports`                      | netwave 对齐 skrf                |
+| `version`/`parameter`/`format`      | `Touchstone` 同名             | 无                   | `format`                                 | netwave 借 skrf `Touchstone`     |
+| `data(parameter, format)`           | `get_sparameter_data(format)` | `Text(formatString)` | `writeContent()`                         | 同法不同名，对齐旧库功能         |
+| `fromText`/`fromFile`/`fromUrl`     | `from_string`/构造器收路径    | `SParametersParser`  | `fromText`/`fromFile`/`fromUrl`          | netwave 同旧库名                 |
+| `writeTouchstone`/`writeFile`       | `write_touchstone`            | `WriteToFile`        | 无 `writeFile`（仅 `writeContent`）      | netwave 拆文本/落盘两动词        |
+| `nportsFromName`/`nameFromPath`     | 无（内联 `_parse_file`）      | 无                   | `parsePorts`/`getFilename`/`getBasename` | netwave 同旧库拆法               |
+| `drop()`                            | 无                            | 无                   | 无                                       | netwave 自有（memory-lifecycle） |
 
 ## 内部命名备注
 
