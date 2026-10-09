@@ -26,7 +26,12 @@ from pathlib import Path
 # Repo root = parent of this scripts/ dir, so the gate works from any cwd.
 ROOT = Path(__file__).resolve().parent.parent
 
-CANONICAL = ["Hz", "kHz", "MHz", "GHz", "THz"]
+# Each vocabulary: the canonical member list, in core definition order.
+# Independent literals (a core rename SHOULD trip this gate).
+CANONICAL = {
+    "FrequencyUnit": ["Hz", "kHz", "MHz", "GHz", "THz"],
+    "WavelengthUnit": ["m", "cm", "mm", "um", "nm"],
+}
 
 # Generated type artifacts, relative to repo root.
 PYI = ROOT / "python" / "netwave" / "_netwave.pyi"
@@ -41,29 +46,29 @@ def strip_comments(src: str) -> str:
     return re.sub(r"//.*$", "", src, flags=re.MULTILINE)
 
 
-def ts_members(src: str) -> list[str]:
-    """TS enum members: the `Name = ...` lines inside the `enum FrequencyUnit`
+def ts_members(src: str, enum: str) -> list[str]:
+    """TS enum members: the `Name = ...` lines inside the `enum <enum>`
     block (delimited by braces)."""
     code = strip_comments(src)
-    match = re.search(r"enum FrequencyUnit\b", code)
+    match = re.search(r"enum " + re.escape(enum) + r"\b", code)
     if not match:
-        raise ValueError("FrequencyUnit enum not found")
+        raise ValueError(f"{enum} enum not found")
     body = code[match.start() : code.index("}", match.start())]
     return re.findall(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=", body, flags=re.MULTILINE)
 
 
-def py_members(src: str) -> list[str]:
+def py_members(src: str, enum: str) -> list[str]:
     """Python class members: the 4-space-indented `Name = ...` lines under
-    `class FrequencyUnit`. Blank lines and docstring prose (also 4-space
-    indented) are skipped; the body ends at the first dedented line (the next
+    `class <enum>`. Blank lines and docstring prose (also 4-space indented)
+    are skipped; the body ends at the first dedented line (the next
     top-level `def`/`class`/decorator) — a Python class has no closing brace."""
     lines = src.split("\n")
     start = next(
-        (i for i, line in enumerate(lines) if re.match(r"^class FrequencyUnit\b", line)),
+        (i for i, line in enumerate(lines) if re.match(r"^class " + re.escape(enum) + r"\b", line)),
         None,
     )
     if start is None:
-        raise ValueError("FrequencyUnit class not found")
+        raise ValueError(f"{enum} class not found")
     out: list[str] = []
     for line in lines[start + 1 :]:
         # pyo3-stub-gen emits every enum member as `    Name = ...`; the
@@ -85,27 +90,28 @@ def read(path: Path) -> str:
 
 
 def main() -> int:
-    try:
-        pyi = py_members(read(PYI))
-        node = ts_members(read(NODE_DTS))
-        wasm = ts_members(read(WASM_DTS))
-    except (FileNotFoundError, ValueError) as exc:
-        print(f"VOCAB TYPES: {exc}", file=sys.stderr)
-        return 1
-
     bad = 0
-    for label, members in (("python .pyi", pyi), ("node .d.mts", node), ("wasm .d.ts", wasm)):
-        if members != CANONICAL:
-            print(f"VOCAB TYPES: {label} members {members} != {CANONICAL}")
+    for enum, canonical in CANONICAL.items():
+        try:
+            pyi = py_members(read(PYI), enum)
+            node = ts_members(read(NODE_DTS), enum)
+            wasm = ts_members(read(WASM_DTS), enum)
+        except (FileNotFoundError, ValueError) as exc:
+            print(f"VOCAB TYPES: {enum}: {exc}", file=sys.stderr)
+            return 1
+        for label, members in (("python .pyi", pyi), ("node .d.mts", node), ("wasm .d.ts", wasm)):
+            if members != canonical:
+                print(f"VOCAB TYPES: {enum} {label} members {members} != {canonical}")
+                bad += 1
+        if not bad and not (node == pyi == wasm):
+            print(f"VOCAB TYPES: {enum} artifacts disagree: pyi={pyi} node={node} wasm={wasm}")
             bad += 1
-    if not bad and not (node == pyi == wasm):
-        print(f"VOCAB TYPES: artifacts disagree: pyi={pyi} node={node} wasm={wasm}")
-        bad += 1
+        else:
+            print(f"vocab types OK: {enum} all three artifacts carry {canonical}")
 
     if bad:
         print(f"VOCAB TYPES: {bad} artifact(s) drifted from core vocabulary")
         return 1
-    print(f"vocab types OK: all three artifacts carry {CANONICAL}")
     return 0
 
 

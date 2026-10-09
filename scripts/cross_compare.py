@@ -73,6 +73,19 @@ def main() -> int:
         return 1
     print("CROSS-BINDING PASS: core==python==node bit-exact, wasm within tol")
 
+    # λ↔f round-trip axis: each end dumps its
+    # f -> wavelength -> f axis; native ends must match core bit-exact,
+    # wasm within tol (the same decision path as the S-matrix compare).
+    freq = {name: load_f64s(root, f"{name}_freq") for name in ENDS}
+    if len(freq["core"]) != 3:
+        print(f"FAIL: core_freq axis {len(freq['core'])} != 3 points")
+        return 1
+    fresult = compare(freq["core"], freq, tol)
+    if fresult is not None:
+        print(f"FAIL freq round-trip: {fresult[2]}")
+        return 1
+    print("FREQ ROUND-TRIP PASS: core==python==node bit-exact, wasm within tol")
+
     # Anti-tautology self-check: perturb an in-memory copy of each
     # non-reference end at a RANDOM index and require detection AT THE
     # INJECTED END AND INDEX (proves each .bin participates, the comparator

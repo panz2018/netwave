@@ -34,8 +34,24 @@ ROOT = Path(__file__).resolve().parent.parent
 # Independent canonical verb sets (a core rename SHOULD trip this gate —
 # same tripwire idiom as check_vocab_types.py's CANONICAL vocabulary list).
 NETWORK_VERBS = {"fillPattern", "readElement", "drop"}
-FREQUENCY_VERBS = {"fromF", "npoints", "drop"}
+FREQUENCY_VERBS = {
+    "fromF",
+    "fromWavelength",
+    "f",
+    "fScaled",
+    "w",
+    "unit",
+    "wavelength",
+    "copy",
+    "npoints",
+    "drop",
+}
 FREE_VERBS = {"frequencyUnits", "liveCount"}
+# Language-native protocol hooks (ironclad rule 9): named per platform
+# (py __str__/__repr__/__len__, JS toString), so they are exempt from the
+# cross-end verb-set equality — the unified display string they produce is
+# pinned by the per-end display-string tests instead.
+PROTOCOL_HOOKS = {"toString", "str", "repr", "len"}
 # Browser-only: the worker linear-memory boundary does not exist on node/
 # Python, so `upload` lives only on the browser Network shell.
 BROWSER_ONLY = {"upload"}
@@ -52,7 +68,7 @@ BROWSER_DTS = ROOT / "typescript" / "dist" / "index.browser.d.mts"
 # and the wasm-pack generated init/default. Any per-verb `#[wasm_bindgen]`
 # export reappearing here is the relapse this pin detects.
 WASM_GLUE_DTS = ROOT / "typescript" / "dist" / "wasm-web" / "netwave_wasm.d.ts"
-WASM_GLUE_EXPORTS = {"call", "FrequencyUnit", "register_resources"}
+WASM_GLUE_EXPORTS = {"call", "FrequencyUnit", "WavelengthUnit", "register_resources"}
 
 
 def camel(name: str) -> str:
@@ -84,13 +100,17 @@ def class_block(code: str, name: str) -> str:
 
 
 def ts_class_verbs(src: str, name: str) -> set:
-    """Method names of a TS class: `name(` and `static name(`, minus the
-    constructor."""
+    """Method names of a TS class: `name(`, `static name(`, and accessor
+    `get/set name(` (normalized to the property name), minus the constructor
+    and the language-native protocol hooks (ironclad rule 9)."""
     code = strip_comments(src)
     block = class_block(code, name)
     verbs = set(re.findall(r"\bstatic\s+([A-Za-z_]\w*)\s*\(", block))
     verbs |= set(re.findall(r"^\s+([A-Za-z_]\w*)\s*\(", block, flags=re.MULTILINE))
-    return {camel(v) for v in verbs if v != "constructor"}
+    # accessors: `get f(` / `set unit(` -> the property name (the plain
+    # regex above does not match them: `get` is followed by the name).
+    verbs |= set(re.findall(r"^\s+(?:get|set)\s+([A-Za-z_]\w*)\s*\(", block, flags=re.MULTILINE))
+    return {camel(v) for v in verbs if v != "constructor" and camel(v) not in PROTOCOL_HOOKS}
 
 
 def py_class_verbs(src: str, name: str) -> set:
@@ -104,7 +124,9 @@ def py_class_verbs(src: str, name: str) -> set:
     verbs = set()
     for line in lines[start + 1 :]:
         member = re.match(r"^ {4}def\s+([A-Za-z_]\w*)\s*\(", line)
-        if member and member.group(1) != "__new__":
+        # skip the constructor and the dunder protocol hooks (__str__/
+        # __repr__/__len__, ironclad rule 9: exempt from verb equality).
+        if member and not member.group(1).startswith("__"):
             verbs.add(camel(member.group(1)))
         elif line.strip() == "" or line.startswith("    ") or line.startswith("@"):
             continue
