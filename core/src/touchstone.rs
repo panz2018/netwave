@@ -175,6 +175,15 @@ pub enum TouchstoneError {
     /// R 50), but the line itself is mandatory.
     #[error("missing # option line: Touchstone files shall contain one")]
     MissingOptionLine,
+    /// A domain reached a conversion path that cannot handle it — an
+    /// internal dispatch bug, not bad input. The S domain always returns
+    /// before the domain match, so hitting this arm means the dispatch
+    /// contract was violated; it errors rather than silently mis-converting.
+    #[error("internal error: {domain} domain reached the wrong conversion path")]
+    DispatchViolation {
+        /// The offending domain, canonical uppercase.
+        domain: String,
+    },
 }
 
 /// A parsed Touchstone file: the state class holding the frequency axis,
@@ -318,16 +327,18 @@ impl Touchstone {
     ))]
     pub async fn from_url(url: &str) -> Result<Self, TouchstoneError> {
         let text = Self::fetch_text(url).await?;
-        // Strip any query/fragment before taking the filename so
-        // `https://host/d/filter.s1p?v=2` still names `filter` / infers 1.
+        let path = Self::url_filename(url);
+        Self::from_text(&text, None, path.as_deref())
+    }
+
+    /// URL → name-pipeline filename: strip any query/fragment so
+    /// `https://host/d/filter.s1p?v=2` still names `filter` / infers 1,
+    /// then take the last path segment. A bare path (`/`) or empty URL has
+    /// no filename — `None`, so nports cannot be inferred from it.
+    fn url_filename(url: &str) -> Option<String> {
         let clean = url.split(['?', '#']).next().unwrap_or(url);
-        let path = Self::filename_from_path(clean);
-        let path = if path.is_empty() {
-            None
-        } else {
-            Some(path.as_str())
-        };
-        Self::from_text(&text, None, path)
+        let name = Self::filename_from_path(clean);
+        if name.is_empty() { None } else { Some(name) }
     }
 
     /// Native HTTP backend: reqwest (rustls). Non-2xx surfaces verbatim.
@@ -533,9 +544,6 @@ impl Touchstone {
         nports: usize,
         z0: &[f64],
     ) -> Result<Vec<f64>, TouchstoneError> {
-        if parameter == TouchstoneParameter::S {
-            return Ok(data.to_vec());
-        }
         if parameter.requires_two_ports() && nports != 2 {
             return Err(TouchstoneError::DomainPortCount {
                 domain: parameter.as_ref().to_owned(),
@@ -546,22 +554,32 @@ impl Touchstone {
         let mut out = Vec::with_capacity(data.len());
         for freq_data in data.chunks(block) {
             let m = Self::matrix_from_interleaved(freq_data, nports);
-            // G/H -> Y/Z (2-port closed form), then the Z/Y -> S route.
-            let (domain_matrix, is_z) = match parameter {
-                TouchstoneParameter::S => unreachable!("handled above"),
-                TouchstoneParameter::Z => (m, true),
-                TouchstoneParameter::Y => (m, false),
-                TouchstoneParameter::H => (Self::h_to_z(&m), true),
-                TouchstoneParameter::G => (Self::g_to_y(&m), false),
-            };
-            let s_matrix = if is_z {
-                Self::z_to_s(&domain_matrix, z0)
+            // S is the stored domain (identity); G/H take their 2-port
+            // closed form first, then the shared Z/Y -> S route.
+            let s_matrix = if parameter == TouchstoneParameter::S {
+                m
+            } else if parameter == TouchstoneParameter::Z {
+                Self::z_to_s(&m, z0)
+            } else if parameter == TouchstoneParameter::Y {
+                Self::y_to_s(&m, z0)
+            } else if parameter == TouchstoneParameter::H {
+                Self::z_to_s(&Self::h_to_z(&m), z0)
             } else {
-                Self::y_to_s(&domain_matrix, z0)
+                Self::y_to_s(&Self::g_to_y(&m), z0)
             };
             Self::push_interleaved(&s_matrix, &mut out);
         }
         Ok(out)
+    }
+
+    /// Internal dispatch guard: S is the stored domain and every public
+    /// entry point answers it before reaching [`Touchstone::s_to_domain`],
+    /// so arriving here means the dispatch contract was violated. It errors
+    /// rather than silently mis-converting.
+    fn dispatch_violation(parameter: TouchstoneParameter) -> TouchstoneError {
+        TouchstoneError::DispatchViolation {
+            domain: parameter.as_ref().to_owned(),
+        }
     }
 
     /// Row-major complex matrix from an interleaved f64 block.
@@ -911,12 +929,18 @@ impl Touchstone {
         for freq_s in s.chunks(block) {
             let m = Self::matrix_from_interleaved(freq_s, nports);
             let z = Self::s_to_z(&m, z0);
-            let d = match domain {
-                TouchstoneParameter::S => m,
-                TouchstoneParameter::Z => z.clone(),
-                TouchstoneParameter::Y => Self::invert(&z, nports),
-                TouchstoneParameter::G => Self::z_to_g(&z),
-                TouchstoneParameter::H => Self::z_to_h(&z),
+            // S returns before this loop, so the final else is a contract
+            // violation: it errors rather than silently mis-converting.
+            let d = if domain == TouchstoneParameter::Z {
+                z.clone()
+            } else if domain == TouchstoneParameter::Y {
+                Self::invert(&z, nports)
+            } else if domain == TouchstoneParameter::G {
+                Self::z_to_g(&z)
+            } else if domain == TouchstoneParameter::H {
+                Self::z_to_h(&z)
+            } else {
+                return Err(Self::dispatch_violation(domain));
             };
             Self::push_interleaved(&d, &mut out);
         }
@@ -1310,6 +1334,28 @@ mod tests {
                 .write_path(Some(""), TouchstoneParameter::Z)
                 .unwrap(),
             "x.z2p"
+        );
+    }
+
+    #[test]
+    fn url_filename_strips_query_and_detects_empty() {
+        assert_eq!(
+            Touchstone::url_filename("http://h/d/filter.s1p?v=2").as_deref(),
+            Some("filter.s1p")
+        );
+        // A bare path has no filename: nports cannot be inferred from it.
+        assert_eq!(Touchstone::url_filename(""), None);
+    }
+
+    #[test]
+    fn s_to_domain_rejects_s_as_dispatch_violation() {
+        // Every public entry point answers S before reaching s_to_domain;
+        // a direct S call must error, never silently echo the input back.
+        let err = Touchstone::s_to_domain(&[0.0; 8], TouchstoneParameter::S, 2, &[50.0, 50.0])
+            .unwrap_err();
+        assert!(
+            err.to_string().contains("internal error"),
+            "must flag the dispatch violation: {err}"
         );
     }
 }

@@ -65,6 +65,32 @@ async fn from_url_connection_failure_surfaces_verbatim() {
 }
 
 #[tokio::test]
+async fn from_url_truncated_body_surfaces_verbatim() {
+    // A bare listener announces Content-Length: 100 then closes after a
+    // few bytes: reqwest gets a 200 but the body read fails on the length
+    // mismatch, so fetch_text's text() map_err branch fires.
+    use std::io::{Read, Write};
+    use std::net::TcpListener;
+    let listener = TcpListener::bind("127.0.0.1:0").unwrap();
+    let addr = listener.local_addr().unwrap();
+    std::thread::spawn(move || {
+        if let Ok((mut sock, _)) = listener.accept() {
+            let mut buf = [0u8; 1024];
+            let _ = sock.read(&mut buf);
+            let _ = sock.write_all(b"HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\nshort");
+            let _ = sock.flush();
+        }
+    });
+    let err = Touchstone::from_url(&format!("http://{addr}/x.s1p"))
+        .await
+        .expect_err("truncated body must be an error");
+    assert!(
+        err.to_string().contains("fetch failed"),
+        "must surface the fetch failure: {err}"
+    );
+}
+
+#[tokio::test]
 async fn from_url_trailing_slash_has_no_filename() {
     // A URL ending in '/' yields an empty filename: nports cannot be
     // inferred and the parse errors, guiding explicit nports.
