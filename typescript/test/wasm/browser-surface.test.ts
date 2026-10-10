@@ -23,6 +23,7 @@ describe("browser entry surface", () => {
       "FrequencyUnit",
       "Network",
       "SPEED_OF_LIGHT",
+      "Touchstone",
       "WavelengthUnit",
       "frequencyUnits",
       "liveCount",

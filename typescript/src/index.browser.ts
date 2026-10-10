@@ -258,3 +258,175 @@ export const frequencyUnits = (): Promise<string[]> =>
 /** Witness: how many `Frequency` resources are alive in the worker. Runs
  * wasm, so it goes through the resident worker's `"frequency"` namespace. */
 export const liveCount = (): Promise<number> => call<number>("frequency", "liveCount", []);
+
+/** The `{ values, shape }` payload of `Touchstone.data()` (flat addressing:
+ * `idx = ((f*n + r)*n + c)*2`, +0=re/mag/db, +1=im/deg). JS has no complex
+ * type, so `shape` is always `(nfreq, n, n, 2)` — the last axis is the
+ * interleaved pair. */
+export interface TouchstoneData {
+  values: Float64Array;
+  shape: number[];
+}
+
+/**
+ * A parsed Touchstone shell. Construction IS parsing: the factories
+ * (`fromText`/`fromFile`/`fromUrl`) host a fully validated object in the
+ * worker's core table and return a shell over its numeric handle. Data
+ * lives in the worker (ironclad rule 8); the shell holds only the handle.
+ * `writeFile`/`fromFile` are shell-only async platform glue (the browser
+ * has no filesystem): `fromFile` transfers the bytes in, `writeFile`
+ * receives `{text, filename}` back and triggers a download.
+ */
+export class Touchstone {
+  /** @internal Protocol detail — not public API. */
+  readonly handle: Handle;
+  private dropped = false;
+
+  /** Parse Touchstone text inside the worker. `nports` explicit, else
+   * inferred from the `path` filename grammar; `path`'s stem becomes `name`. */
+  static fromText(text: string, nports?: number, path?: string): Promise<Touchstone> {
+    return call<Handle>("touchstone", "fromText", [text, nports ?? null, path ?? null]).then(
+      (handle) => new Touchstone(handle),
+    );
+  }
+
+  /** Read a `File` and parse it in the worker. The bytes are MOVED via
+   * transfer (single ownership, ironclad rule 8): afterwards the caller's
+   * buffer is detached. The filename rides along for the name pipeline. */
+  static async fromFile(file: File): Promise<Touchstone> {
+    const buf = (await file.arrayBuffer()) as ArrayBuffer;
+    const handle = await call<Handle>(
+      "touchstone",
+      "fromBytes",
+      [new Uint8Array(buf), file.name],
+      [buf],
+    );
+    return new Touchstone(handle);
+  }
+
+  /** Fetch over HTTP inside the worker and parse (Promise; the main thread
+   * never runs wasm — ironclad rule 8). CORS/network errors reject
+   * verbatim. */
+  static fromUrl(url: string): Promise<Touchstone> {
+    return call<Handle>("touchstone", "fromUrl", [url]).then((handle) => new Touchstone(handle));
+  }
+
+  /** @internal Wrap a core handle in a shell and arm the GC fallback. */
+  private constructor(handle: Handle) {
+    this.handle = handle;
+    registry.register(this, handle, this);
+  }
+
+  /** The stored S master data (flat interleaved re/im), cloned back. */
+  get s(): Promise<Float64Array> {
+    return call<Float64Array>(this.handle, "s", []);
+  }
+
+  /** Z domain, computed fresh in core. */
+  get z(): Promise<Float64Array> {
+    return call<Float64Array>(this.handle, "z", []);
+  }
+
+  /** Y domain, computed fresh in core. */
+  get y(): Promise<Float64Array> {
+    return call<Float64Array>(this.handle, "y", []);
+  }
+
+  /** G domain (2-port only), computed fresh in core. */
+  get g(): Promise<Float64Array> {
+    return call<Float64Array>(this.handle, "g", []);
+  }
+
+  /** H domain (2-port only), computed fresh in core. */
+  get h(): Promise<Float64Array> {
+    return call<Float64Array>(this.handle, "h", []);
+  }
+
+  /** The frequency axis in hertz — a COPY built in the worker. */
+  get f(): Promise<Float64Array> {
+    return call<Float64Array>(this.handle, "f", []);
+  }
+
+  /** Per-port reference impedance (the single authority). */
+  get z0(): Promise<Float64Array> {
+    return call<Float64Array>(this.handle, "z0", []);
+  }
+
+  /** Port count. */
+  nports(): Promise<number> {
+    return call<number>(this.handle, "nports", []);
+  }
+
+  /** File stem without extension. */
+  name(): Promise<string> {
+    return call<string>(this.handle, "name", []);
+  }
+
+  /** Merged `!` comment text. */
+  comments(): Promise<string> {
+    return call<string>(this.handle, "comments", []);
+  }
+
+  /** File format version, `"1.0"` / `"1.1"`. */
+  version(): Promise<string> {
+    return call<string>(this.handle, "version", []);
+  }
+
+  /** Original parameter domain (metadata), canonical uppercase. */
+  parameter(): Promise<string> {
+    return call<string>(this.handle, "parameter", []);
+  }
+
+  /** Unified accessor domain × format (both mandatory; use `s` for the
+   * zero-copy default). */
+  data(parameter: string, format: string): Promise<TouchstoneData> {
+    return call<TouchstoneData>(this.handle, "data", [parameter, format]);
+  }
+
+  /** Render Touchstone text in `parameter`/`format` (rendered in core). */
+  writeTouchstone(parameter: string, format: string): Promise<string> {
+    return call<string>(this.handle, "writeTouchstone", [parameter, format]);
+  }
+
+  /** Download the rendered text (shell-only platform glue). Core renders
+   * the text and corrects the filename (`write_path`, extension always
+   * `.{P}Np`); the shell only does Blob + `<a download>`. `path` is
+   * optional here (the browser has no directories). */
+  async writeFile(path: string | undefined, parameter: string, format: string): Promise<void> {
+    const { text, filename } = await call<{ text: string; filename: string }>(
+      this.handle,
+      "writeFile",
+      [parameter, format, path ?? null],
+    );
+    const url = URL.createObjectURL(new Blob([text], { type: "text/plain" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  /** Path/URL → filename with extension (worker `"touchstone"` namespace). */
+  static filenameFromPath(path: string): Promise<string> {
+    return call<string>("touchstone", "filenameFromPath", [path]);
+  }
+
+  /** Filename → stem (Touchstone grammar; no match → whole string). */
+  static nameFromFilename(filename: string): Promise<string> {
+    return call<string>("touchstone", "nameFromFilename", [filename]);
+  }
+
+  /** Filename → port count (grammar `\.[ghsyz]\d+p`); no match rejects. */
+  static nportsFromFilename(filename: string): Promise<number> {
+    return call<number>("touchstone", "nportsFromFilename", [filename]);
+  }
+
+  /** Deterministic manual reclamation (the unified cross-end verb).
+   * Idempotent; post-drop access rejects. */
+  drop(): Promise<void> {
+    if (this.dropped) return Promise.resolve();
+    this.dropped = true;
+    registry.unregister(this);
+    return call<void>(this.handle, "drop", []);
+  }
+}

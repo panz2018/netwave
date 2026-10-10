@@ -13,6 +13,6 @@ license-file = "../../LICENSE-MIT"
 crate-type = ["cdylib"]
 
 [dependencies]
-netwave = { path = "../../core", features = ["browser"] }
+netwave = { path = "../../core", features = ["browser", "browser-http"] }
 js-sys = { version = "0.3", features = ["std"] }
 wasm-bindgen = "0.2"

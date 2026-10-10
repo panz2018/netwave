@@ -4,7 +4,7 @@
 // Emits <out>/node.bin and <out>/wasm.bin (raw little-endian f64 bytes,
 // re/im interleaved). Binary, not JSON: JSON.stringify writes -0 as 0 and
 // loses the sign bit, making bit-exact comparison impossible.
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 const out = process.argv[2];
@@ -19,7 +19,7 @@ const NPORTS = 2;
 
 // node (napi) side — public async surface (dist = the published artifact;
 // src/ is TS and runs only under vitest/Node type-stripping).
-const { fillPattern, Frequency, FrequencyUnit, WavelengthUnit } = await import(
+const { fillPattern, Frequency, FrequencyUnit, WavelengthUnit, Touchstone } = await import(
   "../dist/index.node.mjs"
 );
 const n = await fillPattern(NFREQ, NPORTS);
@@ -34,6 +34,17 @@ writeFileSync(nodePath, Buffer.from(nv.buffer, nv.byteOffset, nv.byteLength));
   const axis = new Float64Array(back.f);
   const p = join(out, "node_freq.bin");
   writeFileSync(p, Buffer.from(axis.buffer, axis.byteOffset, axis.byteLength));
+}
+
+// Touchstone cross-compare (node): parse each shared sample, dump the S
+// master data (interleaved f64), z0, and version.
+for (const c of ["s1p", "s2p", "s4p"]) {
+  const ts = await Touchstone.fromFile(`testdata/touchstone/dut.${c}`);
+  const sv = new Float64Array(ts.s);
+  writeFileSync(join(out, `node_ts_${c}.bin`), Buffer.from(sv.buffer, 0, sv.byteLength));
+  const zv = new Float64Array(ts.z0);
+  writeFileSync(join(out, `node_ts_${c}_z0.bin`), Buffer.from(zv.buffer, 0, zv.byteLength));
+  writeFileSync(join(out, `node_ts_${c}_version.txt`), ts.version);
 }
 
 // wasm side — drive the DIST worker module through a faked worker scope
@@ -79,6 +90,20 @@ writeFileSync(wasmPath, Buffer.from(wv.buffer, wv.byteOffset, wv.byteLength));
   writeFileSync(p, Buffer.from(axis.buffer, axis.byteOffset, axis.byteLength));
   await ask(fh, "drop", []);
   await ask(back, "drop", []);
+}
+
+// Touchstone cross-compare (wasm, through the resident worker): the bytes
+// are read on the host and moved in via fromBytes (the worker has no
+// filesystem); s/z0/version come back cloned and are dumped.
+for (const c of ["s1p", "s2p", "s4p"]) {
+  const buf = readFileSync(`testdata/touchstone/dut.${c}`);
+  const th = await ask("touchstone", "fromBytes", [new Uint8Array(buf), `dut.${c}`]);
+  const sarr = new Float64Array(await ask(th, "s", []));
+  writeFileSync(join(out, `wasm_ts_${c}.bin`), Buffer.from(sarr.buffer, 0, sarr.byteLength));
+  const zarr = new Float64Array(await ask(th, "z0", []));
+  writeFileSync(join(out, `wasm_ts_${c}_z0.bin`), Buffer.from(zarr.buffer, 0, zarr.byteLength));
+  writeFileSync(join(out, `wasm_ts_${c}_version.txt`), await ask(th, "version", []));
+  await ask(th, "drop", []);
 }
 
 console.log(`dumped ${resolve(nodePath)} ${resolve(wasmPath)}`);

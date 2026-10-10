@@ -12,8 +12,9 @@ name = "netwave_native"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-netwave = { path = "../../core", features = ["node"] }
-napi = { version = "3", features = ["napi9"] }
+netwave = { path = "../../core", features = ["node", "native-http"] }
+# `async` = napi's tokio runtime: #[napi] async fns run as AsyncTask.
+napi = { version = "3", features = ["napi9", "async"] }
 napi-derive = "3"
 
 [build-dependencies]

@@ -43,7 +43,11 @@ const workerScope = self as unknown as WorkerScope;
 workerScope.onmessage = async ({ data }: MessageEvent<WorkerRequest>) => {
   await ready;
   try {
-    const result = _wasmCall(data.handle, data.method, data.args);
+    // `await` is structural: core `call` returns a plain value for every
+    // sync verb, and a JS Promise for async ones (`fromUrl` — fetch runs
+    // inside the worker, ironclad rule 8). Awaiting a non-Promise is a
+    // no-op, so the template stays verb-count-independent.
+    const result = await _wasmCall(data.handle, data.method, data.args);
     workerScope.postMessage({ id: data.id, result });
   } catch (err) {
     workerScope.postMessage({ id: data.id, error: String(err) });

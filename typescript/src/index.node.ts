@@ -12,6 +12,7 @@ import {
   frequencyUnits,
   Network,
   SPEED_OF_LIGHT,
+  Touchstone,
   WavelengthUnit,
 } from "../dist/index.node.generated.mjs";
 import type { NetwaveBuffer } from "./types.js";
@@ -23,7 +24,15 @@ import type { NetwaveBuffer } from "./types.js";
 // entry (no `upload` — that verb is browser-only); reclamation is the
 // instance method `drop()`. `SPEED_OF_LIGHT` is the napi const re-export of
 // the core constant (single definition site, ironclad rule 11).
-export { Frequency, FrequencyUnit, frequencyUnits, Network, SPEED_OF_LIGHT, WavelengthUnit };
+export {
+  Frequency,
+  FrequencyUnit,
+  frequencyUnits,
+  Network,
+  SPEED_OF_LIGHT,
+  Touchstone,
+  WavelengthUnit,
+};
 
 // Protocol hook (ironclad rule 9): `console.log(f)` auto-prints the core
 // display string. The napi macro cannot attach a symbol-keyed method (its
