@@ -86,6 +86,30 @@ def main() -> int:
         return 1
     print("FREQ ROUND-TRIP PASS: core==python==node bit-exact, wasm within tol")
 
+    # Touchstone cross-compare: each end parses the same .s1p/.s2p/.s4p
+    # samples (v1.0/v1.1, unordered f, RI/MA) and dumps the S master data
+    # (interleaved f64) + z0 + version. Native ends must match core bit-
+    # exact, wasm within tol; version is a string compared verbatim.
+    for case in ("s1p", "s2p", "s4p"):
+        s = {name: load_f64s(root, f"{name}_ts_{case}") for name in ENDS}
+        if len(s["core"]) != len(s["python"]):
+            print(f"FAIL ts {case}: core len {len(s['core'])} != python len")
+            return 1
+        sresult = compare(s["core"], s, tol)
+        if sresult is not None:
+            print(f"FAIL ts {case} s: {sresult[2]}")
+            return 1
+        z0 = {name: load_f64s(root, f"{name}_ts_{case}_z0") for name in ENDS}
+        zresult = compare(z0["core"], z0, tol)
+        if zresult is not None:
+            print(f"FAIL ts {case} z0: {zresult[2]}")
+            return 1
+        vers = {name: (root / f"{name}_ts_{case}_version.txt").read_text().strip() for name in ENDS}
+        if len(set(vers.values())) != 1:
+            print(f"FAIL ts {case} version: {vers}")
+            return 1
+    print("TOUCHSTONE PASS: core==python==node bit-exact, wasm within tol (s1p/s2p/s4p)")
+
     # Anti-tautology self-check: perturb an in-memory copy of each
     # non-reference end at a RANDOM index and require detection AT THE
     # INJECTED END AND INDEX (proves each .bin participates, the comparator

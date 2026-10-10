@@ -47,6 +47,33 @@ FREQUENCY_VERBS = {
     "drop",
 }
 FREE_VERBS = {"frequencyUnits", "liveCount"}
+# Touchstone instance/static verbs (excl. the constructor): the three
+# factories, the pure-data constructor's data surface, the name pipeline, and
+# the unified drop verb (memory-lifecycle spec — drop() on all three ends).
+TOUCHSTONE_VERBS = {
+    "fromText",
+    "fromFile",
+    "fromUrl",
+    "s",
+    "z",
+    "y",
+    "g",
+    "h",
+    "f",
+    "z0",
+    "nports",
+    "name",
+    "comments",
+    "version",
+    "parameter",
+    "data",
+    "writeTouchstone",
+    "writeFile",
+    "filenameFromPath",
+    "nameFromFilename",
+    "nportsFromFilename",
+    "drop",
+}
 # Language-native protocol hooks (ironclad rule 9): named per platform
 # (py __str__/__repr__/__len__, JS toString), so they are exempt from the
 # cross-end verb-set equality — the unified display string they produce is
@@ -181,16 +208,19 @@ def main() -> int:
         "python": {
             "Network": py_class_verbs(pyi, "Network"),
             "Frequency": py_class_verbs(pyi, "Frequency"),
+            "Touchstone": py_class_verbs(pyi, "Touchstone"),
             "free": py_free_verbs(pyi),
         },
         "node": {
             "Network": ts_class_verbs(node, "Network"),
             "Frequency": ts_class_verbs(node, "Frequency"),
+            "Touchstone": ts_class_verbs(node, "Touchstone"),
             "free": ts_free_verbs(node),
         },
         "browser": {
             "Network": ts_class_verbs(browser, "Network"),
             "Frequency": ts_class_verbs(browser, "Frequency"),
+            "Touchstone": ts_class_verbs(browser, "Touchstone"),
             "free": ts_free_verbs(browser),
         },
     }
@@ -217,6 +247,15 @@ def main() -> int:
         if verbs["Frequency"] != FREQUENCY_VERBS:
             got = sorted(verbs["Frequency"])
             print(f"VERBS: {end}.Frequency {got} != {sorted(FREQUENCY_VERBS)}")
+            bad += 1
+
+    # Touchstone verbs equal on all three ends (no browser-only carve-out:
+    # writeFile exists on every end, the platform glue differs but the verb
+    # name is shared).
+    for end, verbs in ends.items():
+        if verbs["Touchstone"] != TOUCHSTONE_VERBS:
+            got = sorted(verbs["Touchstone"])
+            print(f"VERBS: {end}.Touchstone {got} != {sorted(TOUCHSTONE_VERBS)}")
             bad += 1
 
     # The two stateless free verbs are on all three ends.
@@ -257,6 +296,7 @@ def main() -> int:
         return 1
     print(
         f"verbs OK: Network={sorted(NETWORK_VERBS)} Frequency={sorted(FREQUENCY_VERBS)} "
+        f"Touchstone={sorted(TOUCHSTONE_VERBS)} "
         f"free={sorted(FREE_VERBS)} upload=browser-only, no free/release"
     )
     return 0
