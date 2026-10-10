@@ -19,7 +19,8 @@ node/浏览器壳 re-export），是"持有解析结果的状态类"（api-contr
 `load_file` / `read_touchstone` 动词。`parameter`（S/Z/Y/G/H）在构造器与写出接口 MUST
 必填无默认（默认 S 会把 Z 数据静默当 S 存）。`frequency` MUST 收 `Frequency`
 对象（频率轴唯一权威）。公开属性面：`s`/`z`/`y`/`g`/`h`/`f`/`z0`/`nports`/
-`name`/`comments`/`version`/`parameter` + 访问器 `data(parameter?, format?)`；
+`name`/`comments`/`version`/`parameter` + 访问器 `data(parameter, format)`（双参必填，
+无默认——调 `data()` 就必须说清要什么域什么格式，零拷贝默认走 `s` 属性）；
 MUST NOT 存在 `format` 属性、`filename` 属性（文件来源名统一用 `name`，
 写出路径是私有方法 `write_path`）、`port_names`、`validate()`、`resistance`/
 `reference` 冗余存储。
@@ -83,6 +84,39 @@ MA 不是 RI，规范原文 "The default value is MA"）。
 - **THEN** token 总数不满足 stride = 9 的整除性，报 `TouchstoneError`
   （消息含实际 token 数与 stride 期望），不静默吞数据
 
+### Requirement: 2 端口列序——文件 legacy 序、内部恒 row-major、I/O 边界换回
+
+Touchstone v1.x 约定 2 端口文件的列序为 `N11, N21, N12, N22`（off-diagonal
+反序，规范 v2.1 "1-port and 2-port Networks" 节；v2.x 用
+`[Two-Port Data Order] 21_12|12_21` 显式声明，本实现按 v1.x legacy `21_12`
+读入）；3 端口及以上为行主序 `N11, N12, N13 / N21, …`。netwave 规则：
+**内部存储恒 row-major**（`(nfreq, nports, nports)`，铁律一布局），
+2 端口文件解析时 MUST 在 I/O 边界交换 off-diagonal 对（位置 2↔4、3↔5
+的 re/im 交错对），使 `s`/`z`/`y`/`g`/`h` 与 `data()` 对任意 nports 都
+是统一 row-major——消费者 MUST NOT 为 nports=2 做特殊索引。写出时
+MUST 在 I/O 边界换回 legacy 序（交换为自逆），保证写出文本可被任何
+v1.x 工具正确读入。3 端口及以上读写均无交换（文件序=row-major）。
+skrf 同策（`io/touchstone.py` rank==2 时 transpose）；rf-touchstone
+内部存转置矩阵为反例，不采。
+
+#### Scenario: 2 端口文件读入交换 off-diagonal
+
+- **WHEN** 解析 `# GHZ S RI R 50` + `1.0 1 2 3 4 5 6 7 8`
+  （文件序 S11=1+2j, S21=3+4j, S12=5+6j, S22=7+8j）
+- **THEN** `s` = `[1,2, 5,6, 3,4, 7,8]`（row-major：S11, S12, S21, S22），
+  off-diagonal 对在 I/O 边界交换，内部无 2 端口特殊序
+
+#### Scenario: 3 端口文件读入无交换
+
+- **WHEN** 解析合法 3 端口文件（stride=19）
+- **THEN** 数据逐 token 原样入 row-major 存储，无交换
+
+#### Scenario: 2 端口写出换回 legacy 序且往返 bit-exact
+
+- **WHEN** 对非对称 2 端口网络调用 `write_touchstone(S, RI)`
+- **THEN** 数据行为 legacy 序（S11, S21, S12, S22）；重新解析得
+  与原始 `s` 逐 bit 相同的 row-major 存储
+
 ### Requirement: 频率轴入库规则——重复报错、乱序排序
 
 标准（v2.1 规范）要求网络参数数据按频率递增排列。netwave 规则：重复频点
@@ -108,13 +142,17 @@ MUST 报错（同频两值是真歧义）；乱序（非单调无重复）MUST �
 主数据 MUST 只存 S 一份（交错 f64，铁律一布局 `(nfreq, nports, nports)`）；
 文件/构造数据为 Y/Z/G/H 时解析/构造时即换算成 S 入库。域快捷属性
 `s`/`z`/`y`/`g`/`h` MUST 全存在：`s` 零拷贝返回存储本体，其余现算不缓存
-（后端私有 `s_to_domain`）。统一访问器 `data(parameter?, format?)` MUST
-覆盖 S/Z/Y/G/H × RI/MA/DB 全组合：默认 `(S, RI)` 零拷贝返回 `s` 本体；
-MA/DB 返回 `(nfreq, nports, nports, 2)` 实数对（mag,deg / db,deg）。
+（后端私有 `s_to_domain`）。统一访问器 `data(parameter, format)` MUST
+双参必填无默认（与写出接口同策：静默默认让用户不知道自己拿的是什么）；
+覆盖 S/Z/Y/G/H × RI/MA/DB 全组合：显式 `(S, RI)` 零拷贝返回 `s` 本体；
+MA/DB 返回实数对（mag,deg / db,deg）。
 MA/DB 语义：角度恒度（规范原文），dB = 20×log₁₀(幅度)（S 参是幅度比）。
-返回形状：Python 多维 ndarray（零拷贝视图）；JS/wasm Float64Array + shape
-元数据，扁平索引公式 `idx = ((f*n + r)*n + c)*2`（+0=re/mag/db、
-+1=im/deg）为三端共享寻址真相。换算函数（`s_to_domain`/`to_ma`/`to_db`）
+返回形状：Python 多维 ndarray（零拷贝视图），RI 为 complex128
+`(nfreq, nports, nports)`（每元素即复数）、MA/DB 为 float64
+`(nfreq, nports, nports, 2)`；JS/wasm 无复数类型，所有格式都以 re/im
+（或 mag|db/deg）交错对扁平传输，shape 恒 `(nfreq, nports, nports, 2)`
+（末尾 `2` 即交错对，与 `values.length` 一致），扁平索引公式
+`idx = ((f*n + r)*n + c)*2`（+0=re/mag/db、+1=im/deg）为三端共享寻址真相。换算函数（`s_to_domain`/`to_ma`/`to_db`）
 MUST 全部私有。独立真值：域换算对 skrf golden 对拍（引用 manifest
 `core_tol`）；MA/DB 反变换闭式（`mag = 10^(db/20)`）。
 
@@ -131,6 +169,12 @@ MUST 全部私有。独立真值：域换算对 skrf golden 对拍（引用 mani
   Float64Array+shape；`[f,r,c,0]`=模、`[f,r,c,1]`=度；与 `s` 的
   `abs`/`angle(deg)` 对拍 `core_tol`
 
+#### Scenario: data 参数缺失即报错
+
+- **WHEN** 调用 `data()` 未传 `parameter` 或 `format`
+- **THEN** 三端同一位置报参数缺失错误（Python TypeError / napi throw /
+  浏览器 reject），不静默按 `(S, RI)` 返回
+
 ### Requirement: 写出接口——文本与落盘两动词、扩展名 parameter+nports 单源
 
 `writeTouchstone(parameter, format)` MUST 返回 Touchstone 文本（全平铺必填、
@@ -138,6 +182,8 @@ MUST 全部私有。独立真值：域换算对 skrf golden 对拍（引用 mani
 从文件记录，纯数据构造时由 z0 推导，不在写出时重推；无 `rRef`——
 z0 唯一权威），
 数字格式化 MUST shortest-roundtrip（写出→读回逐 bit 一致，测试规划既定）。
+2 端口写出 MUST 按 v1.x legacy 列序（`N11, N21, N12, N22`）在 I/O 边界
+换回（见「2 端口列序」需求），内部 row-major 不外泄。
 `writeFile(path, parameter, format)` 实现分层：原生端（Rust/Python/node）
 core 内 std::fs 落盘（node async / Python 同步放 GIL / Rust 同步）；
 浏览器 wasm core MUST NOT 导出 `writeFile`，该动词只存在于 TS 壳（async，
