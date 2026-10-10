@@ -303,16 +303,16 @@ enum 反射（跨端词汇零手抄），无字符串拼写风险。skrf 的 `fr
 Rust 字段级私有，但每个字段都有上表公开 property 对应——本节是公开属性的
 存储清单，不是隐藏状态；真正的私有件只有下一节的函数。
 
-| 字段        | 类型               | 说明                                      |
-| ----------- | ------------------ | ----------------------------------------- |
-| `frequency` | `Frequency` 实例   | 频率轴唯一权威（Hz，递增存储）            |
-| `s`         | 交错复数扁平 f64   | 唯一主数据，`(nfreq, nports, nports)`     |
-| `z0`        | 每端口实数数组 f64 | `#` 行 `R` 归一后的唯一权威（规范禁复数） |
-| `nports`    | `u32`              | 端口数（冗余自 z0 长度，热路径免间接）    |
-| `name`      | `Option<String>`   | 文件/URL 名（无扩展名）                   |
-| `comments`  | `String`           | `!` 注释合并文本                          |
-| `version`   | `bool`（是否 1.1） | 解析自文件记录；数据构造时由 `z0` 推导    |
-| `parameter` | enum（S/Y/Z/G/H）  | 文件原始参数类型，仅元数据                |
+| 字段        | 类型                        | 说明                                                 |
+| ----------- | --------------------------- | ---------------------------------------------------- |
+| `frequency` | `Frequency` 实例            | 频率轴唯一权威（Hz，递增存储）                       |
+| `s`         | 交错复数扁平 f64            | 唯一主数据，`(nfreq, nports, nports)`                |
+| `z0`        | 每端口实数数组 f64          | `#` 行 `R` 归一后的唯一权威（规范禁复数）            |
+| `nports`    | `u32`                       | 端口数（冗余自 z0 长度，热路径免间接）               |
+| `name`      | `Option<String>`            | 文件/URL 名（无扩展名）                              |
+| `comments`  | `String`                    | `!` 注释合并文本                                     |
+| `version`   | `String`（`"1.0"`/`"1.1"`） | 解析自文件记录；数据构造时由 `z0` 推导；与公开面同型 |
+| `parameter` | enum（S/Y/Z/G/H）           | 文件原始参数类型，仅元数据                           |
 
 不存：频率单位（在 `Frequency.unit`）、频点数（`frequency.npoints`）、
 噪声（遇即报错，不入库）、resistance/reference 原始值（已归一进 `z0`）、
@@ -482,7 +482,8 @@ netwave `touchstone.rs` 只定义：
 | `TouchstoneFormat`    | enum { RI, MA, DB }    | 文本读写格式（仅解析/写出用）；同上反射                                    |
 | `TouchstoneError`     | thiserror enum         | 解析/构造错误：重复频点、维度不符、语法错；三端映射 PyErr/napi Error/throw |
 
-删除：`Version`（内部 bool 或由 `z0` 推导即可，不配拥有类型）、
+删除：`Version`（`version` 内部与公开面同为 `String` 即可，不配拥有类型；
+禁 `bool`——装不下未来 `"2.0"`/`"2.1"`，扩版本即改类型）、
 `TouchstoneOptions`（参数已平铺，无选项包）、`SData`（直接用
 `Vec<Complex64>`/交错 f64 视图，别名是多余间接）。
 复用不重定义：`Frequency`/`FrequencyUnit`（frequency 模块既有）、`Complex64`（num-complex）。

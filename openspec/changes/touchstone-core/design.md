@@ -18,7 +18,7 @@ struct Touchstone {
     nports: u32,                // 冗余自 z0 长度，热路径免间接
     name: Option<String>,
     comments: String,
-    version: bool,              // 是否 1.1；公开面映射 "1.0"/"1.1"
+    version: String,            // "1.0"/"1.1"；与公开面同型，未来 2.0/2.1 扩值不改类型
     parameter: TouchstoneParameter,
 }
 ```

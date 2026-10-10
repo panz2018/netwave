@@ -41,8 +41,10 @@ MUST NOT 存在 `format` 属性、`filename` 属性（文件来源名统一用 `
 实数（1.1）归一成每端口 f64 数组存 `z0`（唯一权威，不存原始 R）。规范禁止
 复数参考阻抗（v1.1 R 为 real positive numbers；v2.x 明文 complex not
 supported），z0 MUST NOT 接受复数。`z0` 入参形状 MUST 恰为标量或长度
-`1`/`nports` 的实数数组，其余长度 MUST 报错。version 推导：全端口同值→
-`"1.0"`，存在不同值→`"1.1"`；公开面 version 为字符串。参数域 S/Z/Y/G/H
+`1`/`nports` 的实数数组，其余长度 MUST 报错。version 来源分入口：解析入口
+从文件记录——按 `#` 行 `R` 的**形态**判定（标量 token→`"1.0"`、每端口
+token→`"1.1"`，即使数值全同仍为 `"1.1"`）；纯数据构造器才由 z0 **数值**
+推导（全端口同值→`"1.0"`，存在不同值→`"1.1"`）；公开面 version 为字符串。参数域 S/Z/Y/G/H
 大小写不敏感读入（`to_ascii_uppercase` 归一），写出/enum/错误消息一律
 标准大写。G/H 域仅 2 端口，违者报错。频点边界 MUST 纯由 nports 决定：
 数字 token 流按 stride = `1 + 2×nports²` 消费，总数不整除 MUST 报
@@ -224,9 +226,11 @@ nports 优先级 = 显式 `nports` 参数 > filename 文法抠 > 两者都无 MU
 core MUST 定义 `TouchstoneParameter`（S/Y/Z/G/H）、`TouchstoneFormat`
 （RI/MA/DB）两 enum（穷尽匹配、绑定宏反射三端零手抄）与 `TouchstoneError`
 （thiserror：重复频点、维度不符、z0 形状非法、语法错、G/H 端口数违例、
-nports 无匹配），三端映射 PyErr/napi Error/throw。MUST NOT 定义
-`Version` enum（内部 bool + 字符串公开面）、`TouchstoneOptions`（参数
-平铺）、`SData` 别名。错误消息 MUST 含 offending 输入原文。
+nports 无匹配），三端映射 PyErr/napi Error/throw。`version` 内部存储与
+公开面**同为字符串**（`String` / `"1.0"`|`"1.1"`），MUST NOT 用 `bool`——
+bool 装不下未来 `"2.0"`/`"2.1"`，扩版本即改类型，违反"扩值不改类型"裁决；
+也 MUST NOT 定义 `Version` enum（字符串已是单源，再造枚举 = 第二份真相源）、
+`TouchstoneOptions`（参数平铺）、`SData` 别名。错误消息 MUST 含 offending 输入原文。
 
 #### Scenario: enum 词汇三端反射一致
 
