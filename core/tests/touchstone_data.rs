@@ -226,3 +226,56 @@ fn constructor_sorts_shuffled_frequency() {
     assert_eq!(ts.f(), vec![1.0e9, 2.0e9]);
     assert_eq!(ts.s(), &[0.2, 0.0, 0.1, 0.0]);
 }
+
+#[test]
+fn constructor_data_len_not_multiple_of_npoints_errors() {
+    // 1 frequency point needs an even data length (re/im pairs); 3 is not.
+    let f =
+        netwave::frequency::Frequency::from_f(vec![1.0e9], netwave::frequency::FrequencyUnit::Hz);
+    let err = Touchstone::new(&f, &[0.0; 3], &[50.0], TouchstoneParameter::S, "", "").unwrap_err();
+    assert!(
+        err.to_string().contains('3'),
+        "must quote data_len 3: {err}"
+    );
+}
+
+#[test]
+fn constructor_rejects_gh_on_non_two_port() {
+    // 1-port data with a G parameter: G/H are 2-port only.
+    let f =
+        netwave::frequency::Frequency::from_f(vec![1.0e9], netwave::frequency::FrequencyUnit::Hz);
+    let err = Touchstone::new(&f, &[0.0; 2], &[50.0], TouchstoneParameter::G, "", "").unwrap_err();
+    assert!(
+        err.to_string().contains('G'),
+        "must quote the offending domain: {err}"
+    );
+}
+
+#[test]
+fn constructor_rejects_non_square_cells() {
+    // 1 frequency point, data length 6 -> 3 cells, not a perfect square
+    // (sqrt rounds to 2, 2² = 4 ≠ 3). The error quotes data_len 6 and
+    // the rounded nports² 4.
+    let f =
+        netwave::frequency::Frequency::from_f(vec![1.0e9], netwave::frequency::FrequencyUnit::Hz);
+    let err = Touchstone::new(&f, &[0.0; 6], &[50.0], TouchstoneParameter::S, "", "").unwrap_err();
+    let msg = err.to_string();
+    assert!(
+        msg.contains('6') && msg.contains('4'),
+        "must quote data_len 6 and rounded nports² 4: {msg}"
+    );
+}
+
+#[test]
+fn data_gh_on_non_two_port_errors() {
+    // The unified accessor reaches the same G/H port guard as the
+    // shortcut properties.
+    let ts = one_port_s();
+    let err = ts
+        .data(TouchstoneParameter::G, TouchstoneFormat::RI)
+        .unwrap_err();
+    assert!(
+        err.to_string().contains('G'),
+        "must quote the offending domain: {err}"
+    );
+}

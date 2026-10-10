@@ -305,3 +305,44 @@ fn from_text_z_domain_named_s_file_keeps_parameter_z() {
     let ts = Touchstone::from_text(text, Some(2), Some("x.s2p")).unwrap();
     assert_eq!(ts.parameter().as_ref(), "Z");
 }
+
+#[test]
+fn blank_lines_are_skipped() {
+    // Empty lines between sections are ignored, not parsed as tokens.
+    let text = "# GHZ S RI R 50\n\n1.0 0.1 0.2\n\n2.0 0.3 0.4\n";
+    let ts = Touchstone::from_text(text, Some(1), None).unwrap();
+    assert_eq!(ts.f(), vec![1.0e9, 2.0e9]);
+}
+
+#[test]
+fn option_line_second_r_group_starts_new_run() {
+    // `R 50 R 45`: the inner loop breaks on the second `R`, the outer
+    // loop starts a new run — per-port z0 [50, 45] (v1.1).
+    let text = "# GHZ S RI R 50 R 45\n1.0 0.1 0.2 0.3 0.4 0.5 0.6 0.7 0.8";
+    let ts = Touchstone::from_text(text, Some(2), None).unwrap();
+    assert_eq!(ts.z0(), &[50.0, 45.0]);
+    assert_eq!(ts.version(), "1.1");
+}
+
+#[test]
+fn option_line_r_non_number_errors() {
+    let err = Touchstone::from_text("# GHZ S RI R abc\n1.0 0.1 0.2", Some(1), None).unwrap_err();
+    assert!(
+        err.to_string().contains("abc"),
+        "error must quote the non-numeric R token: {err}"
+    );
+}
+
+#[test]
+fn ext_match_grammar_failures() {
+    // Too short after the dot (no digit + p).
+    assert!(Touchstone::nports_from_filename("x.s").is_err());
+    // Domain letter outside the closed grammar.
+    assert!(Touchstone::nports_from_filename("x.t1p").is_err());
+    // Trailing character is not 'p'.
+    assert!(Touchstone::nports_from_filename("x.s1q").is_err());
+    // Empty port digits (domain letter directly followed by 'p').
+    assert!(Touchstone::nports_from_filename("x.sp").is_err());
+    // Port digits overflow usize.
+    assert!(Touchstone::nports_from_filename("x.s99999999999999999999999p").is_err());
+}

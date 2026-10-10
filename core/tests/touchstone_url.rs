@@ -51,3 +51,33 @@ async fn from_url_http_error_propagates_verbatim() {
     // Error message quotes the failing status (and the URL) verbatim.
     assert!(msg.contains("404"), "error must quote status: {msg}");
 }
+
+#[tokio::test]
+async fn from_url_connection_failure_surfaces_verbatim() {
+    // Port 1 has no listener: the transport failure is quoted verbatim.
+    let err = Touchstone::from_url("http://127.0.0.1:1/x.s1p")
+        .await
+        .expect_err("connection refused must be an error");
+    assert!(
+        err.to_string().contains("127.0.0.1:1"),
+        "error must quote the URL: {err}"
+    );
+}
+
+#[tokio::test]
+async fn from_url_trailing_slash_has_no_filename() {
+    // A URL ending in '/' yields an empty filename: nports cannot be
+    // inferred and the parse errors, guiding explicit nports.
+    let server = MockServer::start();
+    server.mock(|when, then| {
+        when.method(GET).path("/");
+        then.status(200).body(S1P);
+    });
+    let err = Touchstone::from_url(&server.url("/"))
+        .await
+        .expect_err("empty filename cannot infer nports");
+    assert!(
+        err.to_string().contains("nports"),
+        "error must guide explicit nports: {err}"
+    );
+}

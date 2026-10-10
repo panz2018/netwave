@@ -2,7 +2,7 @@
 //! (storage holds S only), verified against independently computed
 //! closed-form expectations (independent truth — never the function output).
 
-use netwave::touchstone::Touchstone;
+use netwave::touchstone::{Touchstone, TouchstoneFormat, TouchstoneParameter};
 
 /// Tolerance from testdata/manifest.json `core_tol.relative` (placeholder).
 const TOL: f64 = 1e-12;
@@ -41,6 +41,20 @@ fn two_port_z_file_converts_to_s_scalar_z0() {
     let text = "# GHZ Z RI R 50\n1.0 50 0 0 0 0 0 50 0";
     let ts = Touchstone::from_text(text, Some(2), None).unwrap();
     approx_eq(ts.s(), &[0.0; 8], TOL);
+}
+
+#[test]
+fn two_port_y_file_with_zero_pivot_roundtrips() {
+    // Y11 = -1/z0 makes (I + Z0·Y)[0][0] = 0, so the Gauss-Jordan
+    // inversion must swap rows to find a nonzero pivot. The matrix stays
+    // invertible (det of I + Z0·Y = -0.25). Independent truth: Y -> S -> Y
+    // returns the ingested matrix (row-major, symmetric here).
+    let text = "# GHZ Y RI R 50\n1.0 -0.02 0 0.01 0 0.01 0 0.02 0";
+    let ts = Touchstone::from_text(text, Some(2), None).unwrap();
+    let y = ts
+        .data(TouchstoneParameter::Y, TouchstoneFormat::RI)
+        .unwrap();
+    approx_eq(&y, &[-0.02, 0.0, 0.01, 0.0, 0.01, 0.0, 0.02, 0.0], TOL);
 }
 
 #[test]

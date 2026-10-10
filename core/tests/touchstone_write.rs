@@ -151,3 +151,44 @@ fn write_file_directory_form() {
     assert!(dir.join("x.z2p").exists());
     std::fs::remove_dir_all(&dir).ok();
 }
+
+#[test]
+fn write_touchstone_emits_comments() {
+    let text = "! first\n! second\n# GHZ S RI R 50\n1.0 0.1 0.2";
+    let ts = Touchstone::from_text(text, Some(1), None).unwrap();
+    let out = ts
+        .write_touchstone(TouchstoneParameter::S, TouchstoneFormat::RI)
+        .unwrap();
+    assert!(out.starts_with("! first\n! second\n"), "got: {out}");
+}
+
+#[test]
+fn write_touchstone_gh_on_non_two_port_errors() {
+    let text = "# GHZ S RI R 50\n1.0 0.1 0.2";
+    let ts = Touchstone::from_text(text, Some(1), None).unwrap();
+    let err = ts
+        .write_touchstone(TouchstoneParameter::H, TouchstoneFormat::RI)
+        .unwrap_err();
+    assert!(
+        err.to_string().contains('H'),
+        "must quote the offending domain: {err}"
+    );
+}
+
+#[test]
+fn write_file_unwritable_path_errors() {
+    // A path whose parent directory does not exist fails at the fs layer
+    // and surfaces as a Syntax error quoting the full path.
+    let ts = two_port_z();
+    let err = ts
+        .write_file(
+            "/nonexistent-netwave-dir-xyz/out.s2p",
+            TouchstoneParameter::Z,
+            TouchstoneFormat::RI,
+        )
+        .unwrap_err();
+    assert!(
+        err.to_string().contains("nonexistent-netwave-dir-xyz"),
+        "error must quote the failing path: {err}"
+    );
+}

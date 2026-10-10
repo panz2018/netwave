@@ -100,10 +100,10 @@
 
 ## 9. 跨端对拍与闸门
 
-- [ ] 9.1 `scripts/cross_compare.py` 扩 Touchstone 用例：同一 .s1p/.s2p/
+- [x] 9.1 `scripts/cross_compare.py` 扩 Touchstone 用例：同一 .s1p/.s2p/
       .s4p（含 1.1 多 z0、乱序、MA/DB）三端读→`s`/`z0`/`version` 哈希比对
       （容差 manifest `core_tol`）
-- [ ] 9.2 `scripts/check_verbs.py` 动词名单扩 Touchstone 面（三端生成物
+- [x] 9.2 `scripts/check_verbs.py` 动词名单扩 Touchstone 面（三端生成物
       动词集合相等）
 - [ ] 9.3 `pnpm check` 全绿；llvm-cov 全 workspace 行覆盖 100% 底线闸门绿
       （绑定 lib.rs 沿用既有 ignore 正则）
