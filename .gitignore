@@ -1,5 +1,7 @@
 target/
 node_modules/
+# npm lockfile: this workspace is pnpm-managed (pnpm-lock.yaml)
+package-lock.json
 dist/
 .venv/
 __pycache__/
