@@ -28,6 +28,13 @@ def main() -> int:
     back = netwave.Frequency.from_wavelength(wl, netwave.WavelengthUnit.mm, 2.2)
     fpath = out / "python_freq.bin"
     fpath.write_bytes(back.f.tobytes())
+    # Touchstone cross-compare: parse each shared sample and dump the S
+    # master data (interleaved f64), z0, and version.
+    for case in ("s1p", "s2p", "s4p"):
+        ts = netwave.Touchstone.from_file(f"testdata/touchstone/dut.{case}")
+        (out / f"python_ts_{case}.bin").write_bytes(ts.s.tobytes())
+        (out / f"python_ts_{case}_z0.bin").write_bytes(ts.z0.tobytes())
+        (out / f"python_ts_{case}_version.txt").write_text(ts.version)
     print(f"dumped {path.resolve()} {fpath.resolve()}")
     return 0
 

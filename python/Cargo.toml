@@ -12,9 +12,12 @@ name = "_netwave"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-netwave = { path = "../core", features = ["python"] }
+netwave = { path = "../core", features = ["python", "native-http"] }
 pyo3 = { version = "0.29", features = ["abi3-py310"] }
 numpy = "0.29"
+# from_url is async in core; the sync Python verb blocks on a
+# current-thread runtime inside py.allow_threads.
+tokio = { version = "1", features = ["rt"] }
 pyo3-stub-gen = { version = "0.23", optional = true }
 
 [features]
