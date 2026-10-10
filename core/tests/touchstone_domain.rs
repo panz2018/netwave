@@ -101,7 +101,10 @@ fn two_port_h_file_converts_to_s() {
     //             [-26.25-23.75,    0.125-2396.375]]
     //           = [[-2601.25, 25],[-50, -2396.25]]
     // S_ij = (num_ij / det) * sqrt(z0_i / z0_j); z0 all 50 -> factor 1.
-    let text = "# GHZ H RI R 50\n1.0 0.5 0 0.1 0 0.2 0 0.4 0";
+    // File is v1.x legacy 2-port order (h11, h21, h12, h22); the
+    // intended matrix H = [[0.5, 0.1],[0.2, 0.4]] is written as
+    // h11=0.5, h21=0.2, h12=0.1, h22=0.4.
+    let text = "# GHZ H RI R 50\n1.0 0.5 0 0.2 0 0.1 0 0.4 0";
     let ts = Touchstone::from_text(text, Some(2), None).unwrap();
     let d = 2648.75f64;
     approx_eq(
@@ -133,7 +136,10 @@ fn two_port_g_file_converts_to_s() {
     // adj = [[5001, -5],[10, 1.99]]
     // (I−Yn)adj = [[50.01-50, -0.05-9.95],[50010-49990, -50-9948.01]]
     //          = [[0.01, -10],[20, -9998.01]]
-    let text = "# GHZ G RI R 50\n1.0 0.02 0 0.001 0 0.002 0 0.01 0";
+    // File is v1.x legacy 2-port order (g11, g21, g12, g22); the
+    // intended matrix G = [[0.02, 0.001],[0.002, 0.01]] is written as
+    // g11=0.02, g21=0.002, g12=0.001, g22=0.01.
+    let text = "# GHZ G RI R 50\n1.0 0.02 0 0.002 0 0.001 0 0.01 0";
     let ts = Touchstone::from_text(text, Some(2), None).unwrap();
     let d = 10001.99f64;
     approx_eq(

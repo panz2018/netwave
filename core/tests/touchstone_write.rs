@@ -10,6 +10,29 @@ fn two_port_z() -> Touchstone {
 }
 
 #[test]
+fn write_two_port_emits_legacy_order() {
+    // Internal storage is row-major (S11, S12, S21, S22); v1.x 2-port
+    // files must be written in legacy order (S11, S21, S12, S22).
+    // Construct with non-symmetric off-diagonals: S12=5+6j, S21=3+4j.
+    let text = "# GHZ S RI R 50\n1.0 1 2 3 4 5 6 7 8";
+    let ts = Touchstone::from_text(text, Some(2), None).unwrap();
+    // Row-major storage: S11=1+2j, S12=5+6j, S21=3+4j, S22=7+8j.
+    assert_eq!(ts.s(), vec![1.0, 2.0, 5.0, 6.0, 3.0, 4.0, 7.0, 8.0]);
+    let out = ts
+        .write_touchstone(TouchstoneParameter::S, TouchstoneFormat::RI)
+        .unwrap();
+    // Written data row must be legacy order: S11, S21, S12, S22
+    // (frequency formats shortest: "1" not "1.0").
+    assert!(
+        out.contains("1 1 2 3 4 5 6 7 8"),
+        "written 2-port row must be legacy order: {out}"
+    );
+    // Roundtrip: re-parsing the written text restores row-major storage.
+    let back = Touchstone::from_text(&out, Some(2), None).unwrap();
+    assert_eq!(ts.s(), back.s(), "roundtrip must be bit-exact");
+}
+
+#[test]
 fn write_touchstone_roundtrip_bit_exact() {
     let ts = two_port_z();
     let text = ts

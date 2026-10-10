@@ -469,6 +469,13 @@ impl Touchstone {
             s.push(c.im);
         }
         debug_assert_eq!(s.len(), 2 * nports * nports);
+        // Touchstone v1.x 2-port files use N11, N21, N12, N22 column
+        // order; swap off-diagonals so internal storage is always
+        // row-major (N11, N12, N21, N22) regardless of port count.
+        if nports == 2 {
+            s.swap(2, 4);
+            s.swap(3, 5);
+        }
         Ok((freq, s))
     }
 
@@ -1085,7 +1092,17 @@ impl Touchstone {
         let n = self.nports as usize;
         let stride = 1 + 2 * n * n;
         let block = 2 * n * n;
-        let domain = self.data(parameter, format)?.into_owned();
+        let mut domain = self.data(parameter, format)?.into_owned();
+        // Internal storage is row-major (N11, N12, N21, N22); v1.x
+        // 2-port files use N11, N21, N12, N22 — swap off-diagonals
+        // back at the I/O boundary so consumers never see a special
+        // 2-port order.
+        if n == 2 {
+            for blk in domain.chunks_mut(block) {
+                blk.swap(2, 4);
+                blk.swap(3, 5);
+            }
+        }
         // Frequencies are written in the display unit carried by the axis
         // (the file's unit when parsed; Hz for pure-data construction).
         let f = self
@@ -1344,29 +1361,18 @@ impl crate::resources::Resource for Touchstone {
             "version" => Ok(JsValue::from_str(self.version())),
             "parameter" => Ok(JsValue::from_str(self.parameter().as_ref())),
             "data" => {
-                let p = match args.first() {
-                    Some(v) if !v.is_undefined() && !v.is_null() => js_ts_kw(v)?,
-                    _ => TouchstoneParameter::S,
-                };
-                let f = match args.get(1) {
-                    Some(v) if !v.is_undefined() && !v.is_null() => js_ts_kw(v)?,
-                    _ => TouchstoneFormat::RI,
-                };
+                let p = js_ts_kw(args.first().ok_or_else(|| js("parameter required"))?)?;
+                let f = js_ts_kw(args.get(1).ok_or_else(|| js("format required"))?)?;
                 let nf = self.f().len();
                 let cow = self.data(p, f).map_err(|e| js(e.to_string()))?;
-                let shape = match f {
-                    TouchstoneFormat::RI => js_sys::Array::of3(
-                        &JsValue::from_f64(nf as f64),
-                        &JsValue::from_f64(n as f64),
-                        &JsValue::from_f64(n as f64),
-                    ),
-                    TouchstoneFormat::MA | TouchstoneFormat::DB => js_sys::Array::of4(
-                        &JsValue::from_f64(nf as f64),
-                        &JsValue::from_f64(n as f64),
-                        &JsValue::from_f64(n as f64),
-                        &JsValue::from_f64(2.0),
-                    ),
-                };
+                // JS has no complex type: every format crosses as flat
+                // interleaved pairs, so the shape always ends in 2.
+                let shape = js_sys::Array::of4(
+                    &JsValue::from_f64(nf as f64),
+                    &JsValue::from_f64(n as f64),
+                    &JsValue::from_f64(n as f64),
+                    &JsValue::from_f64(2.0),
+                );
                 Ok(js_object(&[
                     ("values", f64_array(&cow)),
                     ("shape", shape.into()),

@@ -201,13 +201,42 @@ fn data_row_spanning_multiple_physical_lines_parses() {
     assert_eq!(
         ts.s(),
         vec![
-            0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
+            0.1, 0.2, 0.5, 0.6, 0.3, 0.4, 0.7, 0.8, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0
         ]
     );
 }
 
-// ---- name pipeline (static trio) ----
+// ---- 2-port column order (v1.x legacy N11,N21,N12,N22) ----
 
+#[test]
+fn two_port_file_order_swaps_off_diagonals_to_row_major() {
+    // v1.x 2-port files list columns N11, N21, N12, N22 (spec v2.1
+    // "1-port and 2-port Networks"); 3+ port files are row-wise
+    // (N11, N12, N13 / N21, ...). Internal storage MUST be row-major
+    // for every port count, so the off-diagonal pairs swap at parse.
+    // File: S11=1+2j, S21=3+4j, S12=5+6j, S22=7+8j.
+    let text = "# GHZ S RI R 50\n1.0 1 2 3 4 5 6 7 8";
+    let ts = Touchstone::from_text(text, Some(2), None).unwrap();
+    // Row-major: S11, S12, S21, S22.
+    assert_eq!(ts.s(), vec![1.0, 2.0, 5.0, 6.0, 3.0, 4.0, 7.0, 8.0]);
+}
+
+#[test]
+fn three_port_file_order_is_row_major_no_swap() {
+    // 3-port files are already row-wise; no swap applies. First row
+    // S11,S12,S13 = (1,0),(2,0),(3,0) must land verbatim.
+    // stride = 1 + 2*9 = 19: one frequency + 18 numbers (9 complex pairs).
+    let mut text = String::from("# GHZ S RI R 50\n1.0");
+    for v in 1..=9 {
+        text.push(' ');
+        text.push_str(&v.to_string());
+        text.push_str(" 0");
+    }
+    let ts = Touchstone::from_text(&text, Some(3), None).unwrap();
+    assert_eq!(&ts.s()[..6], &[1.0, 0.0, 2.0, 0.0, 3.0, 0.0]);
+}
+
+// ---- name pipeline (static trio) ----
 #[test]
 fn filename_from_path_strips_directory() {
     assert_eq!(Touchstone::filename_from_path("/tmp/a/b.s4p"), "b.s4p");
