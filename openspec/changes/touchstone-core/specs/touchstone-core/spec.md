@@ -20,7 +20,8 @@ node/浏览器壳 re-export），是"持有解析结果的状态类"（api-contr
 必填无默认（默认 S 会把 Z 数据静默当 S 存）。`frequency` MUST 收 `Frequency`
 对象（频率轴唯一权威）。公开属性面：`s`/`z`/`y`/`g`/`h`/`f`/`z0`/`nports`/
 `name`/`comments`/`version`/`parameter` + 访问器 `data(parameter?, format?)`；
-MUST NOT 存在 `format` 属性、`port_names`、`validate()`、`resistance`/
+MUST NOT 存在 `format` 属性、`filename` 属性（文件来源名统一用 `name`，
+写出路径是私有方法 `write_path`）、`port_names`、`validate()`、`resistance`/
 `reference` 冗余存储。
 
 #### Scenario: 三工厂构造即完成
@@ -43,8 +44,11 @@ supported），z0 MUST NOT 接受复数。`z0` 入参形状 MUST 恰为标量或
 `1`/`nports` 的实数数组，其余长度 MUST 报错。version 推导：全端口同值→
 `"1.0"`，存在不同值→`"1.1"`；公开面 version 为字符串。参数域 S/Z/Y/G/H
 大小写不敏感读入（`to_ascii_uppercase` 归一），写出/enum/错误消息一律
-标准大写。G/H 域仅 2 端口，违者报错。噪声参数 v1 不支持：2 端口文件尾部
-噪声行 MUST 静默跳过不报错。
+标准大写。G/H 域仅 2 端口，违者报错。频点边界 MUST 纯由 nports 决定：
+数字 token 流按 stride = `1 + 2×nports²` 消费，总数不整除 MUST 报
+`TouchstoneError`（行只是排版，频点数 = token 总数 ÷ stride，不看行数）。
+噪声参数 v1 不识别不跳过：噪声行混入必破坏 stride 整除性 → 自然报错
+（与 SignalIntegrity/旧库同策，不做"频率回落判噪声"启发式）。
 
 #### Scenario: v1.1 每端口 z0 解析
 
@@ -56,16 +60,18 @@ supported），z0 MUST NOT 接受复数。`z0` 入参形状 MUST 恰为标量或
 - **WHEN** 构造器收到长度既非 1 也非 `nports` 的 z0 数组
 - **THEN** 报错（三端映射 PyErr/napi Error/throw），构造失败
 
-#### Scenario: 噪声行静默跳过
+#### Scenario: 噪声数据报错
 
-- **WHEN** 解析 2 端口 1.1 文件且网络数据段后跟频率递减的噪声行
-- **THEN** 解析成功、噪声行被跳过、无 `noise` 属性、不报错
+- **WHEN** 解析 2 端口文件且网络数据段后跟噪声行（每行 5 项）
+- **THEN** token 总数不满足 stride = 9 的整除性，报 `TouchstoneError`
+  （消息含实际 token 数与 stride 期望），不静默吞数据
 
 ### Requirement: 频率轴入库规则——重复报错、乱序排序
 
 标准（v2.1 规范）要求网络参数数据按频率递增排列。netwave 规则：重复频点
 MUST 报错（同频两值是真歧义）；乱序（非单调无重复）MUST 静默排序成递增
-入库，不报错不 warning。排序后写出 MUST 为递增序（往返一致）。频率入库
+入库，不报错不 warning（频点边界由 stride 定、与频率序无关，故乱序与噪声
+拒收互不冲突，无 skrf 式误吞）。排序后写出 MUST 为递增序（往返一致）。频率入库
 恒 f64 Hz（`#` 行单位倍率在解析层换算，api-contract 既定）。独立真值：
 排序为确定性置换，数值逐 bit 不变（同机逐 bit，跨平台引用 manifest
 `core_tol`）。
@@ -108,16 +114,18 @@ MUST 全部私有。独立真值：域换算对 skrf golden 对拍（引用 mani
   Float64Array+shape；`[f,r,c,0]`=模、`[f,r,c,1]`=度；与 `s` 的
   `abs`/`angle(deg)` 对拍 `core_tol`
 
-### Requirement: 写出接口——文本与落盘两动词、文件名 nports 单源
+### Requirement: 写出接口——文本与落盘两动词、扩展名 parameter+nports 单源
 
 `writeTouchstone(parameter, format)` MUST 返回 Touchstone 文本（全平铺必填、
-无 opts 包、无 `version` 选项——由 z0 推导；无 `rRef`——z0 唯一权威），
+无 opts 包、无 `version` 选项——写出直接用存储的 version 字段：解析入口
+从文件记录，纯数据构造时由 z0 推导，不在写出时重推；无 `rRef`——
+z0 唯一权威），
 数字格式化 MUST shortest-roundtrip（写出→读回逐 bit 一致，测试规划既定）。
 `writeFile(path, parameter, format)` 实现分层：原生端（Rust/Python/node）
 core 内 std::fs 落盘（node async / Python 同步放 GIL / Rust 同步）；
 浏览器 wasm core MUST NOT 导出 `writeFile`，该动词只存在于 TS 壳（async，
 worker 渲染 + 克隆回传 + Blob 下载）。文件名规则 MUST 由 core 私有
-`writePath(path?)` 单源拼出，扩展名恒 = `.{P}Np`（P = 真实参数域、
+`write_path(path?)` 单源拼出，扩展名恒 = `.{P}Np`（P = 真实参数域、
 N = 真实 nports，双双由对象说了算；四形态：空→`name`+`.{P}Np`；
 目录→目录+`name`+`.{P}Np`；目录+名→补 `.{P}Np`；带扩展名→按文法剥旧
 扩展名重拼正确扩展名）——扩展名的域字母与 n 写错在机制上不可能。
@@ -139,7 +147,7 @@ N = 真实 nports，双双由对象说了算；四形态：空→`name`+`.{P}Np`
 
 - **WHEN** 浏览器壳调用 `writeFile(path?, parameter, format)`
 - **THEN** 主线程零 wasm 执行（铁律八）：worker 消息路由 core 渲染文本 +
-  `writePath` 定名，响应 `{text, filename}` 结构化克隆回主线程（浏览器无目录，
+  `write_path` 定名，响应 `{text, filename}` 结构化克隆回主线程（浏览器无目录，
   filename 即下载文件名），壳仅做
   Blob + `URL.createObjectURL` + `<a download>` 平台胶
 
@@ -178,8 +186,8 @@ nports 优先级 = 显式 `nports` 参数 > filename 文法抠 > 两者都无 MU
 （纯数据行列数信息论上无法自推）。`name` 属性语义恒 = 文法剥后的 stem
 （无扩展名文件名）。**扩展名读写不对称**（与频率乱序规则同构：可读可
 处理，写必正确）：读——扩展名只是 nports 提示，域字母不作准，文件内部
-`#` 行 parameter 才是权威；写——私有 `writePath()` MUST 拼正确扩展名
-`.{P}Np`；`writePath` MUST NOT 升公开属性（属性收不了参数、原生端藏
+`#` 行 parameter 才是权威；写——私有 `write_path()` MUST 拼正确扩展名
+`.{P}Np`；`write_path` MUST NOT 升公开属性（属性收不了参数、原生端藏
 `is_dir()` 磁盘 I/O，公开面 `name`/`parameter`/`nports` 已可自拼写出名）。
 
 #### Scenario: nportsFromFilename 无匹配报错
@@ -202,7 +210,14 @@ nports 优先级 = 显式 `nports` 参数 > filename 文法抠 > 两者都无 MU
 
 - **WHEN** `# GHZ Z RI` 的 2 端口 Z 文本经 `fromText(text, path="x.s2p")` 读入
 - **THEN** `parameter`="Z"（内部 `#` 行为权威，扩展名域字母不作准）；
-  其后 `writePath()` 返回 `x.z2p`（写出扩展名域字母与 nports 双双纠正为真值）
+  其后 `write_path()` 返回 `x.z2p`（写出扩展名域字母与 nports 双双纠正为真值）
+
+#### Scenario: version 写出用存储字段不重推
+
+- **WHEN** 解析 `# GHZ S MA R 50 50 50 50` 的 1.1 四端口文件（全端口同值）
+  后立即 `writeTouchstone('S', 'MA')`
+- **THEN** 写出 `#` 行仍为 1.1（用解析时记录的 version 字段，不由 z0 重推
+  成 1.0）；纯数据构造的对象才在构造时由 z0 推导 version 入库
 
 ### Requirement: typing 单源——两 enum 一 error
 

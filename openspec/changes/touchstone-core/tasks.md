@@ -17,8 +17,9 @@
 - [ ] 2.2 绿：`parse_option_line` + `parse_data_line`（RI/MA/DB 三分支，
       角度恒度、dB=20log₁₀）
 - [ ] 2.3 红：频率轴测试——乱序排序入库、重复频点报错含频点值、
-      噪声段（2 端口频率转递减）静默跳过
-- [ ] 2.4 绿：`sort_and_check_f` + `skip_noise_lines`
+      token 总数不满足 stride = 1+2n² 整除时报错含实际数与期望 stride、
+      噪声行（每行 5 项）混入 2 端口文件即报错（不静默吞）
+- [ ] 2.4 绿：token 流 stride 切频点 + `sort_and_check_f`（无噪声识别逻辑）
 - [ ] 2.5 红：`from_text` 端到端——nports 优先级（显式 > filename 文法抠 >
       报错）、path 含目录时目录忽略 stem 存 `name`、`nportsFromFilename` 无匹配
       报错、`filenameFromPath` 路径/URL 抠 filename、`nameFromFilename("2026.10.09")`
@@ -43,18 +44,18 @@
 
 ## 4. core：写出与文件名
 
-- [ ] 4.1 红：`writePath(path?)` 四形态测试——空→`name.{P}Np`、目录→
+- [ ] 4.1 红：`write_path(path?)` 四形态测试——空→`name.{P}Np`、目录→
       目录+`name.{P}Np`、目录+名→补扩展名、错扩展名→剥除重拼真实域字母与
       nports（2 端口 Z 对象传 `.s3p`→`z2p` 文件）、原生端目录末段 `is_dir()`
       实测拼默认名
-- [ ] 4.2 绿：`writePath` 私有函数（扩展名恒 `.{parameter}{nports}p`）
+- [ ] 4.2 绿：`write_path` 私有函数（扩展名恒 `.{parameter}{nports}p`）
 - [ ] 4.3 红：`write_touchstone(parameter, format)` roundtrip 测试——
       写出→`from_text` 读回 `s` 逐 bit、元数据一致；`format_number`
       shortest-roundtrip（含 0、负数、极值）
 - [ ] 4.4 绿：`format_number`（选型：ryu vs `{:?}` 实测取往返 bit 一致者）
-  - `render_text`（`#` 行 version 由 z0 推）
+  - `render_text`（`#` 行用存储的 version 字段，写出不重推）
 - [ ] 4.5 红：原生 `write_file` 测试——tempdir 落盘、path 三形态、
-      落盘名经 `writePath` 纠正
+      落盘名经 `write_path` 纠正
 - [ ] 4.6 绿：`write_file`（cfg native，std::fs）
 
 ## 5. core：from_url（原生）
@@ -89,7 +90,7 @@
 - [ ] 8.1 红：`typescript/test/wasm/touchstone.test.ts`——`"touchstone"`
       命名空间工厂路由、实例方法经 handle、`fromFile(file)` transfer 后
       buffer detached、`writeFile` 返回下载触发（fake anchor 断言
-      `download` 属性名经 `writePath` 纠正）、`fromUrl` Promise
+      `download` 属性名经 `write_path` 纠正）、`fromUrl` Promise
 - [ ] 8.2 绿：`touchstone::register()` + `impl Resource` match；壳
       `index.browser.ts` 加 `Touchstone` 类（handle 壳 + async 胶：
       `fromFile` arrayBuffer→transfer、`writeFile` 收 `{text, filename}`→

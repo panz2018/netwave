@@ -19,14 +19,15 @@ Network 立项时直接消费其产物，不重写解析。
   换算函数全部私有。
 - 写出：`writeTouchstone(parameter, format)` 吐文本（shortest-roundtrip）；
   `writeFile(path, parameter, format)` 原生端 core 落盘、浏览器端为 TS 壳
-  平台胶（worker 渲染文本 + 私有 `writePath(path?)` 定名 → 克隆回主线程 →
+  平台胶（worker 渲染文本 + 私有 `write_path(path?)` 定名 → 克隆回主线程 →
   Blob 下载）；文件名扩展名永远拼真实 `.{parameter}{nports}p`。
 - 静态函数：名字流水线三件套 `filenameFromPath`/`nameFromFilename`/
   `nportsFromFilename`（覆盖旧库 `getFilename`/`getBasename`/`parsePorts`；
   `filename` 一词全仓统一 = 含扩展名文件名）；
   `fromUrl` 原生端 reqwest、浏览器端 `web_sys::fetch`（core 内 cfg 门控）。
-- 解析支持 Touchstone 1.0 + 1.1（单/每端口实数 z0），噪声行静默跳过；
-  重复频点报错、乱序静默排序；G/H 仅 2 端口。
+- 解析支持 Touchstone 1.0 + 1.1（单/每端口实数 z0）；频点边界纯由
+  nports stride 定（token 流不整除即错，噪声行混入自然报错，与 SI/旧库
+  同策）；重复频点报错、乱序静默排序；G/H 仅 2 端口。
 - 修订 api-contract「无状态一次性变换 MUST 是模块级函数」条款：
   `Touchstone` 归入"持有解析结果的状态类"，三端类形态导出。
 - 新增 typing：`TouchstoneParameter`/`TouchstoneFormat` enum +
@@ -48,7 +49,7 @@ Network 立项时直接消费其产物，不重写解析。
 ## Non-goals
 
 - Touchstone 2.0/2.1 方括号语法（`[Port]`/`[Noise Data]`/`[Reference]`）；
-  噪声参数属性与计算（1.0/1.1 尾部噪声行仅静默跳过）。
+  噪声参数识别/属性/计算（v1 遇噪声数据直接报错，不识别不跳过）。
 - `port_names`（厂商注释方言）、HFSS 注释抠值、zip 包读取、
   `s_def`/`port_modes` 参考定义换算。
 - a/t 参数（非文件域）与 skrf 笛卡尔积分量衍生面（`s_re`/`s_mag`/时域量）
