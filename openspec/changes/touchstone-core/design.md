@@ -63,10 +63,11 @@ enum `TouchstoneParameter`{S,Y,Z,G,H} / `TouchstoneFormat`{RI,MA,DB} /
   解析自文件记录，纯数据构造时由 z0 推导入库，写出时不重推；
   `format_number` shortest-roundtrip：Rust `ryu` 或 `{:?}` 语义实测选型，
   验收 = 往返逐 bit）。
-- `write_path(path?)`（私有，snake_case 同其它 core 私有件；保持私有：
+- `write_path(path?, parameter)`（私有，snake_case 同其它 core 私有件；保持私有：
   属性收不了参数、藏 `is_dir()` 磁盘
   I/O，公开面 name/parameter/nports 已可自拼）：四形态见 spec；`path` 空取
-  `name`；扩展名一律按文法剥除重拼 `.{P}Np`（P=真实 parameter、N=真实
+  `name`；扩展名一律按文法剥除重拼 `.{P}Np`（P=真实写出的 parameter——
+  即写出动词的 `parameter` 实参，保证扩展名与文件内容同域；N=真实
   nports）；原生端目录歧义 `is_dir()` 实测。原生 `write_file` = `write_path` +
   `std::fs::write`；浏览器 worker 分发臂 `writeFile` 内部调 `write_touchstone` +
   `write_path` 返回 `{text, filename}`（浏览器无目录，filename 即下载文件名；字符串

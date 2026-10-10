@@ -99,3 +99,15 @@
 - 复发检测：`typescript/src/netwave.worker.ts` 与 wasm glue `.d.ts` grep 逐动词
   入口零命中；worker 往返测试覆盖 `call` 分发（`JsValue` 非 wasm 不可构造，
   分发层原生不可单测）
+
+### LL-053 规范缺省值必须逐关键词抄原文
+
+- 犯过：解析器把"缺 `#` 行"与"行内缺关键词"混为一谈静默套全默认，且
+  format 缺省抄成 RI——规范原文缺省是 MA（"The default value is MA"），
+  `#` 行整行缺失本身违规（"shall contain an option line"）必须报错
+  （人工审计纠正）
+- 规则：实现格式缺省时逐关键词引用规范原文并给出处；"整块必填、块内
+  个别可选"的边界必须区分——块缺失=报错，块内缺项=规范缺省；API 默认
+  （如 `data(parameter?, format?)`）是接口设计，与文件解析缺省分开设
+- 复发检测：`core/tests/touchstone_parse.rs` 钉住缺 `#` 行报错 + 空 `#`
+  行按 MA 反变换两测试；review Spec 轴对照 spec.md 解析契约场景

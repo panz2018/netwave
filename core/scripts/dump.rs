@@ -26,6 +26,28 @@ fn main() -> std::io::Result<()> {
         unsafe { std::slice::from_raw_parts(axis.as_ptr() as *const u8, axis.len() * 8) };
     let fpath = std::path::Path::new(&out).join("core_freq.bin");
     std::fs::File::create(&fpath)?.write_all(fbytes)?;
+    // Touchstone cross-compare: parse each shared sample and dump the S
+    // master data (interleaved f64), z0, and version. The same files are
+    // read by every end; native ends must match core bit-exact, wasm within
+    // relative tolerance.
+    use netwave::touchstone::Touchstone;
+    for case in ["s1p", "s2p", "s4p"] {
+        let p = format!("testdata/touchstone/dut.{case}");
+        let text = std::fs::read_to_string(&p).unwrap();
+        let ts = Touchstone::from_text(&text, None, Some(&p)).unwrap();
+        let sbytes: &[u8] =
+            unsafe { std::slice::from_raw_parts(ts.s().as_ptr() as *const u8, ts.s().len() * 8) };
+        std::fs::File::create(std::path::Path::new(&out).join(format!("core_ts_{case}.bin")))?
+            .write_all(sbytes)?;
+        let zbytes: &[u8] =
+            unsafe { std::slice::from_raw_parts(ts.z0().as_ptr() as *const u8, ts.z0().len() * 8) };
+        std::fs::File::create(std::path::Path::new(&out).join(format!("core_ts_{case}_z0.bin")))?
+            .write_all(zbytes)?;
+        std::fs::write(
+            std::path::Path::new(&out).join(format!("core_ts_{case}_version.txt")),
+            ts.version(),
+        )?;
+    }
     println!(
         "dumped {} {}",
         std::fs::canonicalize(&path)?.display(),

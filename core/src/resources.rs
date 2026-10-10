@@ -206,3 +206,25 @@ pub(crate) fn arg_f64_vec(args: &[JsValue], i: usize) -> Result<Vec<f64>, JsValu
         .map(|v| js_sys::Float64Array::from(v.clone()).to_vec())
         .ok_or_else(|| js(format!("argument {i} must be a Float64Array")))
 }
+
+/// Read argument `i` as a required string.
+pub(crate) fn arg_str(args: &[JsValue], i: usize) -> Result<String, JsValue> {
+    args.get(i)
+        .and_then(|v| v.as_string())
+        .ok_or_else(|| js(format!("argument {i} must be a string")))
+}
+
+/// Read argument `i` as an optional string (`undefined`/`null` → `None`).
+pub(crate) fn arg_opt_str(args: &[JsValue], i: usize) -> Option<String> {
+    args.get(i).and_then(|v| v.as_string())
+}
+
+/// Build a plain JS object from `(key, value)` pairs — the `data()` shape
+/// payload (`{values, shape}`) and the download payload (`{text, filename}`).
+pub(crate) fn js_object(pairs: &[(&str, JsValue)]) -> JsValue {
+    let obj = js_sys::Object::new();
+    for (k, v) in pairs {
+        let _ = js_sys::Reflect::set(&obj, &JsValue::from_str(k), v);
+    }
+    obj.into()
+}

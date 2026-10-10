@@ -121,3 +121,17 @@
   `isize`（napi→bigint）；与 `live_count` 同因（见 frequency.rs 注释）
 - 复发检测：review Standards 轴 grep napi 签名中的 `usize`/`isize`；
   `check_vocab_types.py` 扩类型断言时覆盖返回类型
+
+### LL-054 napi-cli 与 napi crate 配对升级
+
+- 犯过：`@napi-rs/cli` 3.10.5→3.10.8 与 napi crate 3.13→3.14 同时升，
+  生成的 `index.node.generated.mjs` 解构列表漏掉 `FrequencyUnit`/
+  `WavelengthUnit`/`frequencyUnits`/`liveCount`（`.node` 二进制仍导出，
+  d.ts 仍声明，运行时值 undefined，13 测试红）——cli 3.10.8 读 crate 3.14
+  abi 时丢枚举（人工审计升级发现）
+- 规则：napi 三件套（cli/crate/derive-backend）配对升级；升级后必须
+  grep 生成的 mjs 确认枚举名在解构列表内，不能只看 d.ts；组合回归时
+  优先保 Rust crate 最新（影响产物），钉死 cli 精确版本（`^` 会漂移）
+- 复发检测：`typescript/test/native/frequency-unit.test.ts` 读
+  `FrequencyUnit.GHz` 即红；`pnpm build:native` 后 grep generated mjs
+  枚举名零命中即红

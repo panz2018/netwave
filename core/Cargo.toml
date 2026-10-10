@@ -11,6 +11,7 @@ description = "netwave core: network scattering-parameter math (scaffold)"
 [dependencies]
 num-complex = "0.4"
 strum = { version = "0.28", features = ["derive"] }
+thiserror = "2"
 # Optional binding deps: core attaches #[cfg_attr(feature = ...)] macros to its
 # own types so bindings are registered at link time with zero glue-crate code.
 # pyo3 must stay on the same minor as python/Cargo.toml (two pyo3 majors in
@@ -22,11 +23,25 @@ wasm-bindgen = { version = "0.2", optional = true }
 # The generic dispatch entry unpacks Float64Array arguments from JsValue.
 js-sys = { version = "0.3", optional = true }
 pyo3-stub-gen = { version = "0.23", optional = true }
+# from_url backends, cfg-gated by target so the wasm artifact never links
+# reqwest (CI asserts the wasm32 dependency tree).
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+reqwest = { version = "0.13", default-features = false, features = ["rustls"], optional = true }
+tokio = { version = "1", optional = true }
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+web-sys = { version = "0.3", features = ["Window", "Response", "Request", "RequestInit", "Headers"], optional = true }
+wasm-bindgen-futures = { version = "0.4", optional = true }
 
 [features]
 python = ["dep:pyo3"]
 node = ["dep:napi", "dep:napi-derive"]
 browser = ["dep:wasm-bindgen", "dep:js-sys"]
+# Native HTTP for from_url (reqwest + rustls, no system OpenSSL).
+native-http = ["dep:reqwest", "dep:tokio"]
+# Browser HTTP for from_url (web_sys::fetch, wasm target only).
+browser-http = ["dep:web-sys", "dep:wasm-bindgen-futures"]
+# Test-only: httpmock server for from_url unit tests (native).
+test-http = ["native-http"]
 # Stub annotations ride the same items as the pyclass/pyfunction attributes,
 # so enabling stub generation implies the python binding attributes.
 pyo3-stub-gen = ["python", "dep:pyo3-stub-gen"]
@@ -38,6 +53,8 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)'] }
 
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }
+httpmock = "0.8"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 [[bench]]
 name = "scaffold"

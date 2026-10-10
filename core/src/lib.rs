@@ -22,6 +22,7 @@ use num_complex::Complex64;
 pub mod constants;
 pub mod frequency;
 pub mod network;
+pub mod touchstone;
 // Same guard as the wasm entries below: under `cargo clippy --workspace`
 // the node and browser features merge onto one build, and the handle table
 // must not compile its wasm_bindgen glue there.
@@ -39,6 +40,7 @@ pub mod resources;
 fn register_resources() {
     network::register();
     frequency::register();
+    touchstone::register();
 }
 
 /// Access-after-drop error, shared by every resource type. Post-drop access

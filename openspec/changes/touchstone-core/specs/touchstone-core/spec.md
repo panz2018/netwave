@@ -51,6 +51,21 @@ token→`"1.1"`，即使数值全同仍为 `"1.1"`）；纯数据构造器才由
 `TouchstoneError`（行只是排版，频点数 = token 总数 ÷ stride，不看行数）。
 噪声参数 v1 不识别不跳过：噪声行混入必破坏 stride 整除性 → 自然报错
 （与 SignalIntegrity/旧库同策，不做"频率回落判噪声"启发式）。
+**`#` 选项行本身必填**（规范原文 "each Touchstone data file shall contain
+an option line"）：整行缺失 MUST 报错，MUST NOT 静默套全默认；**行内**
+缺个别关键词才按规范缺省补齐（GHz / S / **MA** / R 50——format 缺省是
+MA 不是 RI，规范原文 "The default value is MA"）。
+
+#### Scenario: 缺 # 选项行报错
+
+- **WHEN** 解析无任何 `#` 行的文本
+- **THEN** 报 `TouchstoneError`（消息点名缺失的 option line），不静默按
+  GHz/S/RI/50 入库
+
+#### Scenario: 行内缺关键词按规范缺省补齐
+
+- **WHEN** 解析 `#`（空选项行）开头的文本
+- **THEN** 按 GHz / S / MA / R 50 解析成功（数据对 MA 反变换验证）
 
 #### Scenario: v1.1 每端口 z0 解析
 
@@ -127,7 +142,8 @@ z0 唯一权威），
 core 内 std::fs 落盘（node async / Python 同步放 GIL / Rust 同步）；
 浏览器 wasm core MUST NOT 导出 `writeFile`，该动词只存在于 TS 壳（async，
 worker 渲染 + 克隆回传 + Blob 下载）。文件名规则 MUST 由 core 私有
-`write_path(path?)` 单源拼出，扩展名恒 = `.{P}Np`（P = 真实参数域、
+`write_path(path?, parameter)` 单源拼出，扩展名恒 = `.{P}Np`（P = 真实写出的
+parameter（写出动词实参，扩展名与文件内容同域）、
 N = 真实 nports，双双由对象说了算；四形态：空→`name`+`.{P}Np`；
 目录→目录+`name`+`.{P}Np`；目录+名→补 `.{P}Np`；带扩展名→按文法剥旧
 扩展名重拼正确扩展名）——扩展名的域字母与 n 写错在机制上不可能。
@@ -139,10 +155,13 @@ N = 真实 nports，双双由对象说了算；四形态：空→`name`+`.{P}Np`
 - **WHEN** 对 2 端口对象调用 `writeFile("/tmp/x.s3p", 'S', 'RI')`
 - **THEN** 实际落盘名为 `x.s2p`（旧扩展名剥除、真实 nports 重拼）
 
-#### Scenario: 写出往返逐 bit 一致
+#### Scenario: 写出往返一致
 
 - **WHEN** `writeTouchstone(p, f)` 输出文本再经 `fromText` 读回
-- **THEN** `s` 逐 bit 相等、`z0`/`parameter`/`version` 元数据一致
+- **THEN** `f = RI` 时 `s` 逐 bit 相等（shortest-roundtrip 十进制保证）；
+  `f = MA/DB` 时 `s` 在 manifest `core_tol` 容差内相等（极坐标↔直角为
+  超越函数换算，逐 bit 物理不可能，容差即标准）；`z0`/`parameter`/
+  `version` 元数据恒一致
   （同机逐 bit；跨实现比较引用 manifest `core_tol`）
 
 #### Scenario: 浏览器 writeFile 经 worker 且文本在 core
