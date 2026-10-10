@@ -111,3 +111,18 @@
   （如 `data(parameter?, format?)`）是接口设计，与文件解析缺省分开设
 - 复发检测：`core/tests/touchstone_parse.rs` 钉住缺 `#` 行报错 + 空 `#`
   行按 MA 反变换两测试；review Spec 轴对照 spec.md 解析契约场景
+
+### LL-055 2 端口文件列序 legacy 反序，I/O 边界必须交换
+
+- 犯过：解析器把 2 端口文件的 4 个复数对按 token 序直接入 row-major
+  存储，等于把 S21/S12 读反——v1.x 约定 2 端口文件列序为
+  `N11, N21, N12, N22`（off-diagonal 反序，规范 v2.1 "1-port and
+  2-port Networks"），3 端口及以上才是纯 row-major（人工审计纠正）
+- 规则：内部存储恒 row-major（铁律一布局），2 端口文件在解析边界交换
+  交错对（位置 2↔4、3↔5 的 re/im），写出边界换回 legacy 序（交换自逆）；
+  消费者（`s`/`z`/`y`/`g`/`h`/`data()`）MUST NOT 为 nports=2 做特殊索引。
+  skrf 同策（`io/touchstone.py` rank==2 transpose）；rf-touchstone 内部
+  存转置矩阵为反例，不采
+- 复发检测：`core/tests/touchstone_parse.rs` 钉住非对称 2 端口读入交换 +
+  3 端口无交换；`core/tests/touchstone_write.rs` 钉住写出 legacy 序 +
+  往返 bit-exact

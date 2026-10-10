@@ -60,3 +60,4 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-052 | core       | 泛化表≠泛化分发：wasm 导出恒单条 `call`，加方法只改资源 match       |
 | LL-053 | core       | 规范缺省逐关键词抄原文：缺 `#` 行报错，行内缺项才套缺省（MA 非 RI） |
 | LL-054 | typescript | napi-cli 与 napi crate 配对升级，升级后 grep 生成 mjs 枚举名        |
+| LL-055 | core       | 2 端口文件 legacy 列序反序，I/O 边界交换，内部恒 row-major          |
