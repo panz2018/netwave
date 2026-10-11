@@ -127,6 +127,16 @@
   3 端口无交换；`core/tests/touchstone_write.rs` 钉住写出 legacy 序 +
   往返 bit-exact
 
+### LL-060 绑定壳禁重算，只转发 core 结果
+
+- 犯过：python 与 node 的 `data()` 曾在壳层自己实现取数/组装逻辑，用户
+  两次质问“为啥不直接用 rust 的 data 函数”，宪法铁律十一写明所有状态
+  与计算全在 rust，壳子不含计算
+- 规则：python/node/wasm 壳只做参数转换与结果转发，MUST NOT 在壳层重写
+  任何计算/取数/组装逻辑；发现壳层出现算法即搬回 core 后壳改为一行转发
+- 复发检测：review 时 grep 壳层函数体（python/src、typescript/*/src、
+  壳 .ts）内出现矩阵/换算/循环组装即打回
+
 ### LL-056 覆盖率不得扭曲热路径，防御分支用穷尽 match 钉死
 
 - 犯过：为触达 `convert_to_s` 未覆盖分支曾加 S 快路径判断与
