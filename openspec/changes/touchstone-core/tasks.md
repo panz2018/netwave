@@ -114,5 +114,5 @@
       达教学式标准（governance 元规则）：公开面自包含、注释只写当前契约事实
 - [x] 10.2 `Plan/功能覆盖规划.md` 噪声行表述修正 + "功能覆盖非 API 同名"
       口径；`Plan/总体计划.md` I/O 待决条目销账
-- [ ] 10.3 `Plan/Touchstone核心API规划.md` 已定案章节删除（Plan 瘦身），
-      `pnpm check:md` 绿
+- [x] 10.3 `Plan/Touchstone核心API规划.md` 已定案整篇删除（全部裁决已
+      落地 design.md/spec，Plan 只留未执行任务），`pnpm check:md` 绿

@@ -49,14 +49,14 @@ Network 立项时直接消费其产物，不重写解析。
 ## Non-goals
 
 - Touchstone 2.0/2.1 方括号语法（`[Port]`/`[Noise Data]`/`[Reference]`）；
-  噪声参数识别/属性/计算（v1 遇噪声数据直接报错，不识别不跳过）。
+  噪声参数识别/属性/计算（遇噪声数据直接报错，不识别不跳过）。
 - `port_names`（厂商注释方言）、HFSS 注释抠值、zip 包读取、
   `s_def`/`port_modes` 参考定义换算。
 - a/t 参数（非文件域）与 skrf 笛卡尔积分量衍生面（`s_re`/`s_mag`/时域量）
   ——归 Network 计算层。
 - `validate()`、`comments_after_option_line`、`format` 属性、`rRef`/`version`
   写出选项（各有已定裁决理由）。
-- 大文件窗口化/流式 API（v1 用扁平自寻址 + 切片）。
+- 大文件窗口化/流式 API（当前用扁平自寻址 + 切片）。
 - `Network.fromTouchstone` 桥的实现（Network 立项时承接，本 change 只定契约）。
 
 ## Impact
@@ -67,7 +67,8 @@ Network 立项时直接消费其产物，不重写解析。
   增加 `Touchstone` 绑定与 `"touchstone"` 命名空间路由。
 - 新依赖：reqwest（rustls）+ tokio 进原生 crate（cfg 门控 native；浏览器
   wasm 零影响，走 `web_sys::fetch`）。
-- 文档：`Plan/Touchstone核心API规划.md` 全部裁决落地；`功能覆盖规划.md`
+- 文档：`Plan/Touchstone核心API规划.md` 全部裁决落地进本 change 的
+  design.md 后按 Plan 生命周期删除；`功能覆盖规划.md`
   噪声表述修正；api-contract delta 随本 change 提交。
 - 受引用铁律：一（交错 f64 布局）、二（TDD）、三（manifest 容差）、
   六（大文件流式）、八（常驻 worker 数据权威）、九（协议钩子 async）、

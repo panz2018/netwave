@@ -34,7 +34,7 @@ enum `TouchstoneParameter`{S,Y,Z,G,H} / `TouchstoneFormat`{RI,MA,DB} /
 2. token 流按 stride = `1 + 2×nports²` 切频点（同 SI `values_per_freq`、
    旧库 `countColumn`、skrf `numbers_per_line` 同法）；总数不整除 →
    `TouchstoneError`。噪声行（每行 5 项）混入必破坏整除性 → 自然报错，
-   v1 无专门的噪声识别（与 SI/旧库同策）。
+   本实现无专门的噪声识别（与 SI/旧库同策）。
 3. 每频点块进 `parse_data_line`（按 format 三分支换算复数）。
 4. `sort_and_check_f`：排序 + 重复检测（重复→`TouchstoneError`；乱序与
    噪声拒收互不冲突：频点边界与 stride 有关、与频率序无关）。
@@ -111,7 +111,7 @@ wasm `JsValue::from_str`；消息含 offending 原文（行号/ token / 重复�
 - 三端功能测试镜像（pytest / vitest native / vitest wasm+真浏览器）。
 - 跨端对拍：`scripts/cross_compare.py` 扩 Touchstone 用例（同文件三端读
   → 哈希比对）。
-- 覆盖率 100%（铁律七），不可达分支 `coverage(off)` 注理由。
+- 覆盖率 100%（铁律七），不可达分支 `#[cfg(not(coverage))]` 注理由。
 
 ## 选型记录（偏离说明）
 

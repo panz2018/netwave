@@ -50,7 +50,7 @@ token→`"1.1"`，即使数值全同仍为 `"1.1"`）；纯数据构造器才由
 标准大写。G/H 域仅 2 端口，违者报错。频点边界 MUST 纯由 nports 决定：
 数字 token 流按 stride = `1 + 2×nports²` 消费，总数不整除 MUST 报
 `TouchstoneError`（行只是排版，频点数 = token 总数 ÷ stride，不看行数）。
-噪声参数 v1 不识别不跳过：噪声行混入必破坏 stride 整除性 → 自然报错
+噪声参数不识别不跳过：噪声行混入必破坏 stride 整除性 → 自然报错
 （与 SignalIntegrity/旧库同策，不做"频率回落判噪声"启发式）。
 **`#` 选项行本身必填**（规范原文 "each Touchstone data file shall contain
 an option line"）：整行缺失 MUST 报错，MUST NOT 静默套全默认；**行内**
