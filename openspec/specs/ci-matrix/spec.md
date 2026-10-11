@@ -65,15 +65,18 @@ Rust MUST 只跑单一 stable（`rust-toolchain.toml` 钉死当前 stable）—�
 
 ### Requirement: 覆盖率门槛生效（铁律七）
 
-CI MUST 启用覆盖率采集并使 100% 行覆盖门槛从第一天生效：Rust 用
-`cargo llvm-cov --fail-under-lines 100`（或等效 `--fail-under-lines` 参数），
-Python 用 `pytest-cov --cov-fail-under=100`（python 侧仅胶水时豁免项
-逐条标注），Node/wasm 用 vitest coverage `lines: 100` 阈值写进配置。
-结构性不可达代码 MUST 逐条标注豁免（`#[coverage(off)]` /
-`# pragma: no cover` / `/* v8 ignore start/stop */`，vitest v8 provider）并附理由。
+CI MUST 启用覆盖率采集并使 100% 行覆盖门槛从第一天生效，且 MUST 按
+crate/包归属度量：core 用
+`cargo llvm-cov -p netwave --codecov --output-path codecov.json --fail-under-lines 100`
+（单 crate + codecov 行合并：同一行任一二进制执行过即计覆盖，绕开默认 report 按实例计缺的
+重复计数，LL-057），Python 用 `pytest-cov --cov-fail-under=100`（python
+侧仅胶水时豁免项逐条标注），Node/wasm 用 vitest coverage `lines: 100`
+阈值写进配置。结构性不可达代码 MUST 逐条标注豁免（stable 通道
+`#[cfg(not(coverage))]` / `# pragma: no cover` / `/* v8 ignore start/stop */`，
+vitest v8 provider；`#[coverage(off)]` nightly-only 禁用，LL-020）并附理由。
 
-绑定 crate（python、typescript/native、typescript/wasm）从 Rust
-`cargo llvm-cov` job 排除（`--ignore-filename-regex`）属**工具作用域分离**
+绑定 crate（python、typescript/native、typescript/wasm）不进 Rust
+`cargo llvm-cov` job（`-p netwave` 天然排除）属**工具作用域分离**
 而非批量豁免：这些 crate 依赖 JS/Python 运行时，无法在 `cargo test` 下执行，
 其产码由各自语言的覆盖率工具（pytest-cov / vitest）在自身 job 内独立
 100% 度量。逐条标注规则适用于**同一工具正在度量**的代码内的不可达分支。

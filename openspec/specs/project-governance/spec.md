@@ -107,12 +107,23 @@ CI，显著劣化（>20%）MUST 失败。
 
 四端（core/python/node/wasm）产码行覆盖率 MUST 100%，CI 低于 100% 即失败，
 unit 层零豁免。唯一例外为结构性不可达代码（`unreachable!()`、平台专属分支、
-防御性 error 转换），MUST 逐条显式标注豁免并写明理由（Rust
-`#[coverage(off)]`、Python `# pragma: no cover`、TS/JS
-`/* v8 ignore start/stop */`），MUST NOT 整文件/整目录批量豁免。100% 是下限
-不是目标：数值正确性由 golden/property/cross-binding 三层负责。CI 强制：
-`cargo llvm-cov`、`pytest-cov --cov-fail-under=100`、
-vitest `lines/branches: 100`。
+防御性 error 转换），MUST 逐条显式标注豁免并写明理由（stable 通道：
+`#[cfg(not(coverage))]` 编译剥离或 CI `--ignore-filename-regex` 逐文件排除；
+`#[coverage(off)]` 为 nightly-only 禁用——LL-020；Python
+`# pragma: no cover`、TS/JS `/* v8 ignore start/stop */`），MUST NOT
+整文件/整目录批量豁免。100% 是下限不是目标：数值正确性由 golden/property/cross-binding 三层负责。
+
+覆盖率 MUST 按 crate/包归属各自度量：core 由 core 自己的测试度量（
+`cargo llvm-cov -p netwave --codecov --output-path codecov.json --fail-under-lines 100`
+），绑定胶水由各自语言工具在自身 job 内度量
+（`pytest-cov --cov-fail-under=100`、vitest `lines/branches: 100`）。
+`--codecov` 走 cargo-llvm-cov 自带的行合并器：同一行在**任一**测试二进制
+（lib 单元测试或任一集成测试的静态链接实例）执行过即计为覆盖——行覆盖率
+的标准 OR 语义，与其他语言一致。默认 `llvm-cov report` 路径按实例分别
+计数，每个未执行的 inline 实例都独立计缺，会把仅由 lib 单元测试触达的
+防御分支在其集成测试副本中显示为未覆盖（实测：`--codecov` 950/950=100%，
+同数据 `report` 恒差 6 行）——MUST NOT 用默认 report 路径做 100% 闸门，
+也 MUST NOT 用 `--workspace` 把绑定 crate 的 core 副本并入 core 度量。
 
 #### Scenario: 未测代码即红
 
@@ -123,6 +134,12 @@ vitest `lines/branches: 100`。
 
 - **WHEN** 某段代码申请覆盖率豁免
 - **THEN** 豁免标记紧邻该行且附理由，无批量/整文件豁免
+
+#### Scenario: 跨 crate 重复计数即红
+
+- **WHEN** core 覆盖率经 `--workspace` 合并统计（绑定二进制内的 core 副本
+  被重复计入）
+- **THEN** 该度量方式违规；改用 `-p netwave` 单 crate 度量
 
 ### Requirement: 铁律八 常驻 worker 数据权威与单点所有权
 
@@ -239,6 +256,42 @@ node napi finalizer）的契约细节见 [memory-lifecycle spec](../memory-lifec
 
 工具链生成物名字不受本铁律管辖（如 wasm-bindgen 为导出类自动生成的 `free()`），
 但生成物 MUST NOT 出现在用户可见面：用户可见面只允许那个唯一的名字。
+
+### Requirement: 铁律十三 else 只做错误兜底
+
+`else` / 通配分支 MUST NOT 承载正确行为：正确路径 MUST 写在显式条件/显式
+match 臂里，`else` / `_` MUST 只用于错误兜底或防御性报错（直接返回错误、
+panic 或抛异常），MUST NOT 静默放行。枚举 `match` MUST 穷尽列举且
+MUST NOT 加通配臂——新增变体时编译报错即强制处理，运行期过滤器做不到这点。
+防御性错误臂 MUST 有直接测试钉住其报错语义。
+
+#### Scenario: 通配臂吞掉新变体
+
+- **WHEN** 枚举新增变体而 `match` 带 `_ =>` 通配臂
+- **THEN** review 打回：通配臂静默放行新变体属违规，改穷尽 match
+
+#### Scenario: else 静默通过即红
+
+- **WHEN** `else` 分支在输入异常时仍正常返回
+- **THEN** review 打回：else MUST 报错而非兜底成功
+
+### Requirement: 铁律十四 覆盖率不得牺牲性能
+
+MUST NOT 为提升覆盖率指标而在热路径增加计算、拷贝、重排或额外分支（如为
+触达某分支给快路径加判断、为覆盖造冗余调用）。覆盖率缺口 MUST 用正确途径
+解决：直接测私有函数、按 crate 归属度量、结构性不可达代码逐条豁免。性能
+不变式（如 S 域数据从存储零拷贝直通、不为覆盖率改写数据流）优先级高于
+覆盖率数字。
+
+#### Scenario: 为覆盖加运算即红
+
+- **WHEN** diff 显示为触达未覆盖分支而在产码热路径新增计算/拷贝
+- **THEN** review 打回：改用直接测试或逐条豁免
+
+#### Scenario: 零拷贝直通优先
+
+- **WHEN** 覆盖率方案与零拷贝直通路径冲突
+- **THEN** 保直通，覆盖率缺口走豁免通道并注明理由
 
 本铁律是铁律十一（绑定薄壳）在名字维度的补集：铁律十一禁壳内有逻辑，本铁律禁
 壳内有第二个名字。

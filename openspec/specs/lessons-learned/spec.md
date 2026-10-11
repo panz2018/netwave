@@ -12,8 +12,8 @@ review 第三轴复发检测、可门禁化条目转 check 脚本——使同一
 全仓的环境坑、实现决策记录、人工纠正教训 MUST 只存于
 `openspec/specs/lessons-learned/`；各子 README MUST NOT 再设 Implementation
 notes / Gotchas 节，只保留本目录的编译/测试命令。账本 MUST 按 scope 分片为
-小文件（`ci.md`/`core.md`/`python.md`/`typescript.md`/`docs.md`，单文件
-SHOULD ≤50 行）+ `INDEX.md` 一行一条索引（LL 编号 | scope | 一句话规则），
+小文件（`ci.md`/`core.md`/`python.md`/`typescript.md`/`docs.md`/`workflow.md`，
+单文件 SHOULD ≤50 行）+ `INDEX.md` 一行一条索引（LL 编号 | scope | 一句话规则），
 AI 检索 MUST 先扫 INDEX 再按需打开对应 scope 文件。每条条目 MUST 含四要素：
 编号 `LL-NNN`、scope 标签、犯过证据（commit/session 可追溯）、规则与复发
 检测方式。
