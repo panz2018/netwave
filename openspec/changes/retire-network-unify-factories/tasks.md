@@ -44,6 +44,7 @@
 - [ ] 7.1 改 `scripts/check_verbs.py`：删 `NETWORK_VERBS`（:36）、`BROWSER_ONLY = {upload}`（:83 段）、三端 `Network` 类校验段（:209–:242）；新增构造入口门禁（铁律十五见证）——`core/src/**` 无 `pub fn new`、`python/src`/`typescript/native/src` 无 `#[new]`/`#[napi(constructor)]`、`typescript/src/**` 的 `constructor(` 必须带 `private`。验证：`pnpm check` 全绿，且故意在公开面加一个 `pub fn new` 时门禁报错。
 - [ ] 7.2 改 `openspec/specs/lessons-learned/python.md`：复发检测指针 `test_fill_pattern_view_zero_copy` 改指新零拷贝回读测试（历史事件条目本身不改写）。验证：`pnpm check:md` 全绿。
 - [ ] 7.3 改 `Plan/README.md`（本行状态）、`Plan/功能覆盖规划.md` 与 `Plan/总体计划.md`（`upload`/`drop` 措辞随 `fromData` 工厂校准）、`openspec/specs/project-governance/spec.md` Purpose 删铁律计数（「十一条」漂移修正为「铁律 + 元规则」）。验证：`pnpm check:md` 全绿。
+- [ ] 7.4 删除 `Plan/脚手架自由函数退役.md`（Plan 生命周期：决策已全部吸收进本 change 的 proposal/design/specs/tasks，执行完即删）。验证：文件不存在，`pnpm check:md` 全绿（无断链）。
 
 ## 8. 全量集成验证
 
