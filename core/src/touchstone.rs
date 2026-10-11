@@ -375,16 +375,24 @@ impl Touchstone {
         })
     }
 
-    /// Browser HTTP backend: `web_sys::fetch` (Promise; main thread never
-    /// runs wasm during I/O). Non-OK status surfaces verbatim.
+    /// Browser HTTP backend: `fetch` on the global scope (Promise; the main
+    /// thread never runs wasm during I/O — fetch runs in the worker). A
+    /// dedicated worker has no `window`: the fetch lives on `self`
+    /// (`WorkerGlobalScope`), so the global is cast to whichever scope the
+    /// call site runs in. Non-OK status surfaces verbatim.
     #[cfg(all(target_arch = "wasm32", feature = "browser-http"))]
     async fn fetch_text(url: &str) -> Result<String, TouchstoneError> {
-        let pending = web_sys::window()
-            .ok_or_else(|| TouchstoneError::Fetch {
+        let global = js_sys::global();
+        let pending = if let Some(w) = global.dyn_ref::<web_sys::Window>() {
+            w.fetch_with_str(url)
+        } else if let Some(w) = global.dyn_ref::<web_sys::WorkerGlobalScope>() {
+            w.fetch_with_str(url)
+        } else {
+            return Err(TouchstoneError::Fetch {
                 url: url.to_owned(),
-                reason: "no window".to_owned(),
-            })?
-            .fetch_with_str(url);
+                reason: "no fetch-capable global scope".to_owned(),
+            });
+        };
         let resp: web_sys::Response = wasm_bindgen_futures::JsFuture::from(pending)
             .await
             .map_err(|e| TouchstoneError::Fetch {

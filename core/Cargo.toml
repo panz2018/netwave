@@ -29,7 +29,7 @@ pyo3-stub-gen = { version = "0.23", optional = true }
 reqwest = { version = "0.13", default-features = false, features = ["rustls"], optional = true }
 tokio = { version = "1", optional = true }
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-web-sys = { version = "0.3", features = ["Window", "Response", "Request", "RequestInit", "Headers"], optional = true }
+web-sys = { version = "0.3", features = ["Window", "WorkerGlobalScope", "Response", "Request", "RequestInit", "Headers"], optional = true }
 wasm-bindgen-futures = { version = "0.4", optional = true }
 
 [features]
@@ -38,8 +38,9 @@ node = ["dep:napi", "dep:napi-derive"]
 browser = ["dep:wasm-bindgen", "dep:js-sys"]
 # Native HTTP for from_url (reqwest + rustls, no system OpenSSL).
 native-http = ["dep:reqwest", "dep:tokio"]
-# Browser HTTP for from_url (web_sys::fetch, wasm target only).
-browser-http = ["dep:web-sys", "dep:wasm-bindgen-futures"]
+# Browser HTTP for from_url (fetch on the global scope, wasm target only;
+# js-sys reads the global, which is a WorkerGlobalScope inside the worker).
+browser-http = ["dep:web-sys", "dep:wasm-bindgen-futures", "dep:js-sys"]
 # Test-only: httpmock server for from_url unit tests (native).
 test-http = ["native-http"]
 # Stub annotations ride the same items as the pyclass/pyfunction attributes,
