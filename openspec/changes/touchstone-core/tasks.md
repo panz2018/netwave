@@ -105,12 +105,12 @@
       （容差 manifest `core_tol`）
 - [x] 9.2 `scripts/check_verbs.py` 动词名单扩 Touchstone 面（三端生成物
       动词集合相等）
-- [ ] 9.3 `pnpm check` 全绿；llvm-cov 全 workspace 行覆盖 100% 底线闸门绿
+- [x] 9.3 `pnpm check` 全绿；llvm-cov 全 workspace 行覆盖 100% 底线闸门绿
       （绑定 lib.rs 沿用既有 ignore 正则）
 
 ## 10. 文档与销账
 
-- [ ] 10.1 `core/src/touchstone.rs` rustdoc / Python docstring / TS JSDoc
+- [x] 10.1 `core/src/touchstone.rs` rustdoc / Python docstring / TS JSDoc
       达教学式标准（governance 元规则）：公开面自包含、注释只写当前契约事实
 - [ ] 10.2 `Plan/功能覆盖规划.md` 噪声行表述修正 + "功能覆盖非 API 同名"
       口径；`Plan/总体计划.md` I/O 待决条目销账
