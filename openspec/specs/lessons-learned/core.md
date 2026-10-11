@@ -149,6 +149,18 @@
 - 复发检测：`cargo llvm-cov -p netwave --codecov` + `coverage_gate.py`；
   review diff 中为覆盖率新增的热路径运算即打回
 
+### LL-062 worker 内无 `window`，wasm 取全局一律走 `js_sys::global()`
+
+- 犯过：`Touchstone.fromUrl` 浏览器实现用 `web_sys::window()` 取 fetch，
+  dedicated worker 里没有 `window`，返回 `None` 直接报错——本地 node 模拟
+  全绿，真浏览器套件（`fromUrl` 用例）才暴露
+- 规则：wasm 端凡取全局对象/发起 fetch，MUST 走 `js_sys::global()` 再
+  `dyn_ref` 到 `web_sys::Window` 或 `web_sys::WorkerGlobalScope`（两者均
+  暴露 `fetch_with_str`）；两者皆非时报显式错误。MUST NOT 假设 `window`
+  存在（铁律八：浏览器计算跑在常驻 worker 内）
+- 复发检测：grep core 的 wasm cfg 代码段出现 `web_sys::window()` 即打回；
+  浏览器套件含 `fromUrl` 真实 fetch 用例且 CI 常绿
+
 ### LL-057 llvm-cov 默认 report 按实例计缺，100% 闸门用 --codecov 行合并
 
 - 犯过：`cargo llvm-cov -p netwave` 默认走 `llvm-cov report`，按

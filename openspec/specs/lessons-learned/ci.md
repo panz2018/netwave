@@ -132,9 +132,22 @@
   并在 node 测试段单开 `stub_gen` 步骤，node 章节凭空依赖 python 构建（职责
   错位，被人工质疑）。终态：检查改纯标准库脚本 `scripts/check_vocab_types.py`
   （同 `check_vocab.py` 族）折进 `check:cross` 末尾（跨端闸门单一入口），
-  CI 步骤内 `maturin develop` 后先跑 `stub_gen`（静态链 libpython，无需
-  `.so`）生成 `.pyi`，再 `pnpm check:cross`（其前置契约=三端产物齐备）。
+  CI 步骤内 `maturin develop` 后先跑 `stub_gen` 生成 `.pyi`（跑法见
+  LL-063），再 `pnpm check:cross`（其前置契约=三端产物齐备）。
   本地模拟 CI 某 job 前先删该 job 不该有的产物，别信脏工作树
 - 复发检测：review 读 `readFileSync`/`fs` 生成产物的测试/脚本时，核对其所在
   job 步骤是否生成了被测的每一类产物，且跨端检查是否落在构建各端的集成步骤
   而非单端测试段；可门禁化——job 内产物存在性冒烟
+
+### LL-063 `stub_gen` 动态链接 libpython，跑前必导出 uv LIBDIR
+
+- 犯过：node ubuntu-22 格 `cargo run --features stub-gen --bin stub_gen`
+  exit 127 `libpython3.14.so.1.0: cannot open shared object file`——pyo3
+  auto 探测 uv 管理的 CPython 为**动态链接**，而 CI 旧注释误称"静态链
+  无需 `.so`"（旧事实致坑）；本地全绿只因 shell 环境已带该库路径
+- 规则：CI 跑 `stub_gen` 前 MUST 导出 uv Python 的 sysconfig LIBDIR：
+  `export LD_LIBRARY_PATH="$(uv run --project python python -c \"import sysconfig; print(sysconfig.get_config_var('LIBDIR'))\"):$LD_LIBRARY_PATH"`；
+  跑 bin 用 `cargo run`（直接跑二进制缺 `CARGO_MANIFEST_DIR` 会 panic 101）。
+  对工具链行为的注释 MUST 实证后再写（AGENTS 机制断言先实证）
+- 复发检测：ci.yml 中 `stub_gen` 步骤前存在 LIBDIR 导出行；缺失即红；
+  本地模拟先 `env -u LD_LIBRARY_PATH` 复现

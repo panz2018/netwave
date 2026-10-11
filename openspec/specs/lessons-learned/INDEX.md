@@ -67,5 +67,7 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-059 | workflow   | 复查必重读源码引文件:行号，禁凭记忆复述旧结论                       |
 | LL-060 | core       | 绑定壳禁重算，只转发 core 结果（铁律十一复发实例）                  |
 | LL-061 | workflow   | openspec apply 连续跑完不等催，仅真阻塞才停                         |
+| LL-062 | core       | worker 内无 `window`，wasm 取全局走 `js_sys::global()` 转 scope     |
+| LL-063 | ci         | `stub_gen` 动态链 libpython，跑前必导出 uv sysconfig LIBDIR         |
 
 ---
