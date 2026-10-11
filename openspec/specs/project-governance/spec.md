@@ -114,7 +114,8 @@ unit 层零豁免。唯一例外为结构性不可达代码（`unreachable!()`�
 整文件/整目录批量豁免。100% 是下限不是目标：数值正确性由 golden/property/cross-binding 三层负责。
 
 覆盖率 MUST 按 crate/包归属各自度量：core 由 core 自己的测试度量（
-`cargo llvm-cov -p netwave --codecov --output-path codecov.json --fail-under-lines 100`
+`cargo llvm-cov -p netwave --codecov --output-path codecov.json` 后由
+`scripts/coverage_gate.py` 读 codecov.json 判 100% 地板
 ），绑定胶水由各自语言工具在自身 job 内度量
 （`pytest-cov --cov-fail-under=100`、vitest `lines/branches: 100`）。
 `--codecov` 走 cargo-llvm-cov 自带的行合并器：同一行在**任一**测试二进制

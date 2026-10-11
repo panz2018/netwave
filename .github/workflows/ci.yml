@@ -81,18 +81,20 @@ jobs:
       - name: llvm-cov (core 100% floor, ubuntu x64 only)
         # Per-crate ownership: core coverage is measured by core's own
         # tests (`-p netwave`); binding glue is measured by pytest-cov /
-        # vitest in its own jobs. `--codecov` selects cargo-llvm-cov's
-        # own line merger, which ORs execution across every test binary
-        # (a line executed in any instantiation counts as covered — the
-        # standard line-coverage semantics). The default `llvm-cov report`
-        # path instead counts each unexecuted inlined instantiation
-        # separately, so defensive arms covered only by the lib unit test
-        # would show as missed in the integration binaries' copies.
+        # vitest in its own jobs. The 100% floor is enforced by
+        # scripts/coverage_gate.py on codecov.json, NOT by
+        # `--fail-under-lines`: that flag evaluates the `llvm-cov report`
+        # numbers, which count each unexecuted inlined instantiation
+        # separately (defensive arms executed only by the lib unit test
+        # stay "missed" in every integration binary's copy — a permanent
+        # 99.x%). The codecov export uses `llvm-cov show` semantics: a
+        # line executed in ANY instantiation counts as covered (the
+        # standard OR merge every other language tool uses).
         if: matrix.target == 'linux-x64'
         run: |
           cargo install cargo-llvm-cov --locked
-          cargo llvm-cov -p netwave --codecov --output-path codecov.json \
-            --fail-under-lines 100
+          cargo llvm-cov -p netwave --codecov --output-path codecov.json
+          python3 scripts/coverage_gate.py codecov.json 100
 
   # wasm: browser is the primary target -> first-class job, zero
   # conditionals, full OS matrix: wasm codegen differs per host toolchain,

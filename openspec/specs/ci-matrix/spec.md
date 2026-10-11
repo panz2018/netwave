@@ -67,7 +67,8 @@ Rust MUST 只跑单一 stable（`rust-toolchain.toml` 钉死当前 stable）—�
 
 CI MUST 启用覆盖率采集并使 100% 行覆盖门槛从第一天生效，且 MUST 按
 crate/包归属度量：core 用
-`cargo llvm-cov -p netwave --codecov --output-path codecov.json --fail-under-lines 100`
+`cargo llvm-cov -p netwave --codecov --output-path codecov.json` +
+`scripts/coverage_gate.py codecov.json 100`
 （单 crate + codecov 行合并：同一行任一二进制执行过即计覆盖，绕开默认 report 按实例计缺的
 重复计数，LL-057），Python 用 `pytest-cov --cov-fail-under=100`（python
 侧仅胶水时豁免项逐条标注），Node/wasm 用 vitest coverage `lines: 100`

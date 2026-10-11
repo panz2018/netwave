@@ -81,7 +81,7 @@
   否则 E0599/E0277（Frequency pyclass 复发一次）。
   `cfg(coverage)` 须在用到的每个 crate 的 `[lints.rust]` 声明 `check-cfg`，
   否则 `-D warnings` 报 unexpected_cfgs
-- 复发检测：`cargo llvm-cov -p netwave --fail-under-lines 100`（rust job）；
+- 复发检测：`cargo llvm-cov -p netwave --codecov` + `coverage_gate.py`（rust job）；
   改绑定属性后必跑，且须验证真实 glue 构建（maturin/napi/wasm-pack）仍导出
 
 ### LL-052 泛化表不等于泛化分发
@@ -146,8 +146,8 @@
   （`cargo llvm-cov -p netwave`）、结构性不可达逐条豁免；防御性 S 臂用
   穷尽 `match`（无通配）+ 直接测试钉报错语义，S 数据在调用方零拷贝直通
   不变。`else`/通配 MUST NOT 承载正确行为（铁律十三/十四）
-- 复发检测：`cargo llvm-cov -p netwave --fail-under-lines 100`；review
-  diff 中为覆盖率新增的热路径运算即打回
+- 复发检测：`cargo llvm-cov -p netwave --codecov` + `coverage_gate.py`；
+  review diff 中为覆盖率新增的热路径运算即打回
 
 ### LL-057 llvm-cov 默认 report 按实例计缺，100% 闸门用 --codecov 行合并
 
@@ -157,10 +157,14 @@
   每副本独立计缺 → touchstone.rs 恒差 6 行（99.21%）；`inline(never)`、
   `--remap-path-prefix`、清缓存重建均无效（实测：逐二进制 union 零缺失，
   report 仍报 6）
-- 规则：100% 闸门用 cargo-llvm-cov 自带的行合并器 `--codecov`（同一行
-  任一二进制执行过即计覆盖，行覆盖率标准 OR 语义；实测 950/950=100%，
-  同数据默认 report 恒差 6）；`--fail-under-lines` 对 codecov 输出同样
-  生效（实测 101 即红）。绑定胶水仍由 pytest-cov/vitest 自身 job 度量，
-  MUST NOT `--workspace` 并入 core
+- 规则：`--codecov` 只改**输出格式**（走 `llvm-cov show` 语义，同一行
+  任一二进制执行过即计覆盖，OR 合并；实测 codecov.json 950/950=100%），
+  但 `--fail-under-lines` **不读 codecov 输出**——它读 `llvm-cov report`
+  的按实例数字（上游 src/report.rs 实证；实测阈值 99.3 绿 / 99.4 红
+  = 99.39%，永远到不了 100）。所以 100% 闸门 MUST 用 `scripts/coverage_gate.py`
+  直接读 codecov.json（OR 语义，与其他语言工具一致），MUST NOT 用
+  `--fail-under-lines` 做 100% 地板。绑定胶水仍由 pytest-cov/vitest 自身
+  job 度量，MUST NOT `--workspace` 并入 core
 - 复发检测：CI llvm-cov job 命令含
-  `-p netwave --codecov --fail-under-lines 100`；改回默认 report 路径则防御臂即红
+  `-p netwave --codecov --output-path codecov.json` + `coverage_gate.py`；
+  出现 `--fail-under-lines 100` 即红（它读 report，防御臂必红）
