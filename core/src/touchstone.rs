@@ -176,10 +176,9 @@ pub enum TouchstoneError {
     #[error("missing # option line: Touchstone files shall contain one")]
     MissingOptionLine,
     /// A domain reached a conversion path that cannot handle it — an
-    /// internal dispatch bug, not bad input. The S domain always returns
-    /// before the domain match, so hitting this arm means the dispatch
-    /// contract was violated; it errors rather than silently mis-converting.
-    #[error("internal error: {domain} domain reached the wrong conversion path")]
+    /// internal dispatch bug, not user input (public surfaces answer S
+    /// from storage before calling the conversion helpers).
+    #[error("internal dispatch violation: {domain} reached an unsupported path")]
     DispatchViolation {
         /// The offending domain, canonical uppercase.
         domain: String,
@@ -287,7 +286,7 @@ impl Touchstone {
         let mut f_raw: Vec<f64> = Vec::with_capacity(tokens.len() / stride);
         let mut s: Vec<f64> = Vec::with_capacity(tokens.len() - tokens.len() / stride);
         for block in tokens.chunks(stride) {
-            let (freq, block_s) = Self::parse_data_line(block, option.format, nports)?;
+            let (freq, block_s) = Self::parse_data_line(block, option.format, nports);
             f_raw.push(freq);
             s.extend_from_slice(&block_s);
         }
@@ -298,7 +297,14 @@ impl Touchstone {
         } else {
             option.r.clone()
         };
-        let s = Self::convert_to_s(&s, option.parameter, nports, &z0)?;
+        // S is the stored domain: the parsed buffer is kept as-is (no
+        // copy — the hot ingestion path); every other domain converts
+        // through the shared helper.
+        let s = if option.parameter == TouchstoneParameter::S {
+            s
+        } else {
+            Self::convert_to_s(&s, option.parameter, nports, &z0)?
+        };
         let name = path
             .map(|p| Self::name_from_filename(&Self::filename_from_path(p)))
             .unwrap_or_default();
@@ -459,11 +465,7 @@ impl Touchstone {
     /// frequency first) into interleaved re/im pairs. A Touchstone data row
     /// is a formatting unit, not a semantic one — the block may have come
     /// from several physical lines.
-    fn parse_data_line(
-        block: &[f64],
-        format: TouchstoneFormat,
-        nports: usize,
-    ) -> Result<(f64, Vec<f64>), TouchstoneError> {
+    fn parse_data_line(block: &[f64], format: TouchstoneFormat, nports: usize) -> (f64, Vec<f64>) {
         let freq = block[0];
         let pairs = &block[1..];
         let mut s = Vec::with_capacity(pairs.len());
@@ -487,7 +489,7 @@ impl Touchstone {
             s.swap(2, 4);
             s.swap(3, 5);
         }
-        Ok((freq, s))
+        (freq, s)
     }
 
     /// Sort frequency points ascending and permute their S blocks along with
@@ -529,15 +531,21 @@ impl Touchstone {
         Ok(())
     }
 
-    /// Convert stored data of domain `parameter` into S (the only stored
-    /// domain). Shared by the parser and the data constructor — single
-    /// implementation.
+    /// Convert non-S domain data into S (the only stored domain). Shared by
+    /// the parser and the data constructor — single implementation. Callers
+    /// answer S themselves (storage passthrough, no copy) before calling,
+    /// so `parameter` is always one of Z/Y/G/H here.
     ///
     /// Real reference impedances only (spec forbids complex), so the
     /// power-wave and traveling-wave definitions coincide:
     /// `S = √Z0⁻¹ (Z − Z0)(Z + Z0)⁻¹ √Z0` (and the Y-dual
     /// `S = √Z0⁻¹ (I − Z0·Y)(I + Z0·Y)⁻¹ √Z0`). G/H convert to Y/Z first
     /// (2-port closed form; other port counts error).
+    // `inline(never)`: keep one instantiation in core so the defensive S
+    // arm is not duplicated (uncovered) into every binding binary that
+    // inlines this helper. Non-S ingestion already does matrix inversion,
+    // so the call boundary is free.
+    #[inline(never)]
     fn convert_to_s(
         data: &[f64],
         parameter: TouchstoneParameter,
@@ -554,32 +562,25 @@ impl Touchstone {
         let mut out = Vec::with_capacity(data.len());
         for freq_data in data.chunks(block) {
             let m = Self::matrix_from_interleaved(freq_data, nports);
-            // S is the stored domain (identity); G/H take their 2-port
-            // closed form first, then the shared Z/Y -> S route.
-            let s_matrix = if parameter == TouchstoneParameter::S {
-                m
-            } else if parameter == TouchstoneParameter::Z {
-                Self::z_to_s(&m, z0)
-            } else if parameter == TouchstoneParameter::Y {
-                Self::y_to_s(&m, z0)
-            } else if parameter == TouchstoneParameter::H {
-                Self::z_to_s(&Self::h_to_z(&m), z0)
-            } else {
-                Self::y_to_s(&Self::g_to_y(&m), z0)
+            // Exhaustive match, no wildcard: adding a TouchstoneParameter
+            // variant is a compile error here until it is handled — a new
+            // domain can never silently fall into another domain's math.
+            // S is answered from storage by the callers; reaching the S
+            // arm is a dispatch bug (direct-tested below).
+            let s_matrix = match parameter {
+                TouchstoneParameter::S => {
+                    return Err(TouchstoneError::DispatchViolation {
+                        domain: parameter.as_ref().to_owned(),
+                    });
+                }
+                TouchstoneParameter::Z => Self::z_to_s(&m, z0),
+                TouchstoneParameter::Y => Self::y_to_s(&m, z0),
+                TouchstoneParameter::H => Self::z_to_s(&Self::h_to_z(&m), z0),
+                TouchstoneParameter::G => Self::y_to_s(&Self::g_to_y(&m), z0),
             };
             Self::push_interleaved(&s_matrix, &mut out);
         }
         Ok(out)
-    }
-
-    /// Internal dispatch guard: S is the stored domain and every public
-    /// entry point answers it before reaching [`Touchstone::s_to_domain`],
-    /// so arriving here means the dispatch contract was violated. It errors
-    /// rather than silently mis-converting.
-    fn dispatch_violation(parameter: TouchstoneParameter) -> TouchstoneError {
-        TouchstoneError::DispatchViolation {
-            domain: parameter.as_ref().to_owned(),
-        }
     }
 
     /// Row-major complex matrix from an interleaved f64 block.
@@ -800,12 +801,6 @@ impl Touchstone {
                 nports,
             });
         }
-        if parameter.requires_two_ports() && nports != 2 {
-            return Err(TouchstoneError::DomainPortCount {
-                domain: parameter.as_ref().to_owned(),
-                nports,
-            });
-        }
         let z0v = if z0.len() == 1 {
             vec![z0[0]; nports]
         } else {
@@ -819,7 +814,13 @@ impl Touchstone {
         let mut f_hz = frequency.f().expect("live frequency");
         let mut s = data.to_vec();
         Self::sort_and_check_f(&mut f_hz, &mut s, nports)?;
-        let s = Self::convert_to_s(&s, parameter, nports, &z0v)?;
+        // S is the stored domain: the sorted buffer is kept as-is (no
+        // second copy); every other domain converts via the shared helper.
+        let s = if parameter == TouchstoneParameter::S {
+            s
+        } else {
+            Self::convert_to_s(&s, parameter, nports, &z0v)?
+        };
         Ok(Self {
             frequency: crate::frequency::Frequency::from_f(
                 f_hz,
@@ -911,7 +912,12 @@ impl Touchstone {
     }
 
     /// S → Z/Y/G/H (the backend of the domain shortcut properties and the
-    /// non-S branch of [`Touchstone::data`]).
+    /// non-S branch of [`Touchstone::data`]). S is answered from storage by
+    /// the public accessor before this call; the S arm is a defensive error
+    /// (direct-tested below), never a silent fallback.
+    // `inline(never)`: see `convert_to_s` — one core instantiation keeps
+    // the defensive S arm covered.
+    #[inline(never)]
     fn s_to_domain(
         s: &[f64],
         domain: TouchstoneParameter,
@@ -929,18 +935,21 @@ impl Touchstone {
         for freq_s in s.chunks(block) {
             let m = Self::matrix_from_interleaved(freq_s, nports);
             let z = Self::s_to_z(&m, z0);
-            // S returns before this loop, so the final else is a contract
-            // violation: it errors rather than silently mis-converting.
-            let d = if domain == TouchstoneParameter::Z {
-                z.clone()
-            } else if domain == TouchstoneParameter::Y {
-                Self::invert(&z, nports)
-            } else if domain == TouchstoneParameter::G {
-                Self::z_to_g(&z)
-            } else if domain == TouchstoneParameter::H {
-                Self::z_to_h(&z)
-            } else {
-                return Err(Self::dispatch_violation(domain));
+            // Exhaustive match, no wildcard: adding a TouchstoneParameter
+            // variant is a compile error here until it is handled — a new
+            // domain can never silently compute as another domain. S is
+            // answered from storage by the public accessor before this
+            // call; reaching the S arm is a dispatch bug (tested below).
+            let d = match domain {
+                TouchstoneParameter::S => {
+                    return Err(TouchstoneError::DispatchViolation {
+                        domain: domain.as_ref().to_owned(),
+                    });
+                }
+                TouchstoneParameter::Z => z.clone(),
+                TouchstoneParameter::Y => Self::invert(&z, nports),
+                TouchstoneParameter::G => Self::z_to_g(&z),
+                TouchstoneParameter::H => Self::z_to_h(&z),
             };
             Self::push_interleaved(&d, &mut out);
         }
@@ -1041,11 +1050,7 @@ impl Touchstone {
     /// - dir+name+extension → grammar-strip, rebuild the correct extension
     ///   (domain letter = real written parameter, n = real nports — a wrong
     ///   extension is mechanically impossible).
-    fn write_path(
-        &self,
-        path: Option<&str>,
-        parameter: TouchstoneParameter,
-    ) -> Result<String, TouchstoneError> {
+    fn write_path(&self, path: Option<&str>, parameter: TouchstoneParameter) -> String {
         // Lowercase extension (`.z2p`): the closed grammar `\.[ghsyz]\d+p`
         // in its canonical written form, matching the spec scenarios.
         let ext = format!(
@@ -1055,21 +1060,21 @@ impl Touchstone {
         );
         let name_ext = format!("{}{}", self.name, ext);
         let Some(path) = path else {
-            return Ok(name_ext);
+            return name_ext;
         };
         if path.is_empty() {
-            return Ok(name_ext);
+            return name_ext;
         }
         // Native: an existing directory segment gets the default name.
         // A trailing slash is the portable directory signal (the browser
         // has no filesystem to probe with `is_dir`).
         if path.ends_with('/') || std::path::Path::new(path).is_dir() {
-            return Ok(format!("{}/{}", path.trim_end_matches('/'), name_ext));
+            return format!("{}/{}", path.trim_end_matches('/'), name_ext);
         }
         let filename = Self::filename_from_path(path);
         let stem = Self::name_from_filename(&filename);
         let parent = &path[..path.len() - filename.len()];
-        Ok(format!("{parent}{stem}{ext}"))
+        format!("{parent}{stem}{ext}")
     }
 
     /// Render Touchstone text: `#` option line (stored version — never
@@ -1080,12 +1085,6 @@ impl Touchstone {
         parameter: TouchstoneParameter,
         format: TouchstoneFormat,
     ) -> Result<String, TouchstoneError> {
-        if parameter.requires_two_ports() && self.nports as usize != 2 {
-            return Err(TouchstoneError::DomainPortCount {
-                domain: parameter.as_ref().to_owned(),
-                nports: self.nports as usize,
-            });
-        }
         let mut out = String::new();
         for c in self.comments.lines() {
             out.push_str(&format!("! {c}\n"));
@@ -1169,7 +1168,7 @@ impl Touchstone {
         parameter: TouchstoneParameter,
         format: TouchstoneFormat,
     ) -> Result<(), TouchstoneError> {
-        let full = self.write_path(Some(path), parameter)?;
+        let full = self.write_path(Some(path), parameter);
         let text = self.write_touchstone(parameter, format)?;
         std::fs::write(&full, text).map_err(|e| TouchstoneError::Syntax {
             token: format!("{full}: {e}"),
@@ -1280,9 +1279,7 @@ mod tests {
     #[test]
     fn write_path_empty_uses_name() {
         assert_eq!(
-            two_port_z()
-                .write_path(None, TouchstoneParameter::Z)
-                .unwrap(),
+            two_port_z().write_path(None, TouchstoneParameter::Z),
             "x.z2p"
         );
     }
@@ -1291,26 +1288,20 @@ mod tests {
     fn write_path_directory_appends_name() {
         let dir = std::env::temp_dir().join("netwave_wp_dir");
         std::fs::create_dir_all(&dir).unwrap();
-        let p = two_port_z()
-            .write_path(Some(dir.to_str().unwrap()), TouchstoneParameter::Z)
-            .unwrap();
+        let p = two_port_z().write_path(Some(dir.to_str().unwrap()), TouchstoneParameter::Z);
         assert_eq!(p, format!("{}/x.z2p", dir.to_str().unwrap()));
         std::fs::remove_dir_all(&dir).ok();
     }
 
     #[test]
     fn write_path_dir_plus_name_appends_extension() {
-        let p = two_port_z()
-            .write_path(Some("/tmp/outdir/renamed"), TouchstoneParameter::Z)
-            .unwrap();
+        let p = two_port_z().write_path(Some("/tmp/outdir/renamed"), TouchstoneParameter::Z);
         assert_eq!(p, "/tmp/outdir/renamed.z2p");
     }
 
     #[test]
     fn write_path_wrong_extension_rebuilt() {
-        let p = two_port_z()
-            .write_path(Some("/tmp/outdir/renamed.s3p"), TouchstoneParameter::Z)
-            .unwrap();
+        let p = two_port_z().write_path(Some("/tmp/outdir/renamed.s3p"), TouchstoneParameter::Z);
         assert_eq!(p, "/tmp/outdir/renamed.z2p");
     }
 
@@ -1321,8 +1312,7 @@ mod tests {
         let text = "# GHZ S RI R 50\n1.0 0.5 0.25";
         let ts = Touchstone::from_text(text, Some(1), Some("/tmp/d/a.s1p")).unwrap();
         assert_eq!(
-            ts.write_path(Some("/tmp/d/a.s1p"), TouchstoneParameter::Z)
-                .unwrap(),
+            ts.write_path(Some("/tmp/d/a.s1p"), TouchstoneParameter::Z),
             "/tmp/d/a.z1p"
         );
     }
@@ -1330,9 +1320,7 @@ mod tests {
     #[test]
     fn write_path_empty_string_uses_name() {
         assert_eq!(
-            two_port_z()
-                .write_path(Some(""), TouchstoneParameter::Z)
-                .unwrap(),
+            two_port_z().write_path(Some(""), TouchstoneParameter::Z),
             "x.z2p"
         );
     }
@@ -1349,13 +1337,27 @@ mod tests {
 
     #[test]
     fn s_to_domain_rejects_s_as_dispatch_violation() {
-        // Every public entry point answers S before reaching s_to_domain;
-        // a direct S call must error, never silently echo the input back.
-        let err = Touchstone::s_to_domain(&[0.0; 8], TouchstoneParameter::S, 2, &[50.0, 50.0])
+        // Private helper: public surfaces answer S from storage before
+        // calling, so S here is a dispatch bug and must error, never
+        // silently compute as another domain.
+        let err =
+            Touchstone::s_to_domain(&[0.0, 0.0], TouchstoneParameter::S, 1, &[50.0]).unwrap_err();
+        // to_string() also exercises the Display arm of the error variant.
+        assert!(
+            err.to_string().contains("internal dispatch violation: S"),
+            "{err}"
+        );
+    }
+
+    #[test]
+    fn convert_to_s_rejects_s_as_dispatch_violation() {
+        // Private helper: callers pass S through untouched, so S here is a
+        // dispatch bug and must error, never silently copy or convert.
+        let err = Touchstone::convert_to_s(&[0.0; 8], TouchstoneParameter::S, 2, &[50.0, 50.0])
             .unwrap_err();
         assert!(
-            err.to_string().contains("internal error"),
-            "must flag the dispatch violation: {err}"
+            err.to_string().contains("internal dispatch violation: S"),
+            "{err}"
         );
     }
 }
@@ -1439,9 +1441,7 @@ impl crate::resources::Resource for Touchstone {
                 let f = js_ts_kw(args.get(1).ok_or_else(|| js("format required"))?)?;
                 let path = crate::resources::arg_opt_str(args, 2);
                 let text = self.write_touchstone(p, f).map_err(|e| js(e.to_string()))?;
-                let filename = self
-                    .write_path(path.as_deref(), p)
-                    .map_err(|e| js(e.to_string()))?;
+                let filename = self.write_path(path.as_deref(), p);
                 Ok(js_object(&[
                     ("text", JsValue::from_str(&text)),
                     ("filename", JsValue::from_str(&filename)),

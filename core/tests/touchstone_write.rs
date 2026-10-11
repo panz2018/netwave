@@ -176,6 +176,25 @@ fn write_touchstone_gh_on_non_two_port_errors() {
 }
 
 #[test]
+fn write_file_h_on_non_two_port_errors() {
+    // The domain/port-count rejection happens inside write_touchstone via
+    // the data accessor, so write_file surfaces it before touching disk.
+    let text = "# GHZ S RI R 50\n1.0 0.1 0.2";
+    let ts = Touchstone::from_text(text, Some(1), None).unwrap();
+    let err = ts
+        .write_file(
+            "/tmp/netwave_h1p.s1p",
+            TouchstoneParameter::H,
+            TouchstoneFormat::RI,
+        )
+        .unwrap_err();
+    assert!(
+        err.to_string().contains('H'),
+        "must quote the offending domain: {err}"
+    );
+}
+
+#[test]
 fn write_file_unwritable_path_errors() {
     // A path whose parent directory does not exist fails at the fs layer
     // and surfaces as a Syntax error quoting the full path.
