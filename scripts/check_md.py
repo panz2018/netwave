@@ -29,6 +29,12 @@ Checks:
   `stage N` / `phase-N` / `phase N`) must not appear in any Markdown —
   live specs, Plan/, archive, and READMEs alike; name content by what it
   is, not by a roadmap position. Zero exemptions (governance meta-rule).
+- VERSION TAG: bare roadmap version codenames (`v1`, `v2`, ...) must not
+  enter live documents — name scope by content ("public API surface",
+  "deferred"), not by a version slot that will be renamed. Dotted
+  external-standard versions (`v1.0`, `v1.1`, `v2.x`) and `v8` (the V8
+  coverage provider) are legitimate and whitelisted. Archive and the
+  lessons-learned ledger are frozen evidence and exempt.
 - ARCHIVE PATH: an inline-code path of the form
   `openspec/changes/archive/<name>/` must point at an existing directory
   (renamed archives leave no stale pointers behind).
@@ -44,6 +50,9 @@ LINK = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 HEADING = re.compile(r"#{1,6} (.*)")
 STAGE_WORDS = re.compile(r"阶段\s*[0-9]|stage [0-9]|phase[- ][0-9]")
 ARCHIVE_PATH = re.compile(r"openspec/changes/archive/([A-Za-z0-9._-]+)/?`")
+# Bare roadmap codenames ("v1"): banned in live docs. Whitelist: dotted
+# external-standard versions (v1.0/v1.1/v2.x — a dot follows) and v8 (V8).
+VERSION_TAG = re.compile(r"\bv(?!8\b)\d+\b(?!\.)")
 
 
 def slug(title: str) -> str:
@@ -132,6 +141,15 @@ def main() -> int:
                 # every Markdown, zero exemptions (archive included)
                 if STAGE_WORDS.search(line):
                     print(f"STAGE WORD     {f}:{i} {line.rstrip()[:70]}")
+                    bad += 1
+                # bare roadmap version codenames (v1/v2/...) are banned in
+                # live docs; archive + ledger quote frozen evidence, exempt
+                if (
+                    not in_archive
+                    and ledger not in norm.replace("\\", "/")
+                    and VERSION_TAG.search(line)
+                ):
+                    print(f"VERSION TAG    {f}:{i} {line.rstrip()[:70]}")
                     bad += 1
                 # archive pointers in inline code must resolve to a live dir
                 for m in ARCHIVE_PATH.finditer(line + "`"):

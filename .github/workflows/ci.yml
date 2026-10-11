@@ -78,17 +78,21 @@ jobs:
       - uses: mozilla-actions/sccache-action@v0.0.11
       - name: cargo test
         run: cargo test --workspace
-      - name: llvm-cov (100% floor, ubuntu x64 only)
-        # Single cell: llvm-cov is weak on Windows/MSVC, and coverage of
-        # the same code + tests is host-comparable. Binding crates
-        # (python, typescript native/wasm) need a JS/Python runtime and
-        # are covered by pytest/vitest in their own jobs (spec-sanctioned
-        # exclusion, structurally unreachable under cargo test).
+      - name: llvm-cov (core 100% floor, ubuntu x64 only)
+        # Per-crate ownership: core coverage is measured by core's own
+        # tests (`-p netwave`); binding glue is measured by pytest-cov /
+        # vitest in its own jobs. `--codecov` selects cargo-llvm-cov's
+        # own line merger, which ORs execution across every test binary
+        # (a line executed in any instantiation counts as covered — the
+        # standard line-coverage semantics). The default `llvm-cov report`
+        # path instead counts each unexecuted inlined instantiation
+        # separately, so defensive arms covered only by the lib unit test
+        # would show as missed in the integration binaries' copies.
         if: matrix.target == 'linux-x64'
         run: |
           cargo install cargo-llvm-cov --locked
-          cargo llvm-cov --workspace --fail-under-lines 100 \
-            --ignore-filename-regex '(python|typescript/(native|wasm))/src/lib\.rs'
+          cargo llvm-cov -p netwave --codecov --output-path codecov.json \
+            --fail-under-lines 100
 
   # wasm: browser is the primary target -> first-class job, zero
   # conditionals, full OS matrix: wasm codegen differs per host toolchain,
