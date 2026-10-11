@@ -15,5 +15,8 @@
   "rust-analyzer.cargo.extraEnv": {
     "VIRTUAL_ENV": "${workspaceFolder}/python/.venv",
     "PYO3_PYTHON": "${workspaceFolder}/python/.venv/bin/python"
-  }
+  },
+  // Soft-wrap long lines at the viewport width (this repo's markdown and
+  // spec files carry long prose lines; no horizontal scrolling).
+  "editor.wordWrap": "on"
 }
