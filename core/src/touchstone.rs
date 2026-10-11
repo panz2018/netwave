@@ -341,6 +341,12 @@ impl Touchstone {
     /// `https://host/d/filter.s1p?v=2` still names `filter` / infers 1,
     /// then take the last path segment. A bare path (`/`) or empty URL has
     /// no filename — `None`, so nports cannot be inferred from it.
+    // Same cfg as its only caller `from_url`: without an HTTP backend there
+    // is no URL to name, so the helper is dead code in the default build.
+    #[cfg(any(
+        all(not(target_arch = "wasm32"), feature = "native-http"),
+        all(target_arch = "wasm32", feature = "browser-http")
+    ))]
     fn url_filename(url: &str) -> Option<String> {
         let clean = url.split(['?', '#']).next().unwrap_or(url);
         let name = Self::filename_from_path(clean);
@@ -1318,6 +1324,10 @@ mod tests {
     }
 
     #[test]
+    #[cfg(any(
+        all(not(target_arch = "wasm32"), feature = "native-http"),
+        all(target_arch = "wasm32", feature = "browser-http")
+    ))]
     fn url_filename_strips_query_and_detects_empty() {
         assert_eq!(
             Touchstone::url_filename("http://h/d/filter.s1p?v=2").as_deref(),

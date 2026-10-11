@@ -115,6 +115,30 @@ describe("browser touchstone data plane", () => {
     await expect(ts.data("G", "RI")).rejects.toThrow(/2-port/);
     await ts.drop();
   });
+
+  it("z/y/g/h shortcut getters return their domains", async () => {
+    // The four computed shortcut getters forward to core's s_to_domain; a
+    // 2-port object must resolve all of them (shortcut properties, not just
+    // data()). Each domain is distinct, so the four results differ pairwise.
+    const m = await import("../../src/index.browser.ts");
+    const ts = await m.Touchstone.fromText(Z2P, 2);
+    const zv = await ts.z;
+    const yv = await ts.y;
+    const gv = await ts.g;
+    const hv = await ts.h;
+    // 2×2 complex → 8 interleaved re/im for every domain.
+    expect(zv.length).toBe(8);
+    expect(yv.length).toBe(8);
+    expect(gv.length).toBe(8);
+    expect(hv.length).toBe(8);
+    // z round-trips the parsed Z2P domain (row-major z11,z12,z21,z22);
+    // MA→rect→S→Z is transcendental, so compare within tolerance.
+    expect(zv[0]).toBeCloseTo(10, 9);
+    expect(zv[1]).toBeCloseTo(0, 9);
+    expect(Array.from(zv)).not.toEqual(Array.from(yv));
+    expect(Array.from(gv)).not.toEqual(Array.from(hv));
+    await ts.drop();
+  });
 });
 
 describe("browser touchstone write", () => {
@@ -173,15 +197,19 @@ describe("browser touchstone write", () => {
     URL.revokeObjectURL = (() => {}) as unknown as typeof URL.revokeObjectURL;
     try {
       await ts.writeFile("filter.s9p", "S", "RI");
+      // No path (browser-optional): core write_path falls back to name +
+      // correct extension; exercises the `path ?? null` branch.
+      await ts.writeFile(undefined, "S", "RI");
     } finally {
       if (!origDoc) delete g.document;
       URL.createObjectURL = origCreate as typeof URL.createObjectURL;
       URL.revokeObjectURL = origRevoke as typeof URL.revokeObjectURL;
     }
     // The wrong extension is mechanically impossible: core write_path
-    // rebuilt it from the written parameter + real nports.
-    expect(clicks).toEqual(["filter.s1p"]);
-    expect(blobs).toBe(1);
+    // rebuilt it from the written parameter + real nports. The path-less
+    // call falls back to the stored name (also filter.s1p).
+    expect(clicks).toEqual(["filter.s1p", "filter.s1p"]);
+    expect(blobs).toBe(2);
     await ts.drop();
   });
 });

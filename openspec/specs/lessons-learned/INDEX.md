@@ -62,7 +62,7 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-054 | typescript | napi-cli 与 napi crate 配对升级，升级后 grep 生成 mjs 枚举名        |
 | LL-055 | core       | 2 端口文件 legacy 列序反序，I/O 边界交换，内部恒 row-major          |
 | LL-056 | core       | 覆盖率不得扭曲热路径：防御臂穷尽 match+直接测，禁为覆盖加运算       |
-| LL-057 | core       | 默认 report 按实例计缺，100% 闸门用 `-p netwave --codecov` 行合并   |
+| LL-057 | core       | `--fail-under-lines` 读 report 恒差，100% 闸门读 codecov.json       |
 | LL-058 | workflow   | 同命令/同思路失败 3 次即停，联网搜成熟方案，禁止原地绕圈            |
 | LL-059 | workflow   | 复查必重读源码引文件:行号，禁凭记忆复述旧结论                       |
 | LL-060 | core       | 绑定壳禁重算，只转发 core 结果（铁律十一复发实例）                  |
