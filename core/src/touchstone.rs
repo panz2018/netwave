@@ -124,7 +124,7 @@ pub enum TouchstoneError {
         nports: usize,
     },
     /// A numeric token stream is not divisible by the stride `1 + 2×nports²`
-    /// (noise rows mixed in break divisibility → hard error, v1).
+    /// (noise rows mixed in break divisibility → hard error).
     #[error("token count {len} is not divisible by stride {stride} (1 + 2×nports²)")]
     StrideDivisibility {
         /// Total numeric token count.
@@ -541,11 +541,6 @@ impl Touchstone {
     /// `S = √Z0⁻¹ (Z − Z0)(Z + Z0)⁻¹ √Z0` (and the Y-dual
     /// `S = √Z0⁻¹ (I − Z0·Y)(I + Z0·Y)⁻¹ √Z0`). G/H convert to Y/Z first
     /// (2-port closed form; other port counts error).
-    // `inline(never)`: keep one instantiation in core so the defensive S
-    // arm is not duplicated (uncovered) into every binding binary that
-    // inlines this helper. Non-S ingestion already does matrix inversion,
-    // so the call boundary is free.
-    #[inline(never)]
     fn convert_to_s(
         data: &[f64],
         parameter: TouchstoneParameter,
@@ -915,9 +910,6 @@ impl Touchstone {
     /// non-S branch of [`Touchstone::data`]). S is answered from storage by
     /// the public accessor before this call; the S arm is a defensive error
     /// (direct-tested below), never a silent fallback.
-    // `inline(never)`: see `convert_to_s` — one core instantiation keeps
-    // the defensive S arm covered.
-    #[inline(never)]
     fn s_to_domain(
         s: &[f64],
         domain: TouchstoneParameter,
