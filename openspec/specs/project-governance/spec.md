@@ -257,6 +257,39 @@ node napi finalizer）的契约细节见 [memory-lifecycle spec](../memory-lifec
 工具链生成物名字不受本铁律管辖（如 wasm-bindgen 为导出类自动生成的 `free()`），
 但生成物 MUST NOT 出现在用户可见面：用户可见面只允许那个唯一的名字。
 
+本铁律是铁律十一（绑定薄壳）在名字维度的补集：铁律十一禁壳内有逻辑，本铁律禁
+壳内有第二个名字。
+
+#### Scenario: 别名壳即打回
+
+- **WHEN** code-review Standards 轴在任一端发现转发定义：Rust `fn free` 体内
+  调 `self.drop()`，或 TS `drop()` 体内 `return this.free()`
+- **THEN** 打回：要求把实现直接命名为统一名并删除转发
+
+#### Scenario: 改名不留旧别名
+
+- **WHEN** 公开 API 改名（如 `release`→`drop`）
+- **THEN** 同一 PR 内旧名在全部端、测试、文档与生成物（`.pyi`/`.d.mts`）中
+  消失，无兼容别名残留
+
+#### Scenario: 三端动词集合相等即绿
+
+- **WHEN** CI 运行 `scripts/check_verbs.py` 提取三端公开动词集合
+- **THEN** 三端集合逐名相等（机械 camelCase 映射后比较），任一名字漂移即失败
+
+#### Scenario: 生成物不上浮公开面
+
+- **WHEN** 检查浏览器/node 用户可见导出面
+- **THEN** 不含 wasm-bindgen 生成物名（`free`）；该名字仅存在于 worker 内部
+  对生成物的调用点
+
+#### Scenario: 统一形态为实例方法
+
+- **WHEN** 检查三端手动释放的调用形态
+- **THEN** 公开形态统一为实例方法 `obj.drop()`（浏览器主线程持 `Network`/
+  `Frequency` 壳实例，壳内是数字 handle）；`drop(handle)` 仅作为 worker 内部
+  `postMessage` 命令形态存在，MUST NOT 上浮为公开 API
+
 ### Requirement: 铁律十三 else 只做错误兜底
 
 `else` / 通配分支 MUST NOT 承载正确行为：正确路径 MUST 写在显式条件/显式
@@ -292,39 +325,6 @@ MUST NOT 为提升覆盖率指标而在热路径增加计算、拷贝、重排�
 
 - **WHEN** 覆盖率方案与零拷贝直通路径冲突
 - **THEN** 保直通，覆盖率缺口走豁免通道并注明理由
-
-本铁律是铁律十一（绑定薄壳）在名字维度的补集：铁律十一禁壳内有逻辑，本铁律禁
-壳内有第二个名字。
-
-#### Scenario: 别名壳即打回
-
-- **WHEN** code-review Standards 轴在任一端发现转发定义：Rust `fn free` 体内
-  调 `self.drop()`，或 TS `drop()` 体内 `return this.free()`
-- **THEN** 打回：要求把实现直接命名为统一名并删除转发
-
-#### Scenario: 改名不留旧别名
-
-- **WHEN** 公开 API 改名（如 `release`→`drop`）
-- **THEN** 同一 PR 内旧名在全部端、测试、文档与生成物（`.pyi`/`.d.mts`）中
-  消失，无兼容别名残留
-
-#### Scenario: 三端动词集合相等即绿
-
-- **WHEN** CI 运行 `scripts/check_verbs.py` 提取三端公开动词集合
-- **THEN** 三端集合逐名相等（机械 camelCase 映射后比较），任一名字漂移即失败
-
-#### Scenario: 生成物不上浮公开面
-
-- **WHEN** 检查浏览器/node 用户可见导出面
-- **THEN** 不含 wasm-bindgen 生成物名（`free`）；该名字仅存在于 worker 内部
-  对生成物的调用点
-
-#### Scenario: 统一形态为实例方法
-
-- **WHEN** 检查三端手动释放的调用形态
-- **THEN** 公开形态统一为实例方法 `obj.drop()`（浏览器主线程持 `Network`/
-  `Frequency` 壳实例，壳内是数字 handle）；`drop(handle)` 仅作为 worker 内部
-  `postMessage` 命令形态存在，MUST NOT 上浮为公开 API
 
 ### Requirement: 元规则 优先级与单一真相源
 
