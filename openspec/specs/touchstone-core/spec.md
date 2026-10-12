@@ -9,31 +9,32 @@
 
 ## Requirements
 
-### Requirement: Touchstone 三端类形态与构造即解析
+### Requirement: Touchstone 三端类形态与工厂构造即解析
 
 `Touchstone` MUST 作为主类从三端包入口导出（Python `netwave.Touchstone`、
 node/浏览器壳 re-export），是"持有解析结果的状态类"（api-contract 修订条款）。
-三工厂 `fromText(text, nports?, path?)` / `fromFile(path)` / `fromUrl(url)`
-与纯数据构造器 `new Touchstone(...)`（收 frequency、data、z0、parameter，
-可选 name、comments）MUST 构造即解析/校验完成，MUST NOT 存在二段式
-`load_file` / `read_touchstone` 动词。`parameter`（S/Z/Y/G/H）在构造器与写出接口 MUST
-必填无默认（默认 S 会把 Z 数据静默当 S 存）。`frequency` MUST 收 `Frequency`
-对象（频率轴唯一权威）。公开属性面：`s`/`z`/`y`/`g`/`h`/`f`/`z0`/`nports`/
-`name`/`comments`/`version`/`parameter` + 访问器 `data(parameter, format)`（双参必填，
-无默认——调 `data()` 就必须说清要什么域什么格式，零拷贝默认走 `s` 属性）；
-MUST NOT 存在 `format` 属性、`filename` 属性（文件来源名统一用 `name`，
-写出路径是私有方法 `write_path`）、`port_names`、`validate()`、`resistance`/
-`reference` 冗余存储。
+四工厂 `fromText(text, nports?, path?)` / `fromFile(path)` / `fromUrl(url)` /
+`fromData(frequency, data, z0, parameter)`（Python/Rust `from_data`，可选 name、
+comments）MUST 构造即解析/校验完成，MUST NOT 存在二段式 `load_file` /
+`read_touchstone` 动词，MUST NOT 存在裸构造器 `new Touchstone(...)`（数据入口
+唯一为 `fromData`/`from_data` 工厂，见 project-governance 铁律十五）。
+`parameter`（S/Z/Y/G/H）在 `fromData` 工厂与写出接口 MUST 必填无默认（默认 S
+会把 Z 数据静默当 S 存）。`frequency` MUST 收 `Frequency` 对象（频率轴唯一
+权威）。公开属性面：`s`/`z`/`y`/`g`/`h`/`f`/`z0`/`nports`/`name`/`comments`/
+`version`/`parameter` + 访问器 `data(parameter, format)`（双参必填，无默认——调
+`data()` 就必须说清要什么域什么格式，零拷贝默认走 `s` 属性）；MUST NOT 存在
+`format` 属性、`filename` 属性（文件来源名统一用 `name`，写出路径是私有方法
+`write_path`）、`port_names`、`validate()`、`resistance`/`reference` 冗余存储。
 
-#### Scenario: 三工厂构造即完成
+#### Scenario: 四工厂构造即完成
 
-- **WHEN** 三端各自经 `fromText`/`fromFile`/`fromUrl` 构造并立即读 `s`
+- **WHEN** 三端各自经 `fromText`/`fromFile`/`fromUrl`/`fromData` 构造并立即读 `s`
 - **THEN** 无需任何后续 load/read 调用即得完整数据；三端动词名一致
   （TS 机械 camelCase，Python snake_case）
 
 #### Scenario: parameter 缺失即报错
 
-- **WHEN** 纯数据构造器调用未传 `parameter`
+- **WHEN** `fromData` 工厂调用未传 `parameter`
 - **THEN** 三端同一位置报参数缺失错误，不发生默认 S 的静默存储
 
 ### Requirement: 解析覆盖 1.0/1.1 且 z0 恒实数
@@ -44,7 +45,7 @@ MUST NOT 存在 `format` 属性、`filename` 属性（文件来源名统一用 `
 supported），z0 MUST NOT 接受复数。`z0` 入参形状 MUST 恰为标量或长度
 `1`/`nports` 的实数数组，其余长度 MUST 报错。version 来源分入口：解析入口
 从文件记录——按 `#` 行 `R` 的**形态**判定（标量 token→`"1.0"`、每端口
-token→`"1.1"`，即使数值全同仍为 `"1.1"`）；纯数据构造器才由 z0 **数值**
+token→`"1.1"`，即使数值全同仍为 `"1.1"`）；`fromData` 工厂才由 z0 **数值**
 推导（全端口同值→`"1.0"`，存在不同值→`"1.1"`）；公开面 version 为字符串。参数域 S/Z/Y/G/H
 大小写不敏感读入（`to_ascii_uppercase` 归一），写出/enum/错误消息一律
 标准大写。G/H 域仅 2 端口，违者报错。频点边界 MUST 纯由 nports 决定：
@@ -75,7 +76,7 @@ MA 不是 RI，规范原文 "The default value is MA"）。
 
 #### Scenario: z0 长度非法报错
 
-- **WHEN** 构造器收到长度既非 1 也非 `nports` 的 z0 数组
+- **WHEN** `fromData` 工厂收到长度既非 1 也非 `nports` 的 z0 数组
 - **THEN** 报错（三端映射 PyErr/napi Error/throw），构造失败
 
 #### Scenario: 噪声数据报错
@@ -179,7 +180,7 @@ MUST 全部私有。独立真值：域换算对 skrf golden 对拍（引用 mani
 
 `writeTouchstone(parameter, format)` MUST 返回 Touchstone 文本（全平铺必填、
 无 opts 包、无 `version` 选项——写出直接用存储的 version 字段：解析入口
-从文件记录，纯数据构造时由 z0 推导，不在写出时重推；无 `rRef`——
+从文件记录，`fromData` 工厂构造时由 z0 推导，不在写出时重推；无 `rRef`——
 z0 唯一权威），
 数字格式化 MUST shortest-roundtrip（写出→读回逐 bit 一致，测试规划既定）。
 2 端口写出 MUST 按 v1.x legacy 列序（`N11, N21, N12, N22`）在 I/O 边界

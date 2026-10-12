@@ -164,7 +164,8 @@ node napi finalizer）的契约细节见 [memory-lifecycle spec](../memory-lifec
 
 #### Scenario: 单点所有权与显式 transfer
 
-- **WHEN** 主线程把 buffer 交给 worker（`upload`）后再读原 buffer
+- **WHEN** 主线程经 `fromData` 把 buffer 交给 worker（`data` 进 transfer list）
+  后再读原 buffer
 - **THEN** 原 buffer 已 detached（所有权已移动），不发生隐式复制
 - **AND** 计算结果 buffer 为 worker 新分配并以 transfer 送回，主线程从返回值
   重建视图，数据与 worker 内计算结果一致（容差引用 manifest `core_tol`）
@@ -287,7 +288,7 @@ node napi finalizer）的契约细节见 [memory-lifecycle spec](../memory-lifec
 #### Scenario: 统一形态为实例方法
 
 - **WHEN** 检查三端手动释放的调用形态
-- **THEN** 公开形态统一为实例方法 `obj.drop()`（浏览器主线程持 `Network`/
+- **THEN** 公开形态统一为实例方法 `obj.drop()`（浏览器主线程持 `Touchstone`/
   `Frequency` 壳实例，壳内是数字 handle）；`drop(handle)` 仅作为 worker 内部
   `postMessage` 命令形态存在，MUST NOT 上浮为公开 API
 
@@ -326,6 +327,37 @@ MUST NOT 为提升覆盖率指标而在热路径增加计算、拷贝、重排�
 
 - **WHEN** 覆盖率方案与零拷贝直通路径冲突
 - **THEN** 保直通，覆盖率缺口走豁免通道并注明理由
+
+### Requirement: 铁律十五 构造入口用 fromX 工厂，公开面禁裸构造器
+
+四端用户面全部类的构造入口 MUST 是 `fromX` 静态工厂（`fromData`/`from_data`、
+`fromText`/`from_text`、`fromFile`/`from_file`、`fromUrl`/`from_url`、
+`fromF`/`from_f` 等），且在 core/Python/node/浏览器四端 MUST 公开可达且同名
+（机械 camelCase/snake_case 映射豁免）。裸 `new`/构造器 MUST NOT 出现在任何端
+公开面：Rust core MUST NOT 有 `pub fn new`，Python MUST NOT 有 `#[new]`，node
+MUST NOT 有 `#[napi(constructor)]`，浏览器壳 MUST NOT 有公开 `constructor`。
+浏览器壳内部 `private constructor(handle)` 是壳持 handle 的传输细节、非构造入口，
+不受本铁律管辖。本铁律由常驻 worker 下构造器物理上无法 async（铁律八）推广而来：
+既然浏览器端数据入口只能是工厂，四端统一即只能是工厂。管辖范围 = 四端用户面
+全部类（机制规则不点名），内部 Rust 结构（`Registry` 等资源表）不受管辖。
+
+#### Scenario: 裸构造器即打回
+
+- **WHEN** code-review Standards 轴在任一端公开面发现 `pub fn new`/`#[new]`/
+  `#[napi(constructor)]`/公开 `constructor`
+- **THEN** 打回：要求改名为 `fromX` 静态工厂并四端同步
+
+#### Scenario: 构造入口四端同名
+
+- **WHEN** `check_verbs.py` 提取四端某类的构造入口名
+- **THEN** 四端集合逐名相等（机械 camelCase/snake_case 映射后比较），且无裸
+  构造器名（`new`/`constructor`）出现在公开面
+
+#### Scenario: 壳内私有 handle 构造器豁免
+
+- **WHEN** 检查浏览器壳 `constructor`
+- **THEN** 仅存在 `private constructor(handle)`（内部传输细节），无公开构造器；
+  用户构造一律经 `fromX` 工厂
 
 ### Requirement: 元规则 优先级与单一真相源
 

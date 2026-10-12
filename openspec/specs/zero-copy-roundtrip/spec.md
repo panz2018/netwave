@@ -8,47 +8,6 @@ core 持有的缓冲是同一块内存，视图改写对 core 立即可见。这
 
 ## Requirements
 
-### Requirement: core 提供交错复数 f64 缓冲
-
-core MUST 暴露一个临时脚手架函数，分配并返回形状为 `(nfreq, nports, nports)` 的
-交错复数 f64（complex128，`[re, im, re, im, ...]`）缓冲，并写入可预测图案
-（pattern）供四端断言。该函数是脚手架期临时 API，真实数据模型落地后被替换，
-不属于长期契约。
-
-#### Scenario: 缓冲布局逐字节符合铁律一
-
-- **WHEN** core 以 `nfreq=2, nports=2` 生成缓冲
-- **THEN** 缓冲长度 = 2×2×2×2×8 = 128 字节（前三因子 nfreq×nports×nports
-  = 8 个复数，第四因子 2 = 每复数 re/im 两分量，末因子 8 = f64 字节数）
-- **AND** 第 f 个频点的 2×2 矩阵在内存中连续（每频点 4 复数×16 字节 =
-  64 字节块）
-- **AND** 每个元素先 re 后 im，各占 8 字节小端 f64
-
-### Requirement: 三绑定暴露零拷贝视图
-
-python/node/wasm 三端 MUST 各暴露一个函数，返回 core 所分配缓冲的**视图**而非拷贝：
-Python 为 `PyArray`（numpy ndarray，dtype=complex128，shape=(nfreq,nports,nports)）；
-Node 为 `ArrayBuffer`/`Float64Array`（经 napi External 后端）；wasm 为
-`Float64Array`（指向 wasm 线性内存）。
-
-#### Scenario: Python 视图零拷贝且可写回 core
-
-- **WHEN** Python 端调用绑定函数取得 ndarray，写入 `arr[0,0,1] = 1+2j`
-- **THEN** 再次从 core 读取同一位置返回 `1+2j`（同一块内存，非拷贝）
-- **AND** ndarray 的 `flags.owndata` 为 False（借用 core 内存）
-
-#### Scenario: Node 视图零拷贝且可写回 core
-
-- **WHEN** Node 端取得 `Float64Array` 视图，写入 `view[2] = 3.5`
-- **THEN** 再次从 core 读取对应 re 分量返回 `3.5`
-- **AND** 视图底层 byteOffset 指向 core 分配的 External 内存
-
-#### Scenario: wasm 视图零拷贝且可写回 core
-
-- **WHEN** wasm 端取得 `Float64Array` 视图，写入某元素
-- **THEN** 再次经 wasm 函数从 core 线性内存读取返回写入值
-- **AND** 视图 `buffer` 即 wasm `Memory.buffer`
-
 ### Requirement: 异步与 Worker 边界契约（常驻 worker 架构）
 
 跨线程/异步面 MUST 遵守以下契约：
@@ -67,9 +26,10 @@ Node 为 `ArrayBuffer`/`Float64Array`（经 napi External 后端）；wasm 为
    core 执行，大计算入口防阻塞走 napi AsyncTask（绑定高级能力立项时落地）。
 3. **结果 buffer 一律 transfer，输入移动仅经显式 transfer**：计算结果 buffer 是新
    分配的、无主的，MUST 以 transfer 零拷贝送回；纯计算动词 MUST NOT 消耗调用方的
-   输入 buffer——输入要么已通过 `upload` 显式托管在常驻 worker（托管后反复可用），
-   要么边界拷贝进入 worker；只有名字里明说"移交/消耗"（如 `upload`/`drop`）的
-   API 才 transfer 调用方的输入（调用后原视图 detached）。元数据（shape、
+   输入 buffer——输入要么已通过 `fromData` 工厂显式移入常驻 worker（`data` 进
+   transfer list，托管后反复可用），要么边界拷贝进入 worker；只有名字里明说
+   "移交/消耗"（如 `fromData`/`drop`）的 API 才 transfer 调用方的输入（调用后原
+   视图 detached）。元数据（shape、
    frequency 等）MUST 搭结果便车随计算结果同消息回传，MUST NOT 为元数据单开
    worker 往返。
 4. **`await` 后必须重建视图**：计算动词返回值 MUST 自带新 buffer（或新
@@ -93,7 +53,7 @@ Node 为 `ArrayBuffer`/`Float64Array`（经 napi External 后端）；wasm 为
 
 #### Scenario: Worker 往返——输入不消耗、结果零拷贝
 
-- **WHEN** 主线程对同一已 `upload` 托管的输入先后两次 `await toZ(x)` 跨常驻
+- **WHEN** 主线程对同一已 `fromData` 托管的输入先后两次 `await toZ(x)` 跨常驻
   worker 执行
 - **THEN** 两次调用后托管句柄仍有效，worker 内数据未变（输入未被消耗）
 - **AND** 两次结果 buffer 均以 transfer 零拷贝送回，主线程从返回值重建的
@@ -114,21 +74,64 @@ Node 为 `ArrayBuffer`/`Float64Array`（经 napi External 后端）；wasm 为
 
 ### Requirement: cross-binding 往返对拍
 
-四端 MUST 对同一输入图案执行"取视图 → 改元素 → 回读"往返，结果一致。原生三端
+四端 MUST 对同一真实 Touchstone 输入（`testdata/touchstone/` 下的 `.s1p`/`.s2p`/
+`.s4p`）执行"取视图 → 改元素 → 派生回读"往返，结果一致。原生三端
 （core/python/node）同机同架构 MUST 逐 bit 一致；wasm 跨实现 MUST 用相对容差
-（引用 manifest key `core_tol`，本阶段该 key 在 manifest 中登记为占位）。
-浏览器端 wasm 往返 MUST 在真浏览器（vitest browser mode，Chromium）经常驻
-worker 执行，不再以 node 模拟代替浏览器路径的验收。
+（引用 manifest key `core_tol`）。浏览器端 wasm 往返 MUST 在真浏览器（vitest
+browser mode，Chromium）经常驻 worker 执行，不再以 node 模拟代替浏览器路径的验收。
+scaffold 图案对拍（`core.bin`/`python.bin`/`node.bin`/`wasm.bin`，源自
+`fill_pattern`）废止，anti-tautology 自检改扰 `_ts_*` bin。
 
 #### Scenario: 四端往返一致
 
-- **WHEN** 四端以相同 `(nfreq, nports)` 与相同写入值执行往返
+- **WHEN** 四端以同一真实 Touchstone 输入与相同改写值执行"改元素→派生回读"往返
 - **THEN** core/python/node 三端回读结果逐 bit 相同
 - **AND** wasm 回读与原生结果相对误差 < manifest `core_tol`
 - **AND** 任一视图改写后，其余端重新获取视图读取到改写后的值
 
 #### Scenario: 浏览器往返经常驻 worker
 
-- **WHEN** 真浏览器测试执行 upload → 计算 → 回读往返
+- **WHEN** 真浏览器测试执行 `fromData` → 计算 → 回读往返
 - **THEN** 全程只有一个常驻 worker 存活，主线程无 wasm 实例
 - **AND** 回读结果与原生结果相对误差 < manifest `core_tol`
+
+### Requirement: 双绑定暴露 Touchstone.s 零拷贝视图
+
+python/node 两端 MUST 各暴露 `Touchstone.s` 为 core 所分配缓冲的**可写视图**而非
+拷贝：Python 为 numpy ndarray（交错 f64，shape=(nfreq,nports,nports)，
+`flags.owndata` 为 False，base object = pyclass 本身，`borrow_from_array`）；
+node 为 `Float64Array`（经 `ArrayBuffer::from_external` 后端，finalize 回调
+drop `Arc` clone，视图底层内存即 core `Arc<Vec<f64>>` 主数据）。core `s` 字段
+MUST 是 `Arc<Vec<f64>>`，`s()` 返 `&[f64]` 借用，`s_mut()` 返 `&mut [f64]`
+就地写入口（`Arc` 唯一持有者时可用，否则报错——已借出零拷贝视图期间改数据走
+视图写）；三端 `s` 形状恒不可变（npoints/nports 固定，只能改元素值，不能换
+尺寸——定长由类型系统与视图 shape 机制保证，无需运行时校验）。node 绑定拿
+`Arc` clone 交 external finalizer 保活。Python/node MUST NOT 另造 `s` setter
+（视图就地写已零拷贝可变，setter 只制造 stale-view 陷阱）。
+
+浏览器无共享内存（常驻 worker，铁律八），`Touchstone.s` MUST NOT 是共享视图：
+主线程 `await ts.s` 经常驻 worker 以 transfer/结构化克隆回传，契约只断言
+**数据正确性**（回读值与 worker 内 core 现算一致，容差引用 manifest
+`core_tol`），MUST NOT 断言「视图 buffer 即 wasm `Memory.buffer`」——主线程
+无 wasm 实例，该物理前提不成立。
+
+#### Scenario: Python 视图零拷贝且可写回 core
+
+- **WHEN** Python 端经 `Touchstone.from_data` 构造后取 `ts.s` ndarray，写入
+  `arr[0,0,1] = 1+2j`
+- **THEN** 再次读派生量 `ts.data("S","MA")`（或 `ts.z`）换算回 RI 返回 `1+2j`
+  （core 从被改的同一块内存现算，非拷贝）
+- **AND** ndarray 的 `flags.owndata` 为 False（借用 core 内存）
+
+#### Scenario: Node 视图零拷贝且可写回 core
+
+- **WHEN** node 端经 `Touchstone.fromData` 构造后取 `ts.s` 视图，写入某 re 分量
+- **THEN** 再次读派生量 `ts.data("S","MA")`（或 `ts.z`）换算回 RI 返回写入值
+  （external 视图底层即 core `Arc` 主数据，非拷贝）
+- **AND** 视图底层 byteOffset 指向 core 分配的 external 内存
+
+#### Scenario: 浏览器经常驻 worker 往返数据正确
+
+- **WHEN** 浏览器端 `await ts.s` 经常驻 worker 取回数据
+- **THEN** 回读值与 worker 内 core 现算结果一致（容差引用 manifest `core_tol`）
+- **AND** 主线程无 wasm 实例，`s` 经 transfer/结构化克隆回传（非共享视图断言）

@@ -33,17 +33,17 @@ API 面 MUST 分三层且三端一致：① **数据层**——交错 f64 缓冲
 
 ### Requirement: 有状态对象用类、无状态变换用模块函数
 
-持有频率轴 + S 主数据 + z0 的对象 MUST 是类：core `pub struct Network`，
-Python `#[pyclass]`、Node napi struct、浏览器 wasm-bindgen struct 原生导出，
-域动词是实例方法（对齐 skrf `Network` 惯例）。持有 Touchstone 解析结果的
-对象 MUST 是类 `Touchstone`（三端同形态导出）——解析虽是一次性动作，但其
-产物（频率轴/S 主数据/z0/元数据）是长活状态，归"状态类"而非模块级函数
-（touchstone-core capability 落地）。仅**无状态**一次性变换（纯输入→纯输出、
-无留存数据）MUST 是模块级函数，不硬包成类。
+持有频率轴 + S 主数据 + z0 的对象 MUST 是类，且数据状态类唯一为
+`Touchstone`（`Network` 已退役，其全部状态——`frequency`/`s`/`z0`/`nports`/
+元数据——由 `Touchstone` 承载）：core `pub struct Touchstone`，Python
+`#[pyclass]`、Node napi struct、浏览器 wasm-bindgen struct 原生导出，域动词是
+实例方法（对齐 skrf 惯例）。解析虽是一次性动作，但其产物（频率轴/S 主数据/z0/
+元数据）是长活状态，归"状态类"而非模块级函数（touchstone-core capability 落地）。
+仅**无状态**一次性变换（纯输入→纯输出、无留存数据）MUST 是模块级函数，不硬包成类。
 
 #### Scenario: 三端类形态一致
 
-- **WHEN** 三端各自实例化 `Network` 并调用同一域动词
+- **WHEN** 三端各自经 `Touchstone` 工厂实例化并调用同一域动词
 - **THEN** 三端均为实例方法调用形态，动词名一致（TS 仅机械 camelCase）
 
 #### Scenario: Touchstone 是状态类非模块函数
@@ -138,20 +138,23 @@ napi/wasm-bindgen 生成 `.d.ts`）或 core 透传函数自我发现地暴露到
 
 ### Requirement: 无隐藏派生状态与频率轴原子变更
 
-`Network` MUST NOT 缓存任何派生结果——`to_z()` 等每次基于当前主数据现算，
-用户直接写视图后无需 sync 调用。改频率 MUST 是 `(freq_axis, s)` 一个原子事务，
-MUST NOT 提供单独的频率轴 setter。新增频点 MUST 经
-`add_frequency(f, method)` 且 `method` 为必填参数（插值 / 用户指定完整 p×p
-矩阵 / 显式零填充），不存在"默认加一行"。
+`Touchstone` MUST NOT 缓存任何派生结果——`z`/`y`/`g`/`h`/`data` 等每次基于当前
+主数据 `s` 现算，用户直接写视图后无需 sync 调用。改频率 MUST 是
+`(freq_axis, s)` 一个原子事务，MUST NOT 提供单独的频率轴 setter，也 MUST NOT 有
+原地 `add_frequency` 式增量动词（`add_frequency` 从未实现，本 change 从契约删除）。
+新增频点 MUST 经**重建**：读当前轴 `f`/`f_scaled`/`wavelength` 拼新轴 →
+`from_f`/`from_wavelength` 造新 `Frequency` → 连同扩展后的 `s` 经
+`from_data`/`fromData` 造新 `Touchstone`；新频点的 p×p 矩阵来源 MUST 显式给出
+（插值 / 用户指定完整 p×p 矩阵 / 显式零填充），不存在"默认加一行"。
 
 #### Scenario: 视图直写后派生量即时正确
 
-- **WHEN** 用户经可写视图改写某 S 元素后调用 `to_z()`
+- **WHEN** 用户经可写视图 `ts.s` 改写某 S 元素后读 `ts.z`
 - **THEN** 返回的 Z 基于改写后的数据，无需任何 sync/refresh 调用
 
 #### Scenario: 加频点必须显式给来源
 
-- **WHEN** 调用 `add_frequency` 未传 `method`
+- **WHEN** 经 `from_f` + `from_data` 重建加频点但未显式给出新频点矩阵来源
 - **THEN** 调用失败（参数缺失报错），不发生隐式补零或默认插值
 
 ### Requirement: worker 泛化分发与单常驻拓扑
@@ -160,7 +163,7 @@ worker 消息协议 MUST 是 `{handle, method, args}` 泛化分发
 （`objects.get(handle)[method](...)`），是与动词数量无关的固定模板——core 加
 方法时三端壳与 worker 零改动。`handle` MUST 是 `number | string`：数字 =
 core 计数器分配的实例句柄；字符串 = core 模块命名空间名（类工厂与模块自由
-函数经 `{handle:"network"|"frequency", method:<core 名机械 camelCase>}` 路由，
+函数经 `{handle:"touchstone"|"frequency", method:<core 名机械 camelCase>}` 路由，
 命名空间只做路由不重命名方法）——MUST NOT 用哨兵值（如 `handle==0`）表达
 "构造"语义。wasm 导出 MUST 恒为单条通用 `call(handle, method, args)`，
 MUST NOT 存在逐动词导出入口；Rust 无反射，名字→函数的分派 MUST 由各资源
@@ -185,8 +188,8 @@ MUST NOT 存在逐动词导出入口；Rust 无反射，名字→函数的分派
 
 #### Scenario: 构造经命名空间 handle 而非哨兵
 
-- **WHEN** 浏览器壳调用 `Network.upload(view, nfreq, nports)`
-- **THEN** 发出的消息是 `{handle:"network", method:"upload", args:[...]}`
+- **WHEN** 浏览器壳调用 `Touchstone.fromData(frequency, data, z0, parameter)`
+- **THEN** 发出的消息是 `{handle:"touchstone", method:"fromData", args:[...]}`
 - **AND** 协议中不存在以 `handle==0` 等哨兵值表达构造的形态
 
 #### Scenario: wasm 导出面恰为 call + 常量枚举
@@ -196,7 +199,7 @@ MUST NOT 存在逐动词导出入口；Rust 无反射，名字→函数的分派
   生成的 init/默认导出；`register_resources` 是 `#[wasm_bindgen(start)]` 注册
   钩子，wasm-bindgen 无视 Rust 可见性必按名导出——它是注册入口不是动词，钉死
   的本意是"无逐动词入口"）
-- **AND** 无任何逐动词入口（`network_upload`/`frequency_npoints` 等）
+- **AND** 无任何逐动词入口（`touchstone_from_data`/`frequency_npoints` 等）
 - **AND** 无任何自由函数直导出（`frequency_units`/`live_count` 经命名空间路由）
 - **AND** `check_verbs.py` 钉死该集合，多一个少一个即红
 
