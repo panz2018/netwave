@@ -134,7 +134,43 @@ fn data_z_matches_z_property() {
     );
 }
 
-// ---- pure-data constructor ----
+// ---- pure-data factory ----
+
+#[test]
+fn from_data_writes_through_to_derived_readback() {
+    // Zero-copy proof inside core: `s_mut` writes the master buffer in
+    // place, and `data(S, MA)` — computed fresh from the live `s` —
+    // reflects the write. Converting MA back to RI must equal what was
+    // written (independent verification channel, stronger than re-reading
+    // `s`: it also proves the computation reads through the same memory).
+    let f =
+        netwave::frequency::Frequency::from_f(vec![1.0e9], netwave::frequency::FrequencyUnit::Hz);
+    let mut ts =
+        Touchstone::from_data(&f, &[0.5, 0.25], &[50.0], TouchstoneParameter::S, "", "").unwrap();
+    ts.s_mut().unwrap()[0] = 0.75;
+    let ma = ts
+        .data(TouchstoneParameter::S, TouchstoneFormat::MA)
+        .unwrap();
+    let re = ma[0] * ma[1].to_radians().cos();
+    let im = ma[0] * ma[1].to_radians().sin();
+    approx_eq(&[re, im], &[0.75, 0.25], TOL);
+    // The master buffer itself holds the write (same memory, no copy).
+    approx_eq(ts.s(), &[0.75, 0.25], TOL);
+}
+
+#[test]
+fn from_data_data_ri_borrows_master_buffer() {
+    // `(S, RI)` must hand back the stored buffer itself, not a copy —
+    // the zero-copy accessor contract the bindings build on.
+    let f =
+        netwave::frequency::Frequency::from_f(vec![1.0e9], netwave::frequency::FrequencyUnit::Hz);
+    let ts =
+        Touchstone::from_data(&f, &[0.5, 0.25], &[50.0], TouchstoneParameter::S, "", "").unwrap();
+    let d = ts
+        .data(TouchstoneParameter::S, TouchstoneFormat::RI)
+        .unwrap();
+    assert_eq!(d.as_ptr(), ts.s().as_ptr());
+}
 
 #[test]
 fn constructor_validates_dimension_interleaved() {
@@ -143,7 +179,7 @@ fn constructor_validates_dimension_interleaved() {
         vec![1.0e9, 2.0e9],
         netwave::frequency::FrequencyUnit::Hz,
     );
-    let err = Touchstone::new(
+    let err = Touchstone::from_data(
         &f,
         &[0.0; 15],
         &[50.0, 50.0],
@@ -163,7 +199,7 @@ fn constructor_validates_dimension_interleaved() {
 fn constructor_validates_z0_shape() {
     let f =
         netwave::frequency::Frequency::from_f(vec![1.0e9], netwave::frequency::FrequencyUnit::Hz);
-    let err = Touchstone::new(
+    let err = Touchstone::from_data(
         &f,
         &[0.0; 8],
         &[50.0, 45.0, 50.0],
@@ -180,10 +216,12 @@ fn constructor_derives_version_from_z0_values() {
     let f =
         netwave::frequency::Frequency::from_f(vec![1.0e9], netwave::frequency::FrequencyUnit::Hz);
     // all-equal z0 -> "1.0"
-    let ts = Touchstone::new(&f, &[0.0; 8], &[50.0, 50.0], TouchstoneParameter::S, "", "").unwrap();
+    let ts = Touchstone::from_data(&f, &[0.0; 8], &[50.0, 50.0], TouchstoneParameter::S, "", "")
+        .unwrap();
     assert_eq!(ts.version(), "1.0");
     // differing z0 -> "1.1"
-    let ts = Touchstone::new(&f, &[0.0; 8], &[50.0, 45.0], TouchstoneParameter::S, "", "").unwrap();
+    let ts = Touchstone::from_data(&f, &[0.0; 8], &[50.0, 45.0], TouchstoneParameter::S, "", "")
+        .unwrap();
     assert_eq!(ts.version(), "1.1");
 }
 
@@ -192,7 +230,8 @@ fn constructor_converts_non_s_domain() {
     // Z data = [[100]] 1-port -> S = (100-50)/(100+50) = 1/3.
     let f =
         netwave::frequency::Frequency::from_f(vec![1.0e9], netwave::frequency::FrequencyUnit::Hz);
-    let ts = Touchstone::new(&f, &[100.0, 0.0], &[50.0], TouchstoneParameter::Z, "", "").unwrap();
+    let ts =
+        Touchstone::from_data(&f, &[100.0, 0.0], &[50.0], TouchstoneParameter::Z, "", "").unwrap();
     approx_eq(ts.s(), &[1.0 / 3.0, 0.0], TOL);
     assert_eq!(ts.parameter().as_ref(), "Z");
 }
@@ -203,7 +242,8 @@ fn constructor_rejects_duplicate_frequency() {
         vec![1.0e9, 1.0e9],
         netwave::frequency::FrequencyUnit::Hz,
     );
-    let err = Touchstone::new(&f, &[0.0; 4], &[50.0], TouchstoneParameter::S, "", "").unwrap_err();
+    let err =
+        Touchstone::from_data(&f, &[0.0; 4], &[50.0], TouchstoneParameter::S, "", "").unwrap_err();
     assert!(err.to_string().contains('1'), "must quote dup freq: {err}");
 }
 
@@ -214,7 +254,7 @@ fn constructor_sorts_shuffled_frequency() {
         netwave::frequency::FrequencyUnit::Hz,
     );
     // point at 2GHz has re=0.1, at 1GHz re=0.2
-    let ts = Touchstone::new(
+    let ts = Touchstone::from_data(
         &f,
         &[0.1, 0.0, 0.2, 0.0],
         &[50.0],
@@ -232,7 +272,8 @@ fn constructor_data_len_not_multiple_of_npoints_errors() {
     // 1 frequency point needs an even data length (re/im pairs); 3 is not.
     let f =
         netwave::frequency::Frequency::from_f(vec![1.0e9], netwave::frequency::FrequencyUnit::Hz);
-    let err = Touchstone::new(&f, &[0.0; 3], &[50.0], TouchstoneParameter::S, "", "").unwrap_err();
+    let err =
+        Touchstone::from_data(&f, &[0.0; 3], &[50.0], TouchstoneParameter::S, "", "").unwrap_err();
     assert!(
         err.to_string().contains('3'),
         "must quote data_len 3: {err}"
@@ -244,7 +285,8 @@ fn constructor_rejects_gh_on_non_two_port() {
     // 1-port data with a G parameter: G/H are 2-port only.
     let f =
         netwave::frequency::Frequency::from_f(vec![1.0e9], netwave::frequency::FrequencyUnit::Hz);
-    let err = Touchstone::new(&f, &[0.0; 2], &[50.0], TouchstoneParameter::G, "", "").unwrap_err();
+    let err =
+        Touchstone::from_data(&f, &[0.0; 2], &[50.0], TouchstoneParameter::G, "", "").unwrap_err();
     assert!(
         err.to_string().contains('G'),
         "must quote the offending domain: {err}"
@@ -258,7 +300,8 @@ fn constructor_rejects_non_square_cells() {
     // the rounded nports² 4.
     let f =
         netwave::frequency::Frequency::from_f(vec![1.0e9], netwave::frequency::FrequencyUnit::Hz);
-    let err = Touchstone::new(&f, &[0.0; 6], &[50.0], TouchstoneParameter::S, "", "").unwrap_err();
+    let err =
+        Touchstone::from_data(&f, &[0.0; 6], &[50.0], TouchstoneParameter::S, "", "").unwrap_err();
     let msg = err.to_string();
     assert!(
         msg.contains('6') && msg.contains('4'),

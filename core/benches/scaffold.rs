@@ -1,5 +1,5 @@
-//! criterion benchmark placeholder (real fill_pattern benchmarks arrive
-//! with the real data model).
+//! criterion benchmark placeholder (real Touchstone benchmarks arrive
+//! with the compute verbs).
 use criterion::{Criterion, criterion_group, criterion_main};
 
 fn placeholder(c: &mut Criterion) {

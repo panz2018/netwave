@@ -6,17 +6,18 @@ deliberately thin transports over this crate — they must never recompute value
 (governance spec rule: bindings only move memory; see
 [`openspec/specs/project-governance/spec.md`](../openspec/specs/project-governance/spec.md)).
 
-Current stage: scaffold. The only public verb is `fill_pattern`, a
-predictable-pattern allocator whose sole purpose is to give the bindings real
-memory to pass around zero-copy. It is replaced by the real Network/SParameter
-data model later.
+Current stage: the `Touchstone` state class is the single data authority —
+parsing (`from_text`/`from_url`), the pure-data factory (`from_data`), the
+S master buffer (`Arc<Vec<f64>>`, shared zero-copy with the bindings), and
+the derived domains (Z/Y/G/H). `Frequency` is the frequency axis.
 
 ## Layout
 
 - `src/lib.rs` — public API + the interleaved complex layout contract
 - `tests/` — integration tests (the API has no unit tests besides these; TDD
   applies to every future verb)
-- `scripts/dump.rs` — cross-binding dump: writes `.cross-tmp/core.bin`
+- `scripts/dump.rs` — cross-binding dump: writes the λ↔f axis and the
+  Touchstone S master data into `.cross-tmp/`
   (declared as `[[example]]` in `Cargo.toml`; cargo only auto-discovers
   `examples/`)
 - `benches/scaffold.rs` — criterion benchmarks feeding the bench gate

@@ -19,8 +19,8 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 use netwave::frequency::{Frequency, FrequencyUnit, frequency_units, live_count};
-use netwave::network::Network;
 use netwave::resources::{Resource, insert, namespace, register_namespace, remove};
+use netwave::touchstone::Touchstone;
 use wasm_bindgen::prelude::*;
 
 // The registry and the LIVE witness are process-global, so tests share
@@ -40,6 +40,10 @@ struct TestResource {
 static TEST_LIVE: AtomicUsize = AtomicUsize::new(0);
 
 impl Resource for TestResource {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
     fn call(&mut self, _method: &str, _args: &[JsValue]) -> Result<JsValue, JsValue> {
         Ok(JsValue::UNDEFINED)
     }
@@ -67,18 +71,45 @@ fn insert_allocates_unique_handles_and_remove_runs_drop() {
 }
 
 #[test]
-fn network_and_frequency_host_through_the_same_table() {
+fn touchstone_and_frequency_host_through_the_same_table() {
     let _guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-    // 2 freq x 2 ports x 2 ports x 2 (re/im) = 16 f64
-    let data: Vec<f64> = (0..16).map(|i| i as f64).collect();
-    let h_net = insert(Box::new(Network::from_f64(2, 2, data)));
-    let h_freq = insert(Box::new(Frequency::from_f(
-        vec![1e9, 2e9],
-        FrequencyUnit::GHz,
-    )));
-    assert_ne!(h_net, h_freq, "one counter serves every resource type");
-    remove(h_net).unwrap();
+    let freq = Frequency::from_f(vec![1e9, 2e9], FrequencyUnit::GHz);
+    let ts = Touchstone::from_data(
+        &freq,
+        &[0.1, 0.2, 0.3, 0.4],
+        &[50.0],
+        netwave::touchstone::TouchstoneParameter::S,
+        "",
+        "",
+    )
+    .unwrap();
+    let h_ts = insert(Box::new(ts));
+    let h_freq = insert(Box::new(freq));
+    assert_ne!(h_ts, h_freq, "one counter serves every resource type");
+    remove(h_ts).unwrap();
     remove(h_freq).unwrap();
+}
+
+#[test]
+fn as_any_downcasts_hosted_frequency() {
+    // `Resource::as_any` is the core-internal downcast the browser
+    // `fromData` namespace arm uses to recover a hosted `Frequency` from
+    // the type-erased table entry. Native-testable on the trait object
+    // directly (no wasm call needed).
+    let f = Frequency::from_f(vec![1e9, 2e9], FrequencyUnit::GHz);
+    let resource: Box<dyn Resource> = Box::new(f);
+    let down = resource
+        .as_any()
+        .downcast_ref::<Frequency>()
+        .expect("downcast to Frequency");
+    assert_eq!(down.npoints().unwrap(), 2);
+    // A wrong-type downcast yields None, never a panic.
+    assert!(
+        resource
+            .as_any()
+            .downcast_ref::<std::collections::BTreeMap<u8, u8>>()
+            .is_none()
+    );
 }
 
 #[test]
@@ -97,7 +128,7 @@ fn remove_runs_rust_drop_and_is_visible_in_live_count() {
 #[test]
 fn unknown_or_double_dropped_handle_errors() {
     let _guard = TEST_LOCK.lock().unwrap_or_else(|e| e.into_inner());
-    let h = insert(Box::new(Network::fill_pattern(1, 1)));
+    let h = insert(Box::new(Frequency::from_f(vec![1e9], FrequencyUnit::GHz)));
     remove(h).unwrap();
     let err = remove(h).expect_err("second drop must report unknown");
     assert!(err.contains("unknown or dropped handle"), "{err}");
@@ -110,9 +141,9 @@ fn namespace_routing_resolves_known_and_rejects_unknown() {
     // under native cargo test the start hook never runs, so register here to
     // exercise the routing table itself (the returned fn pointers are looked
     // up, never called — calling them would build JsValue and abort).
-    register_namespace("network", netwave::network::call_namespace);
+    register_namespace("touchstone", netwave::touchstone::call_namespace);
     register_namespace("frequency", netwave::frequency::call_namespace);
-    assert!(namespace("network").is_ok());
+    assert!(namespace("touchstone").is_ok());
     assert!(namespace("frequency").is_ok());
     let err = namespace("circuit").expect_err("unregistered namespace");
     assert!(err.contains("unknown namespace"), "{err}");
