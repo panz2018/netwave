@@ -57,7 +57,7 @@ py/ts，仅供 `Frequency.f_scaled` 内部消费。倍率是精确常量而非�
 不存在的成员（如 `FrequencyUnit.Hzz`）报类型错误。浏览器端：`FrequencyUnit` 成员
 是 glue JS 里的数字常量对象，从 glue 直接 re-export（import 常量不实例化 wasm，
 铁律八不破）；需执行 wasm 的 `frequencyUnits()` MUST 经常驻 worker 命令暴露
-（async，同 `fillPattern` 形态），主线程 MUST NOT 执行 wasm。
+（async，同 `fromData` 形态），主线程 MUST NOT 执行 wasm。
 
 #### Scenario: 三端成员集合相等
 

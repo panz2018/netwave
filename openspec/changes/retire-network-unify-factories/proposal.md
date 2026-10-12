@@ -21,6 +21,10 @@ Purpose 所防）。同时，浏览器常驻 worker 下构造器物理上无法 
   transfer 移入 worker。
 - node `Touchstone.s` 改零拷贝（`Arc<Vec<f64>>` + `ArrayBuffer::from_external`
   - finalize drop Arc）；Python `s` 已零拷贝，不动；浏览器无共享内存维持克隆。
+- core 新增 `Touchstone::s_mut()`（`&mut [f64]` 就地可写视图，定长由类型系统
+  保证）；Python/node 靠既有可写零拷贝视图就地改元素（`ts.s[f,r,c] = x` /
+  `ts.s[idx] = x`），不另造 setter；浏览器 `s` 不可变（worker 复制回传）。
+  三端 `s` 形状恒不可变（npoints/nports 不变，只能改值）。
 - 零拷贝写回证据从 `read_element` 迁到既有派生面（改 `ts.s` 视图 → 读
   `ts.data("S","MA")`/`ts.z` 换算回 RI 比对）。
 - 新增铁律：四端用户面全部类的构造入口一律 `fromX` 静态工厂且四端公开同名，
@@ -78,8 +82,11 @@ Purpose 所防）。同时，浏览器常驻 worker 下构造器物理上无法 
 
 ## Non-goals
 
-- 不新增任何 `Touchstone` 公开属性/函数（零拷贝证据全复用既有 `s` +
-  `z`/`y`/`g`/`h`/`data` + `fromData` 工厂；旧版 `toBuffer()`/`buffer` setter 作废）。
+- 除 core `s_mut()`（Rust 就地写入口，补齐既有 Python/node 视图已有的可变性）
+  外，不新增任何 `Touchstone` 公开属性/函数（零拷贝证据全复用既有 `s` +
+  `z`/`y`/`g`/`h`/`data` + `fromData` 工厂；旧版 `toBuffer()`/`buffer` setter 作废；
+  Python/node 不另造 s setter——视图就地写已零拷贝可变，setter 只会制造
+  stale-view 陷阱）。
 - 不动 `Frequency` 类（其构造入口 `from_f`/`from_wavelength` 已合规）。
 - 不做计算层域动词（`cascade`/`se2gmm`/`tdr` 等）——属独立 capability 立项。
 - 不引入多 worker 分桶、SAB 原地写、wthreads 多线程 wasm——属后续性能优化立项。

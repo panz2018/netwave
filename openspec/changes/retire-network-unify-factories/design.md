@@ -3,7 +3,7 @@
 ## Context
 
 动机见 [proposal.md](proposal.md)。本设计只讲「怎么做」。当前状态（已核实，
-出处见 Plan 终稿[已核实事实](../../../Plan/脚手架自由函数退役.md#已核实事实带出处)）：
+出处见各源文件行号与 [proposal.md](proposal.md) 的已核实事实段）：
 
 - `Touchstone` 已含 `Network` 全部状态（`frequency` + `s` + `z0` + 元数据），
   `Network` 是其真子集。

@@ -117,13 +117,17 @@ scaffold 图案对拍（`core.bin`/`python.bin`/`node.bin`/`wasm.bin`，源自
 
 ### Requirement: 双绑定暴露 Touchstone.s 零拷贝视图
 
-python/node 两端 MUST 各暴露 `Touchstone.s` 为 core 所分配缓冲的**视图**而非
+python/node 两端 MUST 各暴露 `Touchstone.s` 为 core 所分配缓冲的**可写视图**而非
 拷贝：Python 为 numpy ndarray（交错 f64，shape=(nfreq,nports,nports)，
 `flags.owndata` 为 False，base object = pyclass 本身，`borrow_from_array`）；
 node 为 `Float64Array`（经 `ArrayBuffer::from_external` 后端，finalize 回调
 drop `Arc` clone，视图底层内存即 core `Arc<Vec<f64>>` 主数据）。core `s` 字段
-MUST 是 `Arc<Vec<f64>>`，`s()` 仍返 `&[f64]` 借用，node 绑定拿 `Arc` clone 交
-external finalizer 保活。
+MUST 是 `Arc<Vec<f64>>`，`s()` 返 `&[f64]` 借用，`s_mut()` 返 `&mut [f64]`
+就地写入口（`Arc` 唯一持有者时可用，否则报错——已借出零拷贝视图期间改数据走
+视图写）；三端 `s` 形状恒不可变（npoints/nports 固定，只能改元素值，不能换
+尺寸——定长由类型系统与视图 shape 机制保证，无需运行时校验）。node 绑定拿
+`Arc` clone 交 external finalizer 保活。Python/node MUST NOT 另造 `s` setter
+（视图就地写已零拷贝可变，setter 只制造 stale-view 陷阱）。
 
 浏览器无共享内存（常驻 worker，铁律八），`Touchstone.s` MUST NOT 是共享视图：
 主线程 `await ts.s` 经常驻 worker 以 transfer/结构化克隆回传，契约只断言
