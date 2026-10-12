@@ -15,6 +15,7 @@
 //! [`Touchstone::data`].
 
 use std::str::FromStr;
+use std::sync::Arc;
 
 use num_complex::Complex64;
 use strum::{AsRefStr, EnumIter};
@@ -175,6 +176,13 @@ pub enum TouchstoneError {
     /// R 50), but the line itself is mandatory.
     #[error("missing # option line: Touchstone files shall contain one")]
     MissingOptionLine,
+    /// The master S buffer is shared by a live zero-copy view, so an
+    /// in-place `s_mut` write is refused: write through the borrowed view
+    /// instead (same memory), or drop the view first.
+    #[error(
+        "S buffer is shared by a live zero-copy view: write through the view, or drop it first"
+    )]
+    BufferShared,
     /// A domain reached a conversion path that cannot handle it — an
     /// internal dispatch bug, not user input (public surfaces answer S
     /// from storage before calling the conversion helpers).
@@ -197,8 +205,12 @@ pub enum TouchstoneError {
 pub struct Touchstone {
     /// Frequency axis, canonical Hz, ascending (the single authority).
     frequency: crate::frequency::Frequency,
-    /// Interleaved re/im flat S data (governance rule 1).
-    s: Vec<f64>,
+    /// Interleaved re/im flat S data (governance rule 1). `Arc` so the
+    /// node binding can hand out a zero-copy external `ArrayBuffer` view
+    /// whose finalizer drops one clone (the buffer outlives the JS view
+    /// and every other holder). `s_mut` writes in place while this is the
+    /// unique owner; shared views write through their own pointer instead.
+    s: Arc<Vec<f64>>,
     /// Per-port real reference impedance (spec forbids complex).
     z0: Vec<f64>,
     /// Port count (redundant with z0 length; hot-path convenience).
@@ -312,7 +324,7 @@ impl Touchstone {
             // from_f converts raw (in option.unit) to the Hz master axis and
             // keeps the unit as display metadata (write re-emits it).
             frequency: crate::frequency::Frequency::from_f(f_raw, option.unit),
-            s,
+            s: Arc::new(s),
             z0,
             nports: nports as u32,
             name,
@@ -763,9 +775,32 @@ impl Touchstone {
         self.frequency.f().expect("live object")
     }
 
-    /// The interleaved S data (the stored master copy).
+    /// The interleaved S data (the stored master copy, borrowed).
     pub fn s(&self) -> &[f64] {
         &self.s
+    }
+
+    /// Clone the reference-counted master buffer for a binding that must
+    /// keep the memory alive independently of this object — the node
+    /// external `ArrayBuffer` whose GC finalizer drops one `Arc` clone
+    /// (zero-copy: the JS view points at this very buffer). Not a
+    /// user-facing surface (users read/write through `s`); the `Arc` type
+    /// never crosses an FFI boundary, so it cannot surface by construction.
+    pub fn s_arc(&self) -> Arc<Vec<f64>> {
+        Arc::clone(&self.s)
+    }
+
+    /// The interleaved S data, writable in place. The shape is fixed by
+    /// the type system (`&mut [f64]` is a fixed-length slice): callers can
+    /// change element values, never the length — `npoints`/`nports` stay
+    /// consistent with the axis and z0 by construction, no runtime check.
+    /// Errors while a zero-copy view is shared out (`Arc` strong count > 1):
+    /// during that window the data is written through the borrowed view
+    /// (`s()`), not through here.
+    pub fn s_mut(&mut self) -> Result<&mut [f64], TouchstoneError> {
+        Arc::get_mut(&mut self.s)
+            .map(Vec::as_mut_slice)
+            .ok_or(TouchstoneError::BufferShared)
     }
 
     /// Build from pure data (no file): frequency axis, interleaved data in
@@ -774,10 +809,14 @@ impl Touchstone {
     /// derives from the z0 VALUES here (all-equal → `"1.0"`, differing →
     /// `"1.1"`) — unlike parsing, which records the version from the file.
     ///
+    /// This is the single data entry on every platform (ironclad rule 15:
+    /// `fromX` factories, no bare constructor): the bindings expose it as
+    /// `from_data`/`fromData` alongside `fromText`/`fromFile`/`fromUrl`.
+    ///
     /// Validation: `data.len() == npoints × nports² × 2`; `z0` length 1 or
     /// nports; no duplicate frequencies (shuffled input sorts ascending);
     /// G/H only for 2 ports.
-    pub fn new(
+    pub fn from_data(
         frequency: &crate::frequency::Frequency,
         data: &[f64],
         z0: &[f64],
@@ -835,7 +874,7 @@ impl Touchstone {
                 f_hz,
                 crate::frequency::FrequencyUnit::Hz,
             ),
-            s,
+            s: Arc::new(s),
             z0: z0v,
             nports: nports as u32,
             name: name.to_owned(),
@@ -1396,6 +1435,10 @@ where
 /// table entry is the table's own operation).
 #[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
 impl crate::resources::Resource for Touchstone {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
     fn call(&mut self, method: &str, args: &[JsValue]) -> Result<JsValue, JsValue> {
         use crate::resources::{js, js_object, unknown_method};
         let n = self.nports() as usize;
@@ -1488,6 +1531,34 @@ pub fn call_namespace(method: &str, args: &[JsValue]) -> Result<JsValue, JsValue
             let text = String::from_utf8(bytes).map_err(|e| js(e.to_string()))?;
             let ts =
                 Touchstone::from_text(&text, None, Some(&path)).map_err(|e| js(e.to_string()))?;
+            Ok(JsValue::from_f64(insert(Box::new(ts)) as f64))
+        }
+        // Pure-data factory: arg 0 is the handle of an already-hosted
+        // `Frequency` (the shell reads `frequency.handle` internally — the
+        // user only ever passes the object). The table entry is type-
+        // erased, so `as_any` downcasts it back to `Frequency` (core-
+        // internal, never surfaces on a binding). The hosted axis is read
+        // out as owned Hz (the lock is not reentrant, so the new
+        // `Frequency` is rebuilt after `with_any` returns — same pattern
+        // as the `frequency`/`copy` arm). `data` arrives moved via the
+        // shell's transfer list (the `upload` replacement).
+        "fromData" => {
+            let freq_handle = crate::resources::arg_u32(args, 0)?;
+            let data = crate::resources::arg_f64_vec(args, 1)?;
+            let z0 = crate::resources::arg_f64_vec(args, 2)?;
+            let parameter = js_ts_kw(args.get(3).ok_or_else(|| js("parameter required"))?)?;
+            let name = crate::resources::arg_opt_str(args, 4).unwrap_or_default();
+            let comments = crate::resources::arg_opt_str(args, 5).unwrap_or_default();
+            let axis_hz = crate::resources::with_any(freq_handle, |any| {
+                any.downcast_ref::<crate::frequency::Frequency>()
+                    .and_then(|f| f.f().ok())
+            })
+            .map_err(js)?
+            .ok_or_else(|| js("handle is not a live Frequency"))?;
+            let frequency =
+                crate::frequency::Frequency::from_f(axis_hz, crate::frequency::FrequencyUnit::Hz);
+            let ts = Touchstone::from_data(&frequency, &data, &z0, parameter, &name, &comments)
+                .map_err(|e| js(e.to_string()))?;
             Ok(JsValue::from_f64(insert(Box::new(ts)) as f64))
         }
         // Async in core (web_sys::fetch): the worker awaits the Promise

@@ -583,6 +583,10 @@ fn f64_array(v: &[f64]) -> JsValue {
 
 #[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
 impl crate::resources::Resource for Frequency {
+    fn as_any(&self) -> &dyn std::any::Any {
+        self
+    }
+
     fn call(&mut self, method: &str, args: &[JsValue]) -> Result<JsValue, JsValue> {
         use crate::resources::{js, unknown_method};
         match method {

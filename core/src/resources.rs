@@ -11,7 +11,7 @@
 //! instance in the table, a string names a core module namespace (class
 //! factories + module free functions). Rust has no reflection, so
 //! name→function dispatch is a hand-written `match` inside each resource
-//! module (`network.rs`, `frequency.rs`, …): adding a method adds one arm
+//! module (`frequency.rs`, `touchstone.rs`, …): adding a method adds one arm
 //! there and changes nothing else (a generic table is not a generic
 //! dispatch).
 //!
@@ -43,6 +43,12 @@ pub trait Resource: Send {
     /// Run `method` on this instance. An unknown name falls into the
     /// implementation's error arm.
     fn call(&mut self, method: &str, args: &[JsValue]) -> Result<JsValue, JsValue>;
+
+    /// Core-internal downcast: recover the concrete type from a table entry
+    /// (the browser `touchstone`/`fromData` arm needs the hosted
+    /// `Frequency`). Never surfaces on any binding — `Any` is a Rust-only
+    /// type, so it cannot cross an FFI boundary by construction.
+    fn as_any(&self) -> &dyn std::any::Any;
 }
 
 /// A module namespace: class factories and module-level free functions,
@@ -155,6 +161,25 @@ pub fn instance_call(handle: u32, method: &str, args: &[JsValue]) -> Result<JsVa
         .lock()
         .unwrap()
         .instance_call(handle, method, args)
+}
+
+/// Borrow the instance behind `handle` as `&dyn Any` and run `f` on it,
+/// releasing the lock before returning. Generic over the closure so the
+/// table never names a concrete type (open/closed): the CALLER downcasts to
+/// the type it hosts. Used by a namespace factory that consumes another
+/// hosted resource (e.g. `touchstone`/`fromData` reading a hosted
+/// `Frequency`). `f` MUST NOT re-enter the registry (std Mutex is not
+/// reentrant) — extract owned data out, then build/insert after the return.
+pub fn with_any<R: 'static>(
+    handle: u32,
+    f: impl FnOnce(&dyn std::any::Any) -> R,
+) -> Result<R, String> {
+    let reg = registry().lock().unwrap();
+    let resource = reg
+        .instances
+        .get(&handle)
+        .ok_or_else(|| format!("unknown or dropped handle: {handle}"))?;
+    Ok(f(resource.as_any()))
 }
 
 /// The single wasm entry: the verb-count-independent fixed template.
