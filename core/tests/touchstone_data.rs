@@ -2,7 +2,7 @@
 //! stored S), the unified accessor `data(parameter, format)` over all 20
 //! combinations, MA/DB closed-form semantics, and the pure-data constructor.
 
-use netwave::touchstone::{Touchstone, TouchstoneFormat, TouchstoneParameter};
+use netwave::touchstone::{Touchstone, TouchstoneError, TouchstoneFormat, TouchstoneParameter};
 
 const TOL: f64 = 1e-12;
 
@@ -170,6 +170,30 @@ fn from_data_data_ri_borrows_master_buffer() {
         .data(TouchstoneParameter::S, TouchstoneFormat::RI)
         .unwrap();
     assert_eq!(d.as_ptr(), ts.s().as_ptr());
+}
+
+#[test]
+fn s_arc_shares_master_buffer_and_blocks_s_mut_until_dropped() {
+    // `s_arc` hands the node binding an `Arc` clone whose finalizer keeps
+    // the buffer alive: the clone must point at the very same memory, and
+    // while it is live `s_mut` must refuse in-place writes (BufferShared).
+    let f =
+        netwave::frequency::Frequency::from_f(vec![1.0e9], netwave::frequency::FrequencyUnit::Hz);
+    let mut ts =
+        Touchstone::from_data(&f, &[0.5, 0.25], &[50.0], TouchstoneParameter::S, "", "").unwrap();
+    let view = ts.s_arc();
+    assert_eq!(
+        view.as_ptr(),
+        ts.s().as_ptr(),
+        "arc clone must alias master"
+    );
+    assert_eq!(&*view, ts.s());
+    let err = ts.s_mut().unwrap_err();
+    assert!(matches!(err, TouchstoneError::BufferShared), "{err}");
+    drop(view);
+    // Unique owner again: in-place writes are allowed.
+    ts.s_mut().unwrap()[0] = 0.75;
+    approx_eq(ts.s(), &[0.75, 0.25], TOL);
 }
 
 #[test]
