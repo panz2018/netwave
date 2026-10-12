@@ -1,18 +1,16 @@
 //! netwave Node binding (napi-rs).
 //!
-//! Zero-copy: core allocates a `Vec<Complex64>`; the bytes' ownership is
-//! moved into a V8 external `Buffer` via `Buffer::from(Vec<u8>)` (no copy;
-//! freed at GC finalize). The JS shell takes `buf.buffer` for the
-//! underlying ArrayBuffer. `read_element` passes a Float64Array view back
-//! into Rust and reads by pointer, proving it is the same memory.
+//! Zero-copy: the core `Touchstone` owns an `Arc<Vec<f64>>` master buffer;
+//! the `s` getter hands JS an external `Float64Array` pointing at that
+//! buffer (no copy; one `Arc` clone rides the GC finalizer). Writing the
+//! JS view mutates core memory in place, proven by derived readback in the
+//! roundtrip test.
 
 use std::str::FromStr;
 
 use napi::bindgen_prelude::*;
 use napi_derive::napi;
-use netwave::fill_pattern as core_fill_pattern;
 use netwave::frequency::{Frequency as CoreFrequency, FrequencyUnit, WavelengthUnit};
-use netwave::network::Network as CoreNetwork;
 use netwave::touchstone::Touchstone as CoreTouchstone;
 
 /// Resolve a `FrequencyUnit` from a numeric enum member OR a string (the
@@ -36,92 +34,11 @@ fn resolve_wl_unit(u: Either<u8, String>) -> Result<WavelengthUnit> {
     }
 }
 
-/// Allocate an interleaved complex f64 buffer, moving byte ownership
-/// zero-copy into a JS external Buffer.
-///
-/// Returns a Buffer (Uint8Array view); the JS shell extracts `.buffer`
-/// and converts the length.
-#[napi]
-pub fn fill_pattern(nfreq: u32, nports: u32) -> Buffer {
-    let v = core_fill_pattern(nfreq as usize, nports as usize);
-    let len = v.len(); // number of complex numbers
-    let ptr = v.as_ptr() as *mut u8;
-    let cap = v.capacity() * 16; // byte capacity (Complex64 = 2×f64, 16B/elem)
-    std::mem::forget(v); // ownership moved to the Vec<u8> below, no double free
-    let bytes: Vec<u8> = unsafe { Vec::from_raw_parts(ptr, len * 16, cap) };
-    Buffer::from(bytes) // Buffer::from calls mem::forget internally; GC frees
-}
-
-/// Pass a Float64Array view back into Rust and read an element by pointer
-/// (same memory, zero copy).
-#[napi]
-pub fn read_element(view: Float64Array, idx: u32) -> Result<f64> {
-    Ok(view.as_ref()[idx as usize])
-}
-
 /// Speed of light in vacuum (m/s): the core constant re-exported by name
 /// (ironclad rules 11/12 — the value is defined once in `core::constants`,
 /// the binding carries the name mechanically, no hand-copied literal).
 #[napi]
 pub const SPEED_OF_LIGHT: f64 = netwave::constants::SPEED_OF_LIGHT;
-
-/// napi binding for the core `Network`: the constructor is the data entry
-/// (no `upload` — that verb is browser-only, it names the worker linear-
-/// memory boundary which does not exist here). `readElement` reads one
-/// interleaved f64 element; `drop` is the deterministic manual reclamation
-/// (idempotent; post-drop access throws). napi's cleanup finalizer runs the
-/// Rust `Drop` on GC as the fallback. The wrapper has no `impl Drop`, so the
-/// method name `drop` shadows nothing on the Rust side.
-#[napi(js_name = "Network")]
-pub struct Network(CoreNetwork);
-
-#[napi]
-impl Network {
-    /// Wrap an owned interleaved `[re, im, ...]` f64 buffer with explicit
-    /// shape (`len == nfreq*nports*nports*2`). Shape is validated here and
-    /// surfaced as a JS `throw` (core's `from_f64` asserts, which would
-    /// abort across the FFI boundary).
-    #[napi(constructor)]
-    pub fn new(data: Float64Array, nfreq: u32, nports: u32) -> Result<Self> {
-        let want = nfreq as usize * nports as usize * nports as usize * 2;
-        if data.len() != want {
-            return Err(Error::from_reason(format!(
-                "data length must be nfreq*nports*nports*2 ({want}), got {}",
-                data.len()
-            )));
-        }
-        Ok(Network(CoreNetwork::from_f64(
-            nfreq as usize,
-            nports as usize,
-            data.as_ref().to_vec(),
-        )))
-    }
-
-    /// Pattern-filled factory (same closed-form pattern as the scaffold free
-    /// function, so existing assertions transfer).
-    #[napi(factory)]
-    pub fn fill_pattern(nfreq: u32, nports: u32) -> Self {
-        Network(CoreNetwork::fill_pattern(nfreq as usize, nports as usize))
-    }
-
-    /// Read one interleaved f64 element by flat index. Throws after `drop`.
-    #[napi]
-    pub fn read_element(&self, idx: u32) -> Result<f64> {
-        self.0
-            .read_element(idx as usize)
-            .map_err(|e| Error::from_reason(e.to_string()))
-    }
-
-    /// Deterministic manual reclamation (the unified cross-end verb,
-    /// ironclad rule 12). Idempotent; post-drop access throws.
-    // clippy's trait-suggestion cannot be honored without renaming the
-    // unified verb; the wrapper has no `impl Drop`, so nothing is shadowed.
-    #[allow(clippy::should_implement_trait)]
-    #[napi]
-    pub fn drop(&mut self) {
-        self.0.drop();
-    }
-}
 
 /// napi binding for the core `Frequency`. napi's cleanup finalizer runs the
 /// Rust `Drop` on GC, and `drop` is the deterministic early-release escape
@@ -281,11 +198,13 @@ impl Touchstone {
 
 #[napi]
 impl Touchstone {
-    /// Pure-data constructor: `frequency` is a `Frequency` instance; `data`
-    /// flat interleaved re/im in domain `parameter`; `z0` scalar-or-per-
-    /// port real; `parameter` (S/Z/Y/G/H) required — no silent S default.
-    #[napi(constructor)]
-    pub fn new(
+    /// Pure-data factory (ironclad rule 15 — construction only through
+    /// `fromX` factories, never a bare constructor): `frequency` is a
+    /// `Frequency` instance; `data` flat interleaved re/im in domain
+    /// `parameter`; `z0` scalar-or-per-port real; `parameter` (S/Z/Y/G/H)
+    /// required — no silent S default.
+    #[napi(factory)]
+    pub fn from_data(
         frequency: &Frequency,
         data: Vec<f64>,
         z0: Vec<f64>,
@@ -294,7 +213,7 @@ impl Touchstone {
         comments: Option<String>,
     ) -> Result<Self> {
         let parameter = resolve_ts_kw(&parameter)?;
-        CoreTouchstone::new(
+        CoreTouchstone::from_data(
             &frequency.0,
             &data,
             &z0,
@@ -335,10 +254,30 @@ impl Touchstone {
             .map_err(|e| Error::from_reason(e.to_string()))
     }
 
-    /// The stored S master data, flat interleaved re/im. Throws after `drop`.
+    /// The stored S master data as a zero-copy external `Float64Array`:
+    /// the JS view points at the core `Arc<Vec<f64>>` buffer itself (no
+    /// copy). One `Arc` clone rides the GC finalizer, so the buffer
+    /// outlives this object and every other holder until JS releases the
+    /// view. Writing the view mutates core memory in place (the roundtrip
+    /// test proves it via derived readback). Throws after `drop`.
     #[napi(getter, js_name = "s")]
     pub fn get_s(&self) -> Result<Float64Array> {
-        Ok(Float64Array::from(self.core()?.s().to_vec()))
+        let arc = self.core()?.s_arc();
+        let len = arc.len();
+        if len == 0 {
+            return Ok(Float64Array::new(Vec::new()));
+        }
+        let ptr = arc.as_ptr().cast_mut();
+        // SAFETY: `ptr` stays valid for `len` f64 as long as the `Arc`
+        // clone lives; the closure below owns that clone and drops it when
+        // GC finalizes the buffer, so the region outlives the view. The
+        // core buffer never reallocates (fixed shape — governance rule 1).
+        let buf = unsafe {
+            Float64Array::with_external_data(ptr, len, move |_ptr, _len| {
+                drop(arc);
+            })
+        };
+        Ok(buf)
     }
 
     /// Z domain, computed fresh (flat interleaved re/im).

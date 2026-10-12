@@ -77,6 +77,6 @@ describe("tree-shaking: entries forbid export *", () => {
 describe("node environment resolves to the napi shell", () => {
   it("the node-condition shell exists in the source tree (runtime check in native.roundtrip)", () => {
     const shell = fileURLToPath(new URL("../../src/index.node.ts", import.meta.url));
-    expect(readFileSync(shell, "utf8")).toContain("export async function fillPattern");
+    expect(readFileSync(shell, "utf8")).toContain("export { Frequency");
   });
 });

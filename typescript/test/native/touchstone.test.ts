@@ -80,18 +80,18 @@ describe("touchstone node factories", () => {
     expect(Array.from(ts.z0)).toEqual([50.0, 45.0]);
   });
 
-  it("constructor derives version from z0 values", () => {
+  it("fromData derives version from z0 values", () => {
     const f = Frequency.fromF([1.0], "GHz");
-    const ts = new Touchstone(f, [10, 0, 20, 90, 30, -90, 40, 180], [50.0, 45.0], "Z");
+    const ts = Touchstone.fromData(f, [10, 0, 20, 90, 30, -90, 40, 180], [50.0, 45.0], "Z");
     expect(ts.version).toBe("1.1");
     expect(ts.nports).toBe(2);
     // Z data converts to S at construction; parameter keeps the origin.
     expect(ts.parameter).toBe("Z");
   });
 
-  it("constructor rejects a bad z0 shape", () => {
+  it("fromData rejects a bad z0 shape", () => {
     const f = Frequency.fromF([1.0], "GHz");
-    expect(() => new Touchstone(f, [1.0, 0.0], [50.0, 45.0], "S")).toThrow(/z0/);
+    expect(() => Touchstone.fromData(f, [1.0, 0.0], [50.0, 45.0], "S")).toThrow(/z0/);
   });
 });
 

@@ -6,7 +6,9 @@ Single package, dual delivery: `node` resolves to the napi native addon,
 never recompute values (governance spec rule: bindings only move memory; see
 [`openspec/specs/project-governance/spec.md`](../openspec/specs/project-governance/spec.md)).
 
-Current stage: scaffold (`fillPattern` / `readElement` roundtrip) on the
+Current stage: the `Touchstone` class is the data authority on both ends
+(`fromData`/`fromText`/`fromFile`/`fromUrl` factories; node `s` is a
+zero-copy external view, browser `s` clones back from the worker) on the
 resident-worker architecture (governance spec ironclad rule 8).
 
 Singleton worker: in browsers, all data and compute live inside ONE resident

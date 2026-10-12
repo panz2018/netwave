@@ -49,10 +49,3 @@ export interface WorkerResponse {
   result?: NetwaveBuffer | number | Handle | string[];
   error?: string;
 }
-
-/**
- * Allocate and fill an (nfreq, nports, nports) interleaved complex f64
- * buffer inside the resident worker and return a descriptor from which a
- * view can be rebuilt.
- */
-export declare function fillPattern(nfreq: number, nports: number): Promise<NetwaveBuffer>;

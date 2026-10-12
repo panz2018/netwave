@@ -21,7 +21,6 @@ describe("browser entry surface", () => {
     expect(Object.keys(m).sort()).toEqual([
       "Frequency",
       "FrequencyUnit",
-      "Network",
       "SPEED_OF_LIGHT",
       "Touchstone",
       "WavelengthUnit",

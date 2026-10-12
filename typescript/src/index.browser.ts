@@ -89,64 +89,6 @@ const registry = new FinalizationRegistry<Handle>((handle) => {
 });
 
 /**
- * An S-matrix data shell. `upload` is the browser data entry (the worker
- * linear-memory boundary is browser-only); data lives in the worker's core
- * handle table and this shell holds only its @internal numeric handle.
- * `readElement` reads one interleaved f64 element; `drop` is the
- * deterministic manual reclamation (idempotent; post-drop access rejects).
- * GC of the shell without `drop` fires the registry and the worker frees
- * the core resource (RAII fallback).
- */
-export class Network {
-  /** @internal Protocol detail — not public API. */
-  readonly handle: Handle;
-  private dropped = false;
-
-  /** Host `view` in the resident worker and return a shell over its new
-   * handle. The buffer is MOVED via explicit transfer (single ownership,
-   * ironclad rule 8): afterwards the caller's buffer is detached. Shape is
-   * explicit because a bare `Float64Array` length does not factor uniquely
-   * into `(nfreq, nports)`. */
-  static upload(view: Float64Array, nfreq: number, nports: number): Promise<Network> {
-    return call<Handle>(
-      "network",
-      "upload",
-      [view, nfreq, nports],
-      [view.buffer as ArrayBuffer],
-    ).then((handle) => new Network(handle));
-  }
-
-  /** Pattern-filled factory: allocates and fills inside the worker and
-   * returns a shell over the new handle. */
-  static fillPattern(nfreq: number, nports: number): Promise<Network> {
-    return call<Handle>("network", "fillPattern", [nfreq, nports]).then(
-      (handle) => new Network(handle),
-    );
-  }
-
-  /** @internal Wrap a core handle in a shell and arm the GC fallback. */
-  private constructor(handle: Handle) {
-    this.handle = handle;
-    registry.register(this, handle, this);
-  }
-
-  /** Read one interleaved f64 element by flat index. Rejects after `drop`. */
-  readElement(idx: number): Promise<number> {
-    return call<number>(this.handle, "readElement", [idx]);
-  }
-
-  /** Deterministic manual reclamation (the unified cross-end verb,
-   * ironclad rule 12). Idempotent: the second call is a no-op and the GC
-   * fallback is unregistered, so the core `Drop` runs exactly once. */
-  drop(): Promise<void> {
-    if (this.dropped) return Promise.resolve();
-    this.dropped = true;
-    registry.unregister(this);
-    return call<void>(this.handle, "drop", []);
-  }
-}
-
-/**
  * A frequency sweep shell. `fromF` is the data entry (core `from_f`
  * verbatim, mechanical camelCase); `drop` is the deterministic manual
  * reclamation shared with RAII. Post-drop access rejects.
@@ -309,6 +251,29 @@ export class Touchstone {
    * verbatim. */
   static fromUrl(url: string): Promise<Touchstone> {
     return call<Handle>("touchstone", "fromUrl", [url]).then((handle) => new Touchstone(handle));
+  }
+
+  /** Pure-data factory (ironclad rule 15 — construction only through
+   * `fromX` factories): hosts `(frequency, data, z0, parameter)` in the
+   * worker's core table and returns a shell over its new handle. `data` is
+   * a flat interleaved re/im `Float64Array` in domain `parameter`; `z0` a
+   * scalar-or-per-port real; `parameter` (S/Z/Y/G/H) required — no silent
+   * S default. The shell reads `frequency.handle` internally (the user
+   * passes the object, never the handle). `data` is MOVED via transfer
+   * (single ownership, ironclad rule 8): afterwards the caller's buffer is
+   * detached. */
+  static fromData(
+    frequency: Frequency,
+    data: Float64Array,
+    z0: Float64Array | number[],
+    parameter: string,
+  ): Promise<Touchstone> {
+    return call<Handle>(
+      "touchstone",
+      "fromData",
+      [frequency.handle, data, z0, parameter],
+      [data.buffer as ArrayBuffer],
+    ).then((handle) => new Touchstone(handle));
   }
 
   /** @internal Wrap a core handle in a shell and arm the GC fallback. */

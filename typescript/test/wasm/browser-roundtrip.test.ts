@@ -11,13 +11,20 @@ beforeAll(async () => {
 });
 
 describe("browser entry", () => {
-  it("upload -> readElement -> drop via the resident worker", async () => {
+  it("fromData -> s -> z -> drop via the resident worker", async () => {
     const m = await import("../../src/index.browser.ts");
-    const net = await m.Network.fillPattern(2, 2);
-    expect(await net.readElement(2)).toBe(1); // re(0,0,1)
-    const uploaded = await m.Network.upload(new Float64Array([3, -3]), 1, 1);
-    expect(await uploaded.readElement(0)).toBe(3);
-    await uploaded.drop();
+    const f = await m.Frequency.fromF(new Float64Array([1.0]), m.FrequencyUnit.GHz);
+    // 1-port S = 0.5+0.25j, z0 = 50 (independent literals, rule 2).
+    const data = new Float64Array([0.5, 0.25]);
+    const ts = await m.Touchstone.fromData(f, data, [50.0], "S");
+    expect(data.buffer.byteLength).toBe(0); // transfer: buffer detached
+    const s = await ts.s;
+    expect(s[0]).toBeCloseTo(0.5, 12);
+    // Derived Z = z0(1+s)/(1-s) = 110+80j, computed in the worker.
+    const z = await ts.z;
+    expect(z[0]).toBeCloseTo(110.0, 6);
+    expect(z[1]).toBeCloseTo(80.0, 6);
+    await ts.drop();
     expect(h.workerInstances()).toBe(1);
   });
 });

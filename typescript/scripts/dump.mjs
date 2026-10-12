@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// cross-binding dump: node (napi) and wasm ends each emit the (2,2)
-// roundtrip values. Usage (from typescript/): node scripts/dump.mjs <out_dir>
-// Emits <out>/node.bin and <out>/wasm.bin (raw little-endian f64 bytes,
-// re/im interleaved). Binary, not JSON: JSON.stringify writes -0 as 0 and
-// loses the sign bit, making bit-exact comparison impossible.
+// cross-binding dump: node (napi) and wasm ends each emit the λ↔f axis and
+// the Touchstone S master data per sample. Usage (from typescript/): node
+// scripts/dump.mjs <out_dir>. Emits <out>/<end>_freq.bin and
+// <out>/<end>_ts_<case>.bin (raw little-endian f64 bytes, re/im
+// interleaved). Binary, not JSON: JSON.stringify writes -0 as 0 and loses
+// the sign bit, making bit-exact comparison impossible.
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
@@ -14,18 +15,11 @@ if (!out) {
 }
 mkdirSync(out, { recursive: true });
 
-const NFREQ = 2;
-const NPORTS = 2;
-
 // node (napi) side — public async surface (dist = the published artifact;
 // src/ is TS and runs only under vitest/Node type-stripping).
-const { fillPattern, Frequency, FrequencyUnit, WavelengthUnit, Touchstone } = await import(
+const { Frequency, FrequencyUnit, WavelengthUnit, Touchstone } = await import(
   "../dist/index.node.mjs"
 );
-const n = await fillPattern(NFREQ, NPORTS);
-const nv = new Float64Array(n.buffer, n.byteOffset, n.length * 2);
-const nodePath = join(out, "node.bin");
-writeFileSync(nodePath, Buffer.from(nv.buffer, nv.byteOffset, nv.byteLength));
 // λ↔f round-trip axis (spec: frequency-class): f -> wavelength -> f.
 {
   const f = Frequency.fromF([1.0, 2.0, 5.0], FrequencyUnit.GHz);
@@ -70,12 +64,6 @@ const ask = async (handle, method, args) => {
   if (res.error) throw new Error(`worker error: ${res.error}`);
   return res.result;
 };
-const handle = await ask("network", "fillPattern", [NFREQ, NPORTS]);
-const wv = new Float64Array(NFREQ * NPORTS * NPORTS * 2);
-for (let i = 0; i < wv.length; i++) wv[i] = await ask(handle, "readElement", [i]);
-const wasmPath = join(out, "wasm.bin");
-writeFileSync(wasmPath, Buffer.from(wv.buffer, wv.byteOffset, wv.byteLength));
-
 // λ↔f round-trip axis through the resident worker (spec: frequency-class):
 // fromF -> wavelength -> fromWavelength -> f. The worker's numeric unit
 // ordinals: GHz=3, mm=2 (core enum definition order).
@@ -106,4 +94,6 @@ for (const c of ["s1p", "s2p", "s4p"]) {
   await ask(th, "drop", []);
 }
 
-console.log(`dumped ${resolve(nodePath)} ${resolve(wasmPath)}`);
+console.log(
+  `dumped ${resolve(join(out, "node_ts_s2p.bin"))} ${resolve(join(out, "wasm_ts_s2p.bin"))}`,
+);
