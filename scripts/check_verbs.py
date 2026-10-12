@@ -4,22 +4,24 @@
 
 The three generated type artifacts are the user-visible surface; a rename on
 one end that fails to propagate shows up here as a drifted method set. This
-gate extracts the method names of the `Network` and `Frequency` classes and
-the module-level free functions from each artifact, normalizes snake_case to
-camelCase (the mechanical mapping, ironclad rule 9 exemption), and asserts
-they match the single canonical verb set.
+gate extracts the method names of the `Frequency` and `Touchstone` classes
+and the module-level free functions from each artifact, normalizes snake_case
+to camelCase (the mechanical mapping, ironclad rule 9 exemption), and
+asserts they match the single canonical verb set.
 
     python3 scripts/check_verbs.py
 
 Rules:
-  - Network instance/static verbs (excl. the constructor) equal on all three
-    ends: {fillPattern, readElement, drop}
   - Frequency verbs equal on all three ends: {fromF, npoints, drop}
-  - `upload` is browser-only (the worker linear-memory boundary): present on
-    the browser Network, absent on node/Python
+  - Touchstone verbs equal on all three ends (factories + data surface +
+    drop)
   - the two stateless free verbs {frequencyUnits, liveCount} are on all three
   - FORBIDDEN: `free`/`release` as a member/function name on any user-visible
     artifact is red (the retired verbs must never resurface)
+  - ironclad rule 15 (construction entry): no `pub fn new` in core/src, no
+    `#[new]`/`#[napi(constructor)]` in the native bindings, every
+    `constructor(` in typescript/src must be `private` — public construction
+    is `fromX` factories only
 
 Run after all three glues are built (the node job's `check:cross` step).
 Exit code 1 on any drift. Pure stdlib.
@@ -33,7 +35,6 @@ ROOT = Path(__file__).resolve().parent.parent
 
 # Independent canonical verb sets (a core rename SHOULD trip this gate —
 # same tripwire idiom as check_vocab_types.py's CANONICAL vocabulary list).
-NETWORK_VERBS = {"fillPattern", "readElement", "drop"}
 FREQUENCY_VERBS = {
     "fromF",
     "fromWavelength",
@@ -51,6 +52,7 @@ FREE_VERBS = {"frequencyUnits", "liveCount"}
 # factories, the pure-data constructor's data surface, the name pipeline, and
 # the unified drop verb (memory-lifecycle spec — drop() on all three ends).
 TOUCHSTONE_VERBS = {
+    "fromData",
     "fromText",
     "fromFile",
     "fromUrl",
@@ -79,9 +81,6 @@ TOUCHSTONE_VERBS = {
 # cross-end verb-set equality — the unified display string they produce is
 # pinned by the per-end display-string tests instead.
 PROTOCOL_HOOKS = {"toString", "str", "repr", "len"}
-# Browser-only: the worker linear-memory boundary does not exist on node/
-# Python, so `upload` lives only on the browser Network shell.
-BROWSER_ONLY = {"upload"}
 # Retired verbs: must never appear as a name on any user-visible surface.
 FORBIDDEN = {"free", "release"}
 
@@ -206,19 +205,16 @@ def main() -> int:
 
     ends = {
         "python": {
-            "Network": py_class_verbs(pyi, "Network"),
             "Frequency": py_class_verbs(pyi, "Frequency"),
             "Touchstone": py_class_verbs(pyi, "Touchstone"),
             "free": py_free_verbs(pyi),
         },
         "node": {
-            "Network": ts_class_verbs(node, "Network"),
             "Frequency": ts_class_verbs(node, "Frequency"),
             "Touchstone": ts_class_verbs(node, "Touchstone"),
             "free": ts_free_verbs(node),
         },
         "browser": {
-            "Network": ts_class_verbs(browser, "Network"),
             "Frequency": ts_class_verbs(browser, "Frequency"),
             "Touchstone": ts_class_verbs(browser, "Touchstone"),
             "free": ts_free_verbs(browser),
@@ -226,21 +222,6 @@ def main() -> int:
     }
 
     bad = 0
-
-    # Network verbs (minus browser-only upload) equal on all three ends.
-    for end, verbs in ends.items():
-        got = verbs["Network"] - BROWSER_ONLY
-        if got != NETWORK_VERBS:
-            print(f"VERBS: {end}.Network {sorted(got)} != {sorted(NETWORK_VERBS)}")
-            bad += 1
-    # upload: browser-only presence.
-    if BROWSER_ONLY & ends["browser"]["Network"] != BROWSER_ONLY:
-        print(f"VERBS: browser.Network missing upload: {sorted(ends['browser']['Network'])}")
-        bad += 1
-    for end in ("python", "node"):
-        if BROWSER_ONLY & ends[end]["Network"]:
-            print(f"VERBS: {end}.Network must NOT expose upload (browser-only boundary)")
-            bad += 1
 
     # Frequency verbs equal on all three ends.
     for end, verbs in ends.items():
@@ -291,13 +272,42 @@ def main() -> int:
         )
         bad += 1
 
+    # Ironclad rule 15 (construction entry): public construction is `fromX`
+    # factories only. The gate scans the SOURCE (not the generated d.ts):
+    # core has no `pub fn new`, the native bindings have no `#[new]` /
+    # `#[napi(constructor)]`, and every `constructor(` in the TS shells is
+    # `private` (the @internal handle-wrap is not a public entry).
+    src_gates = [
+        ("core/src", ROOT / "core" / "src", r"\bpub fn new\s*[<(]"),
+        ("python/src", ROOT / "python" / "src", r"#\[new\]"),
+        (
+            "typescript/native/src",
+            ROOT / "typescript" / "native" / "src",
+            r"#\[napi\(constructor\)\]",
+        ),
+    ]
+    for label, folder, pattern in src_gates:
+        regex = re.compile(pattern)
+        for path in sorted(folder.rglob("*.rs")):
+            code = strip_comments(path.read_text(encoding="utf-8"))
+            hit = regex.search(code)
+            if hit:
+                print(f"VERBS: rule 15 — {label} has {hit.group(0)!r} ({path})")
+                bad += 1
+    for path in sorted((ROOT / "typescript" / "src").rglob("*.ts")):
+        code = strip_comments(path.read_text(encoding="utf-8"))
+        for match in re.finditer(r"^\s*(private\s+)?constructor\(", code, flags=re.MULTILINE):
+            if not match.group(1):
+                print(f"VERBS: rule 15 — {path} has a non-private constructor")
+                bad += 1
+
     if bad:
         print(f"VERBS: {bad} drift(s) across the three artifacts")
         return 1
     print(
-        f"verbs OK: Network={sorted(NETWORK_VERBS)} Frequency={sorted(FREQUENCY_VERBS)} "
+        f"verbs OK: Frequency={sorted(FREQUENCY_VERBS)} "
         f"Touchstone={sorted(TOUCHSTONE_VERBS)} "
-        f"free={sorted(FREE_VERBS)} upload=browser-only, no free/release"
+        f"free={sorted(FREE_VERBS)} rule15=fromX-only, no free/release"
     )
     return 0
 

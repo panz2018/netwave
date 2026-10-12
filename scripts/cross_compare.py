@@ -1,18 +1,17 @@
 #!/usr/bin/env python3
-"""cross-binding comparison: four binary dumps -> this script compares them
-(tasks 6.1/6.2).
+"""cross-binding comparison: per-end binary dumps -> this script compares them.
 
-Inputs: <dir>/core.bin python.bin node.bin wasm.bin — raw little-endian f64
-bytes, re/im interleaved ((nfreq=2,nports=2) -> 16 f64 = 128B). Binary
-rather than JSON: JSON.stringify writes -0 as 0 and loses the sign bit,
-making bit-exact comparison impossible.
+Inputs: <dir>/<end>_freq.bin and <dir>/<end>_ts_<case>.bin (+ _z0.bin,
+_version.txt) for each end — raw little-endian f64 bytes, re/im interleaved.
+Binary rather than JSON: JSON.stringify writes -0 as 0 and loses the sign
+bit, making bit-exact comparison impossible.
 
 Rules (zero-copy-roundtrip spec):
   - the three native ends (core/python/node) match bit-exactly
   - wasm within relative tolerance < manifest core_tol
   - anti-tautology self-check: every run perturbs an in-memory copy of
-    each non-reference end and requires the comparator to detect it
-    (undetected -> fail); .bin files on disk are never modified
+    each non-reference end's Touchstone data and requires the comparator to
+    detect it (undetected -> fail); .bin files on disk are never modified
 
 Usage: python3 scripts/cross_compare.py <dir>
 """
@@ -63,16 +62,6 @@ def main() -> int:
     manifest = root.parent / "testdata/manifest.json"
     tol = json.loads(manifest.read_text(encoding="utf-8"))["core_tol"]["relative"]
 
-    ends = {name: load_f64s(root, name) for name in ENDS}
-    n = len(ends["core"])
-    print(f"comparing {n} f64 across {len(ENDS)} ends: {', '.join(ENDS)}")
-
-    result = compare(ends["core"], ends, tol)
-    if result is not None:
-        print(f"FAIL: {result[2]}")
-        return 1
-    print("CROSS-BINDING PASS: core==python==node bit-exact, wasm within tol")
-
     # λ↔f round-trip axis: each end dumps its
     # f -> wavelength -> f axis; native ends must match core bit-exact,
     # wasm within tol (the same decision path as the S-matrix compare).
@@ -90,6 +79,7 @@ def main() -> int:
     # samples (v1.0/v1.1, unordered f, RI/MA) and dumps the S master data
     # (interleaved f64) + z0 + version. Native ends must match core bit-
     # exact, wasm within tol; version is a string compared verbatim.
+    ts_s = {}
     for case in ("s1p", "s2p", "s4p"):
         s = {name: load_f64s(root, f"{name}_ts_{case}") for name in ENDS}
         if len(s["core"]) != len(s["python"]):
@@ -108,34 +98,41 @@ def main() -> int:
         if len(set(vers.values())) != 1:
             print(f"FAIL ts {case} version: {vers}")
             return 1
+        ts_s[case] = s
     print("TOUCHSTONE PASS: core==python==node bit-exact, wasm within tol (s1p/s2p/s4p)")
 
     # Anti-tautology self-check: perturb an in-memory copy of each
-    # non-reference end at a RANDOM index and require detection AT THE
-    # INJECTED END AND INDEX (proves each .bin participates, the comparator
-    # is not blind, scans beyond element 0, and localizes mismatches
-    # correctly — detecting them elsewhere would mean the perturbation was
-    # not what tripped it). core is never a target: tampering the reference
-    # is indistinguishable from tampering any native end.
+    # non-reference end's Touchstone S data at a RANDOM index in a RANDOM
+    # case and require detection AT THE INJECTED END AND INDEX (proves each
+    # _ts_*.bin participates, the comparator is not blind, scans beyond
+    # element 0, and localizes mismatches correctly — detecting them
+    # elsewhere would mean the perturbation was not what tripped it). core
+    # is never a target: tampering the reference is indistinguishable from
+    # tampering any native end.
     for name in ("python", "node", "wasm"):
-        idx = random.randrange(n)
-        tampered = {k: list(v) for k, v in ends.items()}
+        case = random.choice(("s1p", "s2p", "s4p"))
+        ref = ts_s[case]["core"]
+        idx = random.randrange(len(ref))
+        tampered = {k: list(v) for k, v in ts_s[case].items()}
         # Scale the perturbation to the element's magnitude so it exceeds
         # the RELATIVE tolerance at any index (a fixed tol*2 would hide
         # under the threshold for elements with |value| > 2).
         v = tampered[name][idx]
         tampered[name][idx] = v + (abs(v) if v != 0 else 1.0) * tol * 2
-        result = compare(ends["core"], tampered, tol)
+        result = compare(ref, tampered, tol)
         if result is None:
-            print(f"SELF-CHECK FAIL: tamper={name} not detected (tautology!)")
+            print(f"SELF-CHECK FAIL: tamper={name} ts_{case} not detected (tautology!)")
             return 1
         if result[0] != name or result[1] != idx:
             print(
-                f"SELF-CHECK FAIL: tamper={name} idx {idx}, but comparator "
-                f"localized it to {result[0]} idx {result[1]}"
+                f"SELF-CHECK FAIL: tamper={name} ts_{case} idx {idx}, but "
+                f"comparator localized it to {result[0]} idx {result[1]}"
             )
             return 1
-        print(f"SELF-CHECK PASS: tamper={name} idx {idx} detected at the injected end and index")
+        print(
+            f"SELF-CHECK PASS: tamper={name} ts_{case} idx {idx} "
+            "detected at the injected end and index"
+        )
     return 0
 
 
