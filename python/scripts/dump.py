@@ -1,5 +1,6 @@
-"""cross-binding dump (python side): emit the (2,2) roundtrip values to
-<out>/python.bin — raw little-endian f64 bytes, re/im interleaved.
+"""cross-binding dump (python side): emit the λ↔f axis and the Touchstone
+S master data per sample to <out>/python_freq.bin and
+<out>/python_ts_<case>.bin — raw little-endian f64 bytes, re/im interleaved.
 
 Binary rather than JSON: JSON writes -0 as 0 and loses the sign bit.
 Usage (from repo root): uv run --project python python python/scripts/dump.py <out_dir>
@@ -17,9 +18,6 @@ def main() -> int:
         return 2
     out = Path(sys.argv[1])
     out.mkdir(parents=True, exist_ok=True)
-    arr = netwave.fill_pattern(2, 2)
-    path = out / "python.bin"
-    path.write_bytes(arr.tobytes())
     # λ↔f round-trip axis: f -> wavelength -> f.
     # The unit is the enum member, never a hand-copied string literal
     # (vocabulary single source).
@@ -35,7 +33,7 @@ def main() -> int:
         (out / f"python_ts_{case}.bin").write_bytes(ts.s.tobytes())
         (out / f"python_ts_{case}_z0.bin").write_bytes(ts.z0.tobytes())
         (out / f"python_ts_{case}_version.txt").write_text(ts.version)
-    print(f"dumped {path.resolve()} {fpath.resolve()}")
+    print(f"dumped {fpath.resolve()} {(out / 'python_ts_s2p.bin').resolve()}")
     return 0
 
 

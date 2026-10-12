@@ -127,26 +127,26 @@ def test_gh_domain_requires_two_ports() -> None:
         _ = ts.g
 
 
-def test_constructor_version_from_z0_values() -> None:
+def test_from_data_version_from_z0_values() -> None:
     f = netwave.Frequency.from_f([1.0, 2.0], "GHz")
-    ts = netwave.Touchstone(f, [1.0, 0.1, 0.9, -0.2], 50.0, "S")
+    ts = netwave.Touchstone.from_data(f, [1.0, 0.1, 0.9, -0.2], 50.0, "S")
     assert ts.version == "1.0"
     assert ts.nports == 1
     f1 = netwave.Frequency.from_f([1.0], "GHz")
-    ts2 = netwave.Touchstone(f1, [10, 0, 20, 90, 30, -90, 40, 180], [50.0, 45.0], "S")
+    ts2 = netwave.Touchstone.from_data(f1, [10, 0, 20, 90, 30, -90, 40, 180], [50.0, 45.0], "S")
     assert ts2.version == "1.1"
 
 
-def test_constructor_parameter_required() -> None:
+def test_from_data_parameter_required() -> None:
     f = netwave.Frequency.from_f([1.0], "GHz")
     with pytest.raises(TypeError):
-        netwave.Touchstone(f, [1.0, 0.0], 50.0)  # type: ignore[call-arg]
+        netwave.Touchstone.from_data(f, [1.0, 0.0], 50.0)  # type: ignore[call-arg]
 
 
-def test_constructor_z0_shape_error() -> None:
+def test_from_data_z0_shape_error() -> None:
     f = netwave.Frequency.from_f([1.0], "GHz")
     with pytest.raises(ValueError, match="z0"):
-        netwave.Touchstone(f, [1.0, 0.0], [50.0, 45.0], "S")
+        netwave.Touchstone.from_data(f, [1.0, 0.0], [50.0, 45.0], "S")
 
 
 def test_write_touchstone_ri_roundtrip_bit_exact() -> None:

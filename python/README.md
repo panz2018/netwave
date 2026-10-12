@@ -5,13 +5,13 @@ PyO3 binding over the Rust core (`../core`): a thin transport that hands numpy a
 (governance spec rule: bindings only move memory; see
 [`openspec/specs/project-governance/spec.md`](../openspec/specs/project-governance/spec.md)).
 
-Current stage: scaffold. Two verbs: `fill_pattern` (allocate + view) and
-`read_element` (read back through the same memory), replaced by the real data
-model later.
+Current stage: the `Touchstone` pyclass is the data authority — `from_data`
+/`from_text`/`from_file`/`from_url` factories in, the writable zero-copy
+`s` view (`owndata=False`) out; `Frequency` is the frequency axis.
 
 ## Layout
 
-- `src/lib.rs` — the binding: `Owner` pyclass + zero-copy view
+- `src/lib.rs` — the binding: pyclass base-object views of core memory
 - `src/netwave.pyi` — type stub, shipped inside the wheel
 - `tests/test_roundtrip.py` — zero-copy roundtrip tests (pytest)
 - `pyproject.toml` / `uv.lock` / `.python-version` — uv-managed env
