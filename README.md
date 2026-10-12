@@ -21,9 +21,9 @@ milliseconds for a 50 MB s4p) and shares one buffer across all three
 language runtimes without copies. Byte layout is identical to scikit-rf
 `Network.s` (complex128), so interop is a reinterpret, not a conversion.
 
-Current stage: **scaffold** — the only public verb is `fill_pattern`, a
-predictable-pattern allocator proving the zero-copy plumbing end to end. The
-real `Network` / `SParameter` data model replaces it later.
+Current stage: **Touchstone core** — `Touchstone` parses and holds S-parameter
+data with zero-copy `fromData`/`from_data` factories across all three runtimes.
+The `Network` / `Circuit` compute layers build on it later.
 
 Building from source or contributing? See
 [CONTRIBUTING.md](CONTRIBUTING.md).
