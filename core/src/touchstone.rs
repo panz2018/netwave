@@ -259,7 +259,12 @@ impl Touchstone {
                 continue;
             }
             if let Some(o) = line.strip_prefix('#') {
-                option = Some(Self::parse_option_line(o)?);
+                // Spec v2.1 Option Line: "additional option lines after the
+                // first one shall be ignored" — the first `#` line wins and
+                // later lines are skipped whole, unvalidated.
+                if option.is_none() {
+                    option = Some(Self::parse_option_line(o)?);
+                }
                 continue;
             }
             for tok in line.split_whitespace() {

@@ -334,6 +334,44 @@ fn option_line_r_non_number_errors() {
 }
 
 #[test]
+fn option_line_complex_r_errors_with_offending_token() {
+    // Spec forbids complex reference resistance (v1.1: "real, positive
+    // numbers"; v2.x: complex not supported). Parenthesized complex
+    // forms must error naming the offending token.
+    let err =
+        Touchstone::from_text("# GHZ S RI R (10+10j)\n1.0 0.1 0.2", Some(1), None).unwrap_err();
+    assert!(
+        err.to_string().contains("(10+10j)"),
+        "error must quote the complex R token: {err}"
+    );
+}
+
+#[test]
+fn option_line_second_line_ignored_first_wins() {
+    // Spec v2.1 Option Line: "additional option lines after the first one
+    // shall be ignored" — the first `#` line is authoritative; later lines
+    // are skipped whole, even when they would change unit/format/R.
+    let text = "# GHZ S MA R 50\n# MHZ S RI R 75\n1.0 0.5 -30";
+    let ts = Touchstone::from_text(text, Some(1), None).unwrap();
+    assert_eq!(ts.z0(), vec![50.0]);
+    // MA from the first line: 0.5∠-30deg, not RI (0.5, -30).
+    let s = ts.s();
+    let re = 0.5f64 * (-30f64).to_radians().cos();
+    let im = 0.5f64 * (-30f64).to_radians().sin();
+    assert!((s[0] - re).abs() < 1e-15 && (s[1] - im).abs() < 1e-15);
+}
+
+#[test]
+fn option_line_invalid_second_line_still_ignored() {
+    // An invalid second option line must NOT error: spec ignores it before
+    // validation. Only the first line is parsed and validated.
+    let text = "# GHZ S RI R 50\n# GHZ Q RI R (10+10j)\n1.0 0.1 0.2";
+    let ts = Touchstone::from_text(text, Some(1), None).unwrap();
+    assert_eq!(ts.z0(), vec![50.0]);
+    assert_eq!(ts.s(), vec![0.1, 0.2]);
+}
+
+#[test]
 fn ext_match_grammar_failures() {
     // Too short after the dot (no digit + p).
     assert!(Touchstone::nports_from_filename("x.s").is_err());
