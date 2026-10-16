@@ -371,6 +371,78 @@ fn option_line_invalid_second_line_still_ignored() {
     assert_eq!(ts.s(), vec![0.1, 0.2]);
 }
 
+// ---- layout variants: line endings, whitespace, notation, zero sign ----
+
+#[test]
+fn crlf_line_endings_and_missing_trailing_newline_parse_bit_exact() {
+    // CRLF line endings and a file whose last line has no newline must parse
+    // to bit-identical results as the LF-with-trailing-newline version
+    // (exact comparison is bit-level, no tolerance — governance rule 3).
+    let lf = "# GHZ S RI R 50\n1.0 0.1 -0.2 0.3 -0.4 0.5 -0.6 0.7 -0.8\n";
+    let crlf = "# GHZ S RI R 50\r\n1.0 0.1 -0.2 0.3 -0.4 0.5 -0.6 0.7 -0.8";
+    let base = Touchstone::from_text(lf, Some(2), None).unwrap();
+    let variant = Touchstone::from_text(crlf, Some(2), None).unwrap();
+    assert_eq!(variant.f(), base.f());
+    assert_eq!(
+        variant
+            .s()
+            .iter()
+            .map(|v| v.to_bits())
+            .collect::<Vec<u64>>(),
+        base.s().iter().map(|v| v.to_bits()).collect::<Vec<u64>>(),
+        "CRLF/no-trailing-newline must be bit-identical to LF"
+    );
+}
+
+#[test]
+fn odd_whitespace_and_scientific_notation_parse_bit_exact() {
+    // Tabs, runs of spaces, and leading indentation between tokens are
+    // whitespace; scientific-notation tokens equal their decimal spelling
+    // bit-for-bit after f64 parsing.
+    let decimal = "# GHZ S RI R 50\n1.0 0.1 -0.2\n2.0 0.3 -0.4\n";
+    let odd = "#\tGHZ   S\tRI R  50\n   1.0e+0\t1e-1   -2e-1\n\t2.0E+0 3e-1\t-4e-1\n";
+    let base = Touchstone::from_text(decimal, Some(1), None).unwrap();
+    let variant = Touchstone::from_text(odd, Some(1), None).unwrap();
+    assert_eq!(variant.f(), base.f());
+    assert_eq!(
+        variant
+            .s()
+            .iter()
+            .map(|v| v.to_bits())
+            .collect::<Vec<u64>>(),
+        base.s().iter().map(|v| v.to_bits()).collect::<Vec<u64>>(),
+        "odd whitespace / sci-notation must be bit-identical to decimal"
+    );
+}
+
+#[test]
+fn negative_zero_input_keeps_sign_bit() {
+    // "-0.0" must store as negative zero (sign bit set), not normalize to
+    // +0.0 — roundtrip fidelity of the exact input bits.
+    let ts = Touchstone::from_text("# GHZ S RI R 50\n1.0 -0.0 0.0", Some(1), None).unwrap();
+    let s = ts.s();
+    assert_eq!(s[0].to_bits(), (-0.0f64).to_bits(), "re must keep -0.0");
+    assert_eq!(s[1].to_bits(), (0.0f64).to_bits(), "im stays +0.0");
+}
+
+#[test]
+fn thirty_two_port_single_point_end_to_end() {
+    // Max-port e2e: stride = 1 + 2*32^2 = 2049 tokens for one frequency
+    // point; S buffer is 2048 interleaved re/im values.
+    let nports = 32usize;
+    let stride = 1 + 2 * nports * nports;
+    let mut tokens: Vec<String> = Vec::with_capacity(stride);
+    tokens.push("1.0".to_owned());
+    for i in 0..(stride - 1) {
+        tokens.push(format!("{i}.5"));
+    }
+    let text = format!("# GHZ S RI R 50\n{}", tokens.join(" "));
+    let ts = Touchstone::from_text(&text, Some(nports), None).unwrap();
+    assert_eq!(ts.nports(), 32);
+    assert_eq!(ts.s().len(), 2 * nports * nports);
+    assert_eq!(ts.f(), vec![1.0e9]);
+}
+
 #[test]
 fn ext_match_grammar_failures() {
     // Too short after the dot (no digit + p).
