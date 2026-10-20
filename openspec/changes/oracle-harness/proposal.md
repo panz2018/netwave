@@ -72,12 +72,14 @@
 - 代码：`core/scripts/dump.rs`、`python/scripts/dump.py`、
   `typescript/scripts/dump.mjs`（输出路径+输入路径）、
   `scripts/cross_compare.py` → `oracle/compare_cross.py`。
-- 配置：根 `package.json`（`check:cross`）、`.github/workflows/ci.yml`
+- 配置：根 `package.json`（`check:cross`）、`typescript/package.json`
+  （`cross-dump` 路径）、`.github/workflows/ci.yml`
   （node job 路径与注释）、新增 `oracle/.gitignore`（内容 `tmp/`；根
   `.gitignore` 不改，其旧 `.cross-tmp/` 条目成为无害死行，是否顺手删由人工定）。
 - 文档：`testdata/` 删除、`oracle/README.md` 新建、`scripts/README.md`、
-  `CONTRIBUTING.md`、`core/python/typescript` 三个子 README、
-  `Plan/测试规划.md`（golden 层改写 + 下期任务清单）。
+  `CONTRIBUTING.md`、根 `README.md`（LICENSE-NOTES 链接）、
+  `core/python/typescript` 三个子 README、`scripts/check_md.py`
+  （LEDGER SECTION 台账清单）、`Plan/测试规划.md`（golden 层改写 + 下期任务清单）。
 - core 测试注释：`core/tests/` 中"from testdata/manifest.json"假引用改为
   自述常量措辞（5 处，仅注释）。
 - 依赖：零新增；本次 oracle 无 Python 环境（纯标准库脚本 + 数据）。

@@ -35,7 +35,8 @@
 
 - [ ] 4.1 根 `package.json` `check:cross`：四端 dump →
       `python3 oracle/compare_cross.py oracle/tmp` → 词表检查
-      （check_vocab_types/check_verbs 不变）
+      （check_vocab_types/check_verbs 不变）；`typescript/package.json` 的
+      `cross-dump` 脚本路径同步（`../.cross-tmp` → `../oracle/tmp`）
 - [ ] 4.2 `.github/workflows/ci.yml`：node job 内 `pnpm check:cross` 相关
       注释与路径同步（无新增步骤；确认无残留 testdata/cross_compare 引用）
 - [ ] 4.3 `python3 scripts/check_ci.py` 通过（闸门完整性）
@@ -54,14 +55,18 @@
 - [ ] 6.2 `CONTRIBUTING.md`：目录 layout 图 `testdata/` → `oracle/`；
       cross-binding 段路径与脚本名同步
 - [ ] 6.3 `core/README.md`、`python/README.md`、`typescript/README.md`：
-      dump 命令路径（`oracle/samples/`、`oracle/tmp/<end>/`）同步
-- [ ] 6.4 `Plan/测试规划.md` 改写：golden 层新契约（golden 不入库、CI
+      dump 命令路径（`oracle/samples/`、`oracle/tmp/<end>/`）同步；根
+      `README.md` 许可段链接 `testdata/LICENSE-NOTES.md` →
+      `oracle/LICENSE-NOTES.md`
+- [ ] 6.4 `scripts/check_md.py` LEDGER SECTION：台账清单中
+      `testdata/README.md` → `oracle/README.md`（否则迁移后台账检查失效）
+- [ ] 6.5 `Plan/测试规划.md` 改写：golden 层新契约（golden 不入库、CI
       现算、skrf 版本靠 oracle/uv.lock、周更作废）、阅卷集中（三端 runner
-      表作废）、`oracle/tmp/` 分层布局；新增下期任务清单（oracle uv 环境 +
-      skrf 钉版、gen_golden.py、compare_golden.py 含扰动自检、manifest v1
-      =cases[]/sha256/删 python_relative、17 样本入库+许可登记、scripts
-      其余脚本归属后议）
-- [ ] 6.5 `pnpm check:md` 退出码 0（markdownlint + prettier + 链接校验）
+      表作废）、`oracle/tmp/` 分层布局、卷首语与全文 testdata 链接改
+      oracle；新增下期任务清单（oracle uv 环境 + skrf 钉版、gen_golden.py、
+      compare_golden.py 含扰动自检、manifest v1 =cases[]/sha256/删
+      python_relative、17 样本入库+许可登记、scripts 其余脚本归属后议）
+- [ ] 6.6 `pnpm check:md` 退出码 0（markdownlint + prettier + 链接校验）
 
 ## 7. 全量验收
 
