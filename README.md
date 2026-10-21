@@ -32,8 +32,8 @@ Building from source or contributing? See
 
 Licensed under either of MIT or Apache-2.0, at your option. Full texts:
 [LICENSE-MIT](LICENSE-MIT), [LICENSE-APACHE](LICENSE-APACHE). The software
-is provided "as is", without warranty of any kind. `testdata/` has
-separate terms — see [testdata/LICENSE-NOTES.md](testdata/LICENSE-NOTES.md).
+is provided "as is", without warranty of any kind. `oracle/` has
+separate terms — see [oracle/LICENSE-NOTES.md](oracle/LICENSE-NOTES.md).
 
 Touchstone® is a registered trademark of Amphenol Corporation (formerly
 Agilent Technologies).

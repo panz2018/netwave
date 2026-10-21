@@ -12,8 +12,9 @@ not here.
 core/         Rust core crate — the single source of truth for all math
 python/       PyO3 binding (numpy zero-copy views, maturin wheel)
 typescript/   Single package, dual publish: napi native (node) + wasm (browser)
-testdata/     Golden data + tolerance manifest (the cross-binding contract)
-scripts/      Workspace-level helper scripts (gates, installers, cross-compare)
+oracle/       Cross-validation: tolerance manifest, shared samples, grading
+              (compare_cross.py); answer sheets in oracle/tmp/ (gitignored)
+scripts/      Workspace-level helper scripts (gates, installers)
 openspec/     OpenSpec: specs/ (governance + contracts + lessons-learned
               ledger) and changes/ (in-flight and archived change proposals)
 Plan/         Unexecuted planning docs only; absorbed into openspec/ then
@@ -30,9 +31,10 @@ Plan/         Unexecuted planning docs only; absorbed into openspec/ then
   project-governance specs (iron rule 7); the gate commands live in the
   root `package.json` scripts and CI.
 - **Cross-binding compare**: `pnpm check:cross` dumps all four ends into
-  `.cross-tmp/` and `scripts/cross_compare.py` verifies them (native ends
+  `oracle/tmp/` and `oracle/compare_cross.py` verifies them (native ends
   bit-exact, wasm within manifest tolerance, plus an anti-tautology
-  tamper self-check); contract in the zero-copy-roundtrip spec.
+  tamper self-check); contract in the oracle-harness and
+  zero-copy-roundtrip specs.
 - **Markdown**: editing any `.md` requires `pnpm check:md` to pass
   (markdownlint + prettier + link/anchor validation) before the change is
   considered done.
