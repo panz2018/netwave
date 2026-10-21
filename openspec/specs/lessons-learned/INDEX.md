@@ -23,7 +23,7 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-015 | core       | 交错复数布局与终态借用细节                                          |
 | LL-016 | python     | 零拷贝 base-object 绑定与打包细节                                   |
 | LL-017 | typescript | napi/wasm 绑定实现细节与坑                                          |
-| LL-018 | testdata   | golden 数据只由 `gen_golden.py` 再生，禁手改                        |
+| LL-018 | oracle     | golden 数据只由 `gen_golden.py` 再生，禁手改                        |
 | LL-019 | core       | 触碰 core 后重建全部绑定再对拍                                      |
 | LL-020 | core       | `#[coverage(off)]` 是 nightly-only，stable 禁用                     |
 | LL-021 | core       | 真实基准必须 `black_box` 包裹输入输出                               |
@@ -32,7 +32,7 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-024 | typescript | 改 core 后重建 node/wasm 再测试                                     |
 | LL-025 | typescript | 覆盖率豁免 `v8 ignore` 逐条附理由                                   |
 | LL-026 | typescript | 容器 machine-id 须 32 位十六进制                                    |
-| LL-027 | testdata   | dump 一律二进制 .bin 小端 f64                                       |
+| LL-027 | oracle     | dump 一律二进制 .bin 小端 f64                                       |
 | LL-028 | docs       | archive 自带 sync，手动 sync 后须去重                               |
 | LL-029 | docs       | 第三方许可表：GPL 源禁抄代码，只读思想                              |
 | LL-030 | typescript | 主线程不 init wasm，数据权威在常驻 worker                           |
@@ -69,5 +69,6 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-061 | workflow   | openspec apply 连续跑完不等催，仅真阻塞才停                         |
 | LL-062 | core       | worker 内无 `window`，wasm 取全局走 `js_sys::global()` 转 scope     |
 | LL-063 | ci         | `stub_gen` 动态链 libpython，跑前必导出 uv sysconfig LIBDIR         |
+| LL-064 | workflow   | 迁移/推迟只推实施，契约措辞必须与终裁同步，禁抄已废弃旧契约         |
 
 ---

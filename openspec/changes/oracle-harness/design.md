@@ -45,8 +45,7 @@ sample（样本名，空格 sanitize 为下划线；原件名不改，空格仍�
 → field（s/z0/version.txt）。不设 `ts/` 中间层（输入几乎全是 Touchstone，
 层是废话）；不设 s/z/y/h 目录层（每域一个 bin，做文件名 `z.bin` 即可）。
 非 TS 轴（freq.bin）直接挂 end 下。忽略规则写 `oracle/.gitignore`（内容
-`tmp/`），根 `.gitignore` 不改（其旧 `.cross-tmp/` 条目成无害死行，是否
-删由人工定）。
+`tmp/`）；根 `.gitignore` 的旧 `.cross-tmp/` 死行随迁移一并删除。
 
 ### D5 容差分层实证修正
 

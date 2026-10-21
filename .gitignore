@@ -9,4 +9,3 @@ coverage/
 codecov.json
 *.profraw
 .DS_Store
-.cross-tmp/

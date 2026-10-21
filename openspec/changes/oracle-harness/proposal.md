@@ -39,8 +39,8 @@
   实施，不是契约：铁律四措辞本次即按新契约改写（golden 不入库、CI 现算、
   skrf 版本靠 `oracle/uv.lock`、周更 golden-refresh 作废），spec 不留
   已废弃旧契约。
-- manifest 升 schema v1（`cases[]`、样本 sha256、删 `python_relative`）——
-  本次 manifest 原样迁移（schema 0）。
+- manifest 升 `schema_version=1`（`cases[]`、样本 sha256、删 `python_relative`）——
+  本次 manifest 原样迁移（`schema_version=0`）。
 - 测试规划精选 17 个真实样本入库（本次只迁现有 dut.s1p/s2p/s4p）。
 - `scripts/` 其余脚本（bench_gate、coverage_gate、治理闸门、install_*.sh）
   是否迁入 oracle，留待后议。
@@ -66,6 +66,14 @@
   core 内部 unit/property 测试容差为测试自述常量（core 与 oracle 零依赖）。
   铁律四按新契约改写：skrf 圈禁于 oracle、golden 不入库（CI 现算、只活在
   `oracle/tmp/golden/`）、版本靠 `oracle/uv.lock`、周更 golden-refresh 作废。
+- `ci-matrix`："主 CI 零 Python 运行时依赖" Requirement 路径同步——pytest 读
+  `oracle/samples/`，golden 生成改为 oracle 的 uv 环境（skrf 钉版），落地后
+  skrf 亦只出现在 oracle 阅卷步骤。
+- `license-compliance`：登记目录从 `testdata/` 改 `oracle/samples/`，登记表
+  `oracle/LICENSE-NOTES.md`；Requirement「testdata 逐文件登记」更名
+  「samples 逐文件登记」。
+- `touchstone-core`："不得为排版变体新增样本"条款路径改
+  `oracle/samples/`。
 
 ## Impact
 
@@ -74,12 +82,14 @@
   `scripts/cross_compare.py` → `oracle/compare_cross.py`。
 - 配置：根 `package.json`（`check:cross`）、`typescript/package.json`
   （`cross-dump` 路径）、`.github/workflows/ci.yml`
-  （node job 路径与注释）、新增 `oracle/.gitignore`（内容 `tmp/`；根
-  `.gitignore` 不改，其旧 `.cross-tmp/` 条目成为无害死行，是否顺手删由人工定）。
+  （node job 路径与注释）、新增 `oracle/.gitignore`（内容 `tmp/`）、根
+  `.gitignore` 删除旧 `.cross-tmp/` 死行。
 - 文档：`testdata/` 删除、`oracle/README.md` 新建、`scripts/README.md`、
   `CONTRIBUTING.md`、根 `README.md`（LICENSE-NOTES 链接）、
   `core/python/typescript` 三个子 README、`scripts/check_md.py`
-  （LEDGER SECTION 台账清单）、`Plan/测试规划.md`（golden 层改写 + 下期任务清单）。
+  （LEDGER SECTION 台账清单）、`Plan/测试规划.md`（golden 层改写 + 下期任务
+  清单）、lessons-learned 台账 scope `testdata` 更名 `oracle`
+  （`testdata.md` → `oracle.md`，INDEX 同步）。
 - core 测试注释：`core/tests/` 中"from testdata/manifest.json"假引用改为
   自述常量措辞（5 处，仅注释）。
 - 依赖：零新增；本次 oracle 无 Python 环境（纯标准库脚本 + 数据）。
