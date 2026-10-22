@@ -1,7 +1,7 @@
 # Third-party data license notes
 
-Registration table for every file under `testdata/` (spec:
-`license-compliance` — testdata 逐文件登记). Unregistered files MUST NOT
+Registration table for every file under `oracle/samples/` (spec:
+`license-compliance` — sample 逐文件登记). Unregistered files MUST NOT
 enter this directory.
 
 Rules:

@@ -1,6 +1,6 @@
 {
   "schema_version": 0,
-  "note": "脚手架占位；golden/容差正式化属测试基础设施（见测试规划）。",
+  "note": "脚手架占位；golden/容差正式化属 oracle 测试基础设施（见测试规划）。",
   "core_tol": {
     "status": "placeholder",
     "relative": 1e-12,
