@@ -64,8 +64,10 @@
       现算、skrf 版本靠 oracle/uv.lock、周更作废）、阅卷集中（三端 runner
       表作废）、`oracle/tmp/` 分层布局、卷首语与全文 testdata 链接改
       oracle；新增下期任务清单（oracle uv 环境 + skrf 钉版、gen_golden.py、
-      compare_golden.py 含扰动自检、manifest `schema_version=1`（cases[] /
-      sha256 / 删 python_relative）、17 样本入库+许可登记、scripts 其余脚本归属后议）
+      compare_golden.py 含扰动自检、manifest 瘦身（只留容差键 / 删
+      schema_version 与 python_relative / golden 按操作分档）、样本索引改
+      samples/ 目录（四端脚本去硬编码名单）、test_roundtrip.py 容差自述化、
+      check_samples.py 许可对账闸门、17 样本入库+许可登记、scripts 其余脚本归属后议）
 - [x] 6.6 `pnpm check:md` 退出码 0（markdownlint + prettier + 链接校验）
 
 ## 7. 全量验收

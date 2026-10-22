@@ -39,8 +39,9 @@
   实施，不是契约：铁律四措辞本次即按新契约改写（golden 不入库、CI 现算、
   skrf 版本靠 `oracle/uv.lock`、周更 golden-refresh 作废），spec 不留
   已废弃旧契约。
-- manifest 升 `schema_version=1`（`cases[]`、样本 sha256、删 `python_relative`）——
-  本次 manifest 原样迁移（`schema_version=0`）。
+- manifest 瘦身（只留容差键、删 `schema_version` 与 `python_relative`、
+  golden 容差按操作分档）与样本索引改 `samples/` 目录（目录即索引，
+  四端脚本去硬编码名单）——本次 manifest 原样迁移，瘦身与目录索引为下期实施。
 - 测试规划精选 17 个真实样本入库（本次只迁现有 dut.s1p/s2p/s4p）。
 - `scripts/` 其余脚本（bench_gate、coverage_gate、治理闸门、install_*.sh）
   是否迁入 oracle，留待后议。
