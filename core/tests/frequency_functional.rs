@@ -3,8 +3,7 @@
 //! Expected values are independent literals / closed-form, never derived
 //! from the code under test (ironclad rule 2). Same-machine native
 //! comparisons are bit-exact (`==`); cross-platform (wasm) comparisons use
-//! tolerances, which for cross-end grading live in oracle/manifest.json
-//! (ironclad rule 3; core tests keep test-local constants).
+//! tolerances (ironclad rule 3; core tests keep test-local constants).
 
 use netwave::frequency::{Frequency, FrequencyUnit, WavelengthUnit};
 
