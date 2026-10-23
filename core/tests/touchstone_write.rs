@@ -49,7 +49,7 @@ fn write_touchstone_roundtrip_bit_exact() {
 fn write_touchstone_ma_db_roundtrip_within_tol() {
     // RI roundtrips bit-exact (shortest-roundtrip decimal); MA/DB pass
     // through polar<->rectangular transcendental functions, so the bound
-    // is the manifest core_tol (spec scenario "写出往返一致").
+    // is a test-local tolerance (spec scenario "写出往返一致").
     const TOL: f64 = 1e-12;
     let text = "# GHZ S MA R 50\n1.0 0.5 -30 0.1 170 0.1 170 0.8 -45";
     let ts = Touchstone::from_text(text, Some(2), None).unwrap();

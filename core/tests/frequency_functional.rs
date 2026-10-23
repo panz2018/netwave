@@ -2,8 +2,9 @@
 //!
 //! Expected values are independent literals / closed-form, never derived
 //! from the code under test (ironclad rule 2). Same-machine native
-//! comparisons are bit-exact (`==`); the manifest `core_tol` governs
-//! cross-platform (wasm) comparisons only (ironclad rule 3).
+//! comparisons are bit-exact (`==`); cross-platform (wasm) comparisons use
+//! tolerances, which for cross-end grading live in oracle/manifest.json
+//! (ironclad rule 3; core tests keep test-local constants).
 
 use netwave::frequency::{Frequency, FrequencyUnit, WavelengthUnit};
 
@@ -57,8 +58,8 @@ fn from_wavelength_computes_hz_from_meters() {
 
 #[test]
 fn wavelength_round_trips_to_hz() {
-    // λ↔f is a computed round-trip, so it is governed by the manifest
-    // core_tol (relative), never bit-exact (ironclad rule 3).
+    // λ↔f is a computed round-trip, so it is governed by a relative
+    // tolerance, never bit-exact (ironclad rule 3; test-local constant).
     let core_tol = 1e-12;
     let f = Frequency::from_f(vec![1e9, 2e9, 5e9], FrequencyUnit::Hz);
     let wl = f.wavelength(WavelengthUnit::mm, 2.2).unwrap();

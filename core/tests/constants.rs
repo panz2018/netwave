@@ -2,7 +2,7 @@
 //!
 //! Expected value is an independent literal (the SI defined exact speed of
 //! light in vacuum, 299 792 458 m/s — CODATA/SI brochure, exact by
-//! definition since 1983). Compared with `==`, never a tolerance: manifest
+//! definition since 1983). Compared with `==`, never a tolerance:
 //! tolerances govern computed cross-platform results, not exact constants
 //! (ironclad rule 3).
 

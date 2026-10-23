@@ -17,7 +17,7 @@ the derived domains (Z/Y/G/H). `Frequency` is the frequency axis.
 - `tests/` — integration tests (the API has no unit tests besides these; TDD
   applies to every future verb)
 - `scripts/dump.rs` — cross-binding dump: writes the λ↔f axis and the
-  Touchstone S master data into `.cross-tmp/`
+  Touchstone S master data into `oracle/tmp/core/`
   (declared as `[[example]]` in `Cargo.toml`; cargo only auto-discovers
   `examples/`)
 - `benches/scaffold.rs` — criterion benchmarks feeding the bench gate
@@ -38,10 +38,10 @@ cargo llvm-cov -p netwave --fail-under-lines 100  # crate-scoped coverage gate
 ```
 
 Cross-binding dump (core side of the four-way comparison) — run from the **repo
-root**, so the output lands in the shared `.cross-tmp/` that all four dumps
-write to (a relative path here would create `core/.cross-tmp/` and the
+root**, so the output lands in the shared `oracle/tmp/` that all four dumps
+write to (a relative path here would create `core/oracle/tmp/` and the
 comparison would not find it):
 
 ```bash
-cargo run -q -p netwave --example dump .cross-tmp
+cargo run -q -p netwave --example dump oracle/tmp
 ```

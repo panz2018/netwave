@@ -4,7 +4,8 @@
 
 use netwave::touchstone::{Touchstone, TouchstoneFormat, TouchstoneParameter};
 
-/// Tolerance from testdata/manifest.json `core_tol.relative` (placeholder).
+/// Test-local tolerance (ironclad rule 3: core tests are self-describing
+/// constants; cross-end grading tolerances live in oracle/manifest.json).
 const TOL: f64 = 1e-12;
 
 fn approx_eq(a: &[f64], b: &[f64], tol: f64) {
