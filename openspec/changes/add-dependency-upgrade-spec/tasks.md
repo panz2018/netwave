@@ -24,12 +24,13 @@
 
 ## 2. 过期体检命令
 
-- [ ] 2.1 实现 `scripts/check_outdated.py`（纯标准库）三段：项目依赖
+- [ ] 2.1 实现 `scripts/check_outdated.py`（纯标准库）四段：项目依赖
       （subprocess 调 `pnpm outdated`、`cargo update --dry-run`、
       `uv lock --upgrade --dry-run`）、全局 CLI（`--version` 探测 vs
       endoflife.date/npm/crates.io 最新 LTS/稳定版）、GitHub 直装工具与
-      cargo 子命令（已装版本 vs releases/latest，带 `GITHUB_TOKEN` 优先）。
-      单段 API 失败降级为警告。验证：本机跑通、三段均有输出。
+      cargo 子命令（已装版本 vs releases/latest，带 `GITHUB_TOKEN` 优先）、
+      CI actions（解析 `.github/workflows/*.yml` 的 `uses:` 行 vs GitHub
+      最新 major tag）。单段 API 失败降级为警告。验证：本机跑通、四段均有输出。
 - [ ] 2.2 根 `package.json` 新增 `check:outdated` 脚本；确认 `check` 与
       `ci.yml` 均不含它。验证：`grep check:outdated .github/workflows/ci.yml`
       无结果。

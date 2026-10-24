@@ -133,17 +133,24 @@ wasm-pack↔binaryen 等）→ 项目依赖刷新 → 代码兼容修改 → 全
 
 ### Requirement: 过期体检命令
 
-仓库 MUST 提供聚合体检命令 `pnpm check:outdated`，覆盖三段：项目依赖
+仓库 MUST 提供聚合体检命令 `pnpm check:outdated`，覆盖四段：项目依赖
 （`pnpm outdated`、`cargo update --dry-run`、`uv lock --upgrade --dry-run`）、
 全局 CLI（当前版本 vs 最新 LTS/稳定版）、GitHub 压缩包直装工具与 cargo
-子命令（已装版本 vs 最新 release）。该命令人工触发，MUST NOT 进 CI 或
+子命令（已装版本 vs 最新 release）、CI actions（workflow 内 `uses:` 的
+action 当前 tag vs 最新 release tag）。该命令人工触发，MUST NOT 进 CI 或
 `pnpm check`（结果随上游每日变化且需联网）。
 
 #### Scenario: 一条命令看全貌
 
 - **WHEN** 运行 `pnpm check:outdated`
-- **THEN** 输出三段各自的当前版本、最新 LTS/稳定版与是否落后
+- **THEN** 输出四段各自的当前版本、最新 LTS/稳定版与是否落后
 - **AND** `ci.yml` 与 `pnpm check` 均不包含该命令
+
+#### Scenario: CI actions 落后即报
+
+- **WHEN** workflow 中某 action 钉的 major tag 落后于该 action 的最新 major
+  release
+- **THEN** 体检输出该 action 的当前 tag 与最新 tag，标记落后
 
 ### Requirement: 经验回写
 

@@ -18,8 +18,8 @@
   经验回写规则。
 - 新增 `scripts/version_pins.json`（登记表）与 `scripts/check_version_pins.py`
   （双向对账闸门，接进根 `check:meta`）；新增 `scripts/check_outdated.py` +
-  根 `pnpm check:outdated`（体检：项目内依赖 + 全局 CLI + GitHub 压缩包直装工具
-  - cargo 子命令，人工触发不进 CI）。
+  根 `pnpm check:outdated`（体检四段：项目依赖 + 全局 CLI + GitHub 压缩包直装
+  工具与 cargo 子命令 + CI actions，人工触发不进 CI）。
 - 迁入并原地删除：AGENTS.md「依赖版本策略」节、CONTRIBUTING.md
   「Toolchain freshness」节 → 新 spec，原地留一行指针。
 - 版本条款集中：`workspace-layout` 的「版本底线」Requirement 整体迁入新 spec

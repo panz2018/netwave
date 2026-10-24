@@ -45,8 +45,9 @@ workspace-layout「版本底线」、ci-matrix「语言版本矩阵」。
 - **`check:outdated` 为纯标准库 Python 脚本**（`scripts/check_outdated.py`），
   与 `check_md.py` 等惯例一致；pnpm/cargo/uv 子命令以 subprocess 调用，
   全局 CLI 用 `--version` 探测 + 联网查最新 LTS/稳定版（endoflife.date API、
-  npm registry、crates.io、GitHub releases API，带 `GITHUB_TOKEN` 时优先用）。
-  备选"bash 脚本"否决：三段输出结构化需求下 Python 更整齐。
+  npm registry、crates.io、GitHub releases API，带 `GITHUB_TOKEN` 时优先用）；
+  CI actions 段解析 workflow 的 `uses:` 行（owner/repo@tag）查 GitHub releases
+  最新 major tag。备选"bash 脚本"否决：四段输出结构化需求下 Python 更整齐。
 - **全局 CLI 检查项进登记表但 `pin_location` 标注为 machine**：闸门对
   machine 类条目只校验"登记表有此项"，不校验本机版本（版本检查归
   `check:outdated`）——闸门保持离线，本机差异不阻塞他人。
