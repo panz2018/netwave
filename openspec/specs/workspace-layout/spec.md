@@ -9,13 +9,15 @@
 
 ### Requirement: 平铺 monorepo 结构
 
-仓库根 MUST 包含 `core/`、`python/`、`typescript/`、`testdata/`
-四个子项目目录与根 `[workspace]` `Cargo.toml`（members = core、python、
-typescript/native、typescript/wasm），以及 `pnpm-workspace.yaml`（typescript）。
-TypeScript 侧为**单一 npm 包单目录**：`typescript/` 内含 `native/`（napi Rust
+仓库根 MUST 包含 `core/`、`python/`、`typescript/`、`oracle/` 四个子项目目录
+与根 `[workspace]` `Cargo.toml`（members = core、python、typescript/native、
+typescript/wasm），以及 `pnpm-workspace.yaml`（typescript）。`oracle/` 为数值
+真值参照与阅卷子项目（契约、样本、阅卷脚本；不发布、不参与 Cargo/pnpm
+workspace）。TypeScript 侧为**单一 npm 包单目录**：`typescript/` 内含 `native/`（napi Rust
 crate）与 `wasm/`（wasm-bindgen Rust crate）两个构建目标，exports 条件分发，
 不再拆 `@netwave/node`/`@netwave/wasm` 独立包。目录一律
-短名，发布名在各清单文件独立声明。
+短名，发布名在各清单文件独立声明。`testdata/` 废止，其内容
+（manifest、样本、LICENSE-NOTES）整体迁入 `oracle/`。
 
 #### Scenario: workspace 清单一致
 
@@ -23,6 +25,7 @@ crate）与 `wasm/`（wasm-bindgen Rust crate）两个构建目标，exports 条
 - **THEN** 输出的 workspace members 恰为 core、python、typescript/native、
   typescript/wasm 四个包
 - **AND** `pnpm-workspace.yaml` 列出 typescript
+- **AND** 仓库根存在 `oracle/` 目录且不存在 `testdata/` 目录
 
 #### Scenario: 发布名与目录名解耦
 
@@ -70,9 +73,10 @@ EOL）。开发版本用当前 latest stable：Python 3.14（`.python-version`
 
 ### Requirement: 主 CI 零 Python 依赖
 
-主构建/测试路径（cargo test、pytest 读 testdata、vitest、wasm 构建）MUST NOT
-依赖 Python 运行时生成数据；`testdata/` 在本阶段仅建目录骨架与 LICENSE-NOTES.md
-占位。
+各端主构建/测试路径（cargo test、pytest 读 oracle 样本、vitest、wasm 构建）
+MUST NOT 依赖 Python 运行时生成数据；oracle 的生成/阅卷步骤不在此条款范围
+（skrf 圈禁于 oracle 环境，见 governance 铁律四）。`oracle/` 承载容差
+manifest 与 Touchstone 输入样本（本阶段 manifest 为骨架、样本为脚手架三件）。
 
 #### Scenario: 构建不触发 Python
 

@@ -119,7 +119,7 @@ after the first one shall be ignored)"：解析器 MUST 以**第一个** `#` 行
 不引用容差）：CRLF 行尾；文件无尾换行；token 间异常空白（tab、连续多空格、
 行首缩进）；数据 token 用科学计数法（`1e-3`、`1E+2` 等形式）；`-0.0` 读入
 保留负零符号位；端口数至 32（stride = `1 + 2×32²` = 2049）端到端解析。
-变体 MUST 由 unit 层内联文本覆盖，MUST NOT 为此新增 testdata 文件。
+变体 MUST 由 unit 层内联文本覆盖，MUST NOT 为此新增 `oracle/samples/` 样本文件。
 
 #### Scenario: CRLF 与无尾换行解析成功
 

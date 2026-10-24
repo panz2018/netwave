@@ -3,7 +3,7 @@
 ## Purpose
 
 定义 netwave 许可落地的可验证要求：双许可文件、发布元数据一致性、第三方
-声明随分发、testdata 逐文件登记、商标使用与门禁校验。参考源一律 URL 永久
+声明随分发、samples 逐文件登记、商标使用与门禁校验。参考源一律 URL 永久
 寻址，禁止记录本地绝对路径。
 
 ## Requirements
@@ -43,21 +43,21 @@ API 设计、规范格式）MUST NOT 出现在 notices 中——notices 只登�
 
 #### Scenario: BSD 数据入库带声明
 
-- **WHEN** scikit-rf（BSD-3-Clause）的 .snp 文件复制进 `testdata/`
+- **WHEN** scikit-rf（BSD-3-Clause）的 .snp 文件复制进 `oracle/samples/`
 - **THEN** 原文件内 `!` 注释版权声明保留，且该文件在
-  `testdata/LICENSE-NOTES.md` 与 notices 中登记
+  `oracle/LICENSE-NOTES.md` 与 notices 中登记
 
-### Requirement: testdata 逐文件登记
+### Requirement: samples 逐文件登记
 
-`testdata/LICENSE-NOTES.md` MUST 采用登记表格：文件 | 来源 URL | 上游
+`oracle/LICENSE-NOTES.md` MUST 采用登记表格：文件 | 来源 URL | 上游
 版本 | copied/generated | 许可。`copied` 指直接复制第三方文件，
 `generated` 指本项目脚本产出（含用第三方工具生成——登记生成工具及版本）。
-未登记的文件 MUST NOT 进入 `testdata/`。demo 数据 MUST 自产（netwave
+未登记的文件 MUST NOT 进入 `oracle/samples/`。demo 数据 MUST 自产（netwave
 自身输出或手写数值），MUST NOT 取自 scikit-rf/SignalIntegrity 的输出。
 
 #### Scenario: 新数据无登记即打回
 
-- **WHEN** review 发现 `testdata/` 新增文件无登记行
+- **WHEN** review 发现 `oracle/samples/` 新增文件无登记行
 - **THEN** 打回，补登记后方可合入
 
 ### Requirement: Touchstone 商标尊重
