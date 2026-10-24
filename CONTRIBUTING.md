@@ -117,42 +117,16 @@ into docs.
 
 ### Toolchain freshness (project-owned upgrades)
 
-Machine-wide CLIs (node, npm/pnpm, uv, rustup, markdownlint, OpenSpec CLI) are
-upgraded by the knowledge-base upgrade guide; this section covers only what
-netwave pins or ships itself.
-
-- **Rust pin**: `rust-toolchain.toml` pins a stable on purpose; bumping the pin
-  goes through an OpenSpec change (workspace-layout spec version floor). The
-  toolchain rustup auto-installs for a new pin is bare — top it up:
-
-  ```bash
-  rustup component add rustfmt clippy
-  rustup target add wasm32-unknown-unknown
-  ```
-
-- **pnpm version**: pinned by `packageManager` in the root `package.json` —
-  that field is the source of truth; bump it to `pnpm@<latest>` (corepack then
-  fetches it on the next run). Corepack is not bundled with Node ≥ 25; if the
-  `corepack` command is missing, `npm install -g corepack && corepack enable`.
-- **wasm toolchain**: wasm-pack and binaryen are always latest via the repo
-  installers (never pinned — AGENTS.md dependency policy):
-
-  ```bash
-  bash scripts/install_wasm_pack.sh
-  bash scripts/install_binaryen.sh
-  ```
-
-- **Playwright Chromium** (prerequisite for `test:browser` and the wasm dump
-  in `check:cross`): `pnpm -C typescript exec playwright install --only-shell chromium`
-- **cargo subcommands**: `cargo install cargo-llvm-cov --locked` (rustup
-  updates do not touch cargo-installed subcommands).
-- **Project dependencies** (dev deps, not global tools): periodic freshness
-  check with `pnpm outdated`, `cargo update`, and
-  `uv lock --upgrade --project python`
-  (maturin/numpy/ruff/pytest live in the python dev group). Roll back
-  only on a confirmed upstream bug (AGENTS.md dependency policy).
-- **OpenSpec**: after upgrading the global CLI, run `openspec update` in this
-  repo so the generated `/opsx:*` command files match the new CLI.
+Upgrades are governed by the
+[dependency-upgrade spec](openspec/changes/add-dependency-upgrade-spec/specs/dependency-upgrade/spec.md):
+strategy (latest stable, LTS lines), the pin registry
+[`scripts/version_pins.json`](scripts/version_pins.json) as the single source
+of truth for where versions are pinned, the reconciliation gate
+(`scripts/check_version_pins.py`, wired into `pnpm check:meta`), the fixed
+upgrade order, and the manual freshness check `pnpm check:outdated` (project
+deps + global CLIs + GitHub-tarball tools + CI actions). Machine-wide CLIs are
+checked and upgraded as part of that flow too. This section keeps no rules of
+its own (LL-065: pointer retargets to the main spec at sync).
 
 ## Local reference mirrors (this machine only)
 

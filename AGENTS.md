@@ -62,10 +62,10 @@
 
 ## 依赖版本策略
 
-- **默认用最新版**：新增或升级依赖时直接钉最新（含间接依赖， `cargo update` /
-  `pnpm outdated` 定期体检）；项目早期升级成本最低。
-- **最新版有 bug 才回退**：仅当最新版导致构建/测试失败且确认是上游bug（非本项目用法问题）时，回退到次新版（`--precise`），并在所在子项目 README 的 Gotchas 记录回退原因与跟踪的上游 issue。
-- **配对依赖一起升**：pyo3↔numpy、napi↔napi-derive 等必须同 major 联动，升级后必跑四端对拍确认数值不变。
+见 [dependency-upgrade spec](openspec/changes/add-dependency-upgrade-spec/specs/dependency-upgrade/spec.md)
+——最新稳定版优先、选线钉 LTS/稳定线、登记原则、钉死点登记表
+（`scripts/version_pins.json`）、对账闸门与升级流程的唯一真相源；
+本节只留指针，不重述规则（LL-065：sync 后改指主 spec）。
 
 ## 反思铁律（防复发，机制见 lessons-learned spec）
 

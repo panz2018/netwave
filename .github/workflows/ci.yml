@@ -114,7 +114,7 @@ jobs:
           target: wasm32-unknown-unknown
       - name: install binaryen (wasm-opt, latest)
         # Always latest: wasm-pack's built-in download is stuck on binaryen
-        # 117; pinning a version here would rot (AGENTS.md dependency policy).
+        # 117; pinning a version here would rot (dependency-upgrade spec).
         # GITHUB_TOKEN: authenticated API calls (runners share IPs; the
         # anonymous 60 req/h quota gets exhausted by parallel jobs).
         env:
