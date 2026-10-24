@@ -115,6 +115,45 @@ into docs.
 | Rust lint & format    | clippy + rustfmt                                      | `pnpm check:rs`                   |
 | Spec workflow         | OpenSpec CLI (`/opsx:*`)                              | `openspec --help`                 |
 
+### Toolchain freshness (project-owned upgrades)
+
+Machine-wide CLIs (node, npm/pnpm, uv, rustup, markdownlint, OpenSpec CLI) are
+upgraded by the knowledge-base upgrade guide; this section covers only what
+netwave pins or ships itself.
+
+- **Rust pin**: `rust-toolchain.toml` pins a stable on purpose; bumping the pin
+  goes through an OpenSpec change (workspace-layout spec version floor). The
+  toolchain rustup auto-installs for a new pin is bare — top it up:
+
+  ```bash
+  rustup component add rustfmt clippy
+  rustup target add wasm32-unknown-unknown
+  ```
+
+- **pnpm version**: pinned by `packageManager` in the root `package.json` —
+  that field is the source of truth; bump it to `pnpm@<latest>` (corepack then
+  fetches it on the next run). Corepack is not bundled with Node ≥ 25; if the
+  `corepack` command is missing, `npm install -g corepack && corepack enable`.
+- **wasm toolchain**: wasm-pack and binaryen are always latest via the repo
+  installers (never pinned — AGENTS.md dependency policy):
+
+  ```bash
+  bash scripts/install_wasm_pack.sh
+  bash scripts/install_binaryen.sh
+  ```
+
+- **Playwright Chromium** (prerequisite for `test:browser` and the wasm dump
+  in `check:cross`): `pnpm -C typescript exec playwright install --only-shell chromium`
+- **cargo subcommands**: `cargo install cargo-llvm-cov --locked` (rustup
+  updates do not touch cargo-installed subcommands).
+- **Project dependencies** (dev deps, not global tools): periodic freshness
+  check with `pnpm outdated`, `cargo update`, and
+  `uv lock --upgrade --project python`
+  (maturin/numpy/ruff/pytest live in the python dev group). Roll back
+  only on a confirmed upstream bug (AGENTS.md dependency policy).
+- **OpenSpec**: after upgrading the global CLI, run `openspec update` in this
+  repo so the generated `/opsx:*` command files match the new CLI.
+
 ## Local reference mirrors (this machine only)
 
 Authoritative terminology sources are kept as local clones for offline
