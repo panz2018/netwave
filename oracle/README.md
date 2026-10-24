@@ -27,6 +27,9 @@ Or grade an existing dump directory directly (dumps must already exist):
 python3 oracle/compare_cross.py oracle/tmp
 ```
 
+All dumps print the resolved absolute path of every file they write, so a
+wrong cwd surfaces immediately (`tmp/` must be shared by all four ends).
+
 Comparison tiers and tolerance layering are defined in the governance spec
 ([project-governance spec](../openspec/specs/project-governance/spec.md)) —
 this README only points there, never restates.
