@@ -5,7 +5,7 @@ constructor); zero-copy evidence is the writable `s` view (`owndata is
 False`) written in place and read back through derived domains (`z`,
 `data("S","MA")`) converted back to RI and compared to the written value
 (independent channel, ironclad rule 2). Tolerances come from
-testdata/manifest.json — never hardcoded per test (ironclad rule 3).
+oracle/manifest.json — never hardcoded per test (ironclad rule 3).
 """
 
 import json
@@ -20,7 +20,7 @@ import pytest
 # mandatory: the manifest carries CJK notes and Windows' default cp1252
 # would raise UnicodeDecodeError.
 MANIFEST = json.loads(
-    (Path(__file__).parents[2] / "testdata/manifest.json").read_text(encoding="utf-8")
+    (Path(__file__).parents[2] / "oracle/manifest.json").read_text(encoding="utf-8")
 )
 PY_TOL = MANIFEST["core_tol"]["python_relative"]
 

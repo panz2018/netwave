@@ -1,6 +1,7 @@
 """cross-binding dump (python side): emit the λ↔f axis and the Touchstone
-S master data per sample to <out>/python_freq.bin and
-<out>/python_ts_<case>.bin — raw little-endian f64 bytes, re/im interleaved.
+S master data per sample to <out>/python/freq.bin and
+<out>/python/<sample>/s.bin|z0.bin|version.txt — raw little-endian f64
+bytes, re/im interleaved.
 
 Binary rather than JSON: JSON writes -0 as 0 and loses the sign bit.
 Usage (from repo root): uv run --project python python python/scripts/dump.py <out_dir>
@@ -24,16 +25,20 @@ def main() -> int:
     f = netwave.Frequency.from_f([1.0, 2.0, 5.0], netwave.FrequencyUnit.GHz)
     wl = f.wavelength(netwave.WavelengthUnit.mm, 2.2)
     back = netwave.Frequency.from_wavelength(wl, netwave.WavelengthUnit.mm, 2.2)
-    fpath = out / "python_freq.bin"
+    py_dir = out / "python"
+    py_dir.mkdir(parents=True, exist_ok=True)
+    fpath = py_dir / "freq.bin"
     fpath.write_bytes(back.f.tobytes())
     # Touchstone cross-compare: parse each shared sample and dump the S
     # master data (interleaved f64), z0, and version.
     for case in ("s1p", "s2p", "s4p"):
-        ts = netwave.Touchstone.from_file(f"testdata/touchstone/dut.{case}")
-        (out / f"python_ts_{case}.bin").write_bytes(ts.s.tobytes())
-        (out / f"python_ts_{case}_z0.bin").write_bytes(ts.z0.tobytes())
-        (out / f"python_ts_{case}_version.txt").write_text(ts.version)
-    print(f"dumped {fpath.resolve()} {(out / 'python_ts_s2p.bin').resolve()}")
+        ts = netwave.Touchstone.from_file(f"oracle/samples/dut.{case}")
+        sample_dir = py_dir / f"dut.{case}"
+        sample_dir.mkdir(parents=True, exist_ok=True)
+        (sample_dir / "s.bin").write_bytes(ts.s.tobytes())
+        (sample_dir / "z0.bin").write_bytes(ts.z0.tobytes())
+        (sample_dir / "version.txt").write_text(ts.version)
+    print(f"dumped {fpath.resolve()} {(py_dir / 'dut.s2p' / 's.bin').resolve()}")
     return 0
 
 
