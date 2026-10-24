@@ -16,7 +16,7 @@ Checks:
   Prettier drop the continuation line's indentation (it must not add
   spaces inside code content) and render badly on GitHub; close the
   span on one line instead.
-- LEDGER SECTION: child READMEs (core/python/typescript/testdata) must
+- LEDGER SECTION: child READMEs (core/python/typescript/oracle) must
   not carry "Implementation notes" / "Gotchas" headings — those live in
   the lessons-learned ledger (openspec/specs/lessons-learned/). LL gate.
 - ARCHIVE LINK: no document may link into openspec/changes/archive/ —
@@ -93,7 +93,7 @@ def main() -> int:
             "core/README.md",
             "python/README.md",
             "typescript/README.md",
-            "testdata/README.md",
+            "oracle/README.md",
         )
     }
     ledger_heading = re.compile(r"^#{1,6} .*(Implementation notes|Gotchas)")
