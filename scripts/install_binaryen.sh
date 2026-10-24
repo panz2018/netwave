@@ -4,8 +4,8 @@
 # Why not pin: wasm-pack's built-in download is stuck on binaryen 117
 # (weak optimizer, larger output), and a pinned URL rots within months.
 # We always take the latest GitHub release; if a future release breaks
-# compatibility the build fails loudly and we fix it then (AGENTS.md
-# dependency policy: latest by default, roll back only on a real bug).
+# compatibility the build fails loudly and we fix it then
+# (dependency-upgrade spec: latest by default, roll back only on a real bug).
 #
 # Usage: scripts/install_binaryen.sh
 # In CI, the install dir is also appended to $GITHUB_PATH when present.

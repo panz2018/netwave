@@ -4,7 +4,7 @@
 # Why not `cargo install wasm-pack`: it compiles for minutes on every CI
 # job; the official release tarballs are prebuilt for all our targets.
 # Why not pin: same policy as install_binaryen.sh — always latest, fix
-# forward on a real break (AGENTS.md dependency policy).
+# forward on a real break (dependency-upgrade spec).
 #
 # Usage: scripts/install_wasm_pack.sh
 # In CI, the install dir is also appended to $GITHUB_PATH when present.
