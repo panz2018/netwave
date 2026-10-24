@@ -43,3 +43,23 @@
   适用于实施（代码、CI 步骤），不适用于契约本身——spec 是真相源，抄录
   已废弃契约等于复活它
 - 复发检测：review Spec 轴逐条对照裁决账本：delta 措辞与终裁不一致即打回
+
+### LL-065 活文档指针先指 delta 路径，sync/archive 时改指主 spec
+
+- 犯过：dependency-upgrade change apply 阶段，AGENTS/CONTRIBUTING 迁移指针的
+  目标主 spec 要 sync 后才存在，check:md 报 BROKEN FILE，agent 停下来问排序，
+  用户裁定"先指 delta 路径"是本仓既定做法，不必再问
+- 规则：活文档引用 change 新建的 spec 时，指针直接指当时存在的 delta 路径
+  `openspec/changes/<change>/specs/<cap>/spec.md`；sync/archive 时 check:md 报
+  BROKEN FILE/ARCHIVE LINK，当场把指针改成主 spec 链接——这是 sync 流程的
+  默认步骤，不是新决策
+- 复发检测：sync/archive 时 check:md 报指针违规而未当场修复即打回；
+  apply 时为此排序停下来询问即视为未读本条
+
+### LL-066 rustup 无 GitHub Releases，查最新版用 tags API
+
+- 犯过：体检脚本对 rustup 查 `releases/latest` 返回 404——rustup 只打 git tag
+  不发 GitHub Release（`rustup self update` 报 up to date 但 API 无 release）
+- 规则：查 rustup 最新版用 `api.github.com/repos/rust-lang/rustup/tags` 首项；
+  写版本体检前先验证目标仓库 releases API 可用，404 即改查 tags
+- 复发检测：体检脚本新增工具时 releases API 报 404 而未改 tags 即打回

@@ -40,7 +40,7 @@
 - [x] 3.1 `core/Cargo.toml`、`python/Cargo.toml`、`typescript/native/Cargo.toml`、
       `typescript/wasm/Cargo.toml` 的 `rust-version` 1.98→1.99。验证：
       `cargo test --workspace` 与 `pnpm check:rs` 全绿，1.3 闸门一致性通过。
-- [ ] 3.2 TS7 重测：`pnpm -C typescript` 下 `build:shells` + `typecheck` +
+- [x] 3.2 TS7 重测：`pnpm -C typescript` 下 `build:shells` + `typecheck` +
       `test:native`/`test:wasm`/`test:browser` 全跑，确认 tsdown dts ×
       TypeScript 7 最新稳定版兼容。兼容则维持并在登记表 notes 记"已验证"；
       不兼容则钉 `typescript@6`、登记 LL（含 tsdown 配对约束）。
@@ -48,22 +48,22 @@
 
 ## 4. 文档迁移与单源化
 
-- [ ] 4.1 AGENTS.md「依赖版本策略」节删除，替换为一行指针
+- [x] 4.1 AGENTS.md「依赖版本策略」节删除，替换为一行指针
       （指向 `openspec/specs/dependency-upgrade/spec.md`，归档后路径）。
-- [ ] 4.2 CONTRIBUTING.md「Toolchain freshness」节删除，替换为一行指针；
+- [x] 4.2 CONTRIBUTING.md「Toolchain freshness」节删除，替换为一行指针；
       「Toolchain (task → tool)」表保留（任务路由，非版本策略）。
-- [ ] 4.3 按 delta 同步检查：workspace-layout 主 spec 的「版本底线」在归档
+- [x] 4.3 按 delta 同步检查：workspace-layout 主 spec 的「版本底线」在归档
       sync 后移除、ci-matrix「语言版本矩阵」措辞去数字（delta 已写好，
       归档时自动生效；本任务核对 delta 与主 spec 无遗漏冲突）。
-- [ ] 4.4 grep 全仓旧版本数字残留（`1\.98`、`3\.14`、写死的 Node 矩阵数字），
+- [x] 4.4 grep 全仓旧版本数字残留（`1\.98`、`3\.14`、写死的 Node 矩阵数字），
       确认散文文档无第二真相源。验证：`grep -rn` 仅命中清单文件/登记表/
       历史归档。
-- [ ] 4.5 `pnpm check:md` 全绿（本次全部 Markdown 改动）。
+- [x] 4.5 `pnpm check:md` 全绿（本次全部 Markdown 改动）。
 
 ## 5. 收尾验收
 
-- [ ] 5.1 `pnpm check` 全绿 + `pnpm check:cross` 四端对拍通过。
-- [ ] 5.2 `openspec validate` 通过；retro：本 change 踩坑回写 lessons-learned
+- [x] 5.1 `pnpm check` 全绿 + `pnpm check:cross` 四端对拍通过。
+- [x] 5.2 `openspec validate` 通过；retro：本 change 踩坑回写 lessons-learned
       （如有）；Plan/测试规划.md「Rust 升版收尾」条目已完成，删除该条目并
       跑 `pnpm check:md`。
 

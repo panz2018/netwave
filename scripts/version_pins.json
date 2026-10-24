@@ -1,0 +1,246 @@
+{
+  "$comment": "Single source of truth for every version pin in this repo. Spec: openspec/specs/dependency-upgrade/spec.md (after archive; until then openspec/changes/add-dependency-upgrade-spec/specs/dependency-upgrade/spec.md). Prose docs must not copy these numbers. Checked by scripts/check_version_pins.py (wired into pnpm check:meta); freshness by scripts/check_outdated.py (pnpm check:outdated, manual).",
+  "categories": [
+    "toolchain",
+    "msrv",
+    "lang-matrix",
+    "lang-floor",
+    "pkg-manager",
+    "lockfile",
+    "github-tarball",
+    "cargo-subcommand",
+    "global-cli",
+    "ci-actions",
+    "browser-runtime",
+    "oracle-env",
+    "dependency"
+  ],
+  "pins": [
+    {
+      "name": "rust-toolchain",
+      "category": "toolchain",
+      "pin_location": "rust-toolchain.toml",
+      "upgrade_method": "structural: OpenSpec change; bump channel to latest stable, then top up the activated toolchain (rustup component add rustfmt clippy; rustup target add wasm32-unknown-unknown) and reinstall cargo subcommands",
+      "paired_with": ["rust-msrv", "cargo-llvm-cov"]
+    },
+    {
+      "name": "rust-msrv",
+      "category": "msrv",
+      "pin_location": [
+        "core/Cargo.toml",
+        "python/Cargo.toml",
+        "typescript/native/Cargo.toml",
+        "typescript/wasm/Cargo.toml"
+      ],
+      "upgrade_method": "bump rust-version together with rust-toolchain (structural); gate enforces all four equal and <= pin major.minor",
+      "paired_with": ["rust-toolchain"]
+    },
+    {
+      "name": "pnpm",
+      "category": "pkg-manager",
+      "pin_location": "package.json",
+      "field": "packageManager",
+      "upgrade_method": "set packageManager to pnpm@<latest exact>; corepack fetches on next run (corepack is not bundled with Node >= 25)",
+      "paired_with": ["node-global"]
+    },
+    {
+      "name": "pnpm-lock",
+      "category": "lockfile",
+      "pin_location": "pnpm-lock.yaml",
+      "upgrade_method": "routine: pnpm outdated then pnpm update (minor/patch via plain PR; major via OpenSpec change)",
+      "paired_with": ["typescript-tsdown-pair"]
+    },
+    {
+      "name": "cargo-lock",
+      "category": "lockfile",
+      "pin_location": "Cargo.lock",
+      "upgrade_method": "routine: cargo update (dry-run first); roll back only on a confirmed upstream bug",
+      "paired_with": ["pyo3-numpy-pair"]
+    },
+    {
+      "name": "uv-lock",
+      "category": "lockfile",
+      "pin_location": "python/uv.lock",
+      "upgrade_method": "routine: uv lock --upgrade --project python (maturin/numpy/ruff/pytest dev group)",
+      "paired_with": ["python-runtime"]
+    },
+    {
+      "name": "python-runtime",
+      "category": "lang-matrix",
+      "pin_location": "python/.python-version",
+      "upgrade_method": "structural: latest stable minor once every required library declares support; uv python install <ver> locally first, then CI",
+      "paired_with": ["python-requires", "pyo3-numpy-pair", "oracle-env"]
+    },
+    {
+      "name": "python-requires",
+      "category": "lang-floor",
+      "pin_location": "python/pyproject.toml",
+      "field": "project.requires-python",
+      "upgrade_method": "raise floor only on an EOL-driven structural change; abi3 wheel coverage follows (abi3-py310 covers 3.10+)",
+      "paired_with": ["python-runtime", "ci-python-matrix"]
+    },
+    {
+      "name": "node-engines",
+      "category": "lang-floor",
+      "pin_location": "typescript/package.json",
+      "field": "engines.node",
+      "upgrade_method": "raise floor when the oldest supported LTS reaches EOL (structural)",
+      "paired_with": ["ci-node-matrix"]
+    },
+    {
+      "name": "ci-python-matrix",
+      "category": "lang-matrix",
+      "pin_location": ".github/workflows/ci.yml",
+      "upgrade_method": "structural: floor cell + latest stable minor; numbers live here and in this registry only",
+      "paired_with": ["python-runtime", "python-requires"]
+    },
+    {
+      "name": "ci-node-matrix",
+      "category": "lang-matrix",
+      "pin_location": ".github/workflows/ci.yml",
+      "upgrade_method": "structural: oldest supported LTS + latest LTS (never a current non-LTS line)",
+      "paired_with": ["node-engines", "node-global"]
+    },
+    {
+      "name": "ci-actions",
+      "category": "ci-actions",
+      "pin_location": ".github/workflows/ci.yml",
+      "watch": [
+        "actions/checkout@v7",
+        "actions/setup-node@v7",
+        "astral-sh/setup-uv@v10.2.0",
+        "dtolnay/rust-toolchain@stable",
+        "mozilla-actions/sccache-action@v0.0.11",
+        "pnpm/action-setup@v6"
+      ],
+      "upgrade_method": "routine: bump the tag to the newest major release (check:outdated reports lags); every uses: line must appear in watch",
+      "paired_with": []
+    },
+    {
+      "name": "wasm-pack",
+      "category": "github-tarball",
+      "pin_location": "scripts/install_wasm_pack.sh",
+      "upgrade_method": "always latest: rerun scripts/install_wasm_pack.sh (queries GitHub releases/latest); fix forward on a real break",
+      "paired_with": ["binaryen"]
+    },
+    {
+      "name": "binaryen",
+      "category": "github-tarball",
+      "pin_location": "scripts/install_binaryen.sh",
+      "upgrade_method": "always latest: rerun scripts/install_binaryen.sh (whole-tree install, RUNPATH $ORIGIN/../lib)",
+      "paired_with": ["wasm-pack"]
+    },
+    {
+      "name": "cargo-llvm-cov",
+      "category": "cargo-subcommand",
+      "pin_location": "machine:cargo-llvm-cov",
+      "upgrade_method": "cargo install cargo-llvm-cov --locked (rustup update does not touch cargo-installed subcommands)",
+      "paired_with": ["rust-toolchain"]
+    },
+    {
+      "name": "playwright-chromium",
+      "category": "browser-runtime",
+      "pin_location": "machine:playwright",
+      "upgrade_method": "pnpm -C typescript exec playwright install --only-shell chromium (browser build follows the playwright npm dependency)",
+      "paired_with": ["pnpm-lock"]
+    },
+    {
+      "name": "oracle-env",
+      "category": "oracle-env",
+      "pin_location": "oracle/golden/uv.lock",
+      "status": "planned",
+      "upgrade_method": "skrf pinned by uv.lock; upgrade = explicit lock PR (governance iron rule 4)",
+      "paired_with": ["python-runtime"]
+    },
+    {
+      "name": "typescript-tsdown-pair",
+      "category": "dependency",
+      "pin_location": "typescript/package.json",
+      "field": "devDependencies.typescript",
+      "upgrade_method": "latest stable major only (no beta/dev lines); retest tsdown dts after every TS major: build:shells + typecheck + test:native/wasm/browser; incompatible -> pin previous major and register in lessons-learned",
+      "verified": "TS 7.0.2 x tsdown dts retested green (build:shells + typecheck + native/wasm/browser)",
+      "paired_with": ["tsdown"]
+    },
+    {
+      "name": "pyo3-numpy-pair",
+      "category": "dependency",
+      "pin_location": "python/Cargo.toml",
+      "field": "dependencies.pyo3, dependencies.numpy",
+      "upgrade_method": "same-major lockstep (pyo3 <-> numpy), plus pyo3-stub-gen compatibility; verify four-end compare after upgrade",
+      "paired_with": ["python-runtime", "cargo-lock"]
+    },
+    {
+      "name": "napi-pair",
+      "category": "dependency",
+      "pin_location": "typescript/package.json",
+      "field": "devDependencies.@napi-rs/cli",
+      "upgrade_method": "napi-cli <-> napi crate same major (typescript/native/Cargo.toml); after upgrade grep generated mjs enum names (LL-054)",
+      "paired_with": ["napi-crate"]
+    },
+    {
+      "name": "tsdown",
+      "category": "dependency",
+      "pin_location": "typescript/package.json",
+      "field": "devDependencies.tsdown",
+      "upgrade_method": "routine via pnpm outdated/update; retest dts with the typescript pair on any major",
+      "paired_with": ["typescript-tsdown-pair"]
+    },
+    {
+      "name": "napi-crate",
+      "category": "dependency",
+      "pin_location": "typescript/native/Cargo.toml",
+      "field": "dependencies.napi, dependencies.napi-derive",
+      "upgrade_method": "same-major lockstep with @napi-rs/cli (napi-pair); napi-build follows when required",
+      "paired_with": ["napi-pair", "cargo-lock"]
+    },
+    {
+      "name": "node-global",
+      "category": "global-cli",
+      "pin_location": "machine:node",
+      "upgrade_method": "check at upgrade time: install newest LTS via nvm with --reinstall-packages-from, set default alias; project CI matrix follows",
+      "paired_with": ["ci-node-matrix", "pnpm"]
+    },
+    {
+      "name": "npm-global",
+      "category": "global-cli",
+      "pin_location": "machine:npm",
+      "upgrade_method": "check at upgrade time: npm install -g npm@latest",
+      "paired_with": ["node-global"]
+    },
+    {
+      "name": "pnpm-global",
+      "category": "global-cli",
+      "pin_location": "machine:pnpm",
+      "upgrade_method": "check at upgrade time: npm install -g --allow-scripts=pnpm pnpm@latest; inside the repo the packageManager pin wins",
+      "paired_with": ["pnpm"]
+    },
+    {
+      "name": "uv-global",
+      "category": "global-cli",
+      "pin_location": "machine:uv",
+      "upgrade_method": "check at upgrade time: uv self update; then uv python upgrade / install",
+      "paired_with": ["python-runtime"]
+    },
+    {
+      "name": "rustup-global",
+      "category": "global-cli",
+      "pin_location": "machine:rustup",
+      "upgrade_method": "check at upgrade time: rustup self update; rustup update (toolchains only, not cargo subcommands)",
+      "paired_with": ["rust-toolchain", "cargo-llvm-cov"]
+    },
+    {
+      "name": "openspec-global",
+      "category": "global-cli",
+      "pin_location": "machine:openspec",
+      "upgrade_method": "check at upgrade time: npm install -g @fission-ai/openspec@latest, then openspec update in this repo to regenerate /opsx:* command files",
+      "paired_with": []
+    },
+    {
+      "name": "markdownlint-cli2-global",
+      "category": "global-cli",
+      "pin_location": "machine:markdownlint-cli2",
+      "upgrade_method": "check at upgrade time: npm install -g markdownlint-cli2@latest; inside the repo the devDependency (root package.json) is what pnpm check:md runs",
+      "paired_with": ["pnpm-lock"]
+    }
+  ]
+}

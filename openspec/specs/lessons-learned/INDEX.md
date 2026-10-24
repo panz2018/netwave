@@ -70,5 +70,7 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-062 | core       | worker 内无 `window`，wasm 取全局走 `js_sys::global()` 转 scope     |
 | LL-063 | ci         | `stub_gen` 动态链 libpython，跑前必导出 uv sysconfig LIBDIR         |
 | LL-064 | workflow   | 迁移/推迟只推实施，契约措辞必须与终裁同步，禁抄已废弃旧契约         |
+| LL-065 | workflow   | 活文档指针先指 delta 路径，sync/archive 时改指主 spec 链接          |
+| LL-066 | workflow   | rustup 无 GitHub Releases，查最新版用 tags API                      |
 
 ---
