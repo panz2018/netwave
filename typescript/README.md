@@ -86,5 +86,5 @@ pnpm fix:ts               # Biome auto-fix
 Cross-binding dump (node + wasm ends; run from the repo root):
 
 ```bash
-node typescript/scripts/dump.mjs .cross-tmp
+node typescript/scripts/dump.mjs oracle/tmp
 ```
