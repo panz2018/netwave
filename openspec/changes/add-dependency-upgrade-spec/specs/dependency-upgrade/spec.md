@@ -131,6 +131,38 @@ wasm-pack↔binaryen 等）→ 项目依赖刷新 → 代码兼容修改 → 全
 - **WHEN** 任一工具链或依赖升级执行完毕
 - **THEN** `pnpm check` 全绿且 `pnpm check:cross` 四端对拍通过方视为完成
 
+### Requirement: 运行时大版本升级流程
+
+运行时大版本升级（Python 稳定 minor 切换、Node LTS 线切换）MUST 按序：先核实
+本项目所需全部库声明支持目标版本（支持矩阵记入 change）→ 本地新环境全量测试
+变绿 → 一次改齐全部钉版点（运行时 pin、CI 矩阵格、必要时底线声明、oracle
+环境、登记表）→ 代码兼容修改 → 全闸门 + 四端对拍。Node 换线另须以
+`--reinstall-packages-from` 迁移全局 npm 包。
+
+#### Scenario: Python 稳定 minor 切换
+
+- **WHEN** Python 升到新稳定 minor
+- **THEN** 同一 change 内改 `python/.python-version`、CI python 矩阵最新格、
+  oracle 环境 lock、登记表；本地以新 minor 全量测试绿后才动 CI
+
+#### Scenario: Node LTS 线切换
+
+- **WHEN** CI 矩阵的最新 LTS 格需切到新线
+- **THEN** 更新 CI 矩阵与登记表，并以 `--reinstall-packages-from` 迁移全局
+  npm 包；`engines.node` 底线仅当旧底线 EOL 才抬
+
+### Requirement: 体检按发现覆盖全部环境
+
+体检 MUST 按发现（非硬编码名单）覆盖仓库全部依赖环境：每个 uv 工程
+（`uv.lock`）、每个运行时 pin（`.python-version`）、pnpm workspace（`-r`）、
+cargo workspace。新环境落地后自动纳入，无需改脚本。
+
+#### Scenario: oracle 环境自动覆盖
+
+- **WHEN** `oracle/golden/uv.lock` 存在
+- **THEN** 体检自动对其执行 dry-run 升级检查；其 `.python-version`（若有）
+  自动与最新稳定 minor 比对
+
 ### Requirement: 过期体检命令
 
 仓库 MUST 提供聚合体检命令 `pnpm check:outdated`，覆盖四段：项目依赖
