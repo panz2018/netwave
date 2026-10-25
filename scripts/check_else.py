@@ -11,7 +11,27 @@ Exempt by construction (no `elif`, so not a multi-way discriminator):
   - error guards (`if bad: report else: normal`)
   - loop termination (`else: break`)
 
-Rust is covered by the compiler (exhaustive `match`); this gate is Python-only.
+The rule targets discriminators (`if kind == "a" ... else <good>`): their
+`else` is an open set that silently absorbs future unhandled values. Error
+guards are predicates (`if v is None ... else <use v>`): the condition space
+is inherently two-valued and the else half carries a type/logic guarantee, so
+no future value can slip through unnoticed — hence exempt. (A guard clause
+that early-`continue`/`return` on the bad case, leaving the normal path
+un-indented, is the preferred style, but choosing it over `else` is a review
+judgement, not mechanically checkable.)
+
+An elif-chain with NO else is also exempt: a discriminator missing its else
+silently skips unhandled values, but so does a legitimate scanner/filter
+(per-char classifiers in check_md.py slug() and check_verbs.py brace counting
+rely on implicit fall-through by design). The two are structurally identical
+in the AST, so flagging no-else chains would false-positive on filters;
+discriminators missing an else are caught by review instead.
+
+Coverage is discovery-based: every .py in the repo is scanned (build and
+vendored directories excluded), so new Python environments join automatically.
+Rust is covered by the compiler (exhaustive `match`). TypeScript is not
+covered: its sources are thin glue with no multi-way discriminator chains and
+no ready Biome rule; extend here or via Biome if TS grows discriminators.
 
 Usage: python3 scripts/check_else.py   (wired into pnpm check:meta)
 """
@@ -21,7 +41,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-TARGETS = ("python", "scripts")
+SKIP_DIRS = ("target", "target-wasm", "node_modules", ".venv", ".git", "dist", "coverage")
 # statements that legitimately terminate an else fallback: raise = error,
 # break/continue = loop-termination exemption. `return` is NOT a fallback —
 # it can silently hand back a normal value, exactly what the rule forbids;
@@ -71,11 +91,10 @@ def check_file(path):
 
 def main() -> int:
     errors = []
-    for d in TARGETS:
-        for py in sorted((ROOT / d).rglob("*.py")):
-            if "target" in py.parts or ".venv" in py.parts:
-                continue
-            errors.extend(check_file(py))
+    for py in sorted(ROOT.rglob("*.py")):
+        if any(part in SKIP_DIRS for part in py.parts):
+            continue
+        errors.extend(check_file(py))
     if errors:
         for e in errors:
             print(f"::error::{e}", file=sys.stderr)
