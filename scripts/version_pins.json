@@ -26,13 +26,8 @@
     {
       "name": "rust-msrv",
       "category": "msrv",
-      "pin_location": [
-        "core/Cargo.toml",
-        "python/Cargo.toml",
-        "typescript/native/Cargo.toml",
-        "typescript/wasm/Cargo.toml"
-      ],
-      "upgrade_method": "bump rust-version together with rust-toolchain (structural); gate enforces all four equal and <= pin major.minor",
+      "pin_location": "discovered:workspace-members",
+      "upgrade_method": "bump rust-version together with rust-toolchain (structural); gate enforces all workspace members equal and <= pin major.minor",
       "paired_with": ["rust-toolchain"]
     },
     {
@@ -105,15 +100,7 @@
       "name": "ci-actions",
       "category": "ci-actions",
       "pin_location": ".github/workflows/ci.yml",
-      "watch": [
-        "actions/checkout@v7",
-        "actions/setup-node@v7",
-        "astral-sh/setup-uv@v10.2.0",
-        "dtolnay/rust-toolchain@stable",
-        "mozilla-actions/sccache-action@v0.0.11",
-        "pnpm/action-setup@v6"
-      ],
-      "upgrade_method": "routine: bump the tag to the newest major release (check:outdated reports lags); every uses: line must appear in watch",
+      "upgrade_method": "routine: bump the tag to the newest major release (check:outdated reports lags)",
       "paired_with": []
     },
     {
