@@ -58,7 +58,8 @@ workflow `uses:` 行的核对早已是发现式扫描，json 再抄一份 = 第�
 ## Non-goals
 
 - 不做过期检查 CI 门禁、bug 版本黑名单（`blocked`）、配对版本约束
-  （`constraint`）——三问留在 [测试规划·待议](../../Plan/测试规划.md)
+  （`constraint`）——三问留在
+  [测试规划·待议](../../../Plan/测试规划.md#待议过期检查升级为-ci-门禁--bug-版本黑名单--配对版本校验)
   将来另议。
 - 不删 `ci-actions` 条目本身——它还扛 action 升级方法的程序性知识。
 - 不删 `verified` 字段——配对验证证据随条目入库。

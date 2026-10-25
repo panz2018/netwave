@@ -5,8 +5,8 @@
 See proposal.md - Why. 现状：`rust-msrv` 条目手抄四个 `Cargo.toml` 路径、
 `ci-actions` 条目手抄六条 `watch`；闸门（`scripts/check_version_pins.py`）
 的 MSRV 一致性与未登记检测已是发现式扫描，watch 双向核对完全依赖手抄清单。
-根 `Cargo.toml` 的 `members = ["core", "python", "typescript/native",
-"typescript/wasm"]` 是成员清单的仓库内权威来源。
+根 `Cargo.toml` 的 `members` 清单（core、python、typescript/native、
+typescript/wasm）是成员清单的仓库内权威来源。
 
 ## Goals / Non-Goals
 
@@ -44,8 +44,8 @@ See proposal.md - Why. 现状：`rust-msrv` 条目手抄四个 `Cargo.toml` 路�
 - **`verified` 字段保留**：配对验证证据随条目入库，与将来 `blocked` 的
   issue 链接同性质；赶回散文违背登记表消灭散落副本的初衷。
 - **注释标准**：模块 docstring = 新检查清单逐条一句话；每段检查顶部一句
-  大白话目的（例：`# MSRV: every workspace member must pin rust-version
-  (missing = FAIL, so deleting the field cannot silently escape)`）。
+  大白话目的（例：`# MSRV: every workspace member must pin rust-version`，
+  缺字段即 FAIL，删字段不能静默逃逸）。
   只写当前契约事实，不写"以前有 watch"式考古，追溯靠 git log。
 
 ## Risks / Trade-offs
