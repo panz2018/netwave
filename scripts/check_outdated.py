@@ -126,13 +126,17 @@ def main() -> int:
                 # rustup ships git tags, not GitHub Releases.
                 tags = _req(f"https://api.github.com/repos/{source[1]}/tags")
                 latest = tags[0]["name"] if tags else "?"
-            else:
+            elif source[0] == "endoflife":
                 data = _req(f"https://endoflife.date/api/{source[1]}.json")
                 if source[2] == "lts":
                     lts = [c for c in data if c.get("lts")]
                     latest = lts[0]["cycle"] if lts else "?"
-                else:
+                elif source[2] == "stable":
                     latest = data[0]["cycle"]
+                else:
+                    raise ValueError(f"unknown endoflife kind {source[2]!r}")
+            else:
+                raise ValueError(f"unknown latest-source kind {source[0]!r}")
             if name == "node":
                 # endoflife gives the LTS line ("26"); nodejs.org gives the
                 # exact newest patch on that line ("26.12.1").
