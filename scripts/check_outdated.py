@@ -69,7 +69,7 @@ def main() -> int:
     # 1. project dependencies
     seg("1. project dependencies")
     # every uv project in the repo (python/, oracle/golden/, ...) — discovery
-    # by uv.lock, no hardcoded list (spec: freshness covers all environments)
+    # by uv.lock, no hardcoded list, so new environments are covered automatically
     skip = ("target", "node_modules", ".venv", ".git")
     for lock in sorted(ROOT.glob("**/uv.lock")):
         if any(part in skip for part in lock.parts):
