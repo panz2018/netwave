@@ -53,24 +53,6 @@ crate）与 `wasm/`（wasm-bindgen Rust crate）两个构建目标，exports 条
   （预留：`@netwave/converter`、`@netwave/touchstone`），
   与本变更已定名字不冲突
 
-### Requirement: 版本底线
-
-全仓 MUST 满足底线版本（= 兼容性下限，覆盖其上所有版本）：Rust edition 2024、
-MSRV = 当前 stable（1.98，升版走 OpenSpec 变更）；Python ≥3.10、NumPy 2.x
-（abi3 一个 wheel 覆盖 3.10–3.14）；Node ≥22（最旧在支持期 LTS，Node 20 已
-EOL）。开发版本用当前 latest stable：Python 3.14（`.python-version`
-进 git）、Node 26；CI 版本矩阵见 ci-matrix spec。
-包管理器版本 MUST 钉死：根 `package.json` 含
-`"packageManager": "pnpm@<exact>"`；`python/` 含 `pyproject.toml` 与 `uv.lock`
-且 maturin 为 dev dependency。
-
-#### Scenario: 底线版本可校验
-
-- **WHEN** 检查 `core/Cargo.toml`、`python/pyproject.toml`、根 `package.json`
-- **THEN** edition = "2024"、rust-version ≥ 1.98、`requires-python` ≥ ">=3.10"、
-  `engines.node` ≥ ">=22"、`packageManager` 为精确版本号
-- **AND** `python/uv.lock` 存在且进 git
-
 ### Requirement: 主 CI 零 Python 依赖
 
 各端主构建/测试路径（cargo test、pytest 读 oracle 样本、vitest、wasm 构建）

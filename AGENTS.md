@@ -62,10 +62,10 @@
 
 ## 依赖版本策略
 
-见 [dependency-upgrade spec](openspec/changes/add-dependency-upgrade-spec/specs/dependency-upgrade/spec.md)
+见 [dependency-upgrade spec](openspec/specs/dependency-upgrade/spec.md)
 ——最新稳定版优先、选线钉 LTS/稳定线、登记原则、钉死点登记表
 （`scripts/version_pins.json`）、对账闸门与升级流程的唯一真相源；
-本节只留指针，不重述规则（LL-065：sync 后改指主 spec）。
+本节只留指针，不重述规则。
 
 ## 反思铁律（防复发，机制见 lessons-learned spec）
 

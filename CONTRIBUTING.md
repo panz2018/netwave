@@ -118,7 +118,7 @@ into docs.
 ### Toolchain freshness (project-owned upgrades)
 
 Upgrades are governed by the
-[dependency-upgrade spec](openspec/changes/add-dependency-upgrade-spec/specs/dependency-upgrade/spec.md):
+[dependency-upgrade spec](openspec/specs/dependency-upgrade/spec.md):
 strategy (latest stable, LTS lines), the pin registry
 [`scripts/version_pins.json`](scripts/version_pins.json) as the single source
 of truth for where versions are pinned, the reconciliation gate
