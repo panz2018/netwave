@@ -63,3 +63,31 @@
 - 规则：查 rustup 最新版用 `api.github.com/repos/rust-lang/rustup/tags` 首项；
   写版本体检前先验证目标仓库 releases API 可用，404 即改查 tags
 - 复发检测：体检脚本新增工具时 releases API 报 404 而未改 tags 即打回
+
+### LL-067 写规则前先查治理 spec 是否已有，禁就近塞进当前 change
+
+- 犯过：用户要求"把 else 只做错误兜底写进 openspec"，agent 直接把它作为新
+  Requirement 塞进手头的 dependency-upgrade change delta，没先查治理宪法——
+  该规则其实早已是 `project-governance` 铁律十三（全仓编码宪法），结果放错
+  作用域（升级 spec 混入全仓编码规则）且与铁律十三重复
+- 规则：接到"把某规则写进 spec"时，动手前先 grep `openspec/specs/`（尤其
+  `project-governance`）确认是否已有覆盖：已有则引用/强化，不另造重复条目；
+  确需新增再按规则作用域选目标 spec——全仓编码规则归 governance 铁律，
+  能力专属规则归对应 capability，禁止因"正在改这个 change"就近塞入
+- 复发检测：review Spec 轴检查新增 Requirement：与 governance 铁律语义重复、
+  或作用域与所在 capability 不符即打回
+
+### LL-068 文字规则不门禁化必复发——else 兜底第二次踩
+
+- 犯过：governance 铁律十三「else 只做错误兜底」早已存在，但只靠 review、
+  未落进 `pnpm check`；agent 新写 `check_outdated.py` 时仍把已知工作分支
+  （endoflife/stable）写进 `else`，同一族问题第二次出现，靠人工 review 才抓到
+- 根因：AGENTS.md 明文「可门禁化的 LL 落进 pnpm check，文字规则退役」——
+  铁律十三可门禁化却仍是纯文字，写代码处于"让它跑通"模式，`if/elif/.../else`
+  的 else 天然当 default 用，没有闸门拦、又没在写前复读铁律，必复发
+- 规则：凡「可机械检测」的铁律 MUST 落进 `pnpm check`，不能只留文字 + review。
+  else 兜底对 Python 可门禁化：`if/elif` 链（≥1 个 `elif`）的 `else` 体首句
+  非 `raise`/`return`/`break`/`continue` 即违规（布尔二选一 0 个 elif、错误守卫、
+  循环 break 天然不命中）；Rust 由编译器穷尽 match 保证，TS 视 lint 能力另议
+- 复发检测：新增/修改 Python 判别链后跑该门禁；门禁未接入 `check:meta` 即视为
+  本条未落实
