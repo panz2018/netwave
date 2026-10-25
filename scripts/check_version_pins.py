@@ -11,13 +11,20 @@ Checks:
   1. Entry structure: name / category (known enum) / pin_location /
      upgrade_method / paired_with.
   2. pin_location existence (repo paths; `machine:` entries are checked for
-     presence in the registry only; `status: planned` skips existence).
+     presence in the registry only).
   3. All `rust-version` fields across Cargo.toml members are equal and not
      above the rust-toolchain.toml pin (major.minor).
   4. Root package.json `packageManager` is an exact pnpm version.
   5. ci-actions: every `uses:` line in .github/workflows/*.yml appears in
      the registry watch list, and vice versa.
   6. python matrix latest cell in ci.yml equals python/.python-version.
+  7. Discovery: every mechanically discoverable pin location in the repo
+     (Cargo.toml rust-version, package.json packageManager, pyproject.toml
+     requires-python, uv.lock, .python-version) appears in the registry — a
+     new subproject that forgets to register fails here.
+
+This gate checks registration and consistency only. Whether a pin is the
+latest version is the job of scripts/check_outdated.py (manual, networked).
 
 Usage: python3 scripts/check_version_pins.py
 """
@@ -69,8 +76,6 @@ def main() -> int:
 
     # 2. pin_location existence
     for e in pins:
-        if e.get("status") == "planned":
-            continue
         for loc in locations(e):
             if loc.startswith("machine:"):
                 continue
@@ -129,6 +134,29 @@ def main() -> int:
         errors.append(
             f"python/.python-version {pyver} not among ci python matrix cells {sorted(cells)}"
         )
+
+    # 7. discovery: every mechanically discoverable pin location is registered
+    skip = ("target", "target-wasm", "node_modules", ".venv", ".git", "dist", "coverage")
+    registered = {loc for e in pins for loc in locations(e) if not loc.startswith("machine:")}
+
+    def discover(fname, cond):
+        """Repo-relative paths of files named `fname` whose content matches cond."""
+        found = set()
+        for f in ROOT.rglob(fname):
+            if any(part in skip for part in f.parts):
+                continue
+            rel = str(f.relative_to(ROOT))
+            if cond(f.read_text(encoding="utf-8")):
+                found.add(rel)
+        return found
+
+    pin_files = discover("Cargo.toml", lambda t: "rust-version" in t)
+    pin_files |= discover("package.json", lambda t: '"packageManager"' in t)
+    pin_files |= discover("pyproject.toml", lambda t: "requires-python" in t)
+    pin_files |= discover("uv.lock", lambda t: True)
+    pin_files |= discover(".python-version", lambda t: True)
+    for rel in sorted(pin_files - registered):
+        errors.append(f"pin location {rel!r} exists in repo but is not registered")
 
     if errors:
         for err in errors:

@@ -69,7 +69,7 @@
       "category": "lang-matrix",
       "pin_location": "python/.python-version",
       "upgrade_method": "structural: latest stable minor once every required library declares support; uv python install <ver> locally first, then CI",
-      "paired_with": ["python-requires", "pyo3-numpy-pair", "oracle-env"]
+      "paired_with": ["python-requires", "pyo3-numpy-pair"]
     },
     {
       "name": "python-requires",
@@ -143,14 +143,6 @@
       "pin_location": "machine:playwright",
       "upgrade_method": "pnpm -C typescript exec playwright install --only-shell chromium (browser build follows the playwright npm dependency)",
       "paired_with": ["pnpm-lock"]
-    },
-    {
-      "name": "oracle-env",
-      "category": "oracle-env",
-      "pin_location": "oracle/golden/uv.lock",
-      "status": "planned",
-      "upgrade_method": "skrf pinned by uv.lock; upgrade = explicit lock PR (governance iron rule 4)",
-      "paired_with": ["python-runtime"]
     },
     {
       "name": "typescript-tsdown-pair",
