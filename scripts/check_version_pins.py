@@ -7,17 +7,20 @@ mechanically discoverable pin location in the repo appears in the registry.
 Consistency rules (drift like a manual rust-toolchain bump leaving stale
 rust-version fields behind) fail the gate on the spot.
 
-Checks:
+Checks (all discovery-based — no hardcoded file lists; new subprojects are
+covered automatically):
   1. Entry structure: name / category (known enum) / pin_location /
      upgrade_method / paired_with.
   2. pin_location existence (repo paths; `machine:` entries are checked for
      presence in the registry only).
-  3. All `rust-version` fields across Cargo.toml members are equal and not
-     above the rust-toolchain.toml pin (major.minor).
-  4. Root package.json `packageManager` is an exact pnpm version.
+  3. Every Cargo.toml carrying `rust-version`: all values equal and not above
+     the rust-toolchain.toml pin (major.minor); channel must be an exact pin.
+  4. Every package.json carrying `packageManager` is an exact pnpm version,
+     and all such values are equal across the repo.
   5. ci-actions: every `uses:` line in .github/workflows/*.yml appears in
      the registry watch list, and vice versa.
-  6. python matrix latest cell in ci.yml equals python/.python-version.
+  6. Every .python-version pin appears among the python matrix cells of the
+     CI workflows.
   7. Discovery: every mechanically discoverable pin location in the repo
      (Cargo.toml rust-version, package.json packageManager, pyproject.toml
      requires-python, uv.lock, .python-version) appears in the registry — a
@@ -38,6 +41,7 @@ import tomllib
 
 ROOT = Path(__file__).resolve().parent.parent
 REGISTRY = ROOT / "scripts" / "version_pins.json"
+SKIP_DIRS = ("target", "target-wasm", "node_modules", ".venv", ".git", "dist", "coverage")
 
 REQUIRED_FIELDS = ("name", "category", "pin_location", "upgrade_method", "paired_with")
 
@@ -49,6 +53,27 @@ def locations(entry):
 
 def parse_ver(s):
     return tuple(int(x) for x in re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", s).groups() if x)
+
+
+def discover(fname, cond=lambda t: True):
+    """Repo-relative paths of files named `fname` whose content matches cond."""
+    found = set()
+    for f in ROOT.rglob(fname):
+        if any(part in SKIP_DIRS for part in f.parts):
+            continue
+        if cond(f.read_text(encoding="utf-8")):
+            found.add(str(f.relative_to(ROOT)))
+    return found
+
+
+def has_rust_version(text):
+    """True if the TOML declares [package] rust-version (parsed, not substring,
+    so comments mentioning it do not count as pin locations)."""
+    try:
+        doc = tomllib.loads(text)
+    except tomllib.TOMLDecodeError:
+        return False
+    return "rust-version" in doc.get("package", {})
 
 
 def main() -> int:
@@ -82,19 +107,16 @@ def main() -> int:
             if not (ROOT / loc).exists():
                 errors.append(f"{e['name']}: pin_location {loc!r} does not exist")
 
-    # 3. rust-version consistency
-    msrv_entries = [e for e in pins if e["category"] == "msrv"]
-    msrv_files = [loc for e in msrv_entries for loc in locations(e)]
+    # 3. rust-version consistency (discovered, not registry-listed)
     msrvs = {}
-    for rel in msrv_files:
+    for rel in sorted(discover("Cargo.toml", has_rust_version)):
         doc = tomllib.loads((ROOT / rel).read_text(encoding="utf-8"))
-        v = doc.get("package", {}).get("rust-version")
-        if v is None:
-            errors.append(f"{rel}: rust-version missing but registered as msrv")
-        else:
-            msrvs[rel] = v
+        msrvs[rel] = doc["package"]["rust-version"]
     if len(set(msrvs.values())) > 1:
         errors.append(f"rust-version drift: {msrvs}")
+    msrv_registered = {loc for e in pins if e["category"] == "msrv" for loc in locations(e)}
+    for rel in sorted(msrv_registered - set(msrvs)):
+        errors.append(f"{rel}: registered as msrv but rust-version missing")
     pin_doc = tomllib.loads((ROOT / "rust-toolchain.toml").read_text(encoding="utf-8"))
     pin_ch = pin_doc["toolchain"]["channel"]
     if not re.fullmatch(r"\d+\.\d+(\.\d+)?", pin_ch):
@@ -104,11 +126,15 @@ def main() -> int:
             if parse_ver(v) > parse_ver(pin_ch):
                 errors.append(f"{rel}: rust-version {v} above rust-toolchain pin {pin_ch}")
 
-    # 4. packageManager exact
-    pkg = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
-    pm = pkg.get("packageManager", "")
-    if not re.fullmatch(r"pnpm@\d+\.\d+\.\d+", pm):
-        errors.append(f"package.json: packageManager {pm!r} is not an exact pnpm version")
+    # 4. packageManager exact and equal across the repo
+    pms = {}
+    for rel in sorted(discover("package.json", lambda t: '"packageManager"' in t)):
+        pm = json.loads((ROOT / rel).read_text(encoding="utf-8")).get("packageManager", "")
+        if not re.fullmatch(r"pnpm@\d+\.\d+\.\d+", pm):
+            errors.append(f"{rel}: packageManager {pm!r} is not an exact pnpm version")
+        pms[rel] = pm
+    if len(set(pms.values())) > 1:
+        errors.append(f"packageManager drift: {pms}")
 
     # 5. ci-actions two-way
     actions_in_yml = set()
@@ -126,35 +152,23 @@ def main() -> int:
     for a in sorted(watched - actions_in_yml):
         errors.append(f"registry watch {a!r} not used in any workflow")
 
-    # 6. python matrix latest == .python-version
-    pyver = (ROOT / "python" / ".python-version").read_text(encoding="utf-8").strip()
-    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
-    cells = set(re.findall(r'python-version:\s*"?(\d+\.\d+)"?', ci))
-    if cells and pyver not in cells:
-        errors.append(
-            f"python/.python-version {pyver} not among ci python matrix cells {sorted(cells)}"
-        )
+    # 6. every .python-version pin appears among ci python matrix cells
+    cells = set()
+    for wf in sorted(discover("*.yml", lambda t: "python-version:" in t)):
+        text = (ROOT / wf).read_text(encoding="utf-8")
+        cells.update(re.findall(r'python-version:\s*"?(\d+\.\d+)"?', text))
+    for rel in sorted(discover(".python-version")):
+        pyver = (ROOT / rel).read_text(encoding="utf-8").strip()
+        if cells and pyver not in cells:
+            errors.append(f"{rel} {pyver} not among ci python matrix cells {sorted(cells)}")
 
     # 7. discovery: every mechanically discoverable pin location is registered
-    skip = ("target", "target-wasm", "node_modules", ".venv", ".git", "dist", "coverage")
     registered = {loc for e in pins for loc in locations(e) if not loc.startswith("machine:")}
-
-    def discover(fname, cond):
-        """Repo-relative paths of files named `fname` whose content matches cond."""
-        found = set()
-        for f in ROOT.rglob(fname):
-            if any(part in skip for part in f.parts):
-                continue
-            rel = str(f.relative_to(ROOT))
-            if cond(f.read_text(encoding="utf-8")):
-                found.add(rel)
-        return found
-
-    pin_files = discover("Cargo.toml", lambda t: "rust-version" in t)
+    pin_files = discover("Cargo.toml", has_rust_version)
     pin_files |= discover("package.json", lambda t: '"packageManager"' in t)
     pin_files |= discover("pyproject.toml", lambda t: "requires-python" in t)
-    pin_files |= discover("uv.lock", lambda t: True)
-    pin_files |= discover(".python-version", lambda t: True)
+    pin_files |= discover("uv.lock")
+    pin_files |= discover(".python-version")
     for rel in sorted(pin_files - registered):
         errors.append(f"pin location {rel!r} exists in repo but is not registered")
 
