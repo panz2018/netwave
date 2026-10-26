@@ -1,9 +1,9 @@
 # Proposal
 
-> **⏸ 暂停实施**：升级治理机制（过期检查门禁化、bug 版本黑名单、登记表分工、
+> **⏸ 暂停实施**：升级治理机制（过期检查门禁化、登记表分工、
 > `paired_with` 版本相容校验）尚未拍板，机制未定则升级无法有效执行——
 > 详见 [tasks.md](tasks.md) 顶部说明与
-> [Plan/测试规划.md 待议节](../../../Plan/测试规划.md#待议过期检查升级为-ci-门禁--bug-版本黑名单--配对版本校验)。
+> [Plan/测试规划.md 待议节](../../../Plan/测试规划.md#待议过期检查门禁化--配对版本校验)。
 
 ## Why
 
@@ -37,7 +37,7 @@ Python 3.15 已于 2026-10-09 发布为稳定版，且本项目所需库全部�
 
 ### Modified Capabilities
 
-（无。版本数字的真相源是登记表 `scripts/version_pins.json` 与清单文件，
+（无。版本数字的真相源是登记表 `scripts/versions.json` 与清单文件，
 改数字不是 spec 级行为变化；`ci-matrix`/`workspace-layout` 的数字单源化由
 `add-dependency-upgrade-spec` 完成。本 change 声明 `skip_specs: true`；
 若实施时发现主 spec 仍有残留数字（change 1 未归档所致），当场补 delta。）
@@ -47,7 +47,7 @@ Python 3.15 已于 2026-10-09 发布为稳定版，且本项目所需库全部�
 - 代码：`python/src/lib.rs`（pyo3 0.30 API 适配）、`python/Cargo.toml`
   （pyo3/numpy/pyo3-stub-gen 版本）、`python/netwave/`（如 stub 再生成有差异）。
 - 配置：`python/.python-version`、`python/pyproject.toml`、`python/uv.lock`、
-  `oracle/` uv 环境 lock、`scripts/version_pins.json`、`.github/workflows/ci.yml`
+  `oracle/` uv 环境 lock、`scripts/versions.json`、`.github/workflows/ci.yml`
   （python 矩阵格）。
 - 验证：`cargo test --workspace`、pytest、`pnpm check`、`pnpm check:cross`
   （四端对拍数值不变，铁律三容差不变）。

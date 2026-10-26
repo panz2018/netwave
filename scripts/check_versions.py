@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Version-pin registry reconciliation gate.
+"""Version registry reconciliation gate.
 
-Single source of truth: scripts/version_pins.json. Two-way check: every
+Single source of truth: scripts/versions.json. Two-way check: every
 registry entry points at a real pin location, and every mechanically
 discoverable pin location in the repo appears in the registry. Consistency
 rules (drift like a manual rust-toolchain bump leaving stale rust-version
@@ -14,7 +14,8 @@ in DISCOVERED_RULES below, so the registry never hand-copies file lists).
 
 Checks:
   1. Entry structure: name / category (known enum) / pin_location /
-     upgrade_method / paired_with.
+     upgrade_method / paired_with / blocked (optional known-bad list:
+     exact version + reason, optional issue; ci-actions unsupported).
   2. pin_location existence: repo paths exist; `machine:` entries are
      registration-only; `discovered:` rule names are known.
   3. MSRV: every workspace member (root Cargo.toml `members`) carries
@@ -33,7 +34,7 @@ Checks:
 This gate checks registration and consistency only. Whether a pin is the
 latest version is the job of scripts/check_outdated.py (manual, networked).
 
-Usage: python3 scripts/check_version_pins.py
+Usage: python3 scripts/check_versions.py
 """
 
 import json
@@ -44,10 +45,13 @@ from pathlib import Path
 import tomllib
 
 ROOT = Path(__file__).resolve().parent.parent
-REGISTRY = ROOT / "scripts" / "version_pins.json"
+REGISTRY = ROOT / "scripts" / "versions.json"
 SKIP_DIRS = ("target", "target-wasm", "node_modules", ".venv", ".git", "dist", "coverage")
 
 REQUIRED_FIELDS = ("name", "category", "pin_location", "upgrade_method", "paired_with")
+
+# blocked entries name exact versions only; ranges/wildcards/major-only rejected.
+EXACT_VERSION = re.compile(r"\d+(\.\d+){1,2}(?:[-+][0-9A-Za-z.-]+)?")
 
 
 def locations(entry):
@@ -101,6 +105,51 @@ def discovered_locations(pins):
     return covered
 
 
+def current_values(e):
+    """(source, value) pairs of the current pin values an entry pins, limited
+    to what the offline gate can read from repo files (no machine probes):
+    rust-toolchain channel, packageManager, .python-version, CI python matrix
+    cells, discovered workspace-member MSRVs. Entries whose pinned value lives
+    on the machine or in a lockfile yield nothing here."""
+    out = []
+    for loc in locations(e):
+        if loc.startswith("machine:") or loc.startswith("discovered:"):
+            continue
+        path = ROOT / loc
+        if not path.exists():
+            continue
+        field = e.get("field")
+        if field == "packageManager":
+            pm = json.loads(path.read_text(encoding="utf-8")).get("packageManager", "")
+            if "@" in pm:
+                out.append((loc, pm.split("@", 1)[1]))
+        elif loc.endswith(".python-version"):
+            out.append((loc, path.read_text(encoding="utf-8").strip()))
+        elif loc.endswith("rust-toolchain.toml"):
+            ch = tomllib.loads(path.read_text(encoding="utf-8")).get("toolchain", {}).get("channel")
+            if ch:
+                out.append((loc, ch))
+        elif e["category"] == "lang-matrix" and loc.endswith(".yml"):
+            text = path.read_text(encoding="utf-8")
+            out.extend((loc, v) for v in re.findall(r'python-version:\s*"?(\d+(?:\.\d+)?)"?', text))
+            out.extend((loc, v) for v in re.findall(r'node-version:\s*"?(\d+(?:\.\d+)?)"?', text))
+            # full-pin action tags (v10.2.0, not major-only v7) are readable too
+            for tag in re.findall(r"uses:\s*\S+@v(\d+\.\d+(?:\.\d+)?)\b", text):
+                out.append((loc, tag))
+    if any(loc.startswith("discovered:") for loc in locations(e)):
+        for rel in workspace_members():
+            p = ROOT / rel
+            if p.exists():
+                rv = (
+                    tomllib.loads(p.read_text(encoding="utf-8"))
+                    .get("package", {})
+                    .get("rust-version")
+                )
+                if rv:
+                    out.append((rel, rv))
+    return list(dict.fromkeys(out))
+
+
 def main() -> int:
     errors = []
     reg = json.loads(REGISTRY.read_text(encoding="utf-8"))
@@ -118,11 +167,54 @@ def main() -> int:
             errors.append(f"{e['name']}: unknown category {e['category']!r}")
         if not isinstance(e["paired_with"], list):
             errors.append(f"{e['name']}: paired_with must be a list")
+        if "blocked" in e:
+            if e["category"] == "ci-actions":
+                errors.append(f"{e['name']}: category ci-actions does not support blocked")
+            if not isinstance(e["blocked"], list):
+                errors.append(f"{e['name']}: blocked must be a list")
+            else:
+                for b in e["blocked"]:
+                    if not isinstance(b, dict):
+                        errors.append(f"{e['name']}: blocked entry must be an object, got {b!r}")
+                        continue
+                    if not b.get("reason"):
+                        errors.append(
+                            f"{e['name']}: blocked entry {b.get('version')!r} missing reason"
+                        )
+                    if "issue" in b and not isinstance(b["issue"], str):
+                        errors.append(
+                            f"{e['name']}: blocked {b.get('version')!r}: issue must be a string"
+                        )
+                    v = b.get("version")
+                    if not isinstance(v, str) or not EXACT_VERSION.fullmatch(v):
+                        errors.append(
+                            f"{e['name']}: blocked version {v!r} must be an exact version "
+                            "(ranges/wildcards rejected)"
+                        )
         names.add(e["name"])
     for e in pins:
         for p in e.get("paired_with", []):
             if p not in names:
                 errors.append(f"{e['name']}: paired_with references unknown entry {p!r}")
+
+    # 1b. blocked blacklist: a current pin value readable from repo files must
+    # not sit on a known-bad version. `machine:` entries are skipped here (the
+    # gate runs offline; check_outdated.py probes installed versions instead).
+    for e in pins:
+        blocked = e.get("blocked") or []
+        if not blocked or e["category"] == "ci-actions":
+            continue
+        bad = {
+            b["version"]: b.get("reason", "")
+            for b in blocked
+            if isinstance(b, dict) and b.get("version")
+        }
+        for src, val in current_values(e):
+            if val in bad:
+                errors.append(
+                    f"{e['name']}: {src} pins {val}, a blocked version"
+                    + (f" ({bad[val]})" if bad[val] else "")
+                )
 
     # 2. pin_location existence: repo paths must exist; `machine:` entries are
     # registration-only; `discovered:` rule names must be known.
@@ -201,7 +293,7 @@ def main() -> int:
             print(f"::error::{err}", file=sys.stderr)
         return 1
     print(
-        f"version-pin registry OK: {len(pins)} entries, "
+        f"version registry OK: {len(pins)} entries, "
         f"{len(msrvs)} workspace members consistent "
         f"(rust-version {next(iter(msrvs.values()))}, pin {pin_ch})"
     )

@@ -1,5 +1,5 @@
 {
-  "$comment": "Single source of truth for every version pin in this repo. Spec: openspec/specs/dependency-upgrade/spec.md. Prose docs must not copy these numbers. Checked by scripts/check_version_pins.py (wired into pnpm check:meta); freshness by scripts/check_outdated.py (pnpm check:outdated, manual).",
+  "$comment": "Single source of truth for every version pin in this repo, including known-bad version blacklists (`blocked`). Spec: openspec/specs/dependency-upgrade/spec.md. Prose docs must not copy these numbers. Checked by scripts/check_versions.py (wired into pnpm check:meta); freshness by scripts/check_outdated.py (pnpm check:outdated, manual).",
   "categories": [
     "toolchain",
     "msrv",

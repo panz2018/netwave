@@ -5,13 +5,12 @@
 >
 > 1. **过期检查门禁化**——哪些该升、哪些不该升尚无机器判定（选线判断仍靠人工，
 >    无法在闸门里区分"例行刷新"与"须走 change 的结构升级"）；
-> 2. **bug 版本黑名单**——最新版带 bug 时如何降级、如何豁免门禁，没有执行策略；
-> 3. **登记表分工**——`version_pins.json` 与发现式扫描的边界未确认，登记表如何
+> 2. **登记表分工**——`versions.json` 与发现式扫描的边界未确认，登记表如何
 >    使用未定案；
-> 4. **`paired_with` 版本相容校验**——当前闸门只验配对名存在、不验版本相容，
+> 3. **`paired_with` 版本相容校验**——当前闸门只验配对名存在、不验版本相容，
 >    拦不住 pyo3↔numpy 这类配对漂移，升级联动无兜底。
 >
-> 四项见 [Plan/测试规划.md 待议节](../../../Plan/测试规划.md#待议过期检查升级为-ci-门禁--bug-版本黑名单--配对版本校验)，
+> 三项见 [Plan/测试规划.md 待议节](../../../Plan/测试规划.md#待议过期检查门禁化--配对版本校验)，
 > 须先专门拍板并落成机制（闸门规则/登记表字段），再恢复本 change。
 > 另：tasks 3.1 / 4.1 假设 oracle uv 环境已存在可"重建"，实际尚未建成，
 > 恢复时一并修正。
@@ -49,9 +48,9 @@
 
 ## 4. 配置与文档同步
 
-- [ ] 4.1 `python/.python-version` 改 3.15；`scripts/version_pins.json` 更新
+- [ ] 4.1 `python/.python-version` 改 3.15；`scripts/versions.json` 更新
       Python 相关条目（运行时、矩阵、oracle 环境）。验证：
-      `python3 scripts/check_version_pins.py` 全绿。
+      `python3 scripts/check_versions.py` 全绿。
 - [ ] 4.2 `.github/workflows/ci.yml` python 矩阵最新格 3.14→3.15（底线 3.10
       不变；runner 无预装则显式 `uv python install 3.15`）。验证：
       本地按 LL-004 模拟两格命令均通过。
