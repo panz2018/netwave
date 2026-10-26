@@ -49,7 +49,7 @@ CI MUST 运行 criterion 基准 job（在真实基准落地前允许空基准/�
 - **语言版本轴**（主 runner ubuntu 上跑底线 + 最新两格）：python job 跑
   Python 底线版与最新稳定版两格；node job 跑 Node 底线 LTS 与最新 LTS 两格。
   具体版本号 MUST 取自 `dependency-upgrade` spec 的钉死点登记表
-  （`scripts/version_pins.json`），本 spec 不写死数字。
+  （`scripts/versions.json`），本 spec 不写死数字。
 - **硬件平台轴**（各 OS 跑最新语言版本，验平台 ABI 而非版本 spread）：
   python/node job 另在 windows-latest 与 macos-latest 各跑最新一格，
   验证 `.so`/`.pyd`/`.dylib`/`.node` addon 与零拷贝 base object 的平台 ABI。
