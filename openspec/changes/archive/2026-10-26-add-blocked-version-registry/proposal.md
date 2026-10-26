@@ -63,7 +63,7 @@ bug 知识与检查脚本之间没有机器可读的连接。本 change 把坏�
 ## Non-goals
 
 - 不做过期检查 CI 门禁、定时机器人（待议问题，留
-  [测试规划·待议](../../../Plan/测试规划.md)）；机器人"不得提议 blocked 版本"
+  [测试规划·待议](../../../../Plan/测试规划.md)）；机器人"不得提议 blocked 版本"
   仅作备查要求写入规划，本 change 不实现任何自动化。
 - 不做 `paired_with` 版本相容校验与 `constraint` 字段（待议问题，另 change）。
 - 不改 lockfile 段的黑名单行为（过滤 lockfile = 重造 resolver；lockfile 内坏版本
