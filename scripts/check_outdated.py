@@ -14,6 +14,12 @@ Four segments, per the dependency-upgrade spec:
   4. CI actions: `uses:` tags in .github/workflows vs latest release tag.
 
 A failing segment degrades to a warning and never aborts the rest.
+The registry's `blocked` lists (scripts/versions.json) are applied to the
+enumerable segments (global CLIs, tarball tools, cargo subcommands, CI
+action tags, python runtime pins): a blocked latest falls back to the next
+available version, or reports "no known good target". Lockfile segments
+(pnpm / cargo / uv dry-run) are left untouched — ecosystem mechanisms
+(overrides, advisories, exclusions) handle versions inside lockfiles.
 Usage: python3 scripts/check_outdated.py   (pnpm check:outdated)
 """
 
@@ -23,12 +29,57 @@ import re
 import subprocess
 import sys
 import urllib.request
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent
+REGISTRY = ROOT / "scripts" / "versions.json"
+
+# One registry entry from versions.json `pins` (heterogeneous JSON fields).
+Pin = dict[str, Any]
+# entry name -> (version -> reason, machine-pinned flag), read from `blocked`.
+BlockedMap = dict[str, tuple[dict[str, str], bool]]
 
 
-def _req(url):
+def locations(entry: Pin) -> list[str]:
+    loc = entry["pin_location"]
+    return loc if isinstance(loc, list) else [loc]
+
+
+# probe name (what this script measures) -> registry entry whose `blocked`
+# list applies. Repo-file pins (packageManager, .python-version cells) are
+# consumed by the offline gate instead; `rustc` has no registry entry.
+PROBE_TO_ENTRY: dict[str, str] = {
+    "node": "node-global",
+    "npm": "npm-global",
+    "pnpm": "pnpm",
+    "uv": "uv-global",
+    "rustup": "rustup-global",
+    "openspec": "openspec-global",
+    "markdownlint-cli2": "markdownlint-cli2-global",
+    "wasm-pack": "wasm-pack",
+    "binaryen (wasm-opt)": "binaryen",
+    "cargo-llvm-cov": "cargo-llvm-cov",
+}
+
+
+def load_blocked() -> BlockedMap:
+    """entry name -> ({version: reason}, machine-pinned) from `blocked` fields."""
+    reg = json.loads(REGISTRY.read_text(encoding="utf-8"))
+    out: BlockedMap = {}
+    for e in reg["pins"]:
+        bad: dict[str, str] = {}
+        for b in e.get("blocked", []):
+            if isinstance(b, dict) and b.get("version"):
+                bad[str(b["version"]).lstrip("v")] = b.get("reason", "")
+        if bad:
+            machine = any(str(loc).startswith("machine:") for loc in locations(e))
+            out[e["name"]] = (bad, machine)
+    return out
+
+
+def _req(url: str) -> Any:
     req = urllib.request.Request(url)
     tok = os.environ.get("GITHUB_TOKEN")
     if tok and "api.github.com" in url:
@@ -38,7 +89,7 @@ def _req(url):
         return json.load(r)
 
 
-def run(cmd):
+def run(cmd: str) -> tuple[int, str]:
     try:
         p = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=300, cwd=ROOT)
         return p.returncode, (p.stdout + p.stderr).strip()
@@ -46,7 +97,7 @@ def run(cmd):
         return 125, str(e)
 
 
-def first_line(text):
+def first_line(text: str) -> str:
     """First non-empty line of a `--version` output (version lives on line 1
     for rustup/markdownlint multi-line banners)."""
     for ln in text.splitlines():
@@ -55,17 +106,65 @@ def first_line(text):
     return "?"
 
 
-def _semver(tag):
+def _semver(tag: str) -> tuple[int, ...]:
     """Parse a `vX.Y.Z`-style tag into an int tuple for comparison."""
     nums = re.findall(r"\d+", tag)
     return tuple(int(n) for n in nums[:3]) + (0,) * (3 - len(nums[:3]))
 
 
-def seg(title):
+def pick_target(cands: list[str], bad: dict[str, str]) -> str | None:
+    """Newest candidate (already semver-sorted desc) not in the blocked set."""
+    for v in cands:
+        if v not in bad:
+            return v
+    return None
+
+
+def npm_versions(pkg: str) -> list[str]:
+    vs = [v for v in _req(f"https://registry.npmjs.org/{pkg}")["versions"] if "-" not in v]
+    return sorted(vs, key=_semver, reverse=True)
+
+
+def gh_tags(repo: str) -> list[str]:
+    tags = _req(f"https://api.github.com/repos/{repo}/tags")
+    vs = [t["name"].lstrip("v") for t in tags if re.fullmatch(r"v?\d+(\.\d+)*", t["name"])]
+    return sorted(vs, key=_semver, reverse=True)
+
+
+def blocked_target(
+    blocked: BlockedMap, entry: str, latest: str, cands_fn: Callable[[], list[str]]
+) -> tuple[str, str]:
+    """If `latest` is blocked for `entry`, return (next-good-or-latest, note);
+    otherwise (latest, ''). When every candidate is blocked the original
+    `latest` is kept so the lag comparison still runs — the note says
+    'no known good target'. `cands_fn()` lists all available versions, semver
+    desc, and is only called when the latest is actually blocked."""
+    bad = blocked.get(entry, (None,))[0]
+    if not bad or latest.lstrip("v") not in bad:
+        return latest, ""
+    t = pick_target(cands_fn(), bad)
+    note = f"  [latest {latest} blocked: {bad[latest.lstrip('v')]}]"
+    if t:
+        note += f" -> target {t}"
+        return t, note
+    note += " -> no known good target"
+    return latest, note
+
+
+def seg(title: str) -> None:
     print(f"\n=== {title} ===")
 
 
 def main() -> int:
+    blocked = load_blocked()
+    consumed = set(PROBE_TO_ENTRY.values()) | {"python-runtime"}
+    for entry, (bad, machine) in sorted(blocked.items()):
+        if machine and entry not in consumed:
+            print(
+                f"warning: blocked entry {entry!r} is machine-pinned but maps to no "
+                f"probe here ({len(bad)} version(s) unconsumed) — check PROBE_TO_ENTRY"
+            )
+
     # 1. project dependencies
     seg("1. project dependencies")
     # every uv project in the repo (python/, oracle/golden/, ...) — discovery
@@ -85,9 +184,17 @@ def main() -> int:
         print(out if out else "(no output)")
 
     # every runtime pin in the repo (.python-version): single-line runtime ->
-    # latest stable minor (dependency-upgrade spec line rule)
+    # latest stable minor (dependency-upgrade spec line rule); blocked latest
+    # falls back to the next available cycle
     try:
-        latest_py = _req("https://endoflife.date/api/python.json")[0]["cycle"]
+        py_data = _req("https://endoflife.date/api/python.json")
+        latest_py = str(py_data[0]["cycle"])
+        latest_py, note = blocked_target(
+            blocked,
+            "python-runtime",
+            latest_py,
+            lambda: sorted((str(c["cycle"]) for c in py_data), key=_semver, reverse=True),
+        )
         for pv in sorted(ROOT.glob("**/.python-version")):
             if any(part in skip for part in pv.parts):
                 continue
@@ -95,7 +202,7 @@ def main() -> int:
             mark = "LAG" if _semver(pyver) < _semver(latest_py) else "OK"
             print(
                 f"python pin {str(pv.relative_to(ROOT)):18s} {pyver:8s} "
-                f"latest stable minor: {latest_py} {mark}"
+                f"latest stable minor: {latest_py} {mark}{note}"
             )
     except Exception as e:  # noqa: BLE001
         print(f"python runtime pins: WARN ({e})")
@@ -149,7 +256,28 @@ def main() -> int:
                     ),
                     latest,
                 )
-            print(f"{name:18s} installed: {installed:28s} latest: {latest}")
+                cands_fn = lambda d=dist: sorted(  # noqa: E731
+                    (d2["version"].lstrip("v") for d2 in d), key=_semver, reverse=True
+                )
+            elif source[0] == "npm":
+                cands_fn = lambda src=source: npm_versions(src[1])  # noqa: E731
+            elif source[0] in ("github", "github-tags"):
+                cands_fn = lambda src=source: gh_tags(src[1])  # noqa: E731
+            elif source[0] == "endoflife":  # cycles list; LTS filter for lts lines
+                cands_fn = lambda src=source: sorted(  # noqa: E731
+                    (
+                        str(c["cycle"])
+                        for c in _req(f"https://endoflife.date/api/{src[1]}.json")
+                        if src[2] != "lts" or c.get("lts")
+                    ),
+                    key=_semver,
+                    reverse=True,
+                )
+            else:
+                raise ValueError(f"unknown latest-source kind {source[0]!r}")
+            entry = PROBE_TO_ENTRY.get(name, name)
+            latest, note = blocked_target(blocked, entry, latest, cands_fn)
+            print(f"{name:18s} installed: {installed:28s} latest: {latest}{note}")
         except Exception as e:  # noqa: BLE001
             print(f"{name:18s} installed: {installed:28s} latest: WARN ({e})")
 
@@ -164,13 +292,16 @@ def main() -> int:
         installed = first_line(installed)
         try:
             latest = _req(f"https://api.github.com/repos/{repo}/releases/latest")["tag_name"]
-            print(f"{name:22s} installed: {installed:28s} latest: {latest}")
+            latest, note = blocked_target(
+                blocked, PROBE_TO_ENTRY.get(name, name), latest, lambda r=repo: gh_tags(r)
+            )
+            print(f"{name:22s} installed: {installed:28s} latest: {latest}{note}")
         except Exception as e:  # noqa: BLE001
             print(f"{name:22s} installed: {installed:28s} latest: WARN ({e})")
 
     # 4. CI actions
     seg("4. CI actions (uses: tag vs latest release)")
-    uses = set()
+    uses: set[tuple[str, str]] = set()
     for wf in (ROOT / ".github" / "workflows").glob("*.yml"):
         for line in wf.read_text(encoding="utf-8").splitlines():
             m = re.search(r"uses:\s*([\w./-]+)@([\w.\-]+)", line)
@@ -188,6 +319,10 @@ def main() -> int:
             continue
         try:
             latest = _req(f"https://api.github.com/repos/{repo}/releases/latest")["tag_name"]
+            # blocked lookup keyed by action repo path; the registry has no
+            # action-level entries yet (ci-actions does not support blocked),
+            # so this is inert until such entries are designed.
+            latest, note = blocked_target(blocked, repo, latest, lambda r=repo: gh_tags(r))
             # A major-only tag (v7, v6) auto-tracks the newest release in that
             # major, so only a major bump is a lag. A full/partial pin
             # (v10.2.0, v0.0.11) is compared against the exact latest.
@@ -196,7 +331,7 @@ def main() -> int:
                 mark = "LAG" if _semver(tag)[0] < _semver(latest)[0] else "OK"
             else:
                 mark = "LAG" if _semver(tag) < _semver(latest) else "OK"
-            print(f"{repo}@{tag:12s} latest: {latest:12s} {mark}")
+            print(f"{repo}@{tag:12s} latest: {latest:12s} {mark}{note}")
         except Exception as e:  # noqa: BLE001
             print(f"{repo}@{tag:12s} latest: WARN ({e})")
 

@@ -40,7 +40,9 @@ Usage: python3 scripts/check_versions.py
 import json
 import re
 import sys
+from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
 import tomllib
 
@@ -53,19 +55,22 @@ REQUIRED_FIELDS = ("name", "category", "pin_location", "upgrade_method", "paired
 # blocked entries name exact versions only; ranges/wildcards/major-only rejected.
 EXACT_VERSION = re.compile(r"\d+(\.\d+){1,2}(?:[-+][0-9A-Za-z.-]+)?")
 
+# One registry entry from versions.json `pins` (heterogeneous JSON fields).
+Pin = dict[str, Any]
 
-def locations(entry):
+
+def locations(entry: Pin) -> list[str]:
     loc = entry["pin_location"]
     return loc if isinstance(loc, list) else [loc]
 
 
-def parse_ver(s):
+def parse_ver(s: str) -> tuple[int, ...]:
     return tuple(int(x) for x in re.match(r"(\d+)\.(\d+)(?:\.(\d+))?", s).groups() if x)
 
 
-def discover(fname, cond=lambda t: True):
+def discover(fname: str, cond: Callable[[str], bool] = lambda t: True) -> set[str]:
     """Repo-relative paths of files named `fname` whose content matches cond."""
-    found = set()
+    found: set[str] = set()
     for f in ROOT.rglob(fname):
         if any(part in SKIP_DIRS for part in f.parts):
             continue
@@ -74,7 +79,7 @@ def discover(fname, cond=lambda t: True):
     return found
 
 
-def has_rust_version(text):
+def has_rust_version(text: str) -> bool:
     """True if the TOML declares [package] rust-version (parsed, not substring,
     so comments mentioning it do not count as pin locations)."""
     try:
@@ -84,7 +89,7 @@ def has_rust_version(text):
     return "rust-version" in doc.get("package", {})
 
 
-def workspace_members():
+def workspace_members() -> list[str]:
     """Repo-relative Cargo.toml paths of the members listed in the root
     Cargo.toml `members` — the authoritative list of subprojects."""
     doc = tomllib.loads((ROOT / "Cargo.toml").read_text(encoding="utf-8"))
@@ -92,12 +97,12 @@ def workspace_members():
 
 
 # `discovered:<rule>` in pin_location resolves through this table.
-DISCOVERED_RULES = {"workspace-members": workspace_members}
+DISCOVERED_RULES: dict[str, Callable[[], list[str]]] = {"workspace-members": workspace_members}
 
 
-def discovered_locations(pins):
+def discovered_locations(pins: list[Pin]) -> set[str]:
     """Repo-relative pin locations covered by `discovered:` rules in the registry."""
-    covered = set()
+    covered: set[str] = set()
     for e in pins:
         for loc in locations(e):
             if loc.startswith("discovered:"):
@@ -105,13 +110,13 @@ def discovered_locations(pins):
     return covered
 
 
-def current_values(e):
+def current_values(e: Pin) -> list[tuple[str, str]]:
     """(source, value) pairs of the current pin values an entry pins, limited
     to what the offline gate can read from repo files (no machine probes):
     rust-toolchain channel, packageManager, .python-version, CI python matrix
     cells, discovered workspace-member MSRVs. Entries whose pinned value lives
     on the machine or in a lockfile yield nothing here."""
-    out = []
+    out: list[tuple[str, str]] = []
     for loc in locations(e):
         if loc.startswith("machine:") or loc.startswith("discovered:"):
             continue
@@ -233,7 +238,7 @@ def main() -> int:
     # so deleting the field cannot silently escape); all values equal, and
     # none above the rust-toolchain pin.
     members = workspace_members()
-    msrvs = {}
+    msrvs: dict[str, str] = {}
     for rel in members:
         path = ROOT / rel
         if not path.exists():
@@ -257,7 +262,7 @@ def main() -> int:
                 errors.append(f"{rel}: rust-version {v} above rust-toolchain pin {pin_ch}")
 
     # 4. packageManager exact and equal across the repo
-    pms = {}
+    pms: dict[str, str] = {}
     for rel in sorted(discover("package.json", lambda t: '"packageManager"' in t)):
         pm = json.loads((ROOT / rel).read_text(encoding="utf-8")).get("packageManager", "")
         if not re.fullmatch(r"pnpm@\d+\.\d+\.\d+", pm):
