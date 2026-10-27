@@ -1,35 +1,14 @@
-# scripts/ 治理：独立 uv 项目、单元测试、命名与升级（待议）
+# scripts/ 治理：单元测试、命名与升级（待议）
 
-`scripts/` 现在有 13 个 py 闸门 + 2 个 sh 安装脚本 + 登记表，黑名单落地后
-复杂度又上一台阶。四个关联问题尚未拍板，将来专门讨论后按结论开 OpenSpec
-change。本文件只存正反双方论点与待决点，不预设结论。
+`scripts/` 现在有 10 个平铺 py 闸门 + 2 个 sh 安装脚本 + `versions/` 包，
+黑名单落地后复杂度又上一台阶。三个关联问题尚未拍板，将来专门讨论后按结论
+开 OpenSpec change。本文件只存正反双方论点与待决点，不预设结论。
 
-## 问题一：要不要独立成 uv 项目
-
-**正方（划入独立 uv 项目）**：
-
-- scripts 已有近 1500 行 Python，且闸门是"守门员"，守门员自己没测试体系
-  （无 pytest、无覆盖率、无依赖声明），与 `python/` 工程的待遇不对等；
-- 独立 `pyproject.toml` 后，pytest/ruff/coverage 依赖自己声明自己锁，
-  不再寄居 `python/` 的 dev 组，`uv run --project scripts` 一条命令跑全套；
-- 目录自治：scripts 的 lint、测试、覆盖率门槛可单独配置，不与绑定工程
-  （maturin/pyo3）的构建关注点混在一起。
-
-**反方（维持现状，寄居 `python/` 的 uv 环境）**：
-
-- 这些脚本**零第三方依赖**（纯标准库），uv 最大的价值（锁依赖）用不上；
-- `python/` 已在管它们：`check:py` 即
-  `uv run --project python ruff check python/ scripts/`，测试环境（pytest、
-  pytest-cov）也已在 `python/` dev 组，缺的只是测试文件本身；
-- 新建 uv 项目 = 新增 `uv.lock` + `.python-version` 两个钉版点 → 登记表
-  条目、CI job、体检覆盖、workspace-layout spec 全波及，属结构性升级；
-  为"整齐"付这个代价不值；
-- 仓库惯例是"一个子项目一个 README + 一个 uv 工程"，scripts 不是发布物
-  （scripts/README 明说 "Not part of any published package"），
-  工程化到发布级是过度设计。
-
-**待决点**：若独立，CI 是否加 job、登记表加几条、`check:py` 拆不拆；
-若不独立，测试放 `scripts/tests/` 还是 `python/tests/scripts/`。
+已拍板不再讨论：独立 uv 工程——仓库根 `pyproject.toml`（private，
+dev 组 pytest/pytest-cov/ruff）已建，契约见
+[workspace-layout 根级 Python 工具环境](../openspec/specs/workspace-layout/spec.md)；
+版本域已收进 `scripts/versions/`，拆包后续见
+[scripts-versions 拆包计划](scripts-versions包化.md)。
 
 ## 问题二：要不要单元测试 + 覆盖率 100%
 
@@ -92,14 +71,10 @@ change。本文件只存正反双方论点与待决点，不预设结论。
 六闸门顺序）是否需要显式声明与对账；脚本内硬编码的 URL/正则（如
 endoflife cycle、npm dist-tag）有无"过期"概念需要体检。
 
-## 落地形态（四问合并）
+## 落地形态（三问合并）
 
-改动触及 workspace-layout spec（目录结构）、ci-matrix spec（若加 CI job）、
-dependency-upgrade spec（若加钉版点）、根 package.json 命令面——属结构性
-升级，MUST 单独开 OpenSpec change（暂名 `add-scripts-test-harness`，
-命名本身也是待议产物，不作数），待四问拍板后 propose。
+改动触及 ci-matrix spec（若加 CI job）、dependency-upgrade spec（若加钉版点）、
+根 package.json 命令面——属结构性升级，MUST 单独开 OpenSpec change
+（命名 propose 时再定），待三问拍板后 propose。
 
-**部分已拍板**：版本域（登记表 + check_versions/check_outdated）收进
-`scripts/versions/` 包、scripts 建 uv 工程、lib 与门面分离、附 README——
-结构与步骤已定稿，见[scripts-versions 包化计划](scripts-versions包化.md)；
-其余闸门是否按同模式收编、改名（问题三）仍待议。
+其余闸门是否按 `versions/` 同模式收编、改名（问题三）仍待议。

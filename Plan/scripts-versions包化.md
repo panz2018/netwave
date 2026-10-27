@@ -1,10 +1,9 @@
-# scripts/versions 包化计划（第二步：拆模块 + 单测 + pairs）
+# scripts/versions 拆包计划（模块拆分 + 单测 + pairs）
 
-> 第一步（根 uv 工程 + 版本域三件套搬家）已由 OpenSpec change
-> `move-versions-into-uv-project` 落地：根新增 `pyproject.toml`、`uv.lock`、
-> `.python-version`，版本域三件套进 `scripts/versions/`（README、两门面、
-> `lib/registry.json`）。结构与决策见该 change 的 design
-> 与 `openspec/specs/`（sync 后）。本文只留**未执行**的第二步。
+> 骨架已就位：根 uv 工具工程 + `scripts/versions/`（README、两门面、
+> `lib/registry.json`），契约见 [workspace-layout](../openspec/specs/workspace-layout/spec.md)
+> 与 [dependency-upgrade](../openspec/specs/dependency-upgrade/spec.md)。
+> 本文只留**未执行**的拆包任务。
 > scripts 其余闸门的治理仍见 [scripts治理](scripts治理.md)（待议）。
 
 ## 目标结构（在已落地骨架上继续）
@@ -36,7 +35,7 @@ scripts/tests/
   `registry.py` 走，`Path(__file__)` 定位，不依赖 cwd。
 - **包名 `versions`、布局对齐 `python/netwave/` 平铺包惯例**（不引入
   `src/` 双层）；`lib` 不用 `core` 命名，避免与 Rust `core/` 串门。
-- 环境：仓库根 uv 工具工程（第一步已建），不另建 scripts 工程。
+- 环境：仓库根 uv 工具工程（已建），不另建 scripts 工程。
 
 ## 跑法（拆分后）
 
