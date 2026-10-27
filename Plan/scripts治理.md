@@ -97,6 +97,9 @@ endoflife cycle、npm dist-tag）有无"过期"概念需要体检。
 改动触及 workspace-layout spec（目录结构）、ci-matrix spec（若加 CI job）、
 dependency-upgrade spec（若加钉版点）、根 package.json 命令面——属结构性
 升级，MUST 单独开 OpenSpec change（暂名 `add-scripts-test-harness`，
-命名本身也是待议产物，不作数），待四问拍板后 propose。最小可执行切片：
-先只做问题二（纯逻辑单测 + 豁免标注 + pytest 接线），不动目录、不建
-uv 项目——测试体系立起来后，问题一/三的"要不要搬家"再议才有底气。
+命名本身也是待议产物，不作数），待四问拍板后 propose。
+
+**部分已拍板**：版本域（登记表 + check_versions/check_outdated）收进
+`scripts/versions/` 包、scripts 建 uv 工程、lib 与门面分离、附 README——
+结构与步骤已定稿，见[scripts-versions 包化计划](scripts-versions包化.md)；
+其余闸门是否按同模式收编、改名（问题三）仍待议。
