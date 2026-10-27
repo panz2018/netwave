@@ -81,3 +81,5 @@ scripts/tests/
 - **问题三**（scripts 改名）：与本计划无关，维持 `scripts/`。
 - **落地形态**：触及 dependency-upgrade spec 与根命令面，属结构性升级，
   MUST 开 OpenSpec change（名称 propose 时再定）后实施。
+- **与 [登记表重构](登记表重构.md) 的关系**：那份动 registry 的数据 schema，
+  本份动代码分层；倾向先定 schema 再拆包，避免拆完返工。
