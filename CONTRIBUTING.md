@@ -120,9 +120,9 @@ into docs.
 Upgrades are governed by the
 [dependency-upgrade spec](openspec/specs/dependency-upgrade/spec.md):
 strategy (latest stable, LTS lines), the pin registry
-[`scripts/versions.json`](scripts/versions.json) as the single source
+[`scripts/versions/lib/registry.json`](scripts/versions/lib/registry.json) as the single source
 of truth for where versions are pinned, the reconciliation gate
-(`scripts/check_versions.py`, wired into `pnpm check:meta`), the fixed
+(`scripts/versions/check_versions.py`, wired into `pnpm check:meta`), the fixed
 upgrade order, and the manual freshness check `pnpm check:outdated` (project
 deps + global CLIs + GitHub-tarball tools + CI actions). Machine-wide CLIs are
 checked and upgraded as part of that flow too. This section keeps no rules of
