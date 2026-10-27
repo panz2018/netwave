@@ -74,5 +74,6 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-066 | workflow   | rustup 无 GitHub Releases，查最新版用 tags API                      |
 | LL-067 | workflow   | 写规则前先查 governance 是否已有，禁就近塞进当前 change             |
 | LL-068 | workflow   | 可门禁化铁律必落 pnpm check；else 兜底 Python 门禁化防复发          |
+| LL-069 | python     | uv 删依赖后旧 .venv 残留旧二进制，以 uv.lock 为准，清理用 `--exact` |
 
 ---

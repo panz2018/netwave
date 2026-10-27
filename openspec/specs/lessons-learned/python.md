@@ -30,3 +30,13 @@
 - 规则：改 core 后先 `uv run --no-sync maturin develop`，再 `uv run --no-sync pytest`；`--no-sync` 阻断隐式 sync 回退
 - 缓存异常时全清重建：`rm -rf python/target`、`cargo clean -p netwave -p netwave-python`、`uv cache clean`；md5/大小对比 venv/.so vs target/debug vs target/release 定位陈旧产物（maturin wheel 走 release profile，debug 对不代表 release 对）
 - 复发检测：可门禁化——对拍前强制重建步骤；诊断口诀 `grep -ac <新符号> .so`
+
+### LL-069 uv 删依赖后旧 .venv 残留旧二进制
+
+- 犯过：`python/pyproject.toml` 删 ruff 并 `uv lock` 后，
+  `uv run --project python ruff` 仍报可用——lock 已无 ruff，旧 `.venv/bin/ruff`
+  还在（uv 默认不清理既有 venv 的多余包）
+- 规则：判断依赖是否移除以 `uv.lock` 为准，不信旧 venv；本地要清干净用
+  `uv sync --exact`，CI 新建 venv 天然干净
+- 附带：根目录 `uv run` 时若 shell 激活了 `python/.venv`，uv 警告
+  `VIRTUAL_ENV ... ignored` 属正常（就近工程解析），不是错误
