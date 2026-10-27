@@ -60,11 +60,13 @@ lessons-learned 只记非版本性的坑（工具行为变化、流程坑等）�
 
 ### Requirement: 钉死点登记表唯一真相源
 
-仓库全部版本钉死点 MUST 登记在机器可读登记表 `scripts/versions.json`，
+仓库全部版本钉死点 MUST 登记在机器可读登记表
+`scripts/versions/lib/registry.json`，
 它是"版本钉在哪"的唯一真相源；散文文档 MUST NOT 复制登记表内容。
 类别覆盖：Rust 工具链 pin 与 MSRV、CI 语言矩阵数字、包管理器 pin、
 lockfile、GitHub 压缩包直装工具（wasm-pack、binaryen）、cargo 子命令、
-全局 CLI 检查项、CI actions、Playwright 浏览器、oracle 环境 pin。
+全局 CLI 检查项、CI actions、Playwright 浏览器、oracle 环境 pin、
+根级 Python 工具环境 pin。
 
 #### Scenario: 登记条目结构完整
 
@@ -125,7 +127,7 @@ lockfile、GitHub 压缩包直装工具（wasm-pack、binaryen）、cargo 子命
 
 ### Requirement: 双向对账闸门
 
-`scripts/check_versions.py` MUST 双向对账登记表与真实文件：每个登记条目
+`scripts/versions/check_versions.py` MUST 双向对账登记表与真实文件：每个登记条目
 对应真实存在的钉版位置（`machine:` 条目只查登记存在；`discovered:` 条目的
 位置即发现规则本身）；仓库内每个钉版点都出现在登记表中；一致性规则
 （每个 workspace 成员 `Cargo.toml` 必须携带 `rust-version` 且全部彼此一致、
