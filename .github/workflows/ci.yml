@@ -49,6 +49,9 @@ jobs:
         # so it runs in the node job after both glues are built.
         run: |
           pnpm install
+          # Root uv tool env: pre-build it and assert uv.lock is fresh
+          # (drift vs pyproject.toml fails here, not inside check:py).
+          uv sync --locked
           pnpm check
 
   # Rust matrix: native platforms only (macOS only Apple Silicon, Intel x64

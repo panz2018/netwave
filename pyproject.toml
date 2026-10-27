@@ -1,0 +1,17 @@
+# Root tooling project for repo governance scripts (scripts/ gates and their
+# tests). Private: never published. Not a uv workspace member root — python/
+# stays an independent uv project so release-artifact dependencies remain
+# separate (uv resolves the nearest pyproject.toml upward from cwd).
+[project]
+name = "netwave-workspace"
+version = "0.0.0"
+description = "Repo governance tooling (version gates, checks)"
+requires-python = ">=3.14"
+license = "MIT OR Apache-2.0"
+dependencies = []
+
+[tool.uv]
+package = false
+
+[dependency-groups]
+dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.12"]

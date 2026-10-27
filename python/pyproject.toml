@@ -13,7 +13,7 @@ license = "MIT OR Apache-2.0"
 dependencies = ["numpy>=2.0"]
 
 [dependency-groups]
-dev = ["maturin>=1.7", "pytest>=8", "pytest-cov>=5", "ruff>=0.12"]
+dev = ["maturin>=1.7", "pytest>=8", "pytest-cov>=5"]
 
 [tool.maturin]
 features = ["pyo3/extension-module"]

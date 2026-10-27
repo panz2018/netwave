@@ -1,5 +1,5 @@
 {
-  "$comment": "Single source of truth for every version pin in this repo, including known-bad version blacklists (`blocked`). Spec: openspec/specs/dependency-upgrade/spec.md. Prose docs must not copy these numbers. Checked by scripts/check_versions.py (wired into pnpm check:meta); freshness by scripts/check_outdated.py (pnpm check:outdated, manual).",
+  "$comment": "Single source of truth for every version pin in this repo, including known-bad version blacklists (`blocked`). Spec: openspec/specs/dependency-upgrade/spec.md. Prose docs must not copy these numbers. Checked by scripts/versions/check_versions.py (wired into pnpm check:meta); freshness by scripts/versions/check_outdated.py (pnpm check:outdated, manual).",
   "categories": [
     "toolchain",
     "msrv",
@@ -56,7 +56,7 @@
       "name": "uv-lock",
       "category": "lockfile",
       "pin_location": "python/uv.lock",
-      "upgrade_method": "routine: uv lock --upgrade --project python (maturin/numpy/ruff/pytest dev group)",
+      "upgrade_method": "routine: uv lock --upgrade --project python (maturin/numpy/pytest dev group)",
       "paired_with": ["python-runtime"]
     },
     {
@@ -73,6 +73,28 @@
       "field": "project.requires-python",
       "upgrade_method": "raise floor only on an EOL-driven structural change; abi3 wheel coverage follows (abi3-py310 covers 3.10+)",
       "paired_with": ["python-runtime", "ci-python-matrix"]
+    },
+    {
+      "name": "root-python",
+      "category": "lang-matrix",
+      "pin_location": ".python-version",
+      "upgrade_method": "structural: keep equal to python/.python-version (root tooling env runs the same interpreter as the release project)",
+      "paired_with": ["python-runtime"]
+    },
+    {
+      "name": "root-requires",
+      "category": "lang-floor",
+      "pin_location": "pyproject.toml",
+      "field": "project.requires-python",
+      "upgrade_method": "raise floor together with root-python (structural); private tooling project, no consumer impact",
+      "paired_with": ["root-python"]
+    },
+    {
+      "name": "root-uv-lock",
+      "category": "lockfile",
+      "pin_location": "uv.lock",
+      "upgrade_method": "routine: uv lock --upgrade (pytest/pytest-cov/ruff dev group); CI asserts freshness via uv sync --locked",
+      "paired_with": ["root-python"]
     },
     {
       "name": "node-engines",

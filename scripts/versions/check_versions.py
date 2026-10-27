@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Version registry reconciliation gate.
 
-Single source of truth: scripts/versions.json. Two-way check: every
+Single source of truth: scripts/versions/lib/registry.json. Two-way check: every
 registry entry points at a real pin location, and every mechanically
 discoverable pin location in the repo appears in the registry. Consistency
 rules (drift like a manual rust-toolchain bump leaving stale rust-version
@@ -32,9 +32,9 @@ Checks:
      new subproject that forgets to register fails here.
 
 This gate checks registration and consistency only. Whether a pin is the
-latest version is the job of scripts/check_outdated.py (manual, networked).
+latest version is the job of scripts/versions/check_outdated.py (manual, networked).
 
-Usage: python3 scripts/check_versions.py
+Usage: python3 scripts/versions/check_versions.py
 """
 
 import json
@@ -46,8 +46,8 @@ from typing import Any
 
 import tomllib
 
-ROOT = Path(__file__).resolve().parent.parent
-REGISTRY = ROOT / "scripts" / "versions.json"
+ROOT = Path(__file__).resolve().parent.parent.parent
+REGISTRY = ROOT / "scripts" / "versions" / "lib" / "registry.json"
 SKIP_DIRS = ("target", "target-wasm", "node_modules", ".venv", ".git", "dist", "coverage")
 
 REQUIRED_FIELDS = ("name", "category", "pin_location", "upgrade_method", "paired_with")
@@ -55,7 +55,7 @@ REQUIRED_FIELDS = ("name", "category", "pin_location", "upgrade_method", "paired
 # blocked entries name exact versions only; ranges/wildcards/major-only rejected.
 EXACT_VERSION = re.compile(r"\d+(\.\d+){1,2}(?:[-+][0-9A-Za-z.-]+)?")
 
-# One registry entry from versions.json `pins` (heterogeneous JSON fields).
+# One registry entry from registry.json `pins` (heterogeneous JSON fields).
 Pin = dict[str, Any]
 
 

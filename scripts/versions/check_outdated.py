@@ -14,13 +14,13 @@ Four segments, per the dependency-upgrade spec:
   4. CI actions: `uses:` tags in .github/workflows vs latest release tag.
 
 A failing segment degrades to a warning and never aborts the rest.
-The registry's `blocked` lists (scripts/versions.json) are applied to the
+The registry's `blocked` lists (scripts/versions/lib/registry.json) are applied to the
 enumerable segments (global CLIs, tarball tools, cargo subcommands, CI
 action tags, python runtime pins): a blocked latest falls back to the next
 available version, or reports "no known good target". Lockfile segments
 (pnpm / cargo / uv dry-run) are left untouched — ecosystem mechanisms
 (overrides, advisories, exclusions) handle versions inside lockfiles.
-Usage: python3 scripts/check_outdated.py   (pnpm check:outdated)
+Usage: python3 scripts/versions/check_outdated.py   (pnpm check:outdated)
 """
 
 import json
@@ -33,10 +33,10 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parent.parent
-REGISTRY = ROOT / "scripts" / "versions.json"
+ROOT = Path(__file__).resolve().parent.parent.parent
+REGISTRY = ROOT / "scripts" / "versions" / "lib" / "registry.json"
 
-# One registry entry from versions.json `pins` (heterogeneous JSON fields).
+# One registry entry from registry.json `pins` (heterogeneous JSON fields).
 Pin = dict[str, Any]
 # entry name -> (version -> reason, machine-pinned flag), read from `blocked`.
 BlockedMap = dict[str, tuple[dict[str, str], bool]]
