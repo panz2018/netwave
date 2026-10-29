@@ -83,11 +83,8 @@
   [CONTRIBUTING.md](CONTRIBUTING.md)；`/opsx:*`
   命令会自动注入约束指针（[openspec/config.yaml](openspec/config.yaml)）
 
-## 文档语言与阅读入口
+## 文档阅读入口
 
-- **语言**：仅 `openspec/` 与 `Plan/`
-  用中文；其余一切（README、docs、代码注释、rustdoc、docstring、JSDoc、commit
-  message）用英文。
 - **动手前先读所在子项目的 README.md**：只含本目录编译/测试/部署命令；坑与实现细节唯一存于 lessons-learned 账本，README 不重述。- **参考第三方前先查账本许可表**（lessons-learned docs 分片）：GPL 源只读思想不开代码（宪法 知识产权合规）。- **作用域纪律**：子项目 README 只放**本目录作用域**的命令与细节；workspace/根级命令（如
   `cargo llvm-cov -p netwave`、markdownlint、链接校验）只放根文档——面向用户的放
   根 README，面向开发的（门禁命令、环境坑、文档地图）放根 CONTRIBUTING.md——
@@ -117,23 +114,9 @@
 - **只链相关**：只链接与本文主题直接相关的现存文档；禁止因历史原因保留指向已归档/已删除/无关文档的链接。
 - **代码块内不放链接**（不渲染）：块内注释写"见下方说明"，链接放块外正文。
 - **锚点 slug 规则**：标题转小写、空格→`-`、标点删除、中文保留。改标题或增删章节后，必须跑链接校验（Python 模拟 slug 规则，逐一验证文件存在 + 锚点匹配，断链当场暴露）。
-- **每次改动后必须跑 markdown 检查**：`pnpm check:md`（仓库根，退出码 0 才算
-  完成）。它聚合三项：markdownlint 内容规则（`.markdownlint.jsonc`）、Prettier
-  格式（`.prettierrc.json`，`proseWrap: preserve`——中文+行内代码下 `always`
-  会碎断）、`scripts/check_md.py` 链接+跨行 code span 校验
-  （纯标准库）。自动修复：`pnpm fix:md`。
-- **JS/TS/JSON 的 lint+format 归 Biome**（根 `biome.jsonc`），聚合为
-  `pnpm check:ts` / `pnpm fix:ts`；Markdown 归 Prettier；两者作用域不重叠。
-  `.claude/` 下的第三方生成文件不受本仓库格式约束，已在
-  `.markdownlint-cli2.jsonc` 中忽略。
-- **`tsc --noEmit` 类型门禁不进零构建闸门**：`src/` 壳 import `dist/` 的
-  生成绑定，类型门禁必须在 glue 构建后跑——本地 `pnpm build:wasm` +
-  `build:native` 后 `pnpm -C typescript typecheck`，CI 在 node job 双 glue
-  构建后跑。禁止为零构建环境造 glue 桩（桩=第二份 API 真相源，必漂移）。
-- **对称命令（根 package.json 为唯一定义处，本文只列名字）**：聚合
-  `check`/`fix`（跑全部语言）+ 按语言四组
-  `check:md`/`fix:md`、`check:ts`/`fix:ts`、`check:rs`/`fix:rs`、
-  `check:py`/`fix:py`——`check:` 只报告，`fix:` 会改文件；具体子命令与旗标
-  以根 `package.json` 的 `scripts` 为准，改命令只改那里。日常节奏：改完代码
-  `pnpm fix` → `pnpm check`；提交前 CI 跑的就是同一条 `pnpm check`。
+- **每次改动 Markdown 后必须跑 `pnpm check:md`**（仓库根，退出码 0 才算
+  完成）；自动修复 `pnpm fix:md`。各语言 lint/format 工具分工
+  （markdownlint/Prettier/Biome/ruff/clippy）、check/fix 对称命令与类型门禁
+  时序见 [CONTRIBUTING.md](CONTRIBUTING.md)；命令唯一定义处是根
+  `package.json`，改命令只改那里。
 - 历史文档（宪法修订历史）里的旧式引用**不改写**——历史记录保持原样。
