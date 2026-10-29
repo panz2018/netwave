@@ -5,7 +5,7 @@
 铁律七「覆盖率 100% 硬约束」里塞了 llvm-cov 的工具机制解释：`--codecov` 走
 cargo-llvm-cov 行合并器的 OR 语义、默认 `llvm-cov report` 按实例分别计数、
 "实测 `--codecov` 950/950=100%，同数据 `report` 恒差 6 行"。按
-[文档受众分层元规则](../../specs/project-governance/spec.md#requirement-元规则-文档受众分层)，
+[文档受众分层元规则](../../../specs/project-governance/spec.md#requirement-元规则-文档受众分层)，
 这类"工具行为 + 实测证据"属第③层事件级事实，MUST 只入 lessons-learned 账本；
 宪法只该留契约句与指针。
 
