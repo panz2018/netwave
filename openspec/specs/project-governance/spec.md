@@ -136,13 +136,9 @@ unit 层零豁免。唯一例外为结构性不可达代码（`unreachable!()`�
 `scripts/coverage_gate.py` 读 codecov.json 判 100% 地板
 ），绑定胶水由各自语言工具在自身 job 内度量
 （`pytest-cov --cov-fail-under=100`、vitest `lines/branches: 100`）。
-`--codecov` 走 cargo-llvm-cov 自带的行合并器：同一行在**任一**测试二进制
-（lib 单元测试或任一集成测试的静态链接实例）执行过即计为覆盖——行覆盖率
-的标准 OR 语义，与其他语言一致。默认 `llvm-cov report` 路径按实例分别
-计数，每个未执行的 inline 实例都独立计缺，会把仅由 lib 单元测试触达的
-防御分支在其集成测试副本中显示为未覆盖（实测：`--codecov` 950/950=100%，
-同数据 `report` 恒差 6 行）——MUST NOT 用默认 report 路径做 100% 闸门，
-也 MUST NOT 用 `--workspace` 把绑定 crate 的 core 副本并入 core 度量。
+MUST NOT 用 `llvm-cov report` 默认路径做 100% 闸门，也 MUST NOT 用
+`--workspace` 把绑定 crate 的 core 副本并入 core 度量。工具合并语义与
+实测证据属事件级事实，只存账本 `LL-057`，本 spec 不重述。
 
 #### Scenario: 未测代码即红
 
@@ -159,6 +155,12 @@ unit 层零豁免。唯一例外为结构性不可达代码（`unreachable!()`�
 - **WHEN** core 覆盖率经 `--workspace` 合并统计（绑定二进制内的 core 副本
   被重复计入）
 - **THEN** 该度量方式违规；改用 `-p netwave` 单 crate 度量
+
+#### Scenario: 工具机制解释不入宪法
+
+- **WHEN** 需要记录某覆盖率工具的行合并语义、计数口径或实测数字
+- **THEN** 写入 lessons-learned 账本对应 scope 分片，本 spec 只留契约句与
+  指向该 LL 的指针；同一事实不在两层同时出现正文
 
 ### Requirement: 铁律八 常驻 worker 数据权威与单点所有权
 
