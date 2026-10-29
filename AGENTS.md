@@ -103,6 +103,7 @@
 - 新改进想法一律先落 Plan/ 新 md，不在对话里口头遗留。
 - 复盘结论按类型归位：坑/纠正/实现决策 → lessons-learned 账本（对应 scope 分片+INDEX）；流程机制 → CONTRIBUTING（Development workflow）；硬约束 → governance spec。README 与子 README 不设"复盘/Gotchas"章节。
 - **文档地图（内容分配清单，增删只改本节）**：契约级决定→governance spec；行为准则+本地图→AGENTS.md；坑/纠正/实现决策→lessons-learned 账本；人类开发命令与目录 layout→CONTRIBUTING；本目录命令→子 README；用户视角→根 README；历史→git log（文档不留存）。
+- **改动要有去向**：常驻文档新增规则须附出处（LL 编号或 spec 指针）；删除/迁出须写明去向（账本/CONTRIBUTING/spec），内容不得蒸发——行数不是指标，禁止为凑行数删除。缺一在 review Standards 轴打回（LL-071）。
 
 ## 文档书写规范（改 Plan/ 或任何 Markdown 必须遵守）
 
