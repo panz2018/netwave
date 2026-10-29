@@ -75,5 +75,6 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-067 | workflow   | 写规则前先查 governance 是否已有，禁就近塞进当前 change             |
 | LL-068 | workflow   | 可门禁化铁律必落 pnpm check；else 兜底 Python 门禁化防复发          |
 | LL-069 | python     | uv 删依赖后旧 .venv 残留旧二进制，以 uv.lock 为准，清理用 `--exact` |
+| LL-070 | workflow   | 指令动词穷尽：点名动词即授权全集，"回答"类请求只答不改              |
 
 ---
