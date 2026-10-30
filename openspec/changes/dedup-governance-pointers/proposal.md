@@ -40,7 +40,7 @@
 - `project-governance`：11 条 Requirement 瘦身（删重复正文留契约句+指针）；
   机械映射豁免收敛为铁律十单源；语言约定确认归本 spec（AGENTS.md 改指针）
 - `api-contract`：新增"跨端显示串与协议保留名"Requirement（承接铁律九细节）；
-  修改"显式数据入口与显式内存回收"补 fromX 工厂名单（承接铁律十五细节）
+  新增"fromX 构造入口名单"Requirement（承接铁律十五名单）
 - `oracle-harness`：新增"精度分层"Requirement（承接铁律三细节）
 
 落点核对：`ci-matrix`、`zero-copy-roundtrip`、`memory-lifecycle` 经逐条核对

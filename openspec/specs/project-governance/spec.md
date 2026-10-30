@@ -13,10 +13,8 @@
 核心数据 MUST 永远是 `(nfreq, nports, nports)` 交错复数扁平 f64
 （complex128，`[re, im, re, im, ...]`），与 scikit-rf `Network.s` 的内存
 布局逐字节相同；对 skrf/numpy 的零拷贝即同一块内存的 reinterpret，无需
-转换、无 strided 拷贝。钉死此顺序的理由：Touchstone 按频率逐行存储
-（流式解析线性拷贝无转置）、热路径逐频点 (p×p) 矩阵运算（每频点矩阵连续）、
-rayon 沿大轴 `nfreq` 切分负载均衡。代价（单条 trace 跨步）属显示/IO 路径，
-非热路径。绑定层 MUST NOT 逐元素搬运复数对象。
+转换、无 strided 拷贝。绑定层 MUST NOT 逐元素搬运复数对象。钉死此顺序的
+理由与代价分析属实现决策，只存账本 `LL-072`，本 spec 不重述。
 
 #### Scenario: 布局逐字节一致
 
@@ -50,15 +48,11 @@ Touchstone 解析）MUST 先有一条会失败的测试（red），看到 red �
 ### Requirement: 铁律三 容差集中在 manifest，精度分层是契约
 
 跨端阅卷的数值容差 MUST 只在 `oracle/manifest.json` 定义（`core_tol` 键），
-阅卷脚本 MUST 运行时读取，阅卷源码 MUST NOT 出现字面量容差。core 内部
-unit/property 测试容差为测试自述常量（`const`），与 oracle 零依赖——容差
-集中治理的边界是跨端阅卷层，不含 core 自校验层。精度分层：① bit 级断言只
-允许出现在同机同架构的 cross-binding 原生三端互比（core/python/node 加载同
-一编译产物）；② 一切跨平台/跨实现比较（golden 异机重读、wasm vs 原生）
-MUST 走 manifest 相对容差；③ Touchstone 写出→读回 MUST 是 bit 级
-（shortest-roundtrip 格式化）。默认量级：解析变换往返 1e-12、级联 1e-11、
-FFT 时域 1e-9（以 manifest 实际值为准）。放宽任何容差 MUST 在 manifest
-注明原因。
+阅卷源码 MUST NOT 出现字面量容差。core 内部 unit/property 测试容差为测试
+自述常量（`const`），与 oracle 零依赖——容差集中治理的边界是跨端阅卷层，
+不含 core 自校验层。放宽任何容差 MUST 在 manifest 注明原因。精度分层
+（bit 级适用范围、跨平台相对容差、写出读回 bit 级）与默认量级属阅卷机制，
+唯一正文见 `oracle-harness` spec「精度分层」，本 spec 不重述。
 
 #### Scenario: 测试代码无字面量容差
 
@@ -79,19 +73,19 @@ FFT 时域 1e-9（以 manifest 实际值为准）。放宽任何容差 MUST 在 
 
 ### Requirement: 铁律四 skrf 是 oracle 但主 CI 零 Python
 
-scikit-rf 是数值权威，MUST 只出现在 `oracle/` 子项目内（`gen_golden.py`，
-下期实施），各端主测试路径（cargo test / pytest / vitest）MUST 零 skrf
-依赖。golden 数据 MUST NOT 提交进 git——由 gen_golden 在 CI 现算，只活在
-gitignore 的 `oracle/tmp/golden/`（阅后即焚）。skrf 版本 MUST 由
-`oracle/uv.lock` 钉死（随 gen_golden 落地建立），升级 = 显式改 lock 的
-PR；不设每周 golden-refresh job。
+scikit-rf 是数值权威，MUST 只出现在 `oracle/` 子项目内，各端主测试路径
+（cargo test / pytest / vitest）MUST 零 skrf 依赖。golden 数据 MUST NOT
+提交进 git——由 oracle 在 CI 现算，只活在 gitignore 的 `oracle/tmp/golden/`
+（阅后即焚）。skrf 版本 MUST 由 `oracle/uv.lock` 钉死，升级 = 显式改 lock
+的 PR。CI 侧 job 编排与落地时序属 CI 机制，唯一正文见 `ci-matrix` spec
+「主 CI 零 Python 运行时依赖」与 `oracle-harness` spec，本 spec 不重述。
 
 #### Scenario: 主 CI 无 skrf
 
 - **WHEN** 检查 `.github/workflows/ci.yml` 的 cargo test / pytest / vitest
   步骤
-- **THEN** 无任何安装或调用 scikit-rf 的步骤（gen_golden 落地后 skrf 亦只
-  出现在 oracle 阅卷步骤，各端步骤保持零 skrf）
+- **THEN** 无任何安装或调用 scikit-rf 的步骤（skrf 亦只出现在 oracle 阅卷
+  步骤，各端步骤保持零 skrf）
 
 #### Scenario: golden 不入库
 
@@ -112,38 +106,30 @@ PR；不设每周 golden-refresh job。
 
 ### Requirement: 铁律六 大文件性能底线
 
-50MB s4p 解析 < 100ms 是底线（memmap2 + rayon，原生端 Python/Node；浏览器
-wasm 单线程回退场景待 wasm 性能定标实测定标后回写本 spec）。criterion 基准 MUST 进
-CI，显著劣化（>20%）MUST 失败。
+原生端（Python/Node）解析 50MB s4p MUST < 100ms；浏览器 wasm 单线程回退
+场景待 wasm 性能定标实测定标后回写本 spec。基准回归阈值与 CI job 编排属
+CI 机制，唯一正文见 `ci-matrix` spec「criterion 基准进 CI」，本 spec 不重述。
 
 #### Scenario: 基准回归即红
 
-- **WHEN** criterion 结果相对基线劣化超过 20%
+- **WHEN** criterion 结果相对基线劣化超过 `ci-matrix` 规定的阈值
 - **THEN** bench job 失败（`scripts/bench_gate.py`）
 
 ### Requirement: 铁律七 覆盖率 100% 硬约束
 
 四端（core/python/node/wasm）产码行覆盖率 MUST 100%，CI 低于 100% 即失败，
-unit 层零豁免。唯一例外为结构性不可达代码（`unreachable!()`、平台专属分支、
-防御性 error 转换），MUST 逐条显式标注豁免并写明理由（stable 通道：
-`#[cfg(not(coverage))]` 编译剥离或 CI `--ignore-filename-regex` 逐文件排除；
-`#[coverage(off)]` 为 nightly-only 禁用——LL-020；Python
-`# pragma: no cover`、TS/JS `/* v8 ignore start/stop */`），MUST NOT
-整文件/整目录批量豁免。100% 是下限不是目标：数值正确性由 golden/property/cross-binding 三层负责。
-
-覆盖率 MUST 按 crate/包归属各自度量：core 由 core 自己的测试度量（
-`cargo llvm-cov -p netwave --codecov --output-path codecov.json` 后由
-`scripts/coverage_gate.py` 读 codecov.json 判 100% 地板
-），绑定胶水由各自语言工具在自身 job 内度量
-（`pytest-cov --cov-fail-under=100`、vitest `lines/branches: 100`）。
+unit 层零豁免。唯一例外为结构性不可达代码，MUST 逐条显式标注豁免并写明理由，
+MUST NOT 整文件/整目录批量豁免。100% 是下限不是目标：数值正确性由
+golden/property/cross-binding 三层负责。覆盖率 MUST 按 crate/包归属各自度量，
 MUST NOT 用 `llvm-cov report` 默认路径做 100% 闸门，也 MUST NOT 用
-`--workspace` 把绑定 crate 的 core 副本并入 core 度量。工具合并语义与
-实测证据属事件级事实，只存账本 `LL-057`，本 spec 不重述。
+`--workspace` 把绑定 crate 的 core 副本并入 core 度量。结构性不可达代码的
+类别、各语言豁免标记语法、闸门命令与工具合并语义属工具机制，唯一正文见
+`ci-matrix` spec「覆盖率门槛生效」与账本 `LL-020`/`LL-057`，本 spec 不重述。
 
 #### Scenario: 未测代码即红
 
 - **WHEN** 新增一行未被任何测试执行的产码
-- **THEN** 对应覆盖率 job 失败（已实测：run 36304682759）
+- **THEN** 对应覆盖率 job 失败
 
 #### Scenario: 豁免逐条标注
 
@@ -166,14 +152,14 @@ MUST NOT 用 `llvm-cov report` 默认路径做 100% 闸门，也 MUST NOT 用
 
 浏览器端 wasm 实例 MUST 只存在于一个常驻 worker 内：主线程 MUST NOT init wasm、
 MUST NOT 持有任何数据副本。任一时刻每份数据 MUST 只有唯一所有者（单点所有权），
-跨线程移动 MUST 经显式 transfer（结构化克隆 transfer list），MUST NOT 存在隐式
-复制路径。计算结果 buffer MUST 以 transfer 零拷贝传出 worker；元数据（shape、
-frequency 等描述符）MUST 搭结果便车随同一消息回传，不为元数据单开往返。worker
-MUST 常驻至页面关闭，不做按需起停。常驻 worker 是**模块级单例**：同一页面内
-无论 import 多少次库入口、创建多少库实例（句柄）， MUST 共用同一 worker。数值
-容差不因本铁律改变，仍引用 manifest `core_tol`（铁律三）。跨 realm 内存生命
-周期（主线程 registry 驱动 worker 释放、共享不误删、显式 `drop()` 逃生口、
-node napi finalizer）的契约细节见 [memory-lifecycle spec](../memory-lifecycle/spec.md)。
+跨线程移动 MUST 经显式 transfer，MUST NOT 存在隐式复制路径。worker MUST 常驻
+至页面关闭，不做按需起停，且为**模块级单例**：同一页面内无论 import 多少次
+库入口、创建多少库实例（句柄）， MUST 共用同一 worker。数值容差不因本铁律
+改变，仍引用 manifest `core_tol`（铁律三）。transfer 零拷贝机制、元数据搭
+结果便车、输入不消耗等实现契约的唯一正文见 `zero-copy-roundtrip` spec
+「异步与 Worker 边界契约」；跨 realm 内存生命周期（registry 驱动释放、
+共享不误删、显式 `drop()` 逃生口、node napi finalizer）见 `memory-lifecycle`
+spec。本 spec 不重述。
 
 #### Scenario: 主线程无 wasm
 
@@ -206,24 +192,10 @@ node napi finalizer）的契约细节见 [memory-lifecycle spec](../memory-lifec
 每个公开类 MUST 在全部存在该对象的端提供统一显示串，格式
 `ClassName(摘要)`（如 `Frequency(1.0-5.0 GHz, 3 pts)`），各端 MUST 使用同一
 字符串内容。入口按语言原生协议命名，MUST NOT 自造跨语言同名方法（Python 不
-写 `toString()`，JS 不写 `__str__`）：
-
-- Rust：`impl Display`（`{}`）+ `#[derive(Debug)]`（`{:?}`），二者输出同一串；
-- Python：`__str__` 与 `__repr__` 互等（对齐 skrf 惯例），`print(f)`、REPL、
-  f-string 自动触发；
-- Node：`toString()` + `util.inspect.custom` 钩子，`console.log(f)` 自动触发；
-- 浏览器（worker 隔离，铁律八）：`async toString()`；`console.log(f)` 无标准
-  美化机制（DevTools 无页面侧钩子），惯用法 `console.log(await f.toString())`。
-
-跨端统一惯用法 `await x.toString()` MUST 在 node 与浏览器同时成立（node 同步
-字符串经 `await` 原样透传）。浏览器端模板插值 `${x}` MUST NOT 使用（Promise
-经 `ToPrimitive` 抛 TypeError），docs MUST 写明。
-
-长度协议：凡暴露 `npoints` 的公开类 MUST 提供 Python `__len__` 一行委托
-`npoints`（JS/Rust 无此协议，无对等义务；skrf `Frequency.__len__` 同源）。
-
-协议保留名（netwave 内有特殊含义、不得挪作他用）：`__str__`、`__repr__`、
-`Display`、`Debug`、`toString`、`inspect.custom`、`__len__`。
+写 `toString()`，JS 不写 `__str__`）。跨端统一惯用法 `await x.toString()`
+MUST 在 node 与浏览器同时成立。逐语言入口形态、长度协议与协议保留名清单属
+API 面细节，唯一正文见 `api-contract` spec「跨端显示串与协议保留名」，
+本 spec 不重述。
 
 #### Scenario: print 自动触发
 
@@ -239,9 +211,11 @@ node napi finalizer）的契约细节见 [memory-lifecycle spec](../memory-lifec
 
 公开 API 的命名、参数、返回值与语义 MUST 默认对齐 scikit-rf 同名概念（如
 `from_f`、`f`/`f_scaled`/`unit`/`npoints`/`copy`）。偏离 MUST 在对应 change
-的 design.md 写明更强收获（能力增量或契约强化），否则一律兼容。语言机械映射
-不算偏离：TS camelCase（`fScaled`）、Rust snake_case、worker 端 async 化
-（铁律八所致）。
+的 design.md 写明更强收获（能力增量或契约强化），否则一律兼容。本条是
+**机械映射豁免**的唯一定义处：TS camelCase（`fScaled` ↔ `f_scaled`）、
+Rust/Python snake_case、语言原生协议钩子（`__str__`/`toString`/
+`inspect.custom`）、worker 隔离导致的 async 化（铁律八所致）不算偏离；
+其余铁律引用本条，不重述豁免清单。
 
 #### Scenario: 偏离须有立案收获
 
@@ -270,11 +244,7 @@ node napi finalizer）的契约细节见 [memory-lifecycle spec](../memory-lifec
 统一 MUST 靠**直接命名实现**达成：core 里该函数就叫这个名字，绑定宏原样搬运同名
 方法——MUST NOT 在任何层添加转发到另一名字的别名函数/属性来"凑"统一。改名 MUST
 连实现带名字一起改（重命名），MUST NOT 保留旧名作兼容别名（无 deprecated 转发、
-无 `free() { this.drop() }` 式垫片）。
-
-机械映射不算违反（沿用铁律九/十既有豁免）：TS camelCase（`fScaled` ↔
-`f_scaled`）、Rust/Python snake_case、语言原生协议钩子（`__str__`/`toString`/
-`inspect.custom`）、worker 隔离导致的 async 化（铁律八）。
+无 `free() { this.drop() }` 式垫片）。机械映射豁免沿用铁律十定义，本条不重述。
 
 工具链生成物名字不受本铁律管辖（如 wasm-bindgen 为导出类自动生成的 `free()`），
 但生成物 MUST NOT 出现在用户可见面：用户可见面只允许那个唯一的名字。
@@ -350,16 +320,15 @@ MUST NOT 为提升覆盖率指标而在热路径增加计算、拷贝、重排�
 
 ### Requirement: 铁律十五 构造入口用 fromX 工厂，公开面禁裸构造器
 
-四端用户面全部类的构造入口 MUST 是 `fromX` 静态工厂（`fromData`/`from_data`、
-`fromText`/`from_text`、`fromFile`/`from_file`、`fromUrl`/`from_url`、
-`fromF`/`from_f` 等），且在 core/Python/node/浏览器四端 MUST 公开可达且同名
-（机械 camelCase/snake_case 映射豁免）。裸 `new`/构造器 MUST NOT 出现在任何端
-公开面：Rust core MUST NOT 有 `pub fn new`，Python MUST NOT 有 `#[new]`，node
-MUST NOT 有 `#[napi(constructor)]`，浏览器壳 MUST NOT 有公开 `constructor`。
+四端用户面全部类的构造入口 MUST 是 `fromX` 静态工厂（名单见下方指针），
+且在 core/Python/node/浏览器四端 MUST 公开可达且同名（机械映射豁免沿用
+铁律十）。裸 `new`/构造器 MUST NOT 出现在任何端公开面：Rust core MUST NOT
+有 `pub fn new`，Python MUST NOT 有 `#[new]`，node MUST NOT 有
+`#[napi(constructor)]`，浏览器壳 MUST NOT 有公开 `constructor`。
 浏览器壳内部 `private constructor(handle)` 是壳持 handle 的传输细节、非构造入口，
-不受本铁律管辖。本铁律由常驻 worker 下构造器物理上无法 async（铁律八）推广而来：
-既然浏览器端数据入口只能是工厂，四端统一即只能是工厂。管辖范围 = 四端用户面
-全部类（机制规则不点名），内部 Rust 结构（`Registry` 等资源表）不受管辖。
+不受本铁律管辖。管辖范围 = 四端用户面全部类（机制规则不点名），内部 Rust
+结构（`Registry` 等资源表）不受管辖。工厂名单属 API 面细节，唯一正文见
+`api-contract` spec「fromX 构造入口名单」，本 spec 不重述。
 
 #### Scenario: 裸构造器即打回
 
@@ -379,6 +348,24 @@ MUST NOT 有 `#[napi(constructor)]`，浏览器壳 MUST NOT 有公开 `construct
 - **THEN** 仅存在 `private constructor(handle)`（内部传输细节），无公开构造器；
   用户构造一律经 `fromX` 工厂
 
+### Requirement: 铁律编号是名字，编号退役不复用
+
+铁律编号是规则的**名字**而非目录位置：新增铁律取当前最大号 +1，铁律退役
+或迁出后其编号 MUST NOT 复用、MUST NOT 重排其余编号，使任意历史引用
+（账本、归档 change、review 记录）中的编号永久指向同一规则。文档
+MUST NOT 以编号范围（"铁律一~N"）描述铁律集合——范围随增删失效，
+用"全部铁律"或点名具体规则。
+
+#### Scenario: 退役编号不复用
+
+- **WHEN** 某条铁律被废除或整条迁出本 spec
+- **THEN** 其编号留空，后续新增铁律不占用该号，其余铁律编号不变
+
+#### Scenario: 文档禁写编号范围
+
+- **WHEN** 常驻文档需要指代全部铁律
+- **THEN** 写"全部铁律"或点名规则，不写随增删失效的编号区间
+
 ### Requirement: 元规则 优先级与单一真相源
 
 本 spec 优先级高于一切临时决定；spec/plan/tasks 与本 spec 冲突时改
@@ -392,6 +379,17 @@ spec/plan/tasks，不改铁律（修铁律走独立最高级变更并评估三�
 
 - **WHEN** 检查 AGENTS.md 与 openspec/config.yaml
 - **THEN** 二者对铁律只有链接/指针与工件规则，无铁律正文重述
+
+### Requirement: 文档语言约定唯一正文在本 spec
+
+文档语言约定的契约级正文 MUST 只存于本 spec 元规则「优先级与单一真相源」
+末段；`AGENTS.md` 等 agent 行为准则文档对此只放指针，MUST NOT 重述约定正文。
+
+#### Scenario: 行为准则不重述语言约定
+
+- **WHEN** 检查 `AGENTS.md` 语言相关条目
+- **THEN** 该条只含对话行为准则（镜像用户语言、先大白话）与指向本 spec 的
+  指针，无文档语言规则正文重述
 
 ### Requirement: 元规则 冻结非不可变——有问题必修正
 
@@ -473,10 +471,10 @@ MUST 用标题跳转链接（`[标题](文件.md#锚点)`）而非章节序号�
 「见某规划文档第 N 节」「跟踪于某待决清单」等需二次定位的表述替代可直接读出
 的结论。路线图数字代号（中文「阶段」后接数字、英文 `stage`/`phase` 后接数字）
 MUST NOT 出现在任何 Markdown。本规则 MUST 门禁化：`scripts/check_md.py`
-（命令 `pnpm check:md`）扫描全部 Markdown（`openspec/specs/`、`Plan/`、
-`openspec/changes/archive/`、根与子 README），治理 spec 本文、lessons-learned
-账本与 archive 均不豁免——治理 spec 正文描述被禁词时 MUST 用描述性表达（不含
-字面触发词），使门禁可零豁免扫描全仓。
+（命令 `pnpm check:md`）扫描全仓 Markdown，扫描范围与命令唯一定义处见
+CONTRIBUTING.md；治理 spec 本文、lessons-learned 账本与 archive 均不豁免——
+治理 spec 正文描述被禁词时 MUST 用描述性表达（不含字面触发词），使门禁可
+零豁免扫描全仓。
 
 #### Scenario: 文档面阶段代号命中即红
 
@@ -533,9 +531,9 @@ MUST NOT 重述 spec 正文与内容清单细节）；③ 事件级事实（踩�
 本项目算法与 API 借鉴第三方公开作品，知识产权合规是发布前置硬约束：
 ① 借鉴 MUST clean-room——只取算法思想、数学方法、接口语义与规范格式，
 实现 MUST 用目标语言习惯独立重写；MUST NOT 逐行翻译或结构性照搬第三方
-源码（变量命名、函数切分、注释文字、组织顺序）。② GPL 源（唯一已知：
-SignalIntegrity，GPL-3.0-or-later）MUST NOT 有任何代码或逐行翻译件进入
-本仓，仅 MAY 参考其输入输出定义与算法思想。③ 借鉴第三方算法的函数
+源码（变量命名、函数切分、注释文字、组织顺序）。② GPL 源 MUST NOT 有
+任何代码或逐行翻译件进入本仓，仅 MAY 参考其输入输出定义与算法思想；
+GPL 源名单属事件级事实，唯一正文见账本许可表 `LL-029`。③ 借鉴第三方算法的函数
 MUST 在 rustdoc/docstring 标注算法出处（书目 DOI、规范节名或上游项目
 URL）——出处标注是独立实现的证据链。④ 第三方代码或派生数据进入分发物
 时其声明 MUST 随分发（见 license-compliance spec）。⑤ 受版权保护的书籍
@@ -544,7 +542,7 @@ MUST NOT 复制原文/图表进本仓文档，仅 MAY 引用思想与书目信�
 
 #### Scenario: GPL 代码混入即事故
 
-- **WHEN** review 发现任何源自 SignalIntegrity 的代码或逐行翻译件
+- **WHEN** review 发现任何源自 GPL 许可上游项目的代码或逐行翻译件
 - **THEN** 立即移除并打回；该 LL 计入复发记录
 
 #### Scenario: 借鉴实现标注出处

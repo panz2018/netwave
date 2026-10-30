@@ -8,7 +8,7 @@
 （complex128，`[re, im, re, im, ...]`），与 scikit-rf `Network.s` 的内存
 布局逐字节相同；对 skrf/numpy 的零拷贝即同一块内存的 reinterpret，无需
 转换、无 strided 拷贝。绑定层 MUST NOT 逐元素搬运复数对象。钉死此顺序的
-理由与代价分析属实现决策，只存账本（`LL-072`），本 spec 不重述。
+理由与代价分析属实现决策，只存账本 `LL-072`，本 spec 不重述。
 
 #### Scenario: 布局逐字节一致
 
@@ -28,7 +28,7 @@
 自述常量（`const`），与 oracle 零依赖——容差集中治理的边界是跨端阅卷层，
 不含 core 自校验层。放宽任何容差 MUST 在 manifest 注明原因。精度分层
 （bit 级适用范围、跨平台相对容差、写出读回 bit 级）与默认量级属阅卷机制，
-唯一正文见 `oracle-harness` spec「精度分层」Requirement，本 spec 不重述。
+唯一正文见 `oracle-harness` spec「精度分层」，本 spec 不重述。
 
 #### Scenario: 测试代码无字面量容差
 
@@ -87,9 +87,9 @@ unit 层零豁免。唯一例外为结构性不可达代码，MUST 逐条显式�
 MUST NOT 整文件/整目录批量豁免。100% 是下限不是目标：数值正确性由
 golden/property/cross-binding 三层负责。覆盖率 MUST 按 crate/包归属各自度量，
 MUST NOT 用 `llvm-cov report` 默认路径做 100% 闸门，也 MUST NOT 用
-`--workspace` 把绑定 crate 的 core 副本并入 core 度量。各语言豁免标记语法、
-具体闸门命令与工具合并语义属工具机制，唯一正文见 `ci-matrix` spec
-「覆盖率门槛生效」与账本 `LL-020`/`LL-057`，本 spec 不重述。
+`--workspace` 把绑定 crate 的 core 副本并入 core 度量。结构性不可达代码的
+类别、各语言豁免标记语法、闸门命令与工具合并语义属工具机制，唯一正文见
+`ci-matrix` spec「覆盖率门槛生效」与账本 `LL-020`/`LL-057`，本 spec 不重述。
 
 #### Scenario: 未测代码即红
 
@@ -105,7 +105,7 @@ MUST NOT 用 `llvm-cov report` 默认路径做 100% 闸门，也 MUST NOT 用
 
 - **WHEN** core 覆盖率经 `--workspace` 合并统计（绑定二进制内的 core 副本
   被重复计入）
-- **THEN** 该度量方式违规；改用单 crate 度量
+- **THEN** 该度量方式违规；改用 `-p netwave` 单 crate 度量
 
 #### Scenario: 工具机制解释不入宪法
 
@@ -117,12 +117,12 @@ MUST NOT 用 `llvm-cov report` 默认路径做 100% 闸门，也 MUST NOT 用
 
 浏览器端 wasm 实例 MUST 只存在于一个常驻 worker 内：主线程 MUST NOT init wasm、
 MUST NOT 持有任何数据副本。任一时刻每份数据 MUST 只有唯一所有者（单点所有权），
-跨线程移动 MUST 经显式 transfer（结构化克隆 transfer list），MUST NOT 存在隐式
-复制路径。worker MUST 常驻至页面关闭，不做按需起停，且为**模块级单例**：同一
-页面内无论 import 多少次库入口、创建多少库实例（句柄），MUST 共用同一 worker。
-数值容差不因本铁律改变，仍引用 manifest `core_tol`（铁律三）。transfer 零拷贝
-机制、元数据随结果回传、输入不消耗等实现契约的唯一正文见 `zero-copy-roundtrip`
-spec「异步与 Worker 边界契约」；跨 realm 内存生命周期（registry 驱动释放、
+跨线程移动 MUST 经显式 transfer，MUST NOT 存在隐式复制路径。worker MUST 常驻
+至页面关闭，不做按需起停，且为**模块级单例**：同一页面内无论 import 多少次
+库入口、创建多少库实例（句柄）， MUST 共用同一 worker。数值容差不因本铁律
+改变，仍引用 manifest `core_tol`（铁律三）。transfer 零拷贝机制、元数据搭
+结果便车、输入不消耗等实现契约的唯一正文见 `zero-copy-roundtrip` spec
+「异步与 Worker 边界契约」；跨 realm 内存生命周期（registry 驱动释放、
 共享不误删、显式 `drop()` 逃生口、node napi finalizer）见 `memory-lifecycle`
 spec。本 spec 不重述。
 
@@ -177,9 +177,10 @@ API 面细节，唯一正文见 `api-contract` spec「跨端显示串与协议�
 公开 API 的命名、参数、返回值与语义 MUST 默认对齐 scikit-rf 同名概念（如
 `from_f`、`f`/`f_scaled`/`unit`/`npoints`/`copy`）。偏离 MUST 在对应 change
 的 design.md 写明更强收获（能力增量或契约强化），否则一律兼容。本条是
-**机械映射豁免**的唯一定义处：TS camelCase、Rust/Python snake_case、语言原生
-协议钩子、worker 隔离导致的 async 化（铁律八所致）不算偏离；其余铁律引用本条，
-不重述豁免清单。
+**机械映射豁免**的唯一定义处：TS camelCase（`fScaled` ↔ `f_scaled`）、
+Rust/Python snake_case、语言原生协议钩子（`__str__`/`toString`/
+`inspect.custom`）、worker 隔离导致的 async 化（铁律八所致）不算偏离；
+其余铁律引用本条，不重述豁免清单。
 
 #### Scenario: 偏离须有立案收获
 
@@ -194,8 +195,10 @@ API 面细节，唯一正文见 `api-contract` spec「跨端显示串与协议�
 方法——MUST NOT 在任何层添加转发到另一名字的别名函数/属性来"凑"统一。改名 MUST
 连实现带名字一起改（重命名），MUST NOT 保留旧名作兼容别名（无 deprecated 转发、
 无 `free() { this.drop() }` 式垫片）。机械映射豁免沿用铁律十定义，本条不重述。
+
 工具链生成物名字不受本铁律管辖（如 wasm-bindgen 为导出类自动生成的 `free()`），
 但生成物 MUST NOT 出现在用户可见面：用户可见面只允许那个唯一的名字。
+
 本铁律是铁律十一（绑定薄壳）在名字维度的补集：铁律十一禁壳内有逻辑，本铁律禁
 壳内有第二个名字。
 
@@ -231,15 +234,15 @@ API 面细节，唯一正文见 `api-contract` spec「跨端显示串与协议�
 
 ### Requirement: 铁律十五 构造入口用 fromX 工厂，公开面禁裸构造器
 
-四端用户面全部类的构造入口 MUST 是 `fromX` 静态工厂，且在 core/Python/node/
-浏览器四端 MUST 公开可达且同名（机械映射豁免沿用铁律十）。裸 `new`/构造器
-MUST NOT 出现在任何端公开面：Rust core MUST NOT 有 `pub fn new`，Python
-MUST NOT 有 `#[new]`，node MUST NOT 有 `#[napi(constructor)]`，浏览器壳
-MUST NOT 有公开 `constructor`。浏览器壳内部 `private constructor(handle)`
-是壳持 handle 的传输细节、非构造入口，不受本铁律管辖。管辖范围 = 四端用户面
-全部类（机制规则不点名），内部 Rust 结构（`Registry` 等资源表）不受管辖。
-工厂名单与入口签名属 API 面细节，唯一正文见 `api-contract` spec
-「显式数据入口与显式内存回收」，本 spec 不重述。
+四端用户面全部类的构造入口 MUST 是 `fromX` 静态工厂（名单见下方指针），
+且在 core/Python/node/浏览器四端 MUST 公开可达且同名（机械映射豁免沿用
+铁律十）。裸 `new`/构造器 MUST NOT 出现在任何端公开面：Rust core MUST NOT
+有 `pub fn new`，Python MUST NOT 有 `#[new]`，node MUST NOT 有
+`#[napi(constructor)]`，浏览器壳 MUST NOT 有公开 `constructor`。
+浏览器壳内部 `private constructor(handle)` 是壳持 handle 的传输细节、非构造入口，
+不受本铁律管辖。管辖范围 = 四端用户面全部类（机制规则不点名），内部 Rust
+结构（`Registry` 等资源表）不受管辖。工厂名单属 API 面细节，唯一正文见
+`api-contract` spec「fromX 构造入口名单」，本 spec 不重述。
 
 #### Scenario: 裸构造器即打回
 
@@ -319,13 +322,12 @@ CONTRIBUTING.md；治理 spec 本文、lessons-learned 账本与 archive 均不�
 实现 MUST 用目标语言习惯独立重写；MUST NOT 逐行翻译或结构性照搬第三方
 源码（变量命名、函数切分、注释文字、组织顺序）。② GPL 源 MUST NOT 有
 任何代码或逐行翻译件进入本仓，仅 MAY 参考其输入输出定义与算法思想；
-GPL 源的具体名单属事件级事实，唯一正文见 lessons-learned 账本许可表，
-本 spec 不重述。③ 借鉴第三方算法的函数 MUST 在 rustdoc/docstring 标注
-算法出处（书目 DOI、规范节名或上游项目 URL）——出处标注是独立实现的
-证据链。④ 第三方代码或派生数据进入分发物时其声明 MUST 随分发（见
-license-compliance spec）。⑤ 受版权保护的书籍 MUST NOT 复制原文/图表进
-本仓文档，仅 MAY 引用思想与书目信息。⑥ 商标（Touchstone®）MUST 尊重，
-用法见 license-compliance spec。
+GPL 源名单属事件级事实，唯一正文见账本许可表 `LL-029`。③ 借鉴第三方算法的函数
+MUST 在 rustdoc/docstring 标注算法出处（书目 DOI、规范节名或上游项目
+URL）——出处标注是独立实现的证据链。④ 第三方代码或派生数据进入分发物
+时其声明 MUST 随分发（见 license-compliance spec）。⑤ 受版权保护的书籍
+MUST NOT 复制原文/图表进本仓文档，仅 MAY 引用思想与书目信息。⑥ 商标
+（Touchstone®）MUST 尊重，用法见 license-compliance spec。
 
 #### Scenario: GPL 代码混入即事故
 
@@ -365,10 +367,8 @@ MUST NOT 以编号范围（"铁律一~N"）描述铁律集合——范围随增�
 
 ### Requirement: 文档语言约定唯一正文在本 spec
 
-文档语言约定（代码注释与代码内文档用英文；OpenSpec 工件与规划文档用中文，
-结构标题与 SHALL/MUST 保持英文）的契约级正文 MUST 只存于本 spec 元规则
-「优先级与单一真相源」；`AGENTS.md` 等 agent 行为准则文档对此只放指针，
-MUST NOT 重述约定正文。
+文档语言约定的契约级正文 MUST 只存于本 spec 元规则「优先级与单一真相源」
+末段；`AGENTS.md` 等 agent 行为准则文档对此只放指针，MUST NOT 重述约定正文。
 
 #### Scenario: 行为准则不重述语言约定
 

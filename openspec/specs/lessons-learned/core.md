@@ -180,3 +180,12 @@
 - 复发检测：CI llvm-cov job 命令含
   `-p netwave --codecov --output-path codecov.json` + `coverage_gate.py`；
   出现 `--fail-under-lines 100` 即红（它读 report，防御臂必红）
+
+### LL-072 钉死交错布局的三条理由与代价
+
+- 犯过：无（预防性，铁律一定契约时的 rationale 自宪法迁入，宪法只留契约句）
+- 规则：`(nfreq, nports, nports)` 交错 f64 顺序钉死的依据：① Touchstone
+  按频率逐行存储，流式解析线性拷贝无转置；② 热路径逐频点 (p×p) 矩阵运算，
+  每频点矩阵连续；③ rayon 沿大轴 `nfreq` 切分负载均衡。代价（单条 trace
+  跨步）属显示/IO 路径，非热路径。改布局前必读本节
+- 复发检测：布局变更提案 review 时核对是否重新论证这三条理由（Standards 轴）
