@@ -35,6 +35,6 @@ operations:
   archive:
     guidance:
       - 归档前必须执行 Plan/ 瘦身检查：grep Plan/ 中与本 change 相关的条目，
-        已完成/已定案的章节一律删除（结论已在主 spec，Plan/ 不留存）、
-        与主 spec 冲突的当场指出；Plan/ 只留未执行任务，终态是整目录删除
-        （追溯靠 git log）
+        已完成/已定案的章节一律删除（结论已在主 spec——openspec 是结论的
+        唯一事实源，Plan/ 不留存）、与主 spec 冲突的当场指出；Plan/ 只留
+        未执行任务，终态是整目录删除（追溯靠 git log）
