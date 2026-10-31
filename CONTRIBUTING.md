@@ -1,10 +1,10 @@
 # Contributing to netwave
 
-Developer-facing entry point: repository layout, workspace commands, toolchain
-routing and the contribution workflow. User-facing description lives in
-[README.md](README.md). Environment gotchas and implementation lessons live
-in the [lessons-learned ledger](openspec/specs/lessons-learned/INDEX.md),
-not here.
+Thin gatehouse of the AI-required zone: repository layout, gate command
+cheatsheet, machine-bound reference mirrors. Commands a human may type by
+hand are collected in Quick start. Workflow bodies live in the governance
+spec; environment gotchas and implementation lessons live in the
+[lessons-learned ledger](openspec/specs/lessons-learned/INDEX.md).
 
 ## Repository layout
 
@@ -17,8 +17,8 @@ oracle/       Cross-validation: tolerance manifest, shared samples, grading
 scripts/      Workspace-level helper scripts (gates, installers)
 openspec/     OpenSpec: specs/ (governance + contracts + lessons-learned
               ledger) and changes/ (in-flight and archived change proposals)
-Plan/         Unexecuted planning docs only; absorbed into openspec/ then
-              deleted (lifecycle rules in AGENTS.md)
+Plan/         Unexecuted planning docs only; lifecycle rules live in
+              openspec/config.yaml (operations hooks)
 .github/      CI workflows (ci.yml matrix, gates)
 ```
 
@@ -39,10 +39,9 @@ Plan/         Unexecuted planning docs only; absorbed into openspec/ then
   (markdownlint + prettier + link/anchor validation) before the change is
   considered done.
 - **Proposal completeness**: `scripts/check_proposal.py` (wired into
-  `pnpm check:meta`) requires every in-flight `openspec/changes/*/proposal.md`
-  to carry a `## Non-goals` and a `## Prior art` section with substance
-  (citation = URL, repo file path, or an explicit no-prior-art statement);
-  archived changes are exempt.
+  `pnpm check:meta`) validates every in-flight proposal; the contract body
+  is the governance spec requirement
+  [元规则 提案工件必带出处与不做清单](openspec/specs/project-governance/spec.md#requirement-元规则-提案工件必带出处与不做清单).
 
 ## Quick start (development)
 
@@ -58,36 +57,11 @@ pnpm check:cross                  # four-end dump + compare
 
 ## Development workflow
 
-Every core module (Touchstone / Network / Circuit / Frequency and their
-sub-features) runs the same six-step loop:
-
-```text
-grill ──► spec ──► red ──► green ──► review ──► retro
-```
-
-- **grill**: surface ambiguities before writing code (port ranges, complex
-  z0, edge cases, perf targets); decisions land in the change's
-  `proposal.md` / `design.md`. No code in this step.
-- **spec**: one module = one OpenSpec change (`/opsx:propose` generates
-  proposal/specs/design/tasks). Every requirement must be testable, with
-  tolerances referencing manifest keys, never hardcoded. `/opsx:sync` then
-  `/opsx:archive` when done.
-- **red**: write the failing test first and watch it fail (governance spec
-  rule 2). Expected values come from independent oracles — skrf golden,
-  closed-form solutions, physical invariants — never from the code under
-  test.
-- **green**: minimal code to pass, one vertical slice at a time; port
-  skrf's proven algorithms, don't reinvent them.
-- **review**: three-axis review before merge — Standards (governance spec
-  rules + code smells) × Spec (fidelity to spec.md) × Lessons (check the
-  change against every entry in the lessons-learned ledger; a hit bounces
-  the change and is re-verified via the entry's detection method).
-  Cross-binding changes additionally run `pnpm check:cross`. CI green is
-  mandatory.
-- **retro**: at archive time answer three questions — new tool gotchas or
-  version drift? doc ambiguity or better pattern? tolerance/test-practice
-  drift? — and write answers into the lessons-learned ledger (shard file +
-  INDEX entry) or the governance spec directly (no separate issue lists).
+Every core module runs the six-step loop
+`grill ──► spec ──► red ──► green ──► review ──► retro`; the binding rules of
+each step live in the governance spec (TDD iron rule, review three axes) and
+the [lessons-learned spec](openspec/specs/lessons-learned/spec.md) (retro
+registration). This file keeps no workflow body.
 
 ### When to simplify
 
@@ -100,25 +74,12 @@ grill ──► spec ──► red ──► green ──► review ──► re
 
 ### Toolchain (task → tool)
 
-Versions are owned by lockfiles and `rust-toolchain.toml` — check them live
-(`pnpm --version`, `uv --version`, `rustc --version`), never copy numbers
-into docs.
-
-| Task                  | Tool                                                  | Verify with                       |
-| --------------------- | ----------------------------------------------------- | --------------------------------- |
-| JS deps & workspace   | pnpm (corepack; non-interactive flag — ledger LL-009) | `pnpm --version`                  |
-| Python envs           | uv + `pyproject.toml` (bare pip forbidden)            | `uv --version`                    |
-| Python binding build  | maturin                                               | `uv run maturin develop`          |
-| Rust build/test       | cargo (pinned by `rust-toolchain.toml`)               | `cargo test --workspace`          |
-| Coverage gate         | cargo-llvm-cov (pre-install llvm-tools)               | see Quality gates                 |
-| Node binding build    | napi-rs CLI                                           | `pnpm -C typescript build:native` |
-| wasm build            | wasm-pack + binaryen (full-tree install)              | `pnpm -C typescript build:wasm`   |
-| TS/JSON lint & format | Biome                                                 | `pnpm check:ts`                   |
-| TS type gate          | `tsc --noEmit` (after both glues are built)           | `pnpm -C typescript typecheck`    |
-| Markdown lint/format  | markdownlint-cli2 + Prettier + `check_md.py`          | `pnpm check:md`                   |
-| Python lint & format  | ruff                                                  | `pnpm check:py`                   |
-| Rust lint & format    | clippy + rustfmt                                      | `pnpm check:rs`                   |
-| Spec workflow         | OpenSpec CLI (`/opsx:*`)                              | `openspec --help`                 |
+Tool choice and version pins are owned by lockfiles, `rust-toolchain.toml`
+and the pin registry
+[`scripts/versions/lib/registry.json`](scripts/versions/lib/registry.json) —
+check them live (`pnpm --version`, `uv --version`, `rustc --version`), never
+copy numbers into docs. Gate commands are defined once in root `package.json`
+(see Quality gates above).
 
 ### Toolchain freshness (project-owned upgrades)
 
