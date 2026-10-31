@@ -114,3 +114,18 @@
   Standards 轴核对）；行数只作观察值，不作闸门；"去向是否合理"是语义判断，
   不可机械检测，不门禁化（LL-035 同理）
 - 复发检测：review 时 diff 中出现无去向删除即打回；再提行数预算直接引本条
+
+### LL-073 Plan/ 草案条文未转正即非契约，照搬即过度执行
+
+- 犯过：`Plan/方案讨论纪律.md`「裁决台账」写有"已立项 →
+  `openspec/changes/<name>/decisions.md`"，agent 据此在首个立项 change 新建
+  `decisions.md`，内容与同 change `design.md`「Decisions」节大量重复，被人工
+  纠正（该节属 Plan/ 待讨论草案，从未拍板转正；archive 25 个 change 无一实践）
+- 根因：把 Plan/ 的**提案中规矩**当成既成契约执行——Plan/ 按生命周期终态清空，
+  其条文是待裁决素材而非真相源；且新建文件与既有工件双写同一事实，正撞
+  "同一事实只存一份正文"铁律
+- 规则：Plan/ 内规矩未经拍板/归档转正即不具约束力，MUST NOT 据此新增工件或
+  改变既有惯例；持久落点沿用既有工件（决策唯一存 `design.md`「Decisions」节，
+  不另建 `decisions.md`）。引用 Plan/ 条文前先确认其是否已转正
+- 复发检测：review Standards 轴核对——diff 中出现 Plan/ 草案独有、既有惯例
+  没有的新工件（尤其与同 change 其他工件内容重叠）即打回

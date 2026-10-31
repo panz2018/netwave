@@ -19,6 +19,9 @@ Python、docstring 写契约、`::error::` 输出、退出码 0/1）；接入点
 
 ## Decisions
 
+（本节即本 change 裁决台账，唯一真相源；出处：本会话 grilling 第 2–3 轮，
+人工逐条确认。）
+
 1. **节名取英文 `## Prior art`，Non-goals 沿用不动。**
    proposal 模板标题族（Why / What Changes / Capabilities / Impact）是
    openspec CLI 生成的英文，新节混中文破坏同文件风格；`## Non-goals` 已被
