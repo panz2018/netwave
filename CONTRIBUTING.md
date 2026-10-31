@@ -38,6 +38,11 @@ Plan/         Unexecuted planning docs only; absorbed into openspec/ then
 - **Markdown**: editing any `.md` requires `pnpm check:md` to pass
   (markdownlint + prettier + link/anchor validation) before the change is
   considered done.
+- **Proposal completeness**: `scripts/check_proposal.py` (wired into
+  `pnpm check:meta`) requires every in-flight `openspec/changes/*/proposal.md`
+  to carry a `## Non-goals` and a `## Prior art` section with substance
+  (citation = URL, repo file path, or an explicit no-prior-art statement);
+  archived changes are exempt.
 
 ## Quick start (development)
 

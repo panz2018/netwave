@@ -9,7 +9,9 @@ context: |
 # Per-artifact rules
 rules:
   proposal:
-    - 必须包含 "Non-goals" 段，明确本次不做什么
+    - 必须包含 "## Non-goals" 段，至少一条非空条目，明确本次不做什么
+    - 必须包含 "## Prior art" 段，至少一条非空条目且含 URL、仓库内文件路径
+      或「无现成方案」声明（门禁 scripts/check_proposal.py 同口径判定）
     - 引用受影响的铁律编号（若有）
   specs:
     - 每条 Requirement 必须可测，附容差（引用 manifest key，不写死数值）

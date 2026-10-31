@@ -14,7 +14,7 @@
     "check:py": "uv run ruff check python/ scripts/ && uv run ruff format --check python/ scripts/",
     "fix:py": "uv run ruff check --fix python/ scripts/ && uv run ruff format python/ scripts/",
     "check:cross": "cargo run -q -p netwave --example dump oracle/tmp && uv run --project python python python/scripts/dump.py oracle/tmp && node typescript/scripts/dump.mjs oracle/tmp && python3 oracle/compare_cross.py oracle/tmp && python3 scripts/check_vocab_types.py && python3 scripts/check_verbs.py",
-    "check:meta": "python3 scripts/check_license.py && python3 scripts/check_ci.py && python3 scripts/check_vocab.py && python3 scripts/check_comments.py && uv run python scripts/versions/check_versions.py && python3 scripts/check_else.py",
+    "check:meta": "python3 scripts/check_license.py && python3 scripts/check_ci.py && python3 scripts/check_vocab.py && python3 scripts/check_comments.py && python3 scripts/check_proposal.py && uv run python scripts/versions/check_versions.py && python3 scripts/check_else.py",
     "check:outdated": "uv run python scripts/versions/check_outdated.py"
   },
   "devDependencies": {
