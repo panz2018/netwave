@@ -32,7 +32,7 @@ governance spec、`openspec/config.yaml`、子项目 README）由 AI 读取并�
 - 对话必须用用户提问所用的语言回答（镜像用户语言，不得凭模型偏好选语言）
 - 向用户提问与解释 MUST 先给通俗易懂的大白话、再补术语，禁止堆术语
 - 文档语言约定（哪些目录中文、哪些英文）属契约，正文见宪法元规则
-  「优先级与单一真相源」与「文档语言约定唯一正文在本 spec」（LL-035），
+  「优先级与单一真相源」与「文档语言约定唯一正文在本 spec」，
   本节只留指针
 
 ### 编码前思考 — 不假设，不藏困惑
@@ -53,7 +53,7 @@ governance spec、`openspec/config.yaml`、子项目 README）由 AI 读取并�
 - **改动波及面必须改全**：动构建/工具链/API 时，同步核对并改到
   文档（README/spec/账本）与 CI（步骤顺序、闸门命令）——
   改代码 ≠ 改完；漏改 CI 构建顺序或文档旧事实即未完成
-  （LL-008 grep 旧副本、LL-034 CI 构建不变式）
+  （LL-034 CI 构建不变式）
 
 ### 目标驱动 — 先定成功标准再循环
 
@@ -68,7 +68,7 @@ governance spec、`openspec/config.yaml`、子项目 README）由 AI 读取并�
   让人一次圈定，不增量上报。
 - **方案先查现成做法**：提技术方案前先查同生态现成实现，注明采用或偏离及理由。
 - **三次即搜**：同一命令或思路原样重试累计 3 次仍无结论，停止原地试验，
-  联网搜官方文档、上游 issue 或同生态成熟方案后再动手（LL-058）。
+  联网搜官方文档、上游 issue 或同生态成熟方案后再动手。
 - **会话卫生**：上下文过半时主动写交接笔记并建议开新会话。
 
 琐碎改动（改错别字、一行明显修复）自行判断，不必全套流程。
@@ -110,29 +110,14 @@ governance spec、`openspec/config.yaml`、子项目 README）由 AI 读取并�
 
 ## 文档阅读入口
 
-- **动手前先读所在子项目的 README.md**：只含本目录编译/测试/部署命令；坑与实现细节唯一存于 lessons-learned 账本，README 不重述。
+- **动手前先读 [openspec/specs/README.md](openspec/specs/README.md)**——全部
+  spec 的唯一路由（宪法分段、账本 INDEX、能力 spec 何时读、内容分配清单），
+  本文件不重述路由清单；子项目 README 只放本目录命令，坑唯一存账本。
 - **参考第三方前先查账本许可表**（lessons-learned docs 分片）：GPL 源只读思想不开代码（宪法 知识产权合规）。
-- **作用域纪律**：子项目 README 只放**本目录作用域**的命令与细节；workspace/根级命令（`cargo llvm-cov -p netwave`、markdownlint、链接校验）只放根文档，禁止下沉到子 README。
-
-### 文档地图（内容分配清单，增删只改本节）
-
-#### AI 必读区
-
-- 行为准则 + 本地图 → `AGENTS.md`
-- 坑 / 纠正 / 实现决策 → lessons-learned 账本（分片 + INDEX）
-- 契约与硬约束 → governance spec
-- 工件规则与 Plan/ 生命周期 → `openspec/config.yaml`
-- 本目录编译/测试命令 → 子项目 README
-- 门禁命令速查、目录 layout、本地参考镜像 → `CONTRIBUTING.md`
-
-#### 人只看区
-
-- 项目是什么 → 根 README
-- 待拍板事项 → AI 在对话中呈上的决策表 / 全景表
 
 **历史** → git log（文档不留存）。
 
-**改动要有去向**：常驻文档新增规则须附出处（LL 编号或 spec 指针）；删除/迁出须写明去向（账本/CONTRIBUTING/spec），内容不得蒸发——行数不是指标，禁止为凑行数删除。缺一在 review Standards 轴打回（LL-071）。
+**改动要有去向**：常驻文档新增规则须附出处（LL 编号或 spec 指针）；删除/迁出须写明去向（账本/CONTRIBUTING/spec），内容不得蒸发——行数不是指标，禁止为凑行数删除。缺一在 review Standards 轴打回。
 
 ## Plan/ 生命周期
 

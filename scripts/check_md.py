@@ -38,6 +38,11 @@ Checks:
 - ARCHIVE PATH: an inline-code path of the form
   `openspec/changes/archive/<name>/` must point at an existing directory
   (renamed archives leave no stale pointers behind).
+- SPECS ROUTER: openspec/specs/README.md is the single routing entry for
+  every capability spec — each capability directory (one holding a
+  spec.md) must be linked there, and every spec link there must resolve
+  to an existing capability. Adding or removing a spec without updating
+  the router is red.
 """
 
 import os
@@ -196,6 +201,33 @@ def main() -> int:
                         if "#" + anchor not in cache[tgt]:
                             print(f"BAD ANCHOR   {f}:{i} [{text}]({target})")
                             bad += 1
+    # SPECS ROUTER: specs/README.md must route to every capability spec and
+    # nothing else (single routing entry; governance meta-rule "spec 路由单入口").
+    specs_dir = os.path.join(root, "openspec", "specs")
+    router = os.path.join(specs_dir, "README.md")
+    caps = sorted(
+        os.path.basename(d)
+        for d in glob(os.path.join(specs_dir, "*"))
+        if os.path.isfile(os.path.join(d, "spec.md"))
+    )
+    if os.path.isfile(router):
+        with open(router, encoding="utf-8") as fh:
+            router_text = fh.read()
+        for cap in caps:
+            if f"]({cap}/spec.md)" not in router_text:
+                print(f"SPECS ROUTER {cap}: not routed in openspec/specs/README.md")
+                bad += 1
+        for m in re.finditer(r"\]\(([^)]*?/spec\.md)\)", router_text):
+            tgt = m.group(1)
+            if tgt.startswith("http"):
+                continue
+            cap = tgt.split("/")[-2]
+            if cap not in caps:
+                print(f"SPECS ROUTER README links missing capability: {tgt}")
+                bad += 1
+    elif caps:
+        print("SPECS ROUTER openspec/specs/README.md missing")
+        bad += 1
     print(f"checked {len(files)} files;", "OK" if bad == 0 else f"{bad} broken")
     return 1 if bad else 0
 
