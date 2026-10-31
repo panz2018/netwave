@@ -2,12 +2,6 @@
 
 ## Entries
 
-### LL-002 API 命名遵 api-contract
-
-- 犯过：自造 `frequency_in` 被否，改回 `f_scaled`
-- 规则：命名以 api-contract spec 为准，禁止自造同义词
-- 复发检测：review Spec 轴对照 api-contract spec 名称表
-
 ### LL-015 交错复数布局与终态借用
 
 - 犯过：布局/搬运方式曾致拷贝（铁律一定契约时定稿）
@@ -36,12 +30,6 @@
 - 规则：criterion 基准输入输出均 `black_box`；`scaffold_noop` 为有意 no-op
   不受影响
 - 复发检测：review Standards 轴检查 bench 函数体含 `black_box`
-
-### LL-022 core crate `publish = false`
-
-- 犯过：无（预防性记录）
-- 规则：core 不独立发布，版本随 workspace 移动
-- 复发检测：review 检查 `core/Cargo.toml` 保留 `publish = false`
 
 ### LL-042 精确常量比较不引用容差
 
@@ -99,55 +87,6 @@
 - 复发检测：`typescript/src/netwave.worker.ts` 与 wasm glue `.d.ts` grep 逐动词
   入口零命中；worker 往返测试覆盖 `call` 分发（`JsValue` 非 wasm 不可构造，
   分发层原生不可单测）
-
-### LL-053 规范缺省值必须逐关键词抄原文
-
-- 犯过：解析器把"缺 `#` 行"与"行内缺关键词"混为一谈静默套全默认，且
-  format 缺省抄成 RI——规范原文缺省是 MA（"The default value is MA"），
-  `#` 行整行缺失本身违规（"shall contain an option line"）必须报错
-  （人工审计纠正）
-- 规则：实现格式缺省时逐关键词引用规范原文并给出处；"整块必填、块内
-  个别可选"的边界必须区分——块缺失=报错，块内缺项=规范缺省；API 默认
-  （如 `data(parameter?, format?)`）是接口设计，与文件解析缺省分开设
-- 复发检测：`core/tests/touchstone_parse.rs` 钉住缺 `#` 行报错 + 空 `#`
-  行按 MA 反变换两测试；review Spec 轴对照 spec.md 解析契约场景
-
-### LL-055 2 端口文件列序 legacy 反序，I/O 边界必须交换
-
-- 犯过：解析器把 2 端口文件的 4 个复数对按 token 序直接入 row-major
-  存储，等于把 S21/S12 读反——v1.x 约定 2 端口文件列序为
-  `N11, N21, N12, N22`（off-diagonal 反序，规范 v2.1 "1-port and
-  2-port Networks"），3 端口及以上才是纯 row-major（人工审计纠正）
-- 规则：内部存储恒 row-major（铁律一布局），2 端口文件在解析边界交换
-  交错对（位置 2↔4、3↔5 的 re/im），写出边界换回 legacy 序（交换自逆）；
-  消费者（`s`/`z`/`y`/`g`/`h`/`data()`）MUST NOT 为 nports=2 做特殊索引。
-  skrf 同策（`io/touchstone.py` rank==2 transpose）；rf-touchstone 内部
-  存转置矩阵为反例，不采
-- 复发检测：`core/tests/touchstone_parse.rs` 钉住非对称 2 端口读入交换 +
-  3 端口无交换；`core/tests/touchstone_write.rs` 钉住写出 legacy 序 +
-  往返 bit-exact
-
-### LL-060 绑定壳禁重算，只转发 core 结果
-
-- 犯过：python 与 node 的 `data()` 曾在壳层自己实现取数/组装逻辑，用户
-  两次质问“为啥不直接用 rust 的 data 函数”，宪法铁律十一写明所有状态
-  与计算全在 rust，壳子不含计算
-- 规则：python/node/wasm 壳只做参数转换与结果转发，MUST NOT 在壳层重写
-  任何计算/取数/组装逻辑；发现壳层出现算法即搬回 core 后壳改为一行转发
-- 复发检测：review 时 grep 壳层函数体（python/src、typescript/*/src、
-  壳 .ts）内出现矩阵/换算/循环组装即打回
-
-### LL-056 覆盖率不得扭曲热路径，防御分支用穷尽 match 钉死
-
-- 犯过：为触达 `convert_to_s` 未覆盖分支曾加 S 快路径判断与
-  `#[inline(never)]` 等改动——在热路径上为覆盖率指标增加运算/调用边界，
-  违反性能底线（人工纠正）
-- 规则：覆盖率缺口用正确途径解决——直接测私有函数、按 crate 归属度量
-  （`cargo llvm-cov -p netwave`）、结构性不可达逐条豁免；防御性 S 臂用
-  穷尽 `match`（无通配）+ 直接测试钉报错语义，S 数据在调用方零拷贝直通
-  不变。`else`/通配 MUST NOT 承载正确行为（铁律十三/十四）
-- 复发检测：`cargo llvm-cov -p netwave --codecov` + `coverage_gate.py`；
-  review diff 中为覆盖率新增的热路径运算即打回
 
 ### LL-062 worker 内无 `window`，wasm 取全局一律走 `js_sys::global()`
 

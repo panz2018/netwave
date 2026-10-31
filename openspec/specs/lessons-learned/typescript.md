@@ -2,24 +2,6 @@
 
 ## Entries
 
-### LL-001 同步/异步 toY 契约
-
-- 犯过：把 `toY` 实现成独立计算路径，偏离契约
-- 规则：同步 `_toY` 调 core 计算；`async toY` 内部包装 `_toY`，仅超阈值走
-  worker；`expect(_toY(x)).toEqual(await toY(x))`
-- 复发检测：vitest 双路一致性断言
-- **修订**："小数据不起 worker"分流随 worker 常驻架构（见
-  [异步与 Worker 边界契约（常驻 worker 架构）](../zero-copy-roundtrip/spec.md#requirement-异步与-worker-边界契约常驻-worker-架构)）废止——所有计算不管大小
-  全进常驻 worker；
-  浏览器端 `_` 同步计算逃生口废止（主线程无 wasm），node 端保留 `_`（napi
-  core 在进程内）；双路一致性断言改为 worker 往返 vs `_toY`（仅 node）
-
-### LL-007 只用公共 API 面
-
-- 犯过：`dump_js` 用 `_` escape hatch（`2f49f18` 改公共 async 面）
-- 规则：测试/示例/脚本只用公共 API，禁 `_` 前缀内部面
-- 复发检测：可门禁化——grep 脚本/示例中 `_` 调用即红
-
 ### LL-017 napi/wasm 绑定实现细节
 
 - 犯过：napi `Buffer::from(vec)` 内部 `mem::forget`，JS 侧重建须传满容量
@@ -57,51 +39,6 @@
   无害仅跳锁；消音：
   `cat /proc/sys/kernel/random/uuid | tr -d '-' | sudo tee /etc/machine-id`
 - 复发检测：文字规则（环境类，不可自动门禁）
-
-### LL-030 主线程 wasm 实例退役（worker 常驻架构）
-
-- 犯过：脚手架期壳在主线程 init wasm 与 worker 双实例并存，主线程可持数据副本，
-  权威歧义（worker 常驻架构定案时纠正）
-- 规则：浏览器端数据/状态/计算全常驻单个 worker 内 wasm，主线程不 init wasm、
-  不持数据副本；元数据搭结果便车回传，主线程只从返回值同步读描述符；实现时
-  旧壳双实例模式不得回流
-- 复发检测：真浏览器测试线（vitest browser mode，随 worker 实现落地）断言
-  upload 后主线程视图 detached；review 轴 grep 主线程壳中
-  `wasmInit`/`WebAssembly.instantiate`
-
-### LL-031 同步元数据读取改异步
-
-- 犯过：契约曾定"属性/元数据（`shape`/`frequency`）保持同步"，主线程无 wasm 后
-  不成立（worker 常驻架构定案时纠正）
-- 规则：计算与元数据一律异步进 worker；已 resolve 结果描述符上的元数据可同步
-  读；worker 异常终止数据丢失为已接受行为，不引入 IndexedDB 恢复
-- 复发检测：api-contract 类型面元数据访问器全为 `Promise`（node 端 `_` 除外）
-
-### LL-043 napi build 必须出 .d.ts 且非 const enum
-
-- 犯过：`build:native` 未传 `--dts`，node glue（`index.node.generated.mjs`）无类型
-  伴生文件，`FrequencyUnit` 在 `index.node.ts` 退化为 `any`，测试里的
-  `@ts-expect-error`（`FrequencyUnit.Hzz`）变"unused directive"、typecheck 假绿；
-  补 `--dts` 后又因 napi 默认出 `const enum`（类型-only，不能作值引用），
-  `Object.getOwnPropertyNames(FrequencyUnit)` 报 TS2475
-- 规则：`napi build` 必带 `--dts index.node.generated.d.mts`（ESM 用 `.d.mts`，
-  NodeNext 解析；CJS 伴生用 `.d.cts`）与 `--no-const-enum`（出运行时枚举，
-  可作值引用）；wasm-bindgen 枚举对象含反向映射数字键（`kHz:1,"1":"kHz"`），
-  成员集合断言须过滤 `^\d+$`；napi 枚举成员是非枚举 own property，用
-  `getOwnPropertyNames` 非 `Object.keys`
-- 复发检测：`pnpm -C typescript typecheck`（缺 `--dts` 时 `@ts-expect-error`
-  unused 即红）；`vocabulary-consistency.test.ts` 断言三端生成物成员集合相等
-
-### LL-049 node 曾暴露 `free()` 偏离 memory-lifecycle spec 的 `drop()`
-
-- 犯过：node napi 绑定的手动释放叫 `free()`（wasm-bindgen 生成物名上浮到
-  node 用户可见面），偏离 memory-lifecycle spec 已定的统一动词 `drop()`；
-  实现偏离 spec 未被当轮发现，直到统一动词 change 才纠正
-- 规则：手动释放全端唯一名 `drop()`；wasm-bindgen 为导出类自动生成的
-  `free()` 属工具链产物，MUST NOT 上浮 node/浏览器用户可见面——句柄表下沉
-  core 后 wasm 类不再浮出 JS，该生成物连调用点都不存在
-- 复发检测：`python3 scripts/check_verbs.py`（`free`/`release` 作名字出现在
-  任一生成物即红）；review Spec 轴对照 memory-lifecycle spec 动词表
 
 ### LL-050 wasm glue 清空后须 `extern crate` 强制链接 core
 

@@ -44,25 +44,12 @@
 - 复发检测：review 时核对 main 历史无 agent 直推 commit；对话中声称
   "无凭据建不了 PR"前，必须附 credential fill 失败的证据
 
-### LL-009 交互命令预先非交互化
-
-- 犯过：corepack 下载确认假死；cargo-llvm-cov 首跑询问 llvm-tools 假死
-- 规则：设 `COREPACK_ENABLE_DOWNLOAD_PROMPT=0`；先预装
-  `llvm-tools-preview`
-- 复发检测：可门禁化——CI 环境预装检查；agent 侧文字规则
-
 ### LL-011 Windows GITHUB_PATH 原生路径且分 step
 
 - 犯过：git-bash 安装器写 unix 路径 + 同 step 使用，pwsh 后续步骤找不到
   （`f855147`）
 - 规则：`cygpath -w` 写原生路径；安装与使用分属两个 step
 - 复发检测：可门禁化——shellcheck/审查 CI 中 GITHUB_PATH 写入格式
-
-### LL-012 binaryen 整树安装
-
-- 犯过：只拷 `bin/` 致 macOS SIGABRT（`08c600d`）
-- 规则：release 整树解到 `~/.local/opt/binaryen`（RUNPATH `$ORIGIN/../lib`）
-- 复发检测：`scripts/install_binaryen.sh` 保持整树布局；CI wasm-opt 冒烟
 
 ### LL-013 GitHub API 带 token、env 用 block 风格
 
@@ -108,16 +95,6 @@
   `tsc --noEmit --listFiles | grep tsdown.config.ts` 命中即证门禁覆盖；
   可门禁化——把 typecheck 加进提交前 hook
 
-### LL-037 新增 test:* 脚本必须同步进 CI，否则不算闸门
-
-- 犯过：worker-resident-implementation 落地真浏览器线 `test:browser`
-  （本地 `pnpm test` 已含），但 CI 只跑 `test:wasm`（node 模拟）——
-  铁律八"主线程无 wasm"只有真浏览器能证，这条线不进 CI 等于闸门形同虚设
-- 规则：新增 `typescript` `test:<name>` 脚本时，当轮必须把它接进
-  `.github/workflows/ci.yml`（本地能跑 ≠ CI 已守）；CI 是闸门的唯一定义处
-- 复发检测：已门禁化——`scripts/check_ci.py`（并入 `pnpm check:meta`）
-  枚举 `typescript/package.json` 全部 `test:*`，任一未被 ci.yml 调用即红
-
 ### LL-047 跨端一致性检查归构建各端产物的集成步骤
 
 - 犯过：`test/native/vocabulary-consistency.test.ts`（node job 跑）读三份
@@ -132,22 +109,10 @@
   并在 node 测试段单开 `stub_gen` 步骤，node 章节凭空依赖 python 构建（职责
   错位，被人工质疑）。终态：检查改纯标准库脚本 `scripts/check_vocab_types.py`
   （同 `check_vocab.py` 族）折进 `check:cross` 末尾（跨端闸门单一入口），
-  CI 步骤内 `maturin develop` 后先跑 `stub_gen` 生成 `.pyi`（跑法见
-  LL-063），再 `pnpm check:cross`（其前置契约=三端产物齐备）。
+  CI 步骤内 `maturin develop` 后先跑 `stub_gen` 生成 `.pyi`（跑法见 ci.yml
+  `stub_gen` 步骤：先导出 uv sysconfig LIBDIR 再 `cargo run`），
+  再 `pnpm check:cross`（其前置契约=三端产物齐备）。
   本地模拟 CI 某 job 前先删该 job 不该有的产物，别信脏工作树
 - 复发检测：review 读 `readFileSync`/`fs` 生成产物的测试/脚本时，核对其所在
   job 步骤是否生成了被测的每一类产物，且跨端检查是否落在构建各端的集成步骤
   而非单端测试段；可门禁化——job 内产物存在性冒烟
-
-### LL-063 `stub_gen` 动态链接 libpython，跑前必导出 uv LIBDIR
-
-- 犯过：node ubuntu-22 格 `cargo run --features stub-gen --bin stub_gen`
-  exit 127 `libpython3.14.so.1.0: cannot open shared object file`——pyo3
-  auto 探测 uv 管理的 CPython 为**动态链接**，而 CI 旧注释误称"静态链
-  无需 `.so`"（旧事实致坑）；本地全绿只因 shell 环境已带该库路径
-- 规则：CI 跑 `stub_gen` 前 MUST 导出 uv Python 的 sysconfig LIBDIR：
-  `export LD_LIBRARY_PATH="$(uv run --project python python -c \"import sysconfig; print(sysconfig.get_config_var('LIBDIR'))\"):$LD_LIBRARY_PATH"`；
-  跑 bin 用 `cargo run`（直接跑二进制缺 `CARGO_MANIFEST_DIR` 会 panic 101）。
-  对工具链行为的注释 MUST 实证后再写（AGENTS 机制断言先实证）
-- 复发检测：ci.yml 中 `stub_gen` 步骤前存在 LIBDIR 导出行；缺失即红；
-  本地模拟先 `env -u LD_LIBRARY_PATH` 复现
