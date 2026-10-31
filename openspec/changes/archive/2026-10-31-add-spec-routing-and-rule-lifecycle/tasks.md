@@ -56,6 +56,6 @@
 - [x] 5.2 跑全量闸门：`pnpm check:md`（332 files OK）、`pnpm check:meta`
       （全 OK）、`openspec validate add-spec-routing-and-rule-lifecycle`
       （exit 0；strict 仅 2 条正文偏长警告，与本仓既有 spec 常态一致，非闸门）✓
-- [ ] 5.3 三轴 review（Standards：新元规则与既有真相源不重复；Spec：
+- [x] 5.3 三轴 review（Standards：新元规则与既有真相源不重复；Spec：
       delta 逐条落地；Lessons：对照 INDEX 现存 44 条无命中）。
-      验证：结论表呈人，人点名后方可归档
+      验证：结论表已呈人，人以 `/opsx:archive` 点名归档 ✓
