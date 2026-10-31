@@ -23,43 +23,46 @@
    修正——LL-020/LL-057 被 `ci-matrix` 指名"唯一正文见账本"、LL-042 被
    `frequency-class`/`frequency-unit` 指名（见账本），禁删；LL-037 经核
    `check_ci.py` 源码确认闸门已强制（枚举 `test:*` 未接 ci.yml 即红），
-   补入退役。**终数：31 删 / 42 留**（总数 73，编号 001–073）。
+   补入退役。apply 阶段两步走补证又抓到两处假门禁：LL-028（MD024 重复
+   标题未启用，实测注入重复标题不红）、LL-032（"方案一"/日期戳未被
+   `check_md.py` grep，实测注入不红），与 LL-025 同类降级保留、移入
+   待落门禁。**终数：29 删 / 44 留**（总数 73，编号 001–073）。
 
-## 首批退役映射表（31 条，逐条确认载体）
+## 首批退役映射表（29 条，逐条确认载体）
 
 去向标签：`spec`=判据1 覆盖方为 spec；`gate`=判据2 门禁/编译器/固化脚本；
 `agents`=AGENTS.md 常驻正文覆盖。每条删除时同步删 INDEX 行。
 
 ### A 组：spec 完整覆盖（16 条）
 
-| LL | 覆盖方 | 覆盖证据（已核实的正文位置） |
-| --- | --- | --- |
-| LL-001 | zero-copy-roundtrip「异步与 Worker 边界契约」 | 全进 worker、`_toY` 仅 node、元数据便车逐条成文 |
-| LL-002 | governance 铁律十/十二 + api-contract | 命名单源、禁自造同义词 |
-| LL-007 | api-contract（`_` 逃生口管辖条款） | 测试/示例只用公共面成文 |
-| LL-027 | oracle-harness（dump 布局 Requirement） | `.bin` 小端 f64、`<end>/<sample>/<field>.bin` |
-| LL-030 | governance 铁律八 | 主线程 MUST NOT init wasm/持副本 |
-| LL-031 | zero-copy-roundtrip | 元数据未持有结果时 MUST 异步进 worker |
-| LL-035 | governance「文档语言约定唯一正文在本 spec」+ AGENTS.md 语言段 | 对话镜像 + 分目录语言均成文 |
-| LL-039 | governance「代码只写使用信息」+ check_comments.py | 元规则正文 + 门禁双承载 |
-| LL-049 | 铁律十二 + check_verbs.py `FORBIDDEN` | `free`/`release` 上浮即红 |
-| LL-053 | touchstone-core（option line Requirement） | `#` 行缺失报错、缺省 MA 非 RI，含规范原文引文 |
-| LL-055 | touchstone-core「2 端口列序」 | legacy 序、I/O 边界交换、往返 bit-exact 三 scenario |
-| LL-056 | governance 铁律十四 | 覆盖率不得牺牲性能全文即此规则 |
-| LL-060 | governance 铁律十一 | 壳 MUST NOT 含计算 |
-| LL-067 | 元规则「最小规则原则」Scenario 新增规则先查重 | 逐字对应 |
-| LL-068 | lessons-learned spec「可门禁化条目转 check 脚本」 | 该 Requirement 即此规则 |
-| LL-071 | AGENTS.md「改动要有去向」+ 最小规则原则 | 去向纪律成文 |
+| LL     | 覆盖方                                                        | 覆盖证据（已核实的正文位置）                        |
+| ------ | ------------------------------------------------------------- | --------------------------------------------------- |
+| LL-001 | zero-copy-roundtrip「异步与 Worker 边界契约」                 | 全进 worker、`_toY` 仅 node、元数据便车逐条成文     |
+| LL-002 | governance 铁律十/十二 + api-contract                         | 命名单源、禁自造同义词                              |
+| LL-007 | api-contract（`_` 逃生口管辖条款）                            | 测试/示例只用公共面成文                             |
+| LL-027 | oracle-harness（dump 布局 Requirement）                       | `.bin` 小端 f64、`<end>/<sample>/<field>.bin`       |
+| LL-030 | governance 铁律八                                             | 主线程 MUST NOT init wasm/持副本                    |
+| LL-031 | zero-copy-roundtrip                                           | 元数据未持有结果时 MUST 异步进 worker               |
+| LL-035 | governance「文档语言约定唯一正文在本 spec」+ AGENTS.md 语言段 | 对话镜像 + 分目录语言均成文                         |
+| LL-039 | governance「代码只写使用信息」+ check_comments.py             | 元规则正文 + 门禁双承载                             |
+| LL-049 | 铁律十二 + check_verbs.py `FORBIDDEN`                         | `free`/`release` 上浮即红                           |
+| LL-053 | touchstone-core（option line Requirement）                    | `#` 行缺失报错、缺省 MA 非 RI，含规范原文引文       |
+| LL-055 | touchstone-core「2 端口列序」                                 | legacy 序、I/O 边界交换、往返 bit-exact 三 scenario |
+| LL-056 | governance 铁律十四                                           | 覆盖率不得牺牲性能全文即此规则                      |
+| LL-060 | governance 铁律十一                                           | 壳 MUST NOT 含计算                                  |
+| LL-067 | 元规则「最小规则原则」Scenario 新增规则先查重                 | 逐字对应                                            |
+| LL-068 | lessons-learned spec「可门禁化条目转 check 脚本」             | 该 Requirement 即此规则                             |
+| LL-071 | AGENTS.md「改动要有去向」+ 最小规则原则                       | 去向纪律成文                                        |
 
 ### B 组：门禁/编译器/固化脚本承载（5 条）
 
-| LL | 承载方 | 两步走证明（apply 时执行） |
-| --- | --- | --- |
-| LL-012 | `scripts/install_binaryen.sh` 整树布局已固化 | 脚本即执行者，冒烟 = CI wasm-opt 步骤现存 |
-| LL-022 | `core/Cargo.toml` `publish = false` 配置事实 | 文件现存即证据 |
-| LL-037 | `scripts/check_ci.py`（已核实源码：`test:*` 未接 ci.yml 即红） | 临时注释 ci.yml 一处 `test:` 调用跑出红，还原 |
-| LL-043 | `typescript/package.json` build 脚本已带 `--dts --no-const-enum`；缺 dts 时 typecheck 假绿自曝 | 去旗标跑 typecheck 出 unused directive 红 |
-| LL-063 | ci.yml `stub_gen` 步骤 LIBDIR 导出行已固化 | 现存行即执行者 |
+| LL     | 承载方                                                                                         | 两步走证明（apply 时执行）                    |
+| ------ | ---------------------------------------------------------------------------------------------- | --------------------------------------------- |
+| LL-012 | `scripts/install_binaryen.sh` 整树布局已固化                                                   | 脚本即执行者，冒烟 = CI wasm-opt 步骤现存     |
+| LL-022 | `core/Cargo.toml` `publish = false` 配置事实                                                   | 文件现存即证据                                |
+| LL-037 | `scripts/check_ci.py`（已核实源码：`test:*` 未接 ci.yml 即红）                                 | 临时注释 ci.yml 一处 `test:` 调用跑出红，还原 |
+| LL-043 | `typescript/package.json` build 脚本已带 `--dts --no-const-enum`；缺 dts 时 typecheck 假绿自曝 | 去旗标跑 typecheck 出 unused directive 红     |
+| LL-063 | ci.yml `stub_gen` 步骤 LIBDIR 导出行已固化                                                     | 现存行即执行者                                |
 
 ### C 组：AGENTS.md 常驻正文覆盖（6 条）
 
@@ -67,16 +70,17 @@ LL-008（改动波及面必须改全）、LL-009（终端命令规范 COREPACK �
 LL-038（硬护栏·动词=授权全集）、LL-058（三次即搜）、LL-059（机制断言
 先实证）、LL-070（正文自述已转正入 AGENTS.md 硬护栏）。
 
-### D 组：check:md 系门禁承载（4 条）
+### D 组：check:md 系门禁承载（2 条）
 
-| LL | 门禁 |
-| --- | --- |
-| LL-028 | markdownlint MD024 重复标题即红（正文自述已生效） |
-| LL-032 | check_md.py STAGE WORD / VERSION TAG |
-| LL-033 | check_md.py DECISION TAG |
-| LL-045 | check_md.py 解析 archive 内相对链接，断链即红 |
+| LL     | 门禁                                | 两步走证据                                           |
+| ------ | ----------------------------------- | ---------------------------------------------------- |
+| LL-033 | check_md.py DECISION TAG            | 注入"design 后接 D 加数字"形态决策代号命中红，还原绿 |
+| LL-045 | check_md.py 解析 archive 内相对链接 | archive 注入断链命中 BROKEN FILE 红，还原绿          |
 
-## 保留清单（42 条，不退役理由分组）
+> LL-028（MD024 未启用）、LL-032（方案代号/日期戳未 grep）经补证为
+> 假门禁，移入下方暂缓项，本批不退役。
+
+## 保留清单（44 条，不退役理由分组）
 
 - **spec 钦定唯一正文，禁删**：LL-029（知识产权元规则指名）、LL-072
   （铁律一指名）、LL-020/LL-057（ci-matrix/铁律七指名）、LL-042
@@ -84,7 +88,7 @@ LL-038（硬护栏·动词=授权全集）、LL-058（三次即搜）、LL-059�
 - **行为纪律，无机器兜底**：LL-003/004/005/040/061/064
 - **跨机器实现细节/口诀**：LL-015/016/017/044/046/050/051/052/062/019/024/023/014/041/054
 - **workflow 口诀**：LL-028 已删，余 LL-065
-- **待落门禁（暂缓项，见下）**：LL-018/021/025/034/036/047
+- **待落门禁（暂缓项，见下）**：LL-018/021/025/028/032/034/036/047
 - **跨机器环境事实（一次性误标纠正）**：LL-011/013/026/048/066/069
 - **脚本编写口诀**：LL-006/010
 - **流程默认步骤**：LL-073（config.yaml 已有正文，账本留事故证据与口诀）
@@ -93,8 +97,9 @@ LL-038（硬护栏·动词=授权全集）、LL-058（三次即搜）、LL-059�
 
 LL-025（coverage_gate.py 增 v8 ignore 附理由校验）、LL-036（typecheck 进
 `pnpm check`）、LL-018（golden 禁手改哈希校验）、LL-021（black_box lint）、
-LL-034/LL-047（check_ci.py 扩步骤顺序/归属检查）。落地一条、按判据 2
-两步走证明、退役一条。
+LL-034/LL-047（check_ci.py 扩步骤顺序/归属检查）、LL-028（markdownlint 启用
+MD024 或 check_md.py 加重复标题检测）、LL-032（check_md.py 补 grep 方案代号
+与无意义日期戳）。落地一条、按判据 2 两步走证明、退役一条。
 
 ## specs/README.md 结构草案
 

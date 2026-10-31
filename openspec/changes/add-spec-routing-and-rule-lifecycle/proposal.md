@@ -32,7 +32,7 @@ spec/门禁/AGENTS.md 完整覆盖，成为第二套规则堆。路由缺失与�
   能力目录必须在 README 有链接行、README 每行必须指向现存目录，双向不符即红
 - `openspec/config.yaml` operations 段新增：apply/archive 时扫 specs/ 全目录，
   产出"更新/新增/退役"三态时效结论
-- 账本首批退役：31 条 LL 正文删除（逐条证据与去向映射见 design.md），
+- 账本首批退役：29 条 LL 正文删除（逐条证据与去向映射见 design.md），
   INDEX 同步；`Plan/账本退役审计.md` 全文吸收后整文件删除
 
 ## Capabilities
@@ -67,7 +67,7 @@ spec/门禁/AGENTS.md 完整覆盖，成为第二套规则堆。路由缺失与�
   `pnpm check`、LL-018 golden 禁手改、LL-021 black_box lint）——留待之后
   逐条另起 change
 - 不改任何产品代码、公开 API、CI 矩阵与 oracle 机制
-- 不清空整个账本：42 条保留条目（行为纪律、跨机器实现细节、spec 钦定
+- 不清空整个账本：44 条保留条目（行为纪律、跨机器实现细节、spec 钦定
   唯一正文、待落门禁口诀）不动
 
 ## Prior art
