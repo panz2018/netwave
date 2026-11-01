@@ -14,24 +14,24 @@
 一致，软提示与硬闸门不脱节。增补的语义质量（是否真是专家级发现）归
 review，不属门禁。
 
-#### Scenario: 缺节即红
+#### Scenario: 专家增补缺节即红
 
 - **WHEN** 在途 `openspec/changes/<name>/proposal.md` 缺 `## 专家增补` 节
 - **THEN** `pnpm check:meta` 失败（`::error::` 指明文件与缺失节名）
 
-#### Scenario: 空节合法
+#### Scenario: 专家增补空节合法
 
 - **WHEN** `## 专家增补` 节为空或仅写「无」
 - **THEN** `pnpm check:meta` 通过——闸门查存在性，不强制有内容
 
-#### Scenario: 注水即红
+#### Scenario: 专家增补注水即红
 
 - **WHEN** `## 专家增补` 节非空，且某条增补不含反引号标识符、仓库内
   文件路径或 URL（泛谈无具体指涉）
 - **THEN** `pnpm check:meta` 失败——每条增补须指到本任务的具体文件 /
   接口 / 测试名
 
-#### Scenario: 归档不回溯
+#### Scenario: 专家增补归档不回溯
 
 - **WHEN** change 归档进 `openspec/changes/archive/`
 - **THEN** 该 proposal 退出扫描范围，闸门不因旧文件缺新节而红
