@@ -12,6 +12,12 @@ required to meet new rules) MUST carry two sections with substance:
   known source/config extension), or the explicit statement 无现成方案
   ("no existing solution", which must be honest, not a dodge — the gate
   checks structure, review checks honesty).
+- `## 专家增补` (expert blindspot): the section MUST exist, but content may
+  be empty — an empty section or a lone 无 ("none") is a legal exit (the
+  prompt asks "what would a top expert add that nobody requested"; honest
+  silence is valid). When non-empty, every bullet line MUST carry a concrete
+  reference — a backticked identifier, a repo file path, or a URL — or it
+  is padding and red. Semantic quality stays with review.
 
 Zero exemptions: no skip markers, no allowlists. An honest 无现成方案 is a
 legal exit, not an exemption. No in-flight changes means pass, so the gate
@@ -35,8 +41,11 @@ CHANGES_DIR = ROOT / "openspec" / "changes"
 ARCHIVE_DIR = CHANGES_DIR / "archive"
 
 REQUIRED = ("Non-goals", "Prior art")
+BLINDSPOT = "专家增补"
 NO_PRIOR_STATEMENT = "无现成方案"
+NO_ADDITION_STATEMENTS = {"无", "无。", "无."}
 CITATION = re.compile(r"https?://|\S+\.(?:rs|py|ts|md|json|ya?ml|toml)\b", re.IGNORECASE)
+BACKTICK = re.compile(r"`[^`]+`")
 
 
 def section_body(lines, title):
@@ -52,6 +61,43 @@ def section_body(lines, title):
                 body.append(nxt)
             return body
     return None
+
+
+def check_blindspot(lines, rel):
+    """`## 专家增补`: existence hard, content optional; non-empty bullets
+    must each carry a concrete reference (backtick / path / URL)."""
+    pat = re.compile(rf"^##\s+{re.escape(BLINDSPOT)}\s*$", re.IGNORECASE)
+    start = None
+    for i, line in enumerate(lines):
+        if pat.match(line):
+            start = i
+            break
+    if start is None:
+        return [f"{rel}: missing required section '## {BLINDSPOT}'"]
+    errs = []
+    items = []  # (start_line_no, joined_text) — a bullet plus its continuations
+    cur_no, cur = None, []
+    for offset, line in enumerate(lines[start + 1 :], start=start + 2):
+        if re.match(r"^##\s", line):
+            break
+        stripped = line.strip()
+        if stripped.startswith(("- ", "* ")):
+            if cur_no is not None:
+                items.append((cur_no, " ".join(cur)))
+            cur_no, cur = offset, [stripped[2:]]
+        elif stripped and cur_no is not None:
+            cur.append(stripped)
+    if cur_no is not None:
+        items.append((cur_no, " ".join(cur)))
+    for no, text in items:
+        if text in NO_ADDITION_STATEMENTS:
+            continue
+        if not (BACKTICK.search(text) or CITATION.search(text)):
+            errs.append(
+                f"{rel}:{no}: '{BLINDSPOT}' bullet lacks a concrete "
+                "reference (need a backticked identifier, repo file path, or URL)"
+            )
+    return errs
 
 
 def check_file(path):
@@ -73,6 +119,7 @@ def check_file(path):
                 f"{rel}: '## Prior art' has no citation "
                 "(need a URL, a repo file path, or 无现成方案)"
             )
+    errs.extend(check_blindspot(lines, rel))
     return errs
 
 
@@ -92,7 +139,10 @@ def main() -> int:
         for e in errors:
             print(f"::error::{e}", file=sys.stderr)
         return 1
-    print(f"proposal gate OK: {len(proposals)} in-flight proposal(s) carry Non-goals + Prior art")
+    print(
+        f"proposal gate OK: {len(proposals)} in-flight proposal(s) "
+        "carry Non-goals + Prior art + 专家增补"
+    )
     return 0
 
 
