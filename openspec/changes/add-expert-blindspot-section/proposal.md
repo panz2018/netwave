@@ -16,8 +16,10 @@ AGENTS.md 另行直改）与 proposal.md 固定小节（硬闸门，本 change�
 - `scripts/check_proposal.py` 门禁扩展：在途 proposal 缺 `## 专家增补` 节
   即红；节非空时每条增补须含具体指涉（反引号标识符 / 仓库内文件路径 /
   URL），纯泛谈行视为注水即红。
-- governance spec 新增元规则 Requirement「提案工件必带专家增补节」，与
+- governance spec 把既有元规则 Requirement「提案工件必带出处与不做清单」
+  改名合并为「提案工件必带三节」（Non-goals / Prior art / 专家增补），与
   config.yaml、check_proposal.py 三者同口径（软提示与硬闸门不脱节）。
+  不另起新 Requirement——同一门禁的多节要求合为一条，避免重复正文。
 
 ## Capabilities
 
@@ -27,8 +29,9 @@ AGENTS.md 另行直改）与 proposal.md 固定小节（硬闸门，本 change�
 
 ### Modified Capabilities
 
-- `project-governance`: 新增元规则——proposal 必带 `## 专家增补` 节
-  （存在性硬、内容可空、非空须具体），门禁化于 `check_proposal.py`。
+- `project-governance`: 元规则「提案工件必带出处与不做清单」改名合并为
+  「提案工件必带三节」——proposal 必带 `## 专家增补` 节（存在性硬、
+  内容可空、非空须具体），门禁化于 `check_proposal.py`。
 
 ## Impact
 

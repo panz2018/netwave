@@ -59,3 +59,19 @@
 - 复发检测：review Standards 轴核对——diff 中出现 Plan/ 草案独有、既有惯例
   没有的新工件（尤其与同 change 其他工件内容重叠）即打回；
   已拍板生效的规则正文仍留在 Plan/ 即打回
+
+### LL-074 同一门禁的多节要求合为一条 Requirement，禁机械 ADDED 造重复
+
+- 犯过：sync 专家增补规则时向 governance spec 机械 ADDED 新 Requirement
+  「提案工件必带专家增补节」，与既有「提案工件必带出处与不做清单」八成
+  重复（同一脚本 `check_proposal.py`、同一命令 `pnpm check:meta`、同套
+  零豁免与归档不回溯措辞）；Scenario 标题撞 MD024 后还用「专家增补」前缀
+  绕门禁，治标不治本，被人工看出"两条 Requirement 长得很像"
+- 根因：把 delta 的 ADDED 当成默认操作，没先对照主 spec 既有同闸门条目查重；
+  绕 MD024 的前缀补丁掩盖了重复本身，门禁绿≠内容对
+- 规则：新增 spec Requirement 前 MUST 对照主 spec 既有 Requirement，凡共享
+  同一门禁脚本/命令/豁免句式/归档策略的多节要求 MUST 合为一条
+  （delta 用 RENAMED + MODIFIED，MODIFIED 须含合并后全部保留 Scenario），
+  不得另起一条重复正文
+- 复发检测：review Standards 轴 diff 中出现两条 Requirement 共享同一脚本 +
+  同一命令 + 同一豁免句式即打回；Scenario 靠加限定前缀规避 MD024 即打回

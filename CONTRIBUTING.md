@@ -41,7 +41,7 @@ Plan/         Unexecuted planning docs only; lifecycle rules live in
 - **Proposal completeness**: `scripts/check_proposal.py` (wired into
   `pnpm check:meta`) validates every in-flight proposal; the contract body
   is the governance spec requirement
-  [元规则 提案工件必带出处与不做清单](openspec/specs/project-governance/spec.md#requirement-元规则-提案工件必带出处与不做清单).
+  [元规则 提案工件必带三节](openspec/specs/project-governance/spec.md#requirement-元规则-提案工件必带三节).
 
 ## Quick start (development)
 
