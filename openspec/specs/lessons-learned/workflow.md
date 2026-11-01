@@ -52,6 +52,10 @@
   "同一事实只存一份正文"铁律
 - 规则：Plan/ 内规矩未经拍板/归档转正即不具约束力，MUST NOT 据此新增工件或
   改变既有惯例；持久落点沿用既有工件（决策唯一存 `design.md`「Decisions」节，
-  不另建 `decisions.md`）。引用 Plan/ 条文前先确认其是否已转正
+  不另建 `decisions.md`）。引用 Plan/ 条文前先确认其是否已转正。
+  反向同理：拍板后要生效的规则 MUST 落生效位（AGENTS.md / spec），
+  同轮删除 Plan/ 内副本——Plan/ 不是生效规则的家，"在 Plan/ 里试行"
+  等于没落地
 - 复发检测：review Standards 轴核对——diff 中出现 Plan/ 草案独有、既有惯例
-  没有的新工件（尤其与同 change 其他工件内容重叠）即打回
+  没有的新工件（尤其与同 change 其他工件内容重叠）即打回；
+  已拍板生效的规则正文仍留在 Plan/ 即打回
