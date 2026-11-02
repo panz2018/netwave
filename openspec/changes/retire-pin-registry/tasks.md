@@ -28,7 +28,7 @@
 
 ## 6. Plan 收尾与全闸门
 
-- [ ] 6.1 `Plan/软件升级.md`：删除已吸收章节（登记表 schema 重构、配对版本校验已定部分、scripts/versions 拆包旧版），保留待议块（闸门拆分+`scripts/tests/` 接线、pairs JSON 化待触发、过期门禁化、scripts 治理三问、py3.15），文首状态行同步改写
+- [ ] 6.1 `Plan/软件升级.md`：删除已吸收章节（登记表 schema 重构、配对校验已定部分、scripts/versions 拆包旧版），保留待议块（闸门拆分+`scripts/tests/` 接线、pairs JSON 化待触发、过期门禁化、scripts 治理三问、py3.15），文首状态行同步改写；新增「blocked 落地（待核准）」章节：首个真实实例 typescript 7.0.0（升级时坏、7.0.1 起修复；实施时先核 git log 与 lessons-learned 账本确认故障细节与出处），内容含：坏版本+原因+当时降级取值、机制实施范围（数据文件+闸门/体检消费+spec 条款落地+带出处强制）、验收要求（TDD 先 red）；机制实现不在本 change，等人工核准后另开 change
 - [ ] 6.2 `Plan/测试规划.md`：删 `:295` registry 相关行（oracle pin 条目、check_versions 补对齐规则行），保留 oracle uv/python 环境落地计划
 - [ ] 6.3 验证：`pnpm check:md` 退出码 0
 - [ ] 6.4 全闸门收口：`pnpm check` 全绿 + `pnpm check:cross` 四端对拍通过（本 change 不动产品代码，预期与基线无差异）；按 apply 指引扫 `openspec/specs/` 输出三态时效结论（更新=dependency-upgrade/ci-matrix，新增=无，退役=无）留痕本文件

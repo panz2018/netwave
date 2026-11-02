@@ -35,7 +35,9 @@
   `scripts/versions/README.md`（整篇重写为新使命）。
 - `Plan/软件升级.md` 收尾：删除已吸收章节（登记表 schema 重构、配对校验
   已定部分、旧拆包），保留待议块（闸门拆分+测试接线、pairs JSON 化、
-  过期门禁化、scripts 治理三问、py3.15）。
+  过期门禁化、scripts 治理三问、py3.15）；新增「blocked 落地」章节——
+  首个真实实例 typescript 7.0.0（升级时坏、7.0.1 起修复，出处待实施时
+  核实历史记录与账本），写明机制实施范围，等人工核准后另开 change 实施。
 
 ## Capabilities
 
@@ -71,7 +73,8 @@
 ## Non-goals
 
 - 不实现 blocked / pairs 机制（各自独立触发、独立实施，禁止绑定同次
-  change；触发时按 spec 新条款开 change）。
+  change；本 change 仅把首个实例 typescript 7.0.0 写入 `Plan/软件升级.md`
+  的 blocked 章节，机制落地仍由后续 change 完成）。
 - 不做 `check_versions.py` / `check_outdated.py` 的模块拆分与
   `scripts/tests/` 测试接线（顺延，计划保留于 `Plan/软件升级.md`）。
 - 不做 `check:outdated` 门禁化（cron 折中方案待议）。

@@ -67,13 +67,21 @@ binaryen/cargo-llvm-cov）保留为程序常量 `PROBES`，spec 只写类别不�
 仓库先例 `api-contract/spec.md:200`（从未实现的入口从契约删除）、
 `lessons-learned/spec.md:125`（禁占位行）确立"不留空挂"原则。
 
-### D5 单 change 完成（不拆两步）
+### D5 blocked 首个实例写 Plan 不写代码
+
+typescript 7.0.0（升级时坏、7.0.1 起修复）是「坏版本降级与 blocked
+触发式实施」的第一个真实触发实例：本 change 只按该条款把实例与机制
+实施范围写进 `Plan/软件升级.md` 新章节（出处实施时核 git log/账本），
+数据文件与闸门消费仍由后续 change 完成——触发条款与机制实现分离，
+与「blocked/pairs 不绑定」同理：一次触发不顺手把机制提前。
+
+### D6 单 change 完成（不拆两步）
 
 原"两步走"的第二步（拆包+改名）因 pins/categories 退役而空心化，
 剩余内容与第一步同属"登记表退役"一个自洽单元；合并后回滚单位明确
 （revert 一笔即恢复旧状）。
 
-### D6 文档指针统一改法
+### D7 文档指针统一改法
 
 所有"登记表/唯一真相源/registry.json"字样按语义分两类改：
 声称真相源的 → "钉版文件本身 + 规则闸门"（`AGENTS.md:104`、
