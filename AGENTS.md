@@ -100,8 +100,9 @@ governance spec、`openspec/config.yaml`、子项目 README）由 AI 读取并�
 ## 依赖版本策略
 
 见 [dependency-upgrade spec](openspec/specs/dependency-upgrade/spec.md)
-——最新稳定版优先、选线钉 LTS/稳定线、登记原则、钉死点登记表
-（`scripts/versions/lib/registry.json`）、对账闸门与升级流程的唯一真相源；
+——最新稳定版优先、选线钉 LTS/稳定线、规则驱动一致性闸门与升级流程的
+唯一真相源；钉版数值以承载它的钉版文件本身为准（`rust-toolchain.toml`、
+`.python-version`、`package.json`、`ci.yml` 等），散文不复制数字；
 本节只留指针，不重述规则。
 
 ## 反思铁律（防复发，机制见 lessons-learned spec）

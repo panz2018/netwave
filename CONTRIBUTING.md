@@ -75,8 +75,8 @@ registration). This file keeps no workflow body.
 ### Toolchain (task → tool)
 
 Tool choice and version pins are owned by lockfiles, `rust-toolchain.toml`
-and the pin registry
-[`scripts/versions/lib/registry.json`](scripts/versions/lib/registry.json) —
+and the other pin files themselves (`.python-version`, `package.json`,
+`.github/workflows/ci.yml`) —
 check them live (`pnpm --version`, `uv --version`, `rustc --version`), never
 copy numbers into docs. Gate commands are defined once in root `package.json`
 (see Quality gates above).
@@ -85,9 +85,8 @@ copy numbers into docs. Gate commands are defined once in root `package.json`
 
 Upgrades are governed by the
 [dependency-upgrade spec](openspec/specs/dependency-upgrade/spec.md):
-strategy (latest stable, LTS lines), the pin registry
-[`scripts/versions/lib/registry.json`](scripts/versions/lib/registry.json) as the single source
-of truth for where versions are pinned, the reconciliation gate
+strategy (latest stable, LTS lines), the pin files themselves as the single
+source of truth for where versions are pinned, the rule gate
 (`scripts/versions/check_versions.py`, wired into `pnpm check:meta`), the fixed
 upgrade order, and the manual freshness check `pnpm check:outdated` (project
 deps + global CLIs + GitHub-tarball tools + CI actions). Machine-wide CLIs are
