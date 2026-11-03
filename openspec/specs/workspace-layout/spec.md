@@ -74,7 +74,7 @@ manifest 与 Touchstone 输入样本（本阶段 manifest 为骨架、样本为�
 工程 dev 组声明并锁死，MUST NOT 依赖开发者全局 Python 所装内容。根工程
 MUST NOT 声明 uv workspace 成员；`python/` 维持独立 uv 工程（发布物依赖
 故事独立，uv 按就近目录解析互不干扰）。根 `.python-version` 与主工程
-`python/.python-version` 同值，随登记表条目纳入对账。
+`python/.python-version` 同值，由规则驱动闸门自动纳入覆盖，无需登记。
 
 #### Scenario: 门禁脚本经根环境运行
 
@@ -88,8 +88,10 @@ MUST NOT 声明 uv workspace 成员；`python/` 维持独立 uv 工程（发布�
 - **THEN** 解析到 `python/pyproject.toml` 自身工程（numpy/maturin/pytest
   等发布侧依赖），与根工具工程互不影响
 
-#### Scenario: 根 pin 纳入自登记
+#### Scenario: 根 pin 由四律自动覆盖
 
-- **WHEN** 对账闸门发现式扫描扫到根 `uv.lock` 或根 `.python-version`
-- **THEN** 二者已登记为登记表条目（root-uv-lock / root-python / root-requires），
-  `pnpm check:meta` 通过；缺登记即 FAIL
+- **WHEN** 规则驱动闸门扫描仓库 manifest
+- **THEN** 根 `.python-version` 受矩阵覆盖律约束（值 MUST 出现在 CI python
+  矩阵格中）、根 `pyproject.toml` 的 `[project]` 受 Python 工程律约束
+  （`requires-python` + 同目录 `.python-version`），漏声明当场 FAIL——
+  登记表退役后无任何登记环节

@@ -2,19 +2,21 @@
 
 ## Purpose
 
-定义 netwave 工具链与依赖升级的策略、版本钉死点的唯一真相源、对账闸门、
-升级流程与经验回写契约，使任何一次升级都可按清单执行、可门禁校验、
-踩坑后可改进。
+定义 netwave 工具链与依赖升级的策略、钉版事实的唯一真相源、规则驱动
+一致性闸门、升级流程与经验回写契约，使任何一次升级都可按清单执行、
+可门禁校验、踩坑后可改进。
 
 ## Requirements
 
 ### Requirement: 最新稳定版优先
 
 全部工具链、工具与软件库 MUST 升级到最新稳定版；仅当最新稳定版导致
-构建/测试失败且确认为上游 bug（非本项目用法问题）时，才允许回退次新版，
-回退 MUST 在登记表对应条目挂 `blocked`（精确版本号 + 原因 + issue 链接），
-lessons-learned 只记非版本性的坑（工具行为变化、流程坑等），版本级 bug
-证据以登记表条目为准。子项目 README 不设 Gotchas 章节，回退信息不入 README。
+构建/测试失败且确认为上游 bug（非本项目用法问题）时，才允许回退，
+回退按「坏版本降级与 blocked 触发式实施」执行（降到相邻较低稳定版 +
+当轮立 `Plan/` 计划 + 强制开 change 实现黑名单机制）。lessons-learned
+只记非版本性的坑（工具行为变化、流程坑等），版本级 bug 证据以该次
+`Plan/` 计划文件与跟踪 issue 为准。子项目 README 不设 Gotchas 章节，
+回退信息不入 README。
 
 #### Scenario: 默认升最新稳定版
 
@@ -24,8 +26,8 @@ lessons-learned 只记非版本性的坑（工具行为变化、流程坑等）�
 #### Scenario: 回退须证据
 
 - **WHEN** 最新稳定版构建失败且确认为上游 bug
-- **THEN** 回退次新版并在登记表对应条目登记 `blocked`（version + reason +
-  issue 链接），跟踪计划随 issue
+- **THEN** 降到相邻较低稳定版，当轮在 `Plan/` 记录坏版本、原因与跟踪
+  issue 链接，跟踪计划随 issue
 - **AND** 回退原因不写入任何子项目 README
 
 ### Requirement: 选线原则——钉 LTS/稳定线
@@ -33,13 +35,15 @@ lessons-learned 只记非版本性的坑（工具行为变化、流程坑等）�
 有多条发布线的运行时 MUST 钉 LTS 或稳定线，MUST NOT 采用 current 最新线
 （current 线随时变更、配置来回变且用户基数小）；无 LTS 概念的单线运行时
 （如 CPython）取最新稳定 minor 的最新补丁版。各运行时的当前选线取值
-由钉死点登记表持有，不写死在本文。
+由承载它的钉版文件持有（CI 矩阵格、`.python-version`、`engines.node`），
+本 spec 不写死数字。
 
 #### Scenario: Node 钉 LTS 线
 
 - **WHEN** 为 CI 矩阵与 `engines.node` 选择 Node 版本
 - **THEN** 取底线 LTS 与最新 LTS 两格，不取非 LTS 的 current 线
-- **AND** current 线转入 LTS 时更新登记表的状态标注，矩阵数字不变
+- **AND** current 线转入 LTS 时只改 `ci.yml` 矩阵格与 `engines.node`，
+  本 spec 措辞不随版本号变化
 
 #### Scenario: 单线运行时取最新稳定 minor
 
@@ -47,93 +51,53 @@ lessons-learned 只记非版本性的坑（工具行为变化、流程坑等）�
 - **THEN** 取最新稳定 minor 的最新补丁版
 - **AND** 新 minor 发布且本项目所需库全部支持后方切换，任一库不支持则维持现版并记账本
 
-### Requirement: 登记原则
+### Requirement: 钉版事实以钉版文件为唯一真相源
 
-引入新工具链、工具或软件库时，同一笔改动 MUST 在钉死点登记表登记：钉在哪、
-怎么升级、与谁配对联动。未登记即引入未完成。
+仓库不设版本钉死点清单文件。"某个版本钉在哪、当前钉的是哪个版本"的唯一
+真相源是**承载该版本的仓库文件本身**（如 `rust-toolchain.toml`、
+`.python-version`、`pyproject.toml`、`package.json`、`.github/workflows/ci.yml`、
+各 lockfile）。散文文档与 spec MUST NOT 复制具体版本号，MUST 以文件路径指针
+引用；一致性由规则驱动闸门校验，不依赖人工维护的登记表。
 
-#### Scenario: 引入新工具未登记即失败
+#### Scenario: 散文不复制版本号
 
-- **WHEN** 某改动新增了钉版点（清单文件版本字段、安装脚本或全局工具依赖）
-  但未更新登记表
-- **THEN** 对账闸门报 FAIL，指出该钉版点未登记
+- **WHEN** 任一散文文档（README、spec、账本）需要提及当前钉版值
+- **THEN** 以文件路径指针或"当前稳定版"措辞引用，不写死数字
 
-### Requirement: 钉死点登记表唯一真相源
+#### Scenario: 清单文件不得复活
 
-仓库全部版本钉死点 MUST 登记在机器可读登记表
-`scripts/versions/lib/registry.json`，
-它是"版本钉在哪"的唯一真相源；散文文档 MUST NOT 复制登记表内容。
-类别覆盖：Rust 工具链 pin 与 MSRV、CI 语言矩阵数字、包管理器 pin、
-lockfile、GitHub 压缩包直装工具（wasm-pack、binaryen）、cargo 子命令、
-全局 CLI 检查项、CI actions、Playwright 浏览器、oracle 环境 pin、
-根级 Python 工具环境 pin。
+- **WHEN** 改动新增一份"把所有钉版点列一遍"的清单文件
+- **THEN** review Standards 轴打回——真相源是钉版文件本身，第二份清单必漂移
 
-#### Scenario: 登记条目结构完整
+### Requirement: 规则驱动一致性闸门
 
-- **WHEN** 校验登记表任一条目
-- **THEN** 条目含：名称、类别、钉版位置（文件路径、`machine:` 安装位置，
-  或 `discovered:` 发现规则——位置由闸门发现扫描提供，条目 MUST NOT
-  手抄文件清单）、升级方法、配对约束（若有）、坏版本清单（若有）
-- **AND** 散文文档以链接或"当前稳定版"措辞引用，不复制具体版本号
+`scripts/versions/check_versions.py` MUST 按结构性规则（四律）扫描仓库
+manifest，MUST NOT 读取任何登记表。规则是**通用律**而非具体文件清单：
+新增子工程自动纳入覆盖，无需登记任何条目。任一规则不满足即 FAIL 并点名
+具体文件与期望值。闸门 MUST 接进根 `check:meta`。
 
-### Requirement: 坏版本黑名单
+#### Scenario: MSRV 律
 
-登记表条目 MUST 支持可选字段 `blocked`：已知坏版本清单，每项含精确版本号
-`version`、必填原因 `reason`、可选跟踪链接 `issue`。`version` MUST 是精确版本号
-（拒绝范围、通配、比较符写法），结构非法即闸门 FAIL。`ci-actions` 条目 MUST NOT
-挂 `blocked`（一条扛全部 action，分不清哪个 action 坏），违规即闸门 FAIL。
-`blocked` 的语义是**现行禁令**而非历史档案：版本自身 bug 的禁令 MUST 永久有效
-（发布版不可变，条目防回踩而非挡升级）；配对不兼容的禁令在对方升级兼容或
-被移除时 MUST 删除，同一笔改动把兼容性结论挪进配对条目 `verified`。
-黑名单由体检层（联网，可枚举段过滤改报 target，lockfile 段不碰）与
-闸门层（离线，仓库内可读当前钉版值命中即 FAIL，`machine:` 条目跳过）消费，
-细则见本 Requirement 各 Scenario。
+- **WHEN** 闸门扫描 root `Cargo.toml` `members` 列出的 workspace 成员
+- **THEN** 每个成员 MUST 携带 `rust-version`，全部值彼此相等且不高于
+  `rust-toolchain.toml` channel 的 major.minor；channel MUST 是精确版本
 
-#### Scenario: 体检跳过已知坏版本
+#### Scenario: Python 工程律
 
-- **WHEN** 某全局 CLI 的最新 release 在其登记条目的 `blocked` 清单中
-- **THEN** 体检不推荐该版本，改报次新可用版为 target 并注明 blocked 原因
+- **WHEN** 闸门发现含 `[project]` 的 `pyproject.toml`
+- **THEN** 该文件 MUST 声明 `requires-python`，且同目录 MUST 存在
+  `.python-version`
 
-#### Scenario: 全部候选被堵
+#### Scenario: packageManager 律
 
-- **WHEN** 某工具的可用版本全部在 `blocked` 清单中
-- **THEN** 体检报 `no known good target`，保持落后标记，不推荐任何版本
+- **WHEN** 闸门发现声明 `packageManager` 的 `package.json`
+- **THEN** 值 MUST 是精确 pnpm 版本（拒绝范围与 `latest`），且全仓值
+  彼此相等
 
-#### Scenario: 当前钉版踩中黑名单
+#### Scenario: 矩阵覆盖律
 
-- **WHEN** 仓库内某可读钉版值（如 `packageManager`、`.python-version`、
-  workflow 全 pin 的 action tag）命中该条目的 `blocked`
-- **THEN** `pnpm check:meta` FAIL 并指出该钉版停在已知坏版本及原因
-
-#### Scenario: machine 条目闸门跳过
-
-- **WHEN** 带 `blocked` 的条目钉版位置为 `machine:`（如全局 CLI、cargo 子命令）
-- **THEN** 离线闸门跳过其黑名单检查，由联网体检探测已装版本消费
-
-#### Scenario: 配对禁令随兼容而解除
-
-- **WHEN** 配对不兼容禁令的对方版本升级到兼容版（或对方被移除）
-- **THEN** 删除该 `blocked` 项，同一笔改动把兼容性结论写入配对条目 `verified`
-
-#### Scenario: 自身 bug 禁令不随升级删除
-
-- **WHEN** 某工具已升级到修复版，其条目仍留有旧坏版本的 `blocked` 记录
-- **THEN** 闸门通过——条目防的是回踩，升级修复版不要求删除禁令
-
-#### Scenario: ci-actions 不支持黑名单
-
-- **WHEN** `ci-actions` 条目出现 `blocked` 字段
-- **THEN** 闸门 FAIL，报该类别不支持黑名单
-
-### Requirement: 双向对账闸门
-
-`scripts/versions/check_versions.py` MUST 双向对账登记表与真实文件：每个登记条目
-对应真实存在的钉版位置（`machine:` 条目只查登记存在；`discovered:` 条目的
-位置即发现规则本身）；仓库内每个钉版点都出现在登记表中；一致性规则
-（每个 workspace 成员 `Cargo.toml` 必须携带 `rust-version` 且全部彼此一致、
-`rust-version` 不高于 `rust-toolchain.toml` pin 的 major.minor、
-`packageManager` 为精确版本）任一不满足即 FAIL。
-闸门 MUST 接进根 `check:meta`。
+- **WHEN** 闸门发现仓库内任一 `.python-version` 钉版
+- **THEN** 其值 MUST 出现在 CI workflow 的 python 矩阵格中
 
 #### Scenario: 手动升版漂移当场暴露
 
@@ -141,15 +105,53 @@ lockfile、GitHub 压缩包直装工具（wasm-pack、binaryen）、cargo 子命
   `rust-version` 仍是旧值
 - **THEN** 闸门 FAIL 并指出具体文件与期望值
 
+#### Scenario: 新子工程漏声明当场暴露
+
+- **WHEN** 新增一个含 `[project]` 的 `pyproject.toml` 而同目录无
+  `.python-version`
+- **THEN** `pnpm check:meta` FAIL 并点名该目录——无需事先登记
+
 #### Scenario: 成员丢 MSRV 钉静默逃逸
 
 - **WHEN** 某 workspace 成员的 `Cargo.toml` 删掉了 `rust-version` 字段
 - **THEN** 闸门 FAIL 并指出该成员——删字段不能逃逸对账
 
-#### Scenario: 登记表条目指向不存在的位置
+#### Scenario: 换网自证（正反夹具）
 
-- **WHEN** 登记条目所指钉版位置在仓库或环境中不存在
-- **THEN** 闸门 FAIL，报登记表漂移
+- **WHEN** 以临时夹具运行闸门：一份缺 `rust-version` 的 `Cargo.toml`、
+  一份缺 `.python-version` 的 `pyproject.toml` 目录
+- **THEN** 两种夹具均 FAIL；未改动的真实仓库 PASS
+
+### Requirement: 坏版本降级与 blocked 触发式实施
+
+坏版本黑名单机制当前不实现（无数据文件、无闸门消费）。当升级确认某上游
+版本带 bug（非本项目用法问题）时，MUST 按序执行：
+
+1. 降到**相邻较低稳定版**——取该依赖当前版本之下第一个可用稳定版；
+   级差（major/minor/patch）依该次故障实际影响范围判断，spec 不写死算法。
+2. 当轮在 `Plan/` 新建计划文件，写明：碰到什么问题、哪个版本坏、
+   坏在哪、临时降级取值、以及 blocked 机制的实施范围。
+3. 强制开 OpenSpec change 实现 blocked 机制（数据文件 + 闸门与体检消费），
+   该 change 完成前，降级只靠人工执行第 1 步。
+
+`Plan/` 中的 blocked 计划与 pairs 计划是两个独立待触发项，MUST NOT 绑定
+同一次 change 实施——两者语义无关，各自需要时各自实施。
+
+#### Scenario: 遇坏版本即降级并立计划
+
+- **WHEN** 升级确认最新稳定版因上游 bug 构建或测试失败
+- **THEN** 降到相邻较低稳定版使闸门通过，同一轮在 `Plan/` 新建 blocked
+  实施计划文件，写明原因与故障细节
+
+#### Scenario: blocked 与 pairs 不绑定
+
+- **WHEN** 实施 blocked 机制的 change 开出
+- **THEN** pairs（必须同升）机制不因该 change 一并实施，反之亦然
+
+#### Scenario: 机制未实现期不空转义务
+
+- **WHEN** 仓库当前无 blocked 数据文件与消费代码
+- **THEN** 闸门与体检不因缺黑名单而 FAIL，降级义务按本 Requirement 人工履行
 
 ### Requirement: 升级分级
 
@@ -174,7 +176,8 @@ lockfile、GitHub 压缩包直装工具（wasm-pack、binaryen）、cargo 子命
 OpenSpec、markdownlint-cli2 等是否落后 LTS/稳定线，落后先升）→ 工具链升级与
 组件/target 补装 → 配对依赖联动（napi-cli↔napi crate、pyo3↔numpy、
 wasm-pack↔binaryen 等）→ 项目依赖刷新 → 代码兼容修改 → 全闸门 + 四端对拍 →
-文档同步（grep 全仓旧版本号与旧事实）。
+文档同步（grep 全仓旧版本号与旧事实）。配对联动清单以本节散文为当前唯一载体；
+其 JSON 化（数据文件 + 闸门读表、禁硬编码）为待触发项，见 `Plan/软件升级.md`。
 
 #### Scenario: 工具链升版后补装
 
@@ -197,20 +200,20 @@ wasm-pack↔binaryen 等）→ 项目依赖刷新 → 代码兼容修改 → 全
 运行时大版本升级（Python 稳定 minor 切换、Node LTS 线切换）MUST 按序：先核实
 本项目所需全部库声明支持目标版本（支持矩阵记入 change）→ 本地新环境全量测试
 变绿 → 一次改齐全部钉版点（运行时 pin、CI 矩阵格、必要时底线声明、oracle
-环境、登记表）→ 代码兼容修改 → 全闸门 + 四端对拍。Node 换线另须以
+环境）→ 代码兼容修改 → 全闸门 + 四端对拍。Node 换线另须以
 `--reinstall-packages-from` 迁移全局 npm 包。
 
 #### Scenario: Python 稳定 minor 切换
 
 - **WHEN** Python 升到新稳定 minor
-- **THEN** 同一 change 内改 `python/.python-version`、CI python 矩阵最新格、
-  oracle 环境 lock、登记表；本地以新 minor 全量测试绿后才动 CI
+- **THEN** 同一 change 内改 `python/.python-version`、根 `.python-version`、
+  CI python 矩阵最新格、oracle 环境 lock；本地以新 minor 全量测试绿后才动 CI
 
 #### Scenario: Node LTS 线切换
 
 - **WHEN** CI 矩阵的最新 LTS 格需切到新线
-- **THEN** 更新 CI 矩阵与登记表，并以 `--reinstall-packages-from` 迁移全局
-  npm 包；`engines.node` 底线仅当旧底线 EOL 才抬
+- **THEN** 更新 CI 矩阵与 `engines.node`，并以 `--reinstall-packages-from`
+  迁移全局 npm 包；`engines.node` 底线仅当旧底线 EOL 才抬
 
 ### Requirement: 体检按发现覆盖全部环境
 
@@ -230,9 +233,11 @@ cargo workspace。新环境落地后自动纳入，无需改脚本。
 （`pnpm outdated`、`cargo update --dry-run`、`uv lock --upgrade --dry-run`）、
 全局 CLI（当前版本 vs 最新 LTS/稳定版）、GitHub 压缩包直装工具与 cargo
 子命令（已装版本 vs 最新 release）、CI actions（workflow 内 `uses:` 的
-action 当前 tag vs 最新 release tag）。体检 MUST 读取登记表并应用坏版本
-黑名单（消费规则见坏版本黑名单 Requirement）。该命令人工触发，MUST NOT
-进 CI 或 `pnpm check`（结果随上游每日变化且需联网）。
+action 当前 tag vs 最新 release tag）。体检按发现覆盖环境（见「体检按发现
+覆盖全部环境」），全局 CLI 与直装工具的探针集为体检程序内常量（新增探针
+改一处）。坏版本黑名单机制当前不实现，体检按最新稳定版报告 target；机制
+落地后由体检消费黑名单（见「坏版本降级与 blocked 触发式实施」）。该命令
+人工触发，MUST NOT 进 CI 或 `pnpm check`（结果随上游每日变化且需联网）。
 
 #### Scenario: 一条命令看全貌
 
@@ -249,17 +254,26 @@ action 当前 tag vs 最新 release tag）。体检 MUST 读取登记表并应�
 ### Requirement: 经验回写
 
 升级过程中踩的坑 MUST 当轮回写并按性质归位：版本级 bug（哪个版本坏、
-为什么）记登记表条目 `blocked`（version + reason + issue）；非版本性的坑
-（工具行为变化、配对失败模式、登记表漏钉版点）记 lessons-learned 账本
-（scope 分片 + INDEX 条目），登记表漏项当轮补全。本 spec 随该循环持续改进。
-
-#### Scenario: 漏登记当轮补全
-
-- **WHEN** 升级过程发现某钉版点不在登记表中
-- **THEN** 同一 change 内补全登记表并登记对应 LL 条目
+为什么）按「坏版本降级与 blocked 触发式实施」处理——当轮在 `Plan/` 新建
+计划文件记录版本、原因与跟踪链接；非版本性的坑（工具行为变化、配对失败
+模式等）记 lessons-learned 账本（scope 分片 + INDEX 条目）。钉版点漏声明
+由规则驱动闸门当场拦截，当轮补声明即可，无人工登记环节。本 spec 随该
+循环持续改进。
 
 #### Scenario: 版本级 bug 归登记表
 
 - **WHEN** 升级确认某上游版本带 bug 需回退
-- **THEN** 当轮在登记表对应条目挂 `blocked`，lessons-learned 只记其中
-  非版本性的教训（如升级流程坑），不重复版本清单
+- **THEN** 当轮在 `Plan/` 新建 blocked 实施计划文件记录版本与原因及跟踪
+  issue，lessons-learned 只记其中非版本性的教训（如升级流程坑），
+  不重复版本清单
+
+#### Scenario: 漏登记当轮补全
+
+- **WHEN** 升级过程发现某钉版点缺声明（如新子工程缺 `.python-version`）
+- **THEN** 同一 change 内补全该点声明并登记对应 LL 条目——规则闸门
+  当场拦截，无人工登记环节
+
+#### Scenario: 非版本性坑归账本
+
+- **WHEN** 升级踩到工具行为变化或配对失败模式
+- **THEN** 当轮登记 LL 条目（分片 + INDEX），不写入 spec 或 README
