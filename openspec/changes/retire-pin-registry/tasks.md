@@ -40,9 +40,14 @@
 - `pnpm check:cross` 四端对拍通过（FREQ/TOUCHSTONE bit 级 + 三端 tamper
   自检 + vocab/verbs），与基线无差异——本 change 未触碰产品代码。
 - specs 三态时效扫描：更新=`dependency-upgrade`、`ci-matrix`（本 change
-  delta 覆盖，归档时合入主 spec）；新增=无；退役=无（其余能力 spec 与本
-  change 无事实冲突；`workspace-layout` 对 `scripts/versions/` 的描述不含
-  registry.json，无需 delta）。
+  delta 覆盖，归档时合入主 spec）；新增=无；退役=无。
+- **更正（sync 轮）**：上述"`workspace-layout` 不含 registry.json、无需
+  delta"结论有误——当时 grep 的是文件名 `registry.json`，漏了该 spec
+  「根级 Python 工具环境」以词面"登记表"表述的两处旧契约（`:77` 随
+  登记表条目纳入对账、Scenario「根 pin 纳入自登记」缺登记即 FAIL）。
+  经人工裁决补 `specs/workspace-layout/spec.md` delta（MODIFIED 该条，
+  改四律自动覆盖），三态更新项增 `workspace-layout`。教训：波及面 grep
+  收口须同时搜机制词（登记表/对账/登记），不能只搜文件名。
 
 ## Workflow follow-up
 

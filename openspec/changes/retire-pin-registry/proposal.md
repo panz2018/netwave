@@ -53,6 +53,9 @@
   原则」「经验回写」中依赖登记表的措辞改为指向钉版文件与规则闸门。
 - `ci-matrix`：矩阵数字来源从"登记表"改为"钉版文件与规则闸门"
   （`:51-52`、`:63-64`、`:70` 三处措辞）。
+- `workspace-layout`：「根级 Python 工具环境」对登记表的依赖改为四律
+  自动覆盖（apply 阶段 grep 收口发现：proposal 初稿波及面漏了该 spec
+  的两处"登记表条目/缺登记即 FAIL"旧契约）。
 
 ## Impact
 
@@ -60,7 +63,8 @@
   `scripts/versions/check_outdated.py`（约删 40 行）、删
   `scripts/versions/lib/registry.json`。
 - 契约：`openspec/specs/dependency-upgrade/spec.md`、
-  `openspec/specs/ci-matrix/spec.md` 随本 change delta 更新。
+  `openspec/specs/ci-matrix/spec.md`、`openspec/specs/workspace-layout/spec.md`
+  随本 change delta 更新。
 - 文档指针：`AGENTS.md:104`、`CONTRIBUTING.md:79/89/91`、
   `openspec/specs/README.md`、`scripts/README.md:19`、
   `scripts/versions/README.md`。
