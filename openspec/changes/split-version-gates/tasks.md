@@ -22,7 +22,10 @@
 ## 4. 命令与 CI 接线
 
 - [x] 4.1 根 `package.json`：`check:py` 追加 `&& uv run pytest scripts/tests`（ruff 之后）。验证：`pnpm check:py` 全绿且输出含 pytest 通过行。
-- [x] 4.2 `.github/workflows/ci.yml`：lint job 在 `uv sync --locked` 后加一步 `uv run pytest scripts/tests`。验证：本地按 LL-004 模拟该步骤命令成功；步骤顺序不晚于既有闸门。
+- [x] 4.2 `.github/workflows/ci.yml`：lint job 经 `pnpm check`（内含
+      `check:py`）跑治理脚本单测，不另加独立 pytest 步骤（命令唯一真相源
+      在根 `package.json`）。验证：ci.yml 无第二处单测命令；本地
+      `pnpm check:py` 成功（LL-004）。
 
 ## 5. 文档与账本同步
 

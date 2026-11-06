@@ -20,8 +20,9 @@ networked freshness report. Spec:
 | `lib/latest.py`     | Networked probes (only `check_outdated.py` consumes them): `fetch_json`, `run_cmd`, `first_line`, `latest_version`, `refine_node_lts`, `find_uv_projects`, `action_refs`, `is_version_tag`                                                                 |
 
 Facades only assemble inputs, select checks, and aggregate the exit code;
-judgement lives in `lib/`. Unit tests: `scripts/tests/` (pure logic,
-fixtures only, offline — wired into `pnpm check:py` and the CI lint job).
+judgement lives in `lib/`. Unit tests: `scripts/tests/versions/` (pure
+logic, fixtures only, offline — wired into `pnpm check:py`, which CI runs
+via `pnpm check`; discovery is `testpaths` in root `pyproject.toml`).
 
 ## Exit codes
 
