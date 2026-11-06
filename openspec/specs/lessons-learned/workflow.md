@@ -75,3 +75,15 @@
   不得另起一条重复正文
 - 复发检测：review Standards 轴 diff 中出现两条 Requirement 共享同一脚本 +
   同一命令 + 同一豁免句式即打回；Scenario 靠加限定前缀规避 MD024 即打回
+
+### LL-075 照搬旧文须按现行规则洗词，黑话不随复制复活
+
+- 犯过：`split-version-gates` delta 从主 spec 照搬 Scenario 标题
+  「根 pin 由四律自动覆盖」，全仓黑话改名轮（pin→钉版、禁缩写黑话）
+  漏网，人工 review 时才抓到
+- 规则：把旧文档内容复制进新工件时，正文措辞 MUST 按现行命名/用词规则
+  过一遍；仅 openspec 机器校验强制的标识符（MODIFIED 块内既有 Scenario
+  标题）可保留旧名，且 MUST 就地注明保留原因与改名去向。工具洗不掉的
+  黑话（check_md.py 不查 pin/MSRV）靠人工过目兜底
+- 复发检测：review Standards 轴对新增/照搬段落 grep 黑话词
+  （pin/MSRV/glue 等），命中且无豁免说明即打回

@@ -51,3 +51,4 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-072 | core       | 钉死交错布局的三条理由与代价（铁律一 rationale）                      |
 | LL-073 | workflow   | Plan/ 草案条文未转正即非契约，禁据此新建工件；决策唯一存 design.md    |
 | LL-074 | workflow   | 新增 Requirement 先查重，同一门禁多节要求合为一条（RENAMED+MODIFIED） |
+| LL-075 | workflow   | 照搬旧文须按现行规则洗词，黑话不随复制复活（豁免须注明去向）          |
