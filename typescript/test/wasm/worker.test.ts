@@ -87,7 +87,7 @@ describe("resident worker contract", () => {
   });
 
   it("unknown method / namespace replies with error", async () => {
-    const m = await shell();
+    await shell();
     await makeTs(); // ensure the worker is up
     const w = h.singleton();
     if (!w) throw new Error("shell did not register the singleton worker");
