@@ -87,3 +87,19 @@
   黑话（check_md.py 不查 pin/MSRV）靠人工过目兜底
 - 复发检测：review Standards 轴对新增/照搬段落 grep 黑话词
   （pin/MSRV/glue 等），命中且无豁免说明即打回
+
+### LL-076 同一知识两份清单必漂移，收编单一来源
+
+- 犯过：`scripts/versions/` 两门面各写一份跳过目录清单与版本比较实现，
+  已实际漂移——outdated 的 skip 比闸门 `SKIP_DIRS` 少
+  `target-wasm`/`dist`/`coverage` 三项；`parse_ver` 不补齐三元组而
+  `_semver` 补齐，`1.85` 对 `1.85.0` 判定相反（潜伏误报）
+- 根因：同 LL-034（tsdown 双 glue 顺序）——同一事实存两处，改一处漏一处，
+  且两份都"看起来对"，无机器对账时漂移静默存活
+- 规则：跨脚本共用的常量（目录清单）与算法（版本解析/比较）MUST 收进
+  `scripts/versions/lib/` 单一来源（`repository.SKIP_DIRS`、
+  `version.parse_version`），门面与后续域收编一律引用，禁止再抄一份
+- 复发检测：grep `scripts/` 出现第二份 `SKIP_DIRS`/`skip =` 清单或第二套
+  版本解析实现（`semver`/`parse_ver`/`_semver`）即打回；
+  `scripts/tests/test_repository.py::test_skip_dirs_cover_build_outputs`
+  钉住集合内容
