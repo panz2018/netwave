@@ -52,6 +52,9 @@ jobs:
           # Root uv tool env: pre-build it and assert uv.lock is fresh
           # (drift vs pyproject.toml fails here, not inside check:py).
           uv sync --locked
+          # Governance-script unit tests (scripts/tests): a gate regression
+          # must fail in CI, not only on a developer machine.
+          uv run pytest scripts/tests
           pnpm check
 
   # Rust matrix: native platforms only (macOS only Apple Silicon, Intel x64
