@@ -15,3 +15,8 @@ package = false
 
 [dependency-groups]
 dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.12"]
+
+[tool.pytest.ini_options]
+# scripts/tests import the versions-domain library as `lib.*`; put the
+# package parent on the path so pytest works from the repo root.
+pythonpath = ["scripts/versions"]

@@ -7,5 +7,6 @@ target-wasm/
 dist/
 coverage/
 .venv/
+.pytest_cache/
 # Lockfiles are machine-generated.
 pnpm-lock.yaml
