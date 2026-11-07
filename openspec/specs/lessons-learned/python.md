@@ -40,3 +40,24 @@
   `uv sync --exact`，CI 新建 venv 天然干净
 - 附带：根目录 `uv run` 时若 shell 激活了 `python/.venv`，uv 警告
   `VIRTUAL_ENV ... ignored` 属正常（就近工程解析），不是错误
+
+### LL-077 同秒等长还原源文件后 pytest 跑陈旧字节码
+
+- 犯过：反向验证脚本改坏 `scripts/versions/` 源码跑红后同秒写回原文
+  （字节数相同），随后 pytest 报 8 例失败——`__pycache__` 按
+  mtime+size 判缓存有效，源码实际已换但缓存未失效，跑的是改坏时的旧字节码
+- 规则：任何脚本化“改源码→跑测试→还原”流程，还原后必须清
+  `__pycache__`（或给 pytest 加 `PYTHONDONTWRITEBYTECODE=1`）再复跑；
+  症状口诀：git diff 干净但测试红 = 先想陈旧字节码
+- 复发检测：反向验证类脚本内置 `find … -name __pycache__ -exec rm -rf`；
+  暂不可 CI 门禁化（仅影响本地验证流程）
+
+### LL-078 测试离线防护点在 socket.getaddrinfo 非 socket.socket
+
+- 犯过：`scripts/tests/conftest.py` 首版 autouse fixture patch
+  `socket.socket`，smoke 用例仍失败——urllib 经
+  `socket.create_connection` 内部直接引用类，patch 模块属性拦不住
+- 规则：离线咽喉点选 `socket.getaddrinfo`（所有出网 TCP 连接必经域名
+  解析）；子进程不走 socket，由测试内替换 `run_cmd` 类 helper 覆盖
+- 复发检测：`scripts/tests/test_offline_guard.py` 钉住防护生效（真联网
+  尝试必报 `network access forbidden`）
