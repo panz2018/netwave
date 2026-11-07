@@ -6,7 +6,12 @@ refine_node_lts) raise, run_cmd reports failure rc; offline discovery
 scans, not probes, and are not wrapped in try by design (see completion
 record in tasks.md)."""
 
+import runpy
+
 import check_outdated
+import lib.latest
+import lib.repository
+import pytest
 
 
 def _raise(name):
@@ -101,3 +106,23 @@ class TestOutdatedAlwaysZero:
             assert all(ln.endswith((" OK", " LAG", " ?")) for ln in lines), lines
         assert "pnpm 1.0.0" in out and "LAG" in out  # 1.0.0 behind 9.9.9
         assert "v26.1.1" in out  # node: cleaned 26.1.1 equals latest -> OK
+
+
+class TestMainGuard:
+    """Process-level contract: the always-exit-0 report holds at the
+    `sys.exit(main())` guard too. runpy re-executes the facade file, so
+    stubs go on the source modules (lib.latest, lib.repository) its imports
+    rebind from."""
+
+    def test_guard_exits_0_with_every_probe_degraded(self, monkeypatch, capsys):
+        monkeypatch.setattr(lib.latest, "find_uv_projects", lambda: [])
+        monkeypatch.setattr(lib.latest, "run_cmd", lambda cmd: (125, "boom"))
+        monkeypatch.setattr(lib.latest, "fetch_json", _raise("fetch_json"))
+        monkeypatch.setattr(lib.latest, "latest_version", _raise("latest_version"))
+        monkeypatch.setattr(lib.latest, "refine_node_lts", _raise("refine_node_lts"))
+        monkeypatch.setattr(lib.latest, "action_refs", lambda: set())
+        monkeypatch.setattr(lib.repository, "find_python_versions", lambda root: {})
+        with pytest.raises(SystemExit) as excinfo:
+            runpy.run_path(check_outdated.__file__, run_name="__main__")
+        assert excinfo.value.code == 0
+        assert "check:outdated done" in capsys.readouterr().out

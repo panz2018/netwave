@@ -79,9 +79,7 @@ def main() -> int:
         latest_py = str(py_data[0]["cycle"])
         for rel, pyver in find_python_versions(ROOT).items():
             mark = "LAG" if is_outdated(pyver, latest_py) else "OK"
-            print(
-                f"python-version {rel:24s} {pyver:8s} -> latest stable {latest_py:8s} {mark}"
-            )
+            print(f"python-version {rel:24s} {pyver:8s} -> latest stable {latest_py:8s} {mark}")
     except Exception as e:  # noqa: BLE001
         print(f"python-version files: WARN ({e})")
 
