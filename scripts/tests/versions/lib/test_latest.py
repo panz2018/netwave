@@ -12,6 +12,7 @@ import pytest
 from lib import latest
 from lib.latest import (
     action_refs,
+    clean_version,
     fetch_json,
     find_uv_projects,
     first_line,
@@ -187,6 +188,30 @@ class TestRefineNodeLts:
     def test_no_match_falls_back_to_line(self, monkeypatch):
         monkeypatch.setattr(latest, "fetch_json", lambda url: [{"version": "v27.0.1"}])
         assert refine_node_lts("26") == "26"
+
+
+class TestCleanVersion:
+    # strip tool-name prefixes, `v` prefixes and parenthesized suffixes so
+    # installed-vs-latest compares pure semver
+    @pytest.mark.parametrize(
+        ("raw", "expected"),
+        [
+            ("uv 0.13.5 (aarch64-unknown-linux-gnu)", "0.13.5"),
+            ("rustc 1.99.1 (58cf8f9c3 2026-10-13)", "1.99.1"),
+            ("rustup 1.29.2 (d8c92c676 2026-10-21)", "1.29.2"),
+            ("wasm-pack 0.15.0", "0.15.0"),
+            ("wasm-opt version 133 (version_133)", "133"),
+            ("markdownlint-cli2 v0.24.0 (markdownlint v0.42.0)", "0.24.0"),
+            ("v26.12.1", "26.12.1"),
+            ("12.5.1", "12.5.1"),
+        ],
+    )
+    def test_strips_to_pure_version(self, raw, expected):
+        assert clean_version(raw) == expected
+
+    @pytest.mark.parametrize("raw", ["?", "stable", "not a version", ""])
+    def test_unparseable_returns_none(self, raw):
+        assert clean_version(raw) is None
 
 
 class TestRunCmd:

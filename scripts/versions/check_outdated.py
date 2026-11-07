@@ -30,6 +30,7 @@ from lib.latest import (
     fetch_json,
     find_uv_projects,
     first_line,
+    freshness_mark,
     is_version_tag,
     latest_version,
     refine_node_lts,
@@ -78,9 +79,11 @@ def main() -> int:
         latest_py = str(py_data[0]["cycle"])
         for rel, pyver in find_python_versions(ROOT).items():
             mark = "LAG" if is_outdated(pyver, latest_py) else "OK"
-            print(f"python pin {rel:18s} {pyver:8s} latest stable minor: {latest_py} {mark}")
+            print(
+                f"python-version {rel:24s} {pyver:8s} -> latest stable {latest_py:8s} {mark}"
+            )
     except Exception as e:  # noqa: BLE001
-        print(f"python runtime pins: WARN ({e})")
+        print(f"python-version files: WARN ({e})")
 
     # 2. global CLIs: installed vs newest LTS/stable
     section("2. global CLIs (installed vs newest LTS/stable)")
@@ -91,7 +94,10 @@ def main() -> int:
             latest = latest_version(source)
             if name == "node":
                 latest = refine_node_lts(latest)
-            print(f"{name:18s} installed: {installed:28s} latest: {latest}")
+            print(
+                f"{name:18s} installed: {installed:28s} latest: {latest:12s} "
+                f"{freshness_mark(installed, latest)}"
+            )
         except Exception as e:  # noqa: BLE001
             print(f"{name:18s} installed: {installed:28s} latest: WARN ({e})")
 
@@ -106,7 +112,10 @@ def main() -> int:
         installed = first_line(installed)
         try:
             latest = latest_version(("github", repo))
-            print(f"{name:22s} installed: {installed:28s} latest: {latest}")
+            print(
+                f"{name:22s} installed: {installed:28s} latest: {latest:12s} "
+                f"{freshness_mark(installed, latest)}"
+            )
         except Exception as e:  # noqa: BLE001
             print(f"{name:22s} installed: {installed:28s} latest: WARN ({e})")
 

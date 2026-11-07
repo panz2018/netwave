@@ -11,6 +11,7 @@ import urllib.request
 from typing import Any
 
 from lib.repository import ROOT, SKIP_DIRS
+from lib.version import is_outdated
 
 
 def fetch_json(url: str) -> Any:
@@ -38,6 +39,28 @@ def first_line(text: str) -> str:
         if ln.strip():
             return ln.strip()
     return "?"
+
+
+_VERSION_TOKEN = re.compile(r"(?<![A-Za-z0-9.])v?(\d+(?:\.\d+)*)")
+
+
+def clean_version(text: str) -> str | None:
+    """Extract the pure version from a `--version` line or registry tag:
+    strips tool-name prefixes ("uv", "rustc 1.99.1"), the `v` prefix and
+    parenthesized suffixes. Returns None when no digit-shaped token exists
+    (callers mark such rows `?` instead of guessing a lag)."""
+    m = _VERSION_TOKEN.search(text)
+    return m.group(1) if m else None
+
+
+def freshness_mark(installed: str, latest: str) -> str:
+    """OK/LAG/? verdict for an installed-vs-latest pair: both sides are
+    cleaned to pure versions first; an unparseable side yields `?` so the
+    report never states a verdict it cannot support."""
+    cur, new = clean_version(installed), clean_version(latest)
+    if cur is None or new is None:
+        return "?"
+    return "LAG" if is_outdated(cur, new) else "OK"
 
 
 def latest_version(source: tuple[str, ...]) -> str:

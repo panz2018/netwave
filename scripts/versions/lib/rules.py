@@ -85,11 +85,18 @@ def check_ci_python_versions(root: Path) -> list[str]:
 
 
 def summary(root: Path) -> str:
-    """One-line pass report (output contract of the offline gate)."""
+    """One-line pass report (output contract of the offline gate): every
+    law names how many files it inspected, so the reader sees all four
+    laws were checked."""
     msrvs = rust_versions(root)
+    pyprojects = find_files(root, "pyproject.toml", is_python_project)
+    pms = find_package_managers(root)
+    pyvers = find_python_versions(root)
     return (
-        f"version laws OK: {len(msrvs)} workspace members consistent "
-        f"(rust-version {next(iter(msrvs.values()))}, pin {toolchain_channel(root)})"
+        f"version laws OK: rust {len(msrvs)} members "
+        f"(rust-version {next(iter(msrvs.values()))}, toolchain {toolchain_channel(root)}), "
+        f"python {len(pyprojects)} projects, pnpm {len(pms)} manifests, "
+        f"ci {len(pyvers)} python-version files"
     )
 
 

@@ -69,5 +69,6 @@ OK/LAG 标记（落后要读者心算，而 spec「一条命令看全貌」Scena
   `scripts/tests/versions/test_check_outdated.py`。
 - 段 2/3 打标记前统一取数口径是前置：`lib/latest.py` 的 `latest_version` 返回
   值与 `run_cmd` 安装版字符串（含 uv/rustc 工具名前缀、`v` 前缀、括号架构后缀）
-  须先剥壳，否则 `1.99.1 vs 1.99` 误判——落点 `scripts/versions/lib/latest.py`
-  与 `lib/version.py` 的 `is_outdated(major_only=...)` 配合。
+  须先剥壳（`clean_version`），否则 `1.99.1 vs 1.99` 误判——落点
+  `scripts/versions/lib/latest.py` 与 `lib/version.py` 的
+  `is_outdated(major_only=...)` 配合。

@@ -37,9 +37,9 @@ See proposal.md - Why. 现状输出（实测 2026-11-06）：
 2. **python 行格式**：`python-version {path:24s} {cur:8s} -> latest stable {latest:8s} {mark}`
    ——字段名照抄 `.python-version`（AGENTS.md 与被检字段同名可追溯），`->` 表
    当前→最新，列宽 24 容纳 `python/.python-version` 不溢出。WARN 降级行同步：
-   `python-version pins: WARN ({e})`。
+   `python-version files: WARN ({e})`。
 3. **段 2/3 补标记**：所有比较行尾部 `OK`/`LAG`，复用 `is_outdated`；
-   取数口径先剥壳——`_clean_version()` 剥工具名前缀（uv、rustc、rustup、
+   取数口径先剥壳——`clean_version()` 剥工具名前缀（uv、rustc、rustup、
    wasm-pack、wasm-opt version、markdownlint-cli2）与 `(arch...)` 括号后缀，
    `latest` 侧剥 `v` 前缀。
    比较失败（剥壳后仍不可解析）降级 `?`，不误报 LAG。备选"段 2/3 不动"被否——

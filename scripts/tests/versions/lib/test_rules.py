@@ -150,18 +150,28 @@ class TestCiPythonVersionsLaw:
 
 class TestSummary:
     def test_pass_line_wording_is_the_output_contract(self, tmp_path):
-        # Byte-exact wording of the offline gate's pass line. Changing this
-        # string = changing the output contract (the pending "de-jargon
-        # `pin`" change must update this assertion in lockstep).
+        # Byte-exact wording of the offline gate's pass line: four law
+        # counts, plain words only (no jargon).
         make_repo(tmp_path)
         assert summary(tmp_path) == (
-            "version laws OK: 1 workspace members consistent (rust-version 1.99, pin 1.99.1)"
+            "version laws OK: rust 1 members (rust-version 1.99, toolchain 1.99.1), "
+            "python 1 projects, pnpm 1 manifests, ci 1 python-version files"
         )
 
     def test_member_count_tracks_manifest(self, tmp_path):
         make_repo(tmp_path)
         (tmp_path / "Cargo.toml").write_text('[workspace]\nmembers = ["core"]\n')
-        assert "1 workspace members" in summary(tmp_path)
+        assert "rust 1 members" in summary(tmp_path)
+
+    def test_law_counts_track_fixture_files(self, tmp_path):
+        # each law reports how many files it inspected; adding a second
+        # python project must move the python count, not stay hardcoded
+        make_repo(tmp_path)
+        (tmp_path / "extra").mkdir()
+        (tmp_path / "extra" / "pyproject.toml").write_text(
+            '[project]\nname = "e"\nrequires-python = ">=3.10"\n'
+        )
+        assert "python 2 projects" in summary(tmp_path)
 
 
 class TestAllLaws:
