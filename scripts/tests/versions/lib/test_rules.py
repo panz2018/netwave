@@ -5,10 +5,12 @@ spec, made regression-testable)."""
 from pathlib import Path
 
 from lib.rules import (
+    all_laws,
     check_ci_python_versions,
     check_package_manager,
     check_python_projects,
     check_rust_version,
+    summary,
 )
 
 
@@ -144,3 +146,40 @@ class TestCiPythonVersionsLaw:
         make_repo(tmp_path)
         (tmp_path / ".github" / "workflows" / "ci.yml").unlink()
         assert check_ci_python_versions(tmp_path) == []
+
+
+class TestSummary:
+    def test_pass_line_wording_is_the_output_contract(self, tmp_path):
+        # Byte-exact wording of the offline gate's pass line. Changing this
+        # string = changing the output contract (the pending "de-jargon
+        # `pin`" change must update this assertion in lockstep).
+        make_repo(tmp_path)
+        assert summary(tmp_path) == (
+            "version laws OK: 1 workspace members consistent (rust-version 1.99, pin 1.99.1)"
+        )
+
+    def test_member_count_tracks_manifest(self, tmp_path):
+        make_repo(tmp_path)
+        (tmp_path / "Cargo.toml").write_text('[workspace]\nmembers = ["core"]\n')
+        assert "1 workspace members" in summary(tmp_path)
+
+
+class TestAllLaws:
+    def test_clean_repo_returns_four_empty_lists(self, tmp_path):
+        make_repo(tmp_path)
+        assert all_laws(tmp_path) == [[], [], [], []]
+
+    def test_violations_aggregate_in_law_order(self, tmp_path):
+        # one violation per law; all_laws must return them grouped by law
+        # in report order (law1, law2, law3, law4) — the order is the
+        # facade's report contract
+        make_repo(tmp_path)
+        (tmp_path / "core" / "Cargo.toml").write_text('[package]\nname = "core"\n')
+        (tmp_path / "pyproject.toml").write_text('[project]\nname = "p"\n')
+        (tmp_path / "package.json").write_text('{"packageManager": "pnpm@12"}\n')
+        (tmp_path / ".python-version").write_text("3.13\n")
+        law1, law2, law3, law4 = all_laws(tmp_path)
+        assert any("missing rust-version pin" in e for e in law1)
+        assert any("missing requires-python" in e for e in law2)
+        assert any("not an exact pnpm version" in e for e in law3)
+        assert any("not among ci python matrix cells" in e for e in law4)
