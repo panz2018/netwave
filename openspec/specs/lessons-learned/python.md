@@ -61,3 +61,17 @@
   解析）；子进程不走 socket，由测试内替换 `run_cmd` 类 helper 覆盖
 - 复发检测：`scripts/tests/test_offline_guard.py` 钉住防护生效（真联网
   尝试必报 `network access forbidden`）
+
+### LL-079 runpy 重执行门面时桩须打在 lib 源头模块
+
+- 实证：受控实验确认——以 `runpy.run_path(facade, run_name="__main__")`
+  覆盖门面的 `sys.exit(main())` 守卫行时，若沿用既有门面测试的写法把桩
+  打在门面模块（`check_versions.all_laws`），runpy 重新执行门面文件，其
+  `from lib.rules import ...` 在 exec 时按 `sys.modules` 重新绑定，取到
+  lib 模块的原始函数，门面模块上的 monkeypatch 随重执行被冲掉——实测
+  桩注入的违规未生效、真实四律对真仓库跑通、`SystemExit.code` 变 0
+- 规则：runpy 类"重执行源文件"的测试，桩打在**源头模块属性**
+  （`lib.rules.all_laws`、`lib.latest.run_cmd`）；直调 `main()` 的测试
+  桩打在门面模块仍有效——两种缝各自成立，不可混用
+- 复发检测：`scripts/tests/versions/test_check_*.py::TestMainGuard` 断言
+  守卫退出码，桩绑错模块时 violations 例的 `SystemExit.code` 变 0 即红

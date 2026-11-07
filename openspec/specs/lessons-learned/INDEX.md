@@ -55,3 +55,4 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-076 | workflow   | 同一知识两份清单必漂移，共用常量/算法收编 lib 单一来源（同 LL-034）        |
 | LL-077 | python     | 同秒等长还原源文件后 pytest 跑陈旧字节码，还原后清 `__pycache__`           |
 | LL-078 | python     | 测试离线防护点在 `socket.getaddrinfo`，patch `socket.socket` 拦不住 urllib |
+| LL-079 | python     | runpy 重执行门面按 sys.modules 重绑定，桩须打 lib 源头模块非门面           |

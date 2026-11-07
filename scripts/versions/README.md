@@ -24,7 +24,9 @@ judgement lives in `lib/`. Unit tests: `scripts/tests/versions/` (offline
 fixtures plus swapped-out network/subprocess helpers — tests never reach the
 network; an autouse guard in `scripts/tests/conftest.py` enforces this;
 wired into `pnpm check:py`, which CI runs via `pnpm check`; discovery is
-`testpaths` in root `pyproject.toml`).
+`testpaths` in root `pyproject.toml`). This domain's line coverage is held
+at a 100% floor by `check:py`'s `--cov-fail-under` (threshold value defined
+only in root `package.json`).
 
 ## Exit codes
 
