@@ -97,3 +97,7 @@
   阈值附加不改变该行为，覆盖率门禁归属 ci-matrix）；
   `scripts/versions/README.md` 已随实态同步。
 - **提交分组与标题由人工确认后执行（agent 不主动 commit）**。
+- **archive 阶段（2026-11-07）**：delta 已于归档前 sync 入
+  `ci-matrix` 主 spec（阈值条款 + Scenario「versions 域覆盖率地板生效」，
+  既有两 Scenario 保留，validate 13/13）；Plan/ grep 本 change 零残留；
+  specs/README.md 路由无变化（ci-matrix 既有行，无新增能力）。
