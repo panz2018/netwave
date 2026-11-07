@@ -103,3 +103,20 @@
   版本解析实现（`semver`/`parse_ver`/`_semver`）即打回；
   `scripts/tests/test_repository.py::test_skip_dirs_cover_build_outputs`
   钉住集合内容
+
+### LL-080 spec 里的"必须配套升级"规矩须有官方出处或实测，否则删除
+
+- 犯过：`dependency-upgrade` spec「升级流程固定顺序」写有
+  `@napi-rs/cli` ↔ `napi` crate 同 major、pyo3 ↔ numpy 同 major 等配对硬约束，
+  逐条核对上游后：napi-rs 官方 README 只声明 Node.js 版本要求、monorepo 内
+  cli 与 crate 独立发版（cli/CHANGELOG 大量 "Version bump only for package
+  @napi-rs/cli"），从未声明同 major；pyo3↔numpy 由 cargo 自身强制
+  （rust-numpy 的 Cargo.toml 声明精确 pyo3 范围，配错编译即失败），本仓重复
+  声明无价值。两条既无官方文档、也无本仓实测，属生成时凭空写入
+- 规则：依赖间版本关系只认两类依据——上游官方文档声明（且由包管理器/编译器
+  自身强制的，本仓不重复登记）与本仓实测记录
+  （`scripts/versions/restrictions.json`）；两者皆无的配对规矩 MUST NOT 写进
+  spec/README，已存在的在触碰该节时删除。账本 LL-054 是本条在案实例，其
+  "配对升级"部分待逐条确认后退役（退役须确认，见 lessons-learned spec）
+- 复发检测：review Standards 轴对新增/照搬的"必须同升/配对"句子逐条索要
+  官方 URL 或本仓实测证据，给不出即打回
