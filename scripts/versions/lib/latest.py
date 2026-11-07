@@ -11,7 +11,7 @@ import urllib.request
 from typing import Any
 
 from lib.repository import ROOT, SKIP_DIRS
-from lib.version import is_outdated
+from lib.version import is_outdated, is_stable_version, parse_version
 
 
 def fetch_json(url: str) -> Any:
@@ -84,6 +84,27 @@ def latest_version(source: tuple[str, ...]) -> str:
             return data[0]["cycle"]
         raise ValueError(f"unknown endoflife kind {source[2]!r}")
     raise ValueError(f"unknown latest-source kind {source[0]!r}")
+
+
+def package_versions(ecosystem: str, package: str) -> list[str]:
+    """Every published stable version of a package, newest last, for the
+    freshness report to pick an unrestricted candidate from (see
+    lib.restrictions). Pre-releases and yanked releases are dropped — the
+    report advertises stable targets only."""
+    if ecosystem == "npm":
+        published = fetch_json(f"https://registry.npmjs.org/{package}")["versions"]
+        return _stable_sorted(published)
+    if ecosystem == "cargo":
+        data = fetch_json(f"https://crates.io/api/v1/crates/{package}")["versions"]
+        return _stable_sorted(v["num"] for v in data if not v.get("yanked"))
+    if ecosystem == "pypi":
+        releases = fetch_json(f"https://pypi.org/pypi/{package}/json")["releases"]
+        return _stable_sorted(v for v, files in releases.items() if files)
+    raise ValueError(f"unknown ecosystem kind {ecosystem!r}")
+
+
+def _stable_sorted(versions) -> list[str]:
+    return sorted((v for v in versions if is_stable_version(v)), key=parse_version)
 
 
 def refine_node_lts(lts_line: str) -> str:

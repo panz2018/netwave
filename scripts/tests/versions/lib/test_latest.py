@@ -18,6 +18,7 @@ from lib.latest import (
     first_line,
     is_version_tag,
     latest_version,
+    package_versions,
     refine_node_lts,
     run_cmd,
 )
@@ -170,6 +171,51 @@ class TestLatestVersion:
     def test_unknown_source_kind_raises(self):
         with pytest.raises(ValueError, match="'gitlab'"):
             latest_version(("gitlab", "x/y"))
+
+
+class TestPackageVersions:
+    def test_npm_lists_stable_versions_sorted(self, monkeypatch):
+        calls = []
+
+        def fake(url):
+            calls.append(url)
+            return {"versions": {"0.23.1": {}, "0.23.10": {}, "0.23.2": {}, "1.0.0-rc.1": {}}}
+
+        monkeypatch.setattr(latest, "fetch_json", fake)
+        assert package_versions("npm", "tsdown") == ["0.23.1", "0.23.2", "0.23.10"]
+        assert calls == ["https://registry.npmjs.org/tsdown"]
+
+    def test_cargo_skips_yanked(self, monkeypatch):
+        calls = []
+
+        def fake(url):
+            calls.append(url)
+            return {"versions": [{"num": "0.30.0"}, {"num": "0.29.0", "yanked": True}]}
+
+        monkeypatch.setattr(latest, "fetch_json", fake)
+        assert package_versions("cargo", "numpy") == ["0.30.0"]
+        assert calls == ["https://crates.io/api/v1/crates/numpy"]
+
+    def test_pypi_skips_empty_releases(self, monkeypatch):
+        calls = []
+
+        def fake(url):
+            calls.append(url)
+            return {
+                "releases": {
+                    "2.1.0": [{"filename": "x"}],
+                    "2.2.0": [],
+                    "2.2.1": [{"filename": "y"}],
+                }
+            }
+
+        monkeypatch.setattr(latest, "fetch_json", fake)
+        assert package_versions("pypi", "numpy") == ["2.1.0", "2.2.1"]
+        assert calls == ["https://pypi.org/pypi/numpy/json"]
+
+    def test_unknown_ecosystem_raises(self):
+        with pytest.raises(ValueError, match="'nuget'"):
+            package_versions("nuget", "x")
 
 
 class TestRefineNodeLts:

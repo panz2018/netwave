@@ -9,6 +9,14 @@ _EXACT = re.compile(r"\d+(\.\d+)+$")
 _EXACT_PATCH = re.compile(r"\d+\.\d+\.\d+$")
 _MAJOR_ONLY = re.compile(r"v?\d+$")
 _NUMBERS = re.compile(r"\d+")
+_STABLE = re.compile(r"^\d+(\.\d+)*$")
+
+
+def is_stable_version(s: str) -> bool:
+    """True for a plain numeric version like "1.2" or "1.2.3"; rejects
+    pre-releases (rc/alpha/beta/alpha.1), build metadata and ranges, which
+    carry letters."""
+    return bool(_STABLE.match(s.strip()))
 
 
 def parse_version(s: str) -> tuple[int, ...]:
