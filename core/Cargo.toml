@@ -54,7 +54,7 @@ unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)'] }
 
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }
-httpmock = "0.8"
+httpmock = "0.9"
 tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 
 [[bench]]
