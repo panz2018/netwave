@@ -69,13 +69,16 @@ CI 底线矩阵格、新增/移除钉版点）由人工发起，agent MUST NOT �
 不等点名；多条 LAG 逐条（或按生态分组）升级并各带一次闸门，使红可定位
 到具体版本；先升仓库内项再升全局 CLI。仅本需求场景所列情况（设计级
 适配、契约文件破损）MUST 停下报告。下限变更不在预授权范围，MUST 等
-人工发起。提交权不变：仓库内升级改动在提交全景表单列一组。
+人工发起。消化完成 MUST 以 `pnpm check:outdated` 复跑归零为准
+（见「消化闸门复验」）。提交权不变：仓库内升级改动在提交全景表单列一组。
 
 #### Scenario: apply 末尾体检
 
 - **WHEN** 任一 change 的全部任务完成
 - **THEN** 最后一项跑 `pnpm check:outdated`，所报 LAG 按预授权流程消化
   （升级完成或登记回退），不影响本 change 已完成的工作
+- **AND** 消化后复跑 `pnpm check:outdated`，退出码非 0（仍有残留
+  LAG）即本项未完成，继续消化或登记直至归零
 
 #### Scenario: LAG 直接执行
 
@@ -133,7 +136,10 @@ action 当前 tag vs 最新 release tag）。体检按发现覆盖环境（见�
 以生态前缀名参与组合判定。该命令由 apply 末尾自动触发（见「apply 末尾
 体检与升级预授权」），MUST NOT 进 CI 或 `pnpm check`（结果随上游每日
 变化且需联网）。体检 MUST NOT 报下限声明（`rust-version`、`engines.node`、CI
-底线矩阵格）为 LAG——下限不在升级目标内，变更由人工发起。不可达源（重试一次仍失败）MUST 报 SKIP，MUST NOT 计入 FAILED、
+底线矩阵格）为 LAG——下限不在升级目标内，变更由人工发起。报告末尾 MUST
+打印 SUMMARY 行汇总各段 LAG 计数（见「报告末尾总览 LAG 计数」）；本命令
+本身即闸门，残留 LAG 即非零退出（见「消化闸门复验」）。不可达源（重试一次仍失败）
+MUST 报 SKIP，MUST NOT 计入 FAILED、
 MUST NOT 影响退出码；FAILED 仅保留给不依赖网络运气的真错误（本地探针
 命令无法执行、契约文件破损等），任一 FAILED MUST 以非零退出码结束。
 
@@ -142,6 +148,22 @@ MUST NOT 影响退出码；FAILED 仅保留给不依赖网络运气的真错误�
 - **WHEN** 运行 `pnpm check:outdated`
 - **THEN** 输出四段各自的当前版本、最新 LTS/稳定版与是否落后
 - **AND** `ci.yml` 与 `pnpm check` 均不包含该命令
+
+#### Scenario: 报告末尾总览 LAG 计数
+
+- **WHEN** 体检跑完四段
+- **THEN** 末尾打印一行 `SUMMARY: <N> LAG (<分段计数>)`，N 为各段落后项总数
+  （pnpm 表数据行、cargo `Updating … -> …` 行、uv 变更行、运行时 pin、
+  全局 CLI、直装工具、CI actions 各按 LAG 标记计数）
+- **AND** 无落后时打印 `SUMMARY: 0 LAG (all current)`，使截断视图也能一眼
+  看出是否整段被漏看
+
+#### Scenario: 消化闸门复验
+
+- **WHEN** 运行 `pnpm check:outdated`（含 apply 末尾消化 LAG 后的复跑）
+- **THEN** SUMMARY 仍有残留 LAG 即以非零退出码结束，强制"消化完成 = 归零"；
+  SUMMARY 为 0 时退出码 0
+- **AND** SKIP（源不可达）不计入 LAG，断网时退出码仍为 0（见「断网不算失败」）
 
 #### Scenario: CI actions 落后即报
 

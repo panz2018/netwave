@@ -116,7 +116,7 @@ class TestOutdatedReportsAndExits:
             return "3.14" if source[0] == "endoflife" else "9.9.9"
 
         monkeypatch.setattr(check_outdated, "latest_version", fake_latest)
-        assert check_outdated.main() == 0
+        assert check_outdated.main() != 0  # actions/checkout v4 is a LAG -> gate fails
         out = capsys.readouterr().out
         # python line: field name copied from the file it checks, arrow from
         # current to latest, status mark at the tail; column widths fixed so
@@ -149,7 +149,7 @@ class TestOutdatedReportsAndExits:
         monkeypatch.setattr(check_outdated, "fetch_json", lambda url: [{"cycle": "3.14"}])
         monkeypatch.setattr(check_outdated, "latest_version", lambda source: "9.9.9")
         monkeypatch.setattr(check_outdated, "refine_node_lts", lambda line: "26.1.1")
-        assert check_outdated.main() == 0  # probes answered; only the comparison is inconclusive
+        assert check_outdated.main() != 0  # pnpm 1.0.0 is a LAG -> gate fails
         out = capsys.readouterr().out
         for section_no in ("2", "3"):
             lines = _lines_of(out, section_no)
@@ -165,7 +165,7 @@ class TestOutdatedReportsAndExits:
         _quiet_sections(monkeypatch)
         monkeypatch.setattr(check_outdated, "run_cmd", lambda cmd: (0, "v24.0.0"))
         monkeypatch.setattr(check_outdated, "refine_node_lts", lambda line: "26.13.0")
-        assert check_outdated.main() == 0
+        assert check_outdated.main() != 0  # node behind latest -> gate fails
         line = next(ln for ln in _lines_of(capsys.readouterr().out, "2") if ln.startswith("node"))
         assert "v24.0.0" in line and "LAG" in line
 
@@ -469,7 +469,7 @@ class TestSkipVsFailed:
             return "9.9.9"
 
         monkeypatch.setattr(check_outdated, "latest_version", fake_latest)
-        assert check_outdated.main() == 0
+        assert check_outdated.main() != 0  # the SKIP is not a failure, but other CLIs lag
         out = capsys.readouterr().out
         assert "wasm-pack" in out and "SKIP (api down)" in out
         assert "FAILED" not in out
@@ -513,3 +513,39 @@ class TestMainGuard:
             runpy.run_path(check_outdated.__file__, run_name="__main__")
         assert excinfo.value.code != 0
         assert "check:outdated done" in capsys.readouterr().out
+
+
+class TestSummaryAndExit:
+    """The trailing SUMMARY totals LAGs per source so a truncated view cannot
+    hide a segment; the command is a gate — leftover LAGs mean a non-zero
+    exit, SKIPs never do."""
+
+    def test_count_uv_changes_clean_is_zero(self):
+        out = "Resolved 17 packages\nNo lockfile changes detected"
+        assert check_outdated.count_uv_changes(out) == 0
+
+    def test_count_uv_changes_dirty_counts_package_lines(self):
+        out = "Resolved 3 packages\nUpdated foo v1.0.0 -> v1.1.0\nAdding bar v2.0.0"
+        assert check_outdated.count_uv_changes(out) == 2
+
+    def test_summary_all_current_when_no_lag(self, monkeypatch, capsys):
+        _quiet_sections(monkeypatch)
+        assert check_outdated.main() == 0
+        assert "SUMMARY: 0 LAG (all current)" in capsys.readouterr().out
+
+    def test_lag_totals_per_source_and_fails_the_run(self, monkeypatch, capsys):
+        # one CI action behind latest -> exactly one LAG, everything else clean
+        _quiet_sections(monkeypatch)
+        monkeypatch.setattr(check_outdated, "action_refs", lambda: {("actions/checkout", "v4")})
+        assert check_outdated.main() != 0
+        out = capsys.readouterr().out
+        assert "SUMMARY: 1 LAG (actions 1)" in out
+        assert "GATE:" not in out  # the exit code is the signal; no extra line
+
+    def test_skip_does_not_count_toward_the_gate(self, monkeypatch):
+        # an unreachable source SKIPs: network luck must never fail the run
+        _quiet_sections(monkeypatch)
+        monkeypatch.setattr(check_outdated, "fetch_json", _raise("fetch_json"))
+        monkeypatch.setattr(check_outdated, "latest_version", _raise("latest_version"))
+        monkeypatch.setattr(check_outdated, "refine_node_lts", _raise("refine_node_lts"))
+        assert check_outdated.main() == 0

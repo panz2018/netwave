@@ -134,3 +134,40 @@ LL 候选：改 `Plan/` 标题会使归档工件的锚点链接断链——波�
   pin 的 CLI 以 pin 为准」，只留 corepack/rustup 两类自动生效机制。
 - LL-086（workflow）登记：跨机器一致性 pin 必须自动生效，被动声明文件
   不算 pin。
+
+## 9. 防漏机制（人工纠正"为何基本没升级"，点名"只改机制不升级"）
+
+- 根因：上一轮跑 `check:outdated` 用 `| tail -30` 截断，第 1 段
+  （pnpm 11 + cargo 80 = 91 个 LAG）整段被切掉，误报"无 LAG"。spec
+  措辞本身清楚（"一切 LAG MUST 预授权直接执行"），是执行漏看 + 报告
+  格式易漏 + 无闸门强制三因叠加。
+- 机制 1（防看漏）：`check_outdated.py` 末尾加 `SUMMARY: <N> LAG` 配
+  `(<pnpm X, cargo Y, …>)` 总览行，逐段计数（pnpm 表数据行 / cargo
+  `Updating … -> …` / uv 变更行 / pin / cli / tarball / actions）；
+  计数函数 `count_pnpm_outdated`/`count_cargo_updates`/`count_uv_changes`
+  实测与独立 grep 核对一致（pnpm 11、cargo 61）。
+- 机制 2（防漏做）：残留 LAG 即非零退出（初版为 `--gate` flag，后由
+  第 10 节裁决改为默认即闸门）；config.yaml 两条接线补“消化后复跑
+  至退出码 0 才算完成”。
+- spec delta：「过期体检命令」加 2 scenario（报告末尾总览 LAG 计数、
+  消化闸门复验）；「apply 末尾体检」scenario 补 AND 复跑归零。
+- 测试：SUMMARY/退出码类测试（uv 计数干净/脏、SUMMARY 计数、
+  all current、LAG 拦截、SKIP 不拦），覆盖率 100%。
+- LL-087（workflow）登记：多段报告禁 tail 截断后下“无问题”结论。
+- 本轮不升级（人工点名“暂不升，先只改机制”）：91 个 LAG 保留待后续
+  点名。
+
+## 10. 删 `--gate`，默认即闸门（人工裁决，grilling Q1–Q4）
+
+- 裁决：删 `--gate` 参数，`pnpm check:outdated` 默认就是闸门——
+  SUMMARY > 0 即非零退出；两档模式是多余概念，一个命令一个行为。
+- Q2：SKIP（源不可达）不计入 LAG，断网时退出码仍为 0（沿用
+  「断网不算失败」）；Q3：删 `GATE:` 行，SUMMARY + 退出码已足够；
+  Q4：apply 末尾复验就是裸命令 `pnpm check:outdated` 至退出码 0。
+- 代码：`main()` 去 argv/gate 解析，`return 1 if (failures or total) else 0`。
+- 连带：输出含 LAG 的 4 条测试断言 `== 0` → `!= 0`；
+  `TestSummaryAndGate` 重写为 `TestSummaryAndExit`（含 SKIP 不拦闸门）。
+- 文档：spec（正文 + 消化闸门复验 scenario + apply scenario AND）、
+  config.yaml 两条接线、README（表格行/Exit codes/Usage）、
+  LL-087 复发检测去 `--gate`；“信息性报告、永不闸门”改写为
+  “本命令即闸门，但不进 CI/`pnpm check`（需联网、结果每日漂移）”。

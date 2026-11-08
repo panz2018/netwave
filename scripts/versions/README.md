@@ -13,7 +13,7 @@ networked freshness report. Spec:
 | Path                  | Role                                                                                                                                                                                                                                                                                                                                                              |
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `check_versions.py`   | Offline rule gate facade (four laws: rust-version, Python project, packageManager, CI python matrix coverage). Wired into `pnpm check:meta`                                                                                                                                                                                                                       |
-| `check_outdated.py`   | Networked freshness report facade (manual, never a CI gate): latest LTS/stable versions vs pins. Entry point: `pnpm check:outdated`                                                                                                                                                                                                                               |
+| `check_outdated.py`   | Networked freshness gate facade (manual / apply-end, never wired into CI): latest LTS/stable versions vs pins; exits non-zero while any LAG remains. Entry point: `pnpm check:outdated`                                                                                                                                                                           |
 | `lib/version.py`      | Version parsing/comparison: `parse_version` (zero-padded triple), `is_exact`, `is_exact_patch`, `is_major_only`, `is_outdated`                                                                                                                                                                                                                                    |
 | `lib/repository.py`   | Repo scanning & pin extraction: `ROOT`, `SKIP_DIRS` (single source), `find_files`, `find_python_versions`, `find_ci_workflows`, `workspace_members`, `rust_versions`, `toolchain_channel`, `ci_python_cells`, `find_package_managers`, `runtime_pins` (`.python-version`/`packageManager`/`rust-toolchain.toml`/CI `uses:` → prefixed peers), `is_python_project` |
 | `lib/rules.py`        | The four laws: `check_rust_version`, `check_python_projects`, `check_package_manager`, `check_ci_python_versions` (each returns error strings); plus `all_laws` / `summary`                                                                                                                                                                                       |
@@ -33,14 +33,17 @@ only in root `package.json`).
 
 - `check_versions.py`: 0 = all laws hold, 1 = violations (each printed as
   `::error::` on stderr).
-- `check_outdated.py`: SKIP vs FAILED layering (spec「过期体检命令」).
-  An unreachable source retries once, then its lines print `SKIP <source>`
-  and the exit code is unaffected (network luck is not a failure).
+- `check_outdated.py`: the command is a gate — it exits non-zero while any
+  LAG remains (SUMMARY > 0), so digesting LAGs is enforced rather than
+  conventional. SKIP vs FAILED layering still applies (spec「过期体检命令」):
+  an unreachable source retries once, then its lines print `SKIP <source>`,
+  and SKIP never counts toward SUMMARY — network luck cannot fail the run.
   FAILED (non-zero exit, `FAILED:` names them) stays reserved for real
   errors: a local probe command that cannot run (`WARN`), or
   `restrictions.json` breaking its contract (the report aborts — a
-  misleading judgement baseline must never drive upgrades). Informational
-  report, never a gate — but a real failure is never hidden.
+  misleading judgement baseline must never drive upgrades).
+  A trailing `SUMMARY: <N> LAG (<per-source>)` line totals every segment so
+  a truncated view cannot hide a whole segment.
 
 ## Usage (from repo root)
 
@@ -64,8 +67,10 @@ tarball, and for node `nvm install <latest> --reinstall-packages-from=<old>`
 followed by `nvm alias default <latest>` so a freshly opened terminal uses
 the new version with its global packages migrated (`.nvmrc` alone does not
 auto-apply — nvm does not read it unless a cd hook is installed). Repo
-pins first, then global CLIs, each gated. It can also be run by hand any
-time.
+pins first, then global CLIs, each gated. After digesting, re-run
+`pnpm check:outdated` until it exits 0 (SUMMARY back to zero) — that zero is
+what marks the digest step done; leftover LAGs make the command exit non-zero.
+It can also be run by hand any time.
 
 ## Registering a version restriction
 

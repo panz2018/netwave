@@ -167,3 +167,17 @@
 - 复发检测：review Standards 轴见新增钉版文件时索要"干净终端自动生效"
   实测证据（`env -i` 或新开 shell 验证 `nvm current`/工具版本），
   给不出即打回
+
+### LL-087 多段报告禁截断后下"无问题"结论，须看总览行或完整输出
+
+- 犯过：跑 `pnpm check:outdated` 后用 `| tail -30` 截断输出，第 1 段
+  （项目依赖，91 个 LAG：pnpm 11 + cargo 80）整段被切掉，只看到第 2/3/4
+  段全 OK，即向人工误报"无 LAG、无需升级"；人工复核才发现 lockfile 从未
+  动过
+- 规则：读体检/构建/测试等多段输出时，MUST NOT 用 `tail`/`head` 截断后
+  据此下"无问题/全 OK"结论——截断视图会整段吞掉问题。要么看完整输出，
+  要么依赖程序自带的总览行（`check:outdated` 的 `SUMMARY: <N> LAG`）；
+  N>0 即有落后，不得因末段干净而误判
+- 复发检测：apply 末尾消化 LAG 后 MUST 复跑 `check:outdated` 至
+  退出码 0（SUMMARY 归零），由闸门而非 agent 自觉兜底；review 见"无 LAG"
+  结论索要 SUMMARY 行原文

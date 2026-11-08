@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Freshness check (networked — runs at the end of every OpenSpec apply;
-never a CI gate).
+a gate for that step — leftover LAGs exit non-zero — but never wired into
+CI or pnpm check).
 
 Four segments, per the dependency-upgrade spec:
   1. Project deps: pnpm -r outdated (all workspace packages) / cargo update
@@ -22,17 +23,22 @@ Every segment filters its latest through the bad-combo judgement before
 reporting (spec「过期体检命令」): a latest that forms a recorded combo with
 the current peers reports the highest free target plus `SKIP <reason>`.
 
-Exit codes: an unreachable source retries once, then SKIPs — the line names
-the source and the exit code is unaffected (network luck is not a failure).
-FAILED (non-zero exit) stays reserved for real errors: a local probe command
-that cannot run, or restrictions.json breaking its contract (the judgement
-baseline would be misleading, so the report aborts with FAILED instead).
+Exit codes: the command is a gate — it exits non-zero while any LAG remains
+(SUMMARY > 0), so "digest the LAGs" is enforced rather than conventional. An
+unreachable source retries once, then SKIPs — the line names the source, and
+SKIP never counts toward SUMMARY, so network luck cannot fail the run
+(spec「断网不算失败」). FAILED (also non-zero) stays reserved for real
+errors: a local probe command that cannot run, or restrictions.json breaking
+its contract (the judgement baseline would be misleading, so the report
+aborts with FAILED instead).
 Probes and section layout live here (spec: probe set is a program constant);
 networking and comparison live in lib/latest.py and lib/version.py, bad-combo
-judgement in lib/restrictions.py.
+judgement in lib/restrictions.py. A trailing SUMMARY line totals the LAGs per
+source so a truncated view can never hide a whole segment.
 Usage: python3 scripts/versions/check_outdated.py   (pnpm check:outdated)
 """
 
+import re
 import sys
 
 from lib.latest import (
@@ -157,13 +163,38 @@ def restricted_lines(restrictions: list, peers: dict[str, str], failures: list[s
         print(f"{cols} {mark}{tail}")
 
 
+def count_pnpm_outdated(out: str) -> int:
+    """Data rows of the `pnpm outdated` table. Border lines start with ┌├└ and
+    the header names the columns, so a │-prefixed non-header row is exactly one
+    outdated package."""
+    return sum(1 for ln in out.splitlines() if ln.startswith("│") and "Package" not in ln)
+
+
+def count_cargo_updates(out: str) -> int:
+    """`cargo update --dry-run` package lines `Updating name vA -> vB`; the
+    crates.io index refresh has no version pair, and Removing lines are not
+    upgrades, so neither counts as a lag."""
+    return sum(1 for ln in out.splitlines() if re.search(r"Updating \S+ v\S+ -> v\S+", ln))
+
+
+def count_uv_changes(out: str) -> int:
+    """`uv lock --upgrade --dry-run` prints `No lockfile changes detected` when
+    clean; otherwise one line per added/updated/removed package."""
+    if "No lockfile changes detected" in out:
+        return 0
+    return sum(
+        1 for ln in out.splitlines() if re.search(r"(Updating|Updated|Adding|Removing) \S+", ln)
+    )
+
+
 def main() -> int:
     failures: list[str] = []
+    lags = {"pnpm": 0, "cargo": 0, "uv": 0, "pin": 0, "cli": 0, "tarball": 0, "actions": 0}
     try:
         restrictions = load_restrictions(ROOT)
     except RestrictionFormatError as e:
         print(f"FAILED: restrictions.json ({e})")
-        print("\ncheck:outdated done (informational; not a gate)")
+        print("\ncheck:outdated done (gate: non-zero while any LAG remains)")
         return 1
     names = sorted({pkg for r in restrictions for combo in r["combos"] for pkg in combo})
     peers = {**locked_versions(ROOT, names), **runtime_pins(ROOT)}
@@ -176,6 +207,7 @@ def main() -> int:
         rc, out = run_cmd(f"uv lock --upgrade --dry-run --project {proj}")
         print(f"$ uv lock --upgrade --dry-run --project {proj}  (rc={rc})")
         print(out if out else "(no output)")
+        lags["uv"] += count_uv_changes(out)
 
     for cmd in ("pnpm -r outdated", "cargo update --dry-run"):
         rc, out = run_cmd(cmd)
@@ -183,6 +215,10 @@ def main() -> int:
         print(out if out else "(no output)")
         if rc == 125:  # run_cmd sentinel: the command could not be run at all
             failures.append(cmd)
+        if cmd.startswith("pnpm"):
+            lags["pnpm"] += count_pnpm_outdated(out)
+        else:
+            lags["cargo"] += count_cargo_updates(out)
 
     # every runtime pin in the repo (.python-version): single-line runtime ->
     # latest stable minor, filtered through recorded combos like any other
@@ -203,6 +239,7 @@ def main() -> int:
             )
             if reason is None:
                 mark = "LAG" if is_outdated(pyver, latest_py) else "OK"
+                lags["pin"] += mark == "LAG"
                 print(f"{head} -> latest stable {latest_py:8s} {mark}")
                 continue
             target = pick_unrestricted("pypi:python", cycles, peers, restrictions)
@@ -210,6 +247,7 @@ def main() -> int:
                 print(f"{head} -> target ?  no free version (all restricted) SKIP {reason}")
                 continue
             mark = "LAG" if is_outdated(pyver, target) else "OK"
+            lags["pin"] += mark == "LAG"
             print(f"{head} -> target {target:8s} {mark} SKIP {reason}")
     except Exception as e:  # noqa: BLE001
         print(f"python-version files: SKIP ({e})")
@@ -240,6 +278,7 @@ def main() -> int:
             print(f"{head} latest: SKIP ({e})")
             continue
         tail = target_line(name, installed, latest, peers, restrictions)
+        lags["cli"] += "LAG" in tail
         print(f"{head} latest: {latest:12s} {tail}")
 
     # 3. github-tarball tools & cargo subcommands
@@ -262,6 +301,7 @@ def main() -> int:
             print(f"{head} latest: SKIP ({e})")
             continue
         tail = target_line(name, installed, latest, peers, restrictions)
+        lags["tarball"] += "LAG" in tail
         print(f"{head} latest: {latest:12s} {tail}")
 
     # 4. CI actions
@@ -282,14 +322,18 @@ def main() -> int:
             # major, so only a major bump is a lag. A full/partial pin
             # (v10.2.0, v0.0.11) is compared against the exact latest.
             mark = "LAG" if is_outdated(tag, latest, major_only=is_major_only(tag)) else "OK"
+            lags["actions"] += mark == "LAG"
             print(f"{repo}@{tag:12s} latest: {latest:12s} {mark}")
         except Exception as e:  # noqa: BLE001
             print(f"{repo}@{tag:12s} latest: SKIP ({e})")
 
+    total = sum(lags.values())
+    parts = ", ".join(f"{k} {v}" for k, v in lags.items() if v) or "all current"
+    print(f"\nSUMMARY: {total} LAG ({parts})")
     if failures:
         print(f"\nFAILED: {', '.join(failures)}")
-    print("\ncheck:outdated done (informational; not a gate)")
-    return 1 if failures else 0
+    print("\ncheck:outdated done (gate: non-zero while any LAG remains)")
+    return 1 if (failures or total) else 0
 
 
 if __name__ == "__main__":

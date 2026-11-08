@@ -30,7 +30,8 @@ rules:
       升级 + 全闸门 + 四端对拍（含全局 CLI/直装工具的机器级升级），
       上游 bug/不兼容登记回退不阻塞；仅设计级适配、restrictions.json
       破损、流程走不通才停下报告；下限变更（MSRV、engines.node、
-      CI 底线格）等人工发起
+      CI 底线格）等人工发起。消化完成后 MUST 复跑 pnpm check:outdated
+      至退出码 0（SUMMARY 归零）才算本项完成，防漏消化
 
 # Per-operation guidance (optional)
 # Add advisory guidance for how apply and archive work should be conducted.
@@ -49,7 +50,8 @@ operations:
         并按 dependency-upgrade spec「apply 末尾体检与升级预授权」消化
         所报 LAG（升级 + 全闸门 + 四端对拍，含全局 CLI/直装工具的
         机器级升级；登记回退不阻塞，设计级适配/契约破损/流程走不通
-        才停下报告；下限变更等人工发起）
+        才停下报告；下限变更等人工发起）；消化后 MUST 复跑
+        pnpm check:outdated 至退出码 0（SUMMARY 归零）才算完成
   archive:
     guidance:
       - 归档前必须执行 Plan/ 瘦身检查：grep Plan/ 中与本 change 相关的条目，
