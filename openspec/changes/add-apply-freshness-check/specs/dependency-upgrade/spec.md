@@ -10,14 +10,24 @@
 开 OpenSpec change；验收 = `pnpm check` 全绿 + `pnpm check:cross` 四端
 对拍，实测失败按「版本限制记录与坏版本降级」回退并当轮登记。**下限
 变更**（MSRV `rust-version`、`engines.node`、CI 底线矩阵格、新增/移除
-钉版点）由人工发起，agent MUST NOT 自动执行。升级动作的追溯靠 git log，
-坏版本事实靠 `scripts/versions/restrictions.json` 与账本，散文不复制。
+钉版点）由人工发起，agent MUST NOT 自动执行。全局 CLI/直装工具的升级在
+本机执行、回退靠重装（见「全局 CLI 与直装工具机器级升级」）。升级动作
+的追溯靠 git log，坏版本事实靠 `scripts/versions/restrictions.json`
+（仓库内组合）与账本（机器级工具），散文不复制。
 
 #### Scenario: 上限升级直接执行不开 change
 
 - **WHEN** 体检报出任一上限 LAG（lockfile、pin、矩阵最新格、工具）
 - **THEN** agent 直接执行升级 + 全闸门 + 四端对拍，不开 OpenSpec change，
   提交信息注明升级内容与体检出处
+
+#### Scenario: 全局 CLI 与直装工具机器级升级
+
+- **WHEN** 体检报出全局 CLI 或 GitHub 压缩包直装工具落后（node、npm、
+  openspec、markdownlint-cli2、wasm-pack 等）
+- **THEN** agent 在本机直接升级到最新（nvm / `npm install -g` /
+  `cargo install` / 重下 tarball），不停下等点名；实测坏则重装回退到
+  上一可用版并当轮记账本
 
 #### Scenario: 下限变更人工发起
 
@@ -32,9 +42,10 @@
 `operations.apply.guidance` + `rules.tasks`）。体检报出的**一切 LAG** MUST
 预授权：agent 无需再次确认，直接执行升级 + 全闸门 + 四端对拍，按
 「升级执行权限划分」与「版本限制记录与坏版本降级」走完流程，不阻塞、
-不等点名；仅本需求场景所列情况（设计级适配、契约文件破损）MUST 停下
-报告。下限变更不在预授权范围，MUST 等人工发起。提交权不变：升级改动
-在提交全景表单列一组。
+不等点名；多条 LAG 逐条（或按生态分组）升级并各带一次闸门，使红可定位
+到具体版本；先升仓库内项再升全局 CLI。仅本需求场景所列情况（设计级
+适配、契约文件破损）MUST 停下报告。下限变更不在预授权范围，MUST 等
+人工发起。提交权不变：仓库内升级改动在提交全景表单列一组。
 
 #### Scenario: apply 末尾体检
 
@@ -63,6 +74,25 @@
 
 - **WHEN** 升级涉及 MSRV、`engines.node` 或 CI 底线矩阵格
 - **THEN** agent 只报告不动手，等人工点名
+
+#### Scenario: 无可用版本即保留现状继续
+
+- **WHEN** 某包从最新往下每个版本都命中已登记组合（无 free version）
+- **THEN** 保留当前可用版本、报 `no free version`，继续处理其余 LAG，
+  不阻塞、不停下等确认
+
+#### Scenario: 先仓库后全局的升级顺序
+
+- **WHEN** 一次体检同时报出仓库内 LAG 与全局 CLI LAG
+- **THEN** 先在当前稳定工具链上升级仓库内项（lockfile、pin、CI action）
+  并跑全闸门验绿，再逐个升级全局 CLI，每升一个重跑全闸门复验；
+  某工具弄红即重装回退该工具，仓库改动不受牵连
+
+#### Scenario: 无闸门覆盖的全局 CLI 冒烟验收
+
+- **WHEN** 升级的全局 CLI 不被 `pnpm check` 实际执行（如 openspec）
+- **THEN** 以冒烟测试验收：命令能跑、`--version` 报出版本、核心子命令
+  正常执行；不为其另造 CI 闸门
 
 ## MODIFIED Requirements
 
@@ -164,6 +194,14 @@ MUST NOT 影响退出码；FAILED 仅保留给不依赖网络运气的真错误�
 
 - **WHEN** 记录的包名缺少 `npm:` / `cargo:` / `pypi:` 前缀
 - **THEN** 读记录时视为格式错误并抛异常，不得静默当作某个生态处理
+
+#### Scenario: 全局工具坏版本记账本不入本文件
+
+- **WHEN** 全局 CLI 或直装工具（node、openspec、wasm-pack 等，不在本仓
+  lockfile/pin 内）某版本实测坏
+- **THEN** 该坏版本事实记 lessons-learned 账本，MUST NOT 写进
+  `restrictions.json`——本文件只承载仓库内 lockfile/pin 能凑成的组合，
+  机器级工具版本不由体检 peers 追踪，写入也永不命中
 
 ### Requirement: 运行时大版本升级流程
 

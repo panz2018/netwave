@@ -10,8 +10,10 @@ governance spec、`openspec/config.yaml`、子项目 README）由 AI 读取并�
   删文件、`git commit` 一律禁止执行。
   - **例外（预授权）**：apply 末尾体检（`pnpm check:outdated`）所报 LAG 的
     上限升级 = 已获授权动作，无需点名（出处：dependency-upgrade spec
-    「apply 末尾体检与升级预授权」）；仅授执行+验证，不含 commit——
-    升级改动在提交全景表单列一组，仍等人工点名。
+    「apply 末尾体检与升级预授权」）；含全局 CLI/直装工具的机器级升级
+    （本机 nvm/npm -g/cargo install/tarball，坏版本重装回退），agent MUST
+    NOT 以"机器副作用"为由只报不动；仅授执行+验证，不含 commit——
+    仓库内升级改动在提交全景表单列一组，仍等人工点名。
 - **“研究 / 探讨 / 该不该”类题目 = 只出文字**：给答案与原因，动手执行即越权。
 - **“实施”不等于改代码**：指执行此前讨论定下的动作，定的是改文档就改文档。
 - **已定裁决 = 已获授权**：直接执行，不必重新确认。

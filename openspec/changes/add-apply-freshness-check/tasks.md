@@ -78,12 +78,18 @@ TDD（铁律二）：每个实现任务前均有先红的测试任务。
 末尾体检示范（5.6）：`pnpm check:outdated` 跑通，四段输出与 SKIP/FAILED
 分层退出码符合新语义（本次全源可达，退出码 0）。所报 LAG：node
 26.12.1→26.13.0、npm 12.2.1→12.2.2、openspec 1.15.0→1.16.1、
-markdownlint-cli2 0.23.3→0.24.0（全局 CLI，机器级 nvm/npm 全局包）、
-CI action astral-sh/setup-uv v10.2.0→v10.3.3（仓库内 ci.yml）。以上均属
-spec「升级执行权限划分」列明的上限升级（含全局 CLI、CI actions）；其中
-仓库内的 setup-uv 已按预授权升级（ci.yml 三处一次改齐）并跑 `pnpm check`
-全绿验收；全局 CLI 升级改本机工具链（非仓库改动、不进 git），单列报告
-交人点名，不擅自 churn 本机。
+markdownlint-cli2 0.23.3→0.24.0（全局 CLI）、CI action astral-sh/setup-uv
+v10.2.0→v10.3.3（仓库内 ci.yml）。均属 spec「升级执行权限划分」的上限
+升级。仓库内 setup-uv 已按预授权升级（ci.yml 三处一次改齐）并跑
+`pnpm check` 全绿验收。
+
+规则修订（人工裁决追加）：全局 CLI/直装工具的机器级升级（本机 nvm/
+npm -g/cargo install/tarball，坏版本重装回退）明确纳入预授权，agent
+MUST NOT 以"机器副作用"为由只报不动——上一轮把全局 CLI 判为"只报交人
+点名"是执行时的保守偏差，已由本次修订纠正（spec delta 新增机器级升级
+scenario、`config.yaml` 两条接线、`AGENTS.md` 例外句、README 同步）。
+本机 4 个全局 CLI 的实际升级属执行动作、改本机默认工具链且不在本次
+"修改文件"动词内，是否即时补做待人工点名。
 
 LL 候选：改 `Plan/` 标题会使归档工件的锚点链接断链——波及面自查须含
 归档工件对 Plan 的引用。是否登记待点名。

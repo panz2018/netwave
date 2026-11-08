@@ -54,8 +54,11 @@ repo root); no global Python packages required.
 
 `check:outdated` runs automatically as the last task of every OpenSpec
 apply (wired in `openspec/config.yaml`); the LAGs it reports are
-pre-authorized upgrades per the dependency-upgrade spec. It can also be
-run by hand any time.
+pre-authorized upgrades per the dependency-upgrade spec — repository pins
+_and_ machine-wide CLIs/tarball tools (upgraded on the host via
+nvm / `npm install -g` / `cargo install` / re-downloaded tarballs,
+repo pins first then global CLIs, each gated). It can also be run by hand
+any time.
 
 ## Registering a version restriction
 
@@ -100,6 +103,11 @@ and records are append-only — never delete one, even after the upstream fix.
      `{ "pypi:python": "3.16", "pypi:numpy": "2.3.0" }`.
    - Versions are the exact ones you tested. Ranges (`^`, `>=`, `*`) are
      rejected by the loader.
+   - A bad version of a machine-wide CLI or tarball tool (node, openspec,
+     wasm-pack — not tracked by this repo's lockfiles/pins) goes in the
+     lessons-learned ledger, **not** here: `restrictions.json` only carries
+     combos this repo's peers can form, and a name the freshness probe
+     never matches would sit dead.
 
 3. Tighten the pin in the manifest that carries it, same round: raise the
    lower bound of the existing range and keep its style (`^0.23.0` →
