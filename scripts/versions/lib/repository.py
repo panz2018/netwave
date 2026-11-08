@@ -92,6 +92,28 @@ def ci_python_cells(root: Path) -> set[str]:
     return cells
 
 
+def runtime_pins(root: Path) -> dict[str, str]:
+    """Runtime and tool pins as combo peers keyed by ecosystem-prefixed
+    names (`pypi:python`, `cargo:rustc`, `github:<repo>`) — merged with
+    `locked_versions` so records naming runtimes can hit (spec「版本限制
+    记录数据文件」). Python pins normalise to the minor line (the
+    granularity the freshness report compares at); rustc and action pins
+    keep their pinned value verbatim."""
+    pins: dict[str, str] = {}
+    for value in find_python_versions(root).values():
+        parts = value.split(".")
+        pins["pypi:python"] = ".".join(parts[:2]) if len(parts) >= 2 else value
+    if (root / "rust-toolchain.toml").exists():
+        pins["cargo:rustc"] = toolchain_channel(root)
+    uses = re.compile(r"uses:\s*([\w./-]+)@([\w.\-]+)")
+    for wf in find_ci_workflows(root):
+        for line in wf.read_text(encoding="utf-8").splitlines():
+            m = uses.search(line)
+            if m and "/" in m.group(1) and not m.group(1).startswith("docker://"):
+                pins[f"github:{m.group(1)}"] = m.group(2)
+    return pins
+
+
 def find_package_managers(root: Path) -> dict[str, str]:
     """Repo-relative package.json paths carrying `packageManager`, mapped to
     their value."""

@@ -7,10 +7,11 @@ discovery (find_uv_projects/action_refs) returns empty — they are plain
 filesystem scans, not probes, and are not wrapped in try by design (see
 completion record in tasks.md).
 
-Exit-code contract (change add-version-restrictions): a failed segment is
-reported and the command exits non-zero; the old always-exit-0 behaviour is
-gone. Restriction records are stubbed to [] by default so no test depends on
-whether the repo currently has restrictions.json."""
+Exit-code contract (dependency-upgrade spec): unreachable sources retry
+once then SKIP and never affect the exit code; FAILED (non-zero exit) stays
+reserved for local probe failures and contract corruption. Restriction
+records are stubbed to [] by default so no test depends on whether the repo
+currently has restrictions.json."""
 
 import runpy
 
@@ -18,6 +19,7 @@ import check_outdated
 import lib.latest
 import lib.repository
 import pytest
+from lib.restrictions import RestrictionFormatError
 
 # tsdown 0.23.2 is the recorded bad pairing with typescript 7.0.0; the repo
 # sits on tsdown 0.23.0, so the free target to advertise is 0.23.1.
@@ -42,6 +44,7 @@ def _raise(name):
 def _no_repo_state(monkeypatch):
     monkeypatch.setattr(check_outdated, "load_restrictions", lambda root: [])
     monkeypatch.setattr(check_outdated, "locked_versions", lambda root, names: {})
+    monkeypatch.setattr(check_outdated, "runtime_pins", lambda root: {})
 
 
 def _quiet_sections(monkeypatch):
@@ -87,10 +90,12 @@ class TestOutdatedReportsAndExits:
         out = capsys.readouterr().out
         for n in ("1", "2", "3", "4"):
             assert f"=== {n}." in out
-        assert out.count("WARN") >= 8  # every CLI/tool probe degraded, none aborted
-        assert "python-version files: WARN" in out
+        # local probes that cannot run stay FAILED/WARN; network probes degrade
+        # to SKIP（spec「出错不得静默」）
+        assert out.count("WARN") >= 8
+        assert "python-version files: SKIP" in out
         assert "justowner@v1  (skip: not a github action path)" in out
-        assert "actions/checkout@v4" in out and "WARN" in out
+        assert "actions/checkout@v4" in out and "SKIP" in out
         assert "FAILED:" in out  # names what could not be checked
 
     def test_normal_path_marks_lag_ok_and_ref(self, monkeypatch, capsys):
@@ -221,21 +226,23 @@ class TestRestrictedTargets:
 
         monkeypatch.setattr(check_outdated, "package_versions", fake_versions)
         _quiet_sections(monkeypatch)
-        assert check_outdated.main() != 0
+        assert check_outdated.main() == 0  # unreachable source = SKIP, not FAILED
         out = capsys.readouterr().out
-        assert "npm:tsdown" in out and "WARN" in out
+        assert "npm:tsdown" in out and "SKIP" in out
         assert "npm:typescript" in out and "target 7.0.0" in out
 
-    def test_registry_answering_no_stable_version_is_a_failure(self, monkeypatch, capsys):
+    def test_registry_answering_no_stable_version_is_a_skip(self, monkeypatch, capsys):
+        # a source-side anomaly (registry reachable, nothing stable listed) is
+        # not a local error: SKIP, exit code unaffected
         monkeypatch.setattr(check_outdated, "load_restrictions", lambda root: RECORDS)
         monkeypatch.setattr(check_outdated, "locked_versions", lambda root, names: LOCKED)
         monkeypatch.setattr(check_outdated, "package_versions", lambda eco, pkg: [])
         _quiet_sections(monkeypatch)
-        assert check_outdated.main() != 0
+        assert check_outdated.main() == 0
         line = next(
             ln for ln in _lines_of(capsys.readouterr().out, "1") if ln.startswith("npm:tsdown")
         )
-        assert "WARN" in line
+        assert "SKIP" in line
 
     def test_package_not_locked_here_gets_no_line(self, monkeypatch, capsys):
         monkeypatch.setattr(check_outdated, "load_restrictions", lambda root: RECORDS)
@@ -248,6 +255,234 @@ class TestRestrictedTargets:
         _quiet_sections(monkeypatch)
         assert check_outdated.main() == 0
         assert "target" not in capsys.readouterr().out
+
+
+CLI_RECORDS = [
+    {
+        "reason": "pnpm 1.2.0 breaks workspace resolve",
+        "combos": [{"npm:pnpm": "1.2.0", "npm:typescript": "7.0.0"}],
+    }
+]
+
+
+class TestAllSegmentsFilterTargets:
+    """Spec「过期体检命令」: every segment consumes restrictions before
+    reporting — a latest that forms a recorded combo with the repo's peers
+    (locked versions ∪ runtime pins) reports the highest free version and
+    names the reason instead of recommending latest."""
+
+    def test_cli_probe_target_filtered_by_combo(self, monkeypatch, capsys):
+        monkeypatch.setattr(check_outdated, "load_restrictions", lambda root: CLI_RECORDS)
+        monkeypatch.setattr(
+            check_outdated, "locked_versions", lambda root, names: {"npm:typescript": "7.0.0"}
+        )
+        monkeypatch.setattr(check_outdated, "runtime_pins", lambda root: {})
+        _quiet_sections(monkeypatch)
+        monkeypatch.setattr(
+            check_outdated,
+            "latest_version",
+            lambda source: "1.2.0" if source[1] == "pnpm" else "9.9.9",
+        )
+        monkeypatch.setattr(check_outdated, "package_versions", lambda eco, pkg: ["1.1.0", "1.2.0"])
+        assert check_outdated.main() == 0
+        line = next(ln for ln in _lines_of(capsys.readouterr().out, "2") if ln.startswith("pnpm"))
+        assert "target 1.1.0" in line
+        assert "SKIP pnpm 1.2.0 breaks workspace resolve" in line
+
+    def test_python_version_target_filtered_by_combo(self, monkeypatch, capsys):
+        records = [
+            {
+                "reason": "numpy 2.3.0 wheels missing for python 3.16",
+                "combos": [{"pypi:python": "3.16", "pypi:numpy": "2.3.0"}],
+            }
+        ]
+        monkeypatch.setattr(check_outdated, "load_restrictions", lambda root: records)
+        monkeypatch.setattr(
+            check_outdated, "locked_versions", lambda root, names: {"pypi:numpy": "2.3.0"}
+        )
+        monkeypatch.setattr(check_outdated, "runtime_pins", lambda root: {"pypi:python": "3.15"})
+        monkeypatch.setattr(check_outdated, "package_versions", lambda eco, pkg: ["3.15", "3.16"])
+        _quiet_sections(monkeypatch)
+        monkeypatch.setattr(
+            check_outdated, "find_python_versions", lambda root: {"python/.python-version": "3.15"}
+        )
+        monkeypatch.setattr(
+            check_outdated, "fetch_json", lambda url: [{"cycle": "3.16"}, {"cycle": "3.15"}]
+        )
+        assert check_outdated.main() == 0
+        line = next(
+            ln for ln in _lines_of(capsys.readouterr().out, "1") if ln.startswith("python-version")
+        )
+        assert "target 3.15" in line
+        assert "SKIP numpy 2.3.0 wheels missing for python 3.16" in line
+        assert "LAG" not in line  # not recommending the restricted latest
+
+    def test_target_line_all_candidates_restricted_reports_no_free(self, monkeypatch, capsys):
+        records = [
+            {"reason": "both broken", "combos": [{"npm:pnpm": "1.1.0"}, {"npm:pnpm": "1.2.0"}]}
+        ]
+        monkeypatch.setattr(check_outdated, "load_restrictions", lambda root: records)
+        monkeypatch.setattr(check_outdated, "runtime_pins", lambda root: {})
+        _quiet_sections(monkeypatch)
+        monkeypatch.setattr(
+            check_outdated,
+            "latest_version",
+            lambda source: "1.2.0" if source[1] == "pnpm" else "9.9.9",
+        )
+        monkeypatch.setattr(check_outdated, "package_versions", lambda eco, pkg: ["1.1.0", "1.2.0"])
+        assert check_outdated.main() == 0
+        line = next(ln for ln in _lines_of(capsys.readouterr().out, "2") if ln.startswith("pnpm"))
+        assert "no free version" in line and "SKIP both broken" in line
+
+    def test_rustc_probe_target_filtered(self, monkeypatch, capsys):
+        records = [{"reason": "rustc 9.9.9 miscompiles", "combos": [{"cargo:rustc": "9.9.9"}]}]
+        monkeypatch.setattr(check_outdated, "load_restrictions", lambda root: records)
+        monkeypatch.setattr(check_outdated, "runtime_pins", lambda root: {})
+        _quiet_sections(monkeypatch)
+        assert check_outdated.main() == 0
+        line = next(ln for ln in _lines_of(capsys.readouterr().out, "2") if ln.startswith("rustc"))
+        assert "no free version" in line and "SKIP rustc 9.9.9 miscompiles" in line
+
+    def test_cargo_subcommand_target_filtered(self, monkeypatch, capsys):
+        records = [
+            {
+                "reason": "llvm-cov 9.9.9 broken",
+                "combos": [{"cargo:cargo-llvm-cov": "9.9.9"}],
+            }
+        ]
+        monkeypatch.setattr(check_outdated, "load_restrictions", lambda root: records)
+        monkeypatch.setattr(check_outdated, "runtime_pins", lambda root: {})
+        _quiet_sections(monkeypatch)
+        assert check_outdated.main() == 0
+        line = next(
+            ln for ln in _lines_of(capsys.readouterr().out, "3") if ln.startswith("cargo-llvm-cov")
+        )
+        assert "no free version" in line and "SKIP llvm-cov 9.9.9 broken" in line
+
+    def test_registry_unreachable_for_target_falls_back_to_latest(self, monkeypatch, capsys):
+        # candidates unavailable -> judge latest alone (tasks 2.2)
+        monkeypatch.setattr(check_outdated, "load_restrictions", lambda root: CLI_RECORDS)
+        monkeypatch.setattr(
+            check_outdated, "locked_versions", lambda root, names: {"npm:typescript": "7.0.0"}
+        )
+        monkeypatch.setattr(check_outdated, "runtime_pins", lambda root: {})
+        _quiet_sections(monkeypatch)
+        monkeypatch.setattr(
+            check_outdated,
+            "latest_version",
+            lambda source: "1.2.0" if source[1] == "pnpm" else "9.9.9",
+        )
+
+        def boom(eco, pkg):
+            raise RuntimeError("registry down")
+
+        monkeypatch.setattr(check_outdated, "package_versions", boom)
+        assert check_outdated.main() == 0
+        line = next(ln for ln in _lines_of(capsys.readouterr().out, "2") if ln.startswith("pnpm"))
+        assert "no free version" in line and "SKIP" in line
+
+
+class TestSkipVsFailed:
+    """Spec「过期体检命令」exit-code layering: unreachable sources retry
+    once then SKIP (never FAILED, never the exit code); FAILED stays for
+    local probe failures and contract corruption."""
+
+    def test_unreachable_source_retries_once_then_skips(self, monkeypatch, capsys):
+        calls = []
+
+        def flaky(url):
+            calls.append(url)
+            raise RuntimeError("registry unreachable")
+
+        _quiet_sections(monkeypatch)
+        monkeypatch.setattr(check_outdated, "fetch_json", flaky)
+        assert check_outdated.main() == 0
+        out = capsys.readouterr().out
+        assert "python-version files: SKIP (registry unreachable)" in out
+        assert len(calls) == 2  # one immediate retry
+        assert "FAILED" not in out
+
+    def test_flaky_source_recovers_on_retry(self, monkeypatch, capsys):
+        calls = []
+
+        def flaky(url):
+            calls.append(url)
+            if len(calls) == 1:
+                raise RuntimeError("transient")
+            return [{"cycle": "3.14"}]
+
+        _quiet_sections(monkeypatch)
+        monkeypatch.setattr(check_outdated, "fetch_json", flaky)
+        assert check_outdated.main() == 0
+        assert "SKIP" not in capsys.readouterr().out
+        assert len(calls) == 2
+
+    def test_python_all_cycles_restricted_reports_no_free(self, monkeypatch, capsys):
+        records = [
+            {
+                "reason": "both lines broken",
+                "combos": [{"pypi:python": "3.16"}, {"pypi:python": "3.15"}],
+            }
+        ]
+        monkeypatch.setattr(check_outdated, "load_restrictions", lambda root: records)
+        monkeypatch.setattr(check_outdated, "runtime_pins", lambda root: {"pypi:python": "3.14"})
+        _quiet_sections(monkeypatch)
+        monkeypatch.setattr(
+            check_outdated, "find_python_versions", lambda root: {"python/.python-version": "3.14"}
+        )
+        monkeypatch.setattr(
+            check_outdated, "fetch_json", lambda url: [{"cycle": "3.16"}, {"cycle": "3.15"}]
+        )
+        assert check_outdated.main() == 0
+        line = next(
+            ln for ln in _lines_of(capsys.readouterr().out, "1") if ln.startswith("python-version")
+        )
+        assert "target ?" in line and "SKIP both lines broken" in line
+
+    def test_cli_source_unreachable_after_retry_skips_line(self, monkeypatch, capsys):
+        _quiet_sections(monkeypatch)
+        monkeypatch.setattr(check_outdated, "run_cmd", lambda cmd: (0, "1.0.0"))
+        monkeypatch.setattr(check_outdated, "latest_version", _raise("latest_version"))
+        assert check_outdated.main() == 0
+        out = capsys.readouterr().out
+        assert "pnpm" in out and "SKIP (latest_version down)" in out
+        assert "FAILED" not in out
+
+    def test_tarball_tool_source_unreachable_skips_line(self, monkeypatch, capsys):
+        _quiet_sections(monkeypatch)
+        monkeypatch.setattr(check_outdated, "run_cmd", lambda cmd: (0, "1.0.0"))
+
+        def fake_latest(source):
+            if source[0] == "github":
+                raise RuntimeError("api down")
+            return "9.9.9"
+
+        monkeypatch.setattr(check_outdated, "latest_version", fake_latest)
+        assert check_outdated.main() == 0
+        out = capsys.readouterr().out
+        assert "wasm-pack" in out and "SKIP (api down)" in out
+        assert "FAILED" not in out
+
+    def test_local_probe_cannot_run_is_failed(self, monkeypatch, capsys):
+        def fake_run(cmd):
+            if cmd == "pnpm --version":
+                return (125, "pnpm: command not found")
+            return (0, "1.0.0")
+
+        _quiet_sections(monkeypatch)
+        monkeypatch.setattr(check_outdated, "run_cmd", fake_run)
+        assert check_outdated.main() != 0
+        out = capsys.readouterr().out
+        assert "FAILED: pnpm" in out
+        assert "pnpm" in out and "WARN" in out
+
+    def test_broken_restrictions_json_aborts_with_failed(self, monkeypatch, capsys):
+        def broken(root):
+            raise RestrictionFormatError("restrictions.json: bad")
+
+        monkeypatch.setattr(check_outdated, "load_restrictions", broken)
+        assert check_outdated.main() == 1
+        assert "FAILED" in capsys.readouterr().out
 
 
 class TestMainGuard:
