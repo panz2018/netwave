@@ -10,7 +10,7 @@
   "terminal.integrated.env.linux": {
     "VIRTUAL_ENV": "${workspaceFolder}/python/.venv",
     "PYO3_PYTHON": "${workspaceFolder}/python/.venv/bin/python",
-    "LD_LIBRARY_PATH": "${env:HOME}/.local/share/uv/python/cpython-3.14-linux-aarch64-gnu/lib:${env:LD_LIBRARY_PATH}"
+    "LD_LIBRARY_PATH": "${env:HOME}/.local/share/uv/python/cpython-3.15-linux-aarch64-gnu/lib:${env:LD_LIBRARY_PATH}"
   },
   "rust-analyzer.cargo.extraEnv": {
     "VIRTUAL_ENV": "${workspaceFolder}/python/.venv",

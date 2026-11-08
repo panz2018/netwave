@@ -16,7 +16,7 @@ thiserror = "2"
 # own types so bindings are registered at link time with zero glue-crate code.
 # pyo3 must stay on the same minor as python/Cargo.toml (two pyo3 majors in
 # one link = conflicts; paired deps upgrade together).
-pyo3 = { version = "0.29", features = ["abi3-py310"], optional = true }
+pyo3 = { version = "0.30", features = ["abi3-py310"], optional = true }
 napi = { version = "3", features = ["napi9"], optional = true }
 napi-derive = { version = "3", optional = true }
 wasm-bindgen = { version = "0.2", optional = true }

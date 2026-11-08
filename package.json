@@ -1,7 +1,7 @@
 {
   "name": "netwave-workspace",
   "private": true,
-  "packageManager": "pnpm@12.5.1",
+  "packageManager": "pnpm@12.18.0",
   "scripts": {
     "check": "pnpm check:md && pnpm check:ts && pnpm check:rs && pnpm check:py && pnpm check:meta",
     "fix": "pnpm fix:md && pnpm fix:ts && pnpm fix:rs && pnpm fix:py",
