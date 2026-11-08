@@ -59,7 +59,7 @@ workflow `uses:` 行的核对早已是发现式扫描，json 再抄一份 = 第�
 
 - 不做过期检查 CI 门禁、bug 版本黑名单（`blocked`）、配对版本约束
   （`constraint`）——三问留在
-  [软件升级·过期检查门禁化](../../../../Plan/软件升级.md#过期检查门禁化checkoutdated-要不要进-ci-门禁待拍板)
+  [软件升级·过期检查门禁化](../../../specs/dependency-upgrade/spec.md#requirement-过期体检命令)
   将来另议。
 - 不删 `ci-actions` 条目本身——它还扛 action 升级方法的程序性知识。
 - 不删 `verified` 字段——配对验证证据随条目入库。
