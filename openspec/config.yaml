@@ -25,6 +25,11 @@ rules:
     - 每个数值实现任务前必须先有一条会失败的测试（red 先于 green）
     - 跨端改动必须包含 cross-binding 跨绑定对拍任务
     - 数值实现任务的验收标准须包含"docs 达到教学式标准（宪法元规则）"
+    - tasks.md 最后一项任务 MUST 是跑 pnpm check:outdated 并按
+      dependency-upgrade spec「apply 末尾体检与升级预授权」消化所报 LAG：
+      升级 + 全闸门 + 四端对拍，上游 bug/不兼容登记回退不阻塞；
+      仅设计级适配、restrictions.json 破损、流程走不通才停下报告；
+      下限变更（MSRV、engines.node、CI 底线格）等人工发起
 
 # Per-operation guidance (optional)
 # Add advisory guidance for how apply and archive work should be conducted.
@@ -39,6 +44,10 @@ operations:
         "更新/新增/退役"三态时效结论（哪些 spec 需改而未改、需新增、
         可退役），留痕于本 change 的 tasks.md 完成记录；结构一致性由
         check_md.py SPECS ROUTER 门禁兜底
+      - apply 全部任务完成后，最后一项 MUST 是跑 pnpm check:outdated
+        并按 dependency-upgrade spec「apply 末尾体检与升级预授权」消化
+        所报 LAG（升级 + 全闸门 + 四端对拍；登记回退不阻塞，设计级
+        适配/契约破损/流程走不通才停下报告；下限变更等人工发起）
   archive:
     guidance:
       - 归档前必须执行 Plan/ 瘦身检查：grep Plan/ 中与本 change 相关的条目，
