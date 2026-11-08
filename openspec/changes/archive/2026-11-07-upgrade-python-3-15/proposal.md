@@ -6,9 +6,10 @@ Python 3.15 已是稳定版，本项目所需库全部声明支持（numpy 2.5.4
 `requires-python>=3.12`、pyo3 0.30.0 起支持 3.15 final
 [PyO3#6517](https://github.com/PyO3/pyo3/pull/6517)、maturin 1.16.0、
 pytest 9.2.0、ruff 0.17.4、scikit-rf 2.2.0），按
-[dependency-upgrade spec](../../specs/dependency-upgrade/spec.md)
-「选线原则——单线运行时取最新稳定 minor」应切 3.15；当前两份
-`.python-version` 钉 3.14，体检持续报 LAG。
+
+> [dependency-upgrade spec](../../../specs/dependency-upgrade/spec.md)
+> 「选线原则——单线运行时取最新稳定 minor」应切 3.15；当前两份
+> `.python-version` 钉 3.14，体检持续报 LAG。
 
 原暂缓理由（治理机制未落地）已由人工裁决解除：前置条件不阻塞升级
 （2026-11-07 拍板"所谓的前置条件并不阻碍，不用理会"）。
@@ -84,7 +85,7 @@ pytest 9.2.0、ruff 0.17.4、scikit-rf 2.2.0），按
 ## Prior art
 
 - 仓库内既有流程：
-  [dependency-upgrade spec](../../specs/dependency-upgrade/spec.md)
+  [dependency-upgrade spec](../../../specs/dependency-upgrade/spec.md)
   「运行时大版本升级流程」「升级流程固定顺序」「工具链升版后补装」
   三条 Requirement 即本 change 的执行依据，不新造流程。
 - 仓库内既有坑账本：`openspec/specs/lessons-learned/ci.md` LL-047
