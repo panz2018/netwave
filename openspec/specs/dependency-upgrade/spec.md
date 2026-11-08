@@ -11,12 +11,11 @@
 ### Requirement: 最新稳定版优先
 
 全部工具链、工具与软件库 MUST 升级到最新稳定版；仅当最新稳定版导致
-构建/测试失败且确认为上游 bug（非本项目用法问题）时，才允许回退，
-回退按「坏版本降级与 blocked 触发式实施」执行（降到相邻较低稳定版 +
-当轮立 `Plan/` 计划 + 强制开 change 实现黑名单机制）。lessons-learned
-只记非版本性的坑（工具行为变化、流程坑等），版本级 bug 证据以该次
-`Plan/` 计划文件与跟踪 issue 为准。子项目 README 不设 Gotchas 章节，
-回退信息不入 README。
+构建/测试失败且确认为上游 bug（非本项目用法问题）时，才允许回退，回退按
+「版本限制记录与坏版本降级」执行（降到未登记的最高可用版本 + 当轮登记记录 +
+同轮收紧承载钉版文件的版本要求）。lessons-learned 只记非版本性的坑（工具行为
+变化、流程坑等），版本级坏版本事实以 `scripts/versions/restrictions.json` 与
+当轮实测为准。子项目 README 不设 Gotchas 章节，回退信息不入 README。
 
 #### Scenario: 默认升最新稳定版
 
@@ -25,9 +24,9 @@
 
 #### Scenario: 回退须证据
 
-- **WHEN** 最新稳定版构建失败且确认为上游 bug
-- **THEN** 降到相邻较低稳定版，当轮在 `Plan/` 记录坏版本、原因与跟踪
-  issue 链接，跟踪计划随 issue
+- **WHEN** 最新稳定版构建或测试失败且确认为上游 bug
+- **THEN** 降到未登记的最高可用版本使构建通过，同一轮把该失败组合登记进
+  `scripts/versions/restrictions.json`
 - **AND** 回退原因不写入任何子项目 README
 
 ### Requirement: 选线原则——钉 LTS/稳定线
@@ -122,36 +121,94 @@ manifest，MUST NOT 读取任何登记表。规则是**通用律**而非具体�
   一份缺 `.python-version` 的 `pyproject.toml` 目录
 - **THEN** 两种夹具均 FAIL；未改动的真实仓库 PASS
 
-### Requirement: 坏版本降级与 blocked 触发式实施
+### Requirement: 版本限制记录数据文件
 
-坏版本黑名单机制当前不实现（无数据文件、无闸门消费）。当升级确认某上游
-版本带 bug（非本项目用法问题）时，MUST 按序执行：
+仓库 MUST 以 `scripts/versions/restrictions.json` 作为坏版本事实的唯一载体。
+一条记录 MUST 由一句 `reason` 与该原因下所有实测失败的版本组合清单构成；
+每个组合 MUST 由 1~N 个包名各自对应一个**具体版本号**构成（N 不限：N=1 表示
+该包自身 bug，N≥2 表示联动 bug）。包名 MUST 带生态前缀（`npm:` / `cargo:` /
+`pypi:`）以区分跨生态同名包。版本号 MUST 是实测过的具体版本，MUST NOT 写版本
+范围，MUST NOT 登记未经实测的版本或组合。记录 MUST NOT 含"修复于哪个版本"、
+可用状态或重试标记——未登记的版本与组合一律视为可试。记录 MUST 只增不删。
 
-1. 降到**相邻较低稳定版**——取该依赖当前版本之下第一个可用稳定版；
-   级差（major/minor/patch）依该次故障实际影响范围判断，spec 不写死算法。
-2. 当轮在 `Plan/` 新建计划文件，写明：碰到什么问题、哪个版本坏、
-   坏在哪、临时降级取值、以及 blocked 机制的实施范围。
-3. 强制开 OpenSpec change 实现 blocked 机制（数据文件 + 闸门与体检消费），
-   该 change 完成前，降级只靠人工执行第 1 步。
+#### Scenario: 单包 bug 与多包联动同构
 
-`Plan/` 中的 blocked 计划与 pairs 计划是两个独立待触发项，MUST NOT 绑定
-同一次 change 实施——两者语义无关，各自需要时各自实施。
+- **WHEN** 登记一个包自身带 bug 的版本，或登记两个及以上包凑在一起才坏的版本组合
+- **THEN** 两者写成同一种记录（`reason` + 组合清单），仅组合内包数不同
 
-#### Scenario: 遇坏版本即降级并立计划
+#### Scenario: 未实测的交叉组合不算坏
 
-- **WHEN** 升级确认最新稳定版因上游 bug 构建或测试失败
-- **THEN** 降到相邻较低稳定版使闸门通过，同一轮在 `Plan/` 新建 blocked
-  实施计划文件，写明原因与故障细节
+- **WHEN** 同一原因下登记了 `A 1.0 × B 2.0` 与 `A 1.1 × B 2.1`，当前锁定
+  `A 1.0 × B 2.1`
+- **THEN** 判定为未登记（放行去试），不得把组合清单按交叉相乘理解
 
-#### Scenario: blocked 与 pairs 不绑定
+#### Scenario: 记录只增不删
 
-- **WHEN** 实施 blocked 机制的 change 开出
-- **THEN** pairs（必须同升）机制不因该 change 一并实施，反之亦然
+- **WHEN** 某已登记组合在新版本下已不复现
+- **THEN** 该记录仍保留不删——日后因其他问题回退进同一区间时，记录继续
+  避免重复试验；历史追溯靠 git log
 
-#### Scenario: 机制未实现期不空转义务
+#### Scenario: 包名必须带生态前缀
 
-- **WHEN** 仓库当前无 blocked 数据文件与消费代码
-- **THEN** 闸门与体检不因缺黑名单而 FAIL，降级义务按本 Requirement 人工履行
+- **WHEN** 记录的包名缺少 `npm:` / `cargo:` / `pypi:` 前缀
+- **THEN** 读记录时视为格式错误并抛异常，不得静默当作某个生态处理
+
+### Requirement: 版本限制记录与坏版本降级
+
+升级或实测确认某版本/组合因上游 bug 不可用时，MUST 按序执行：降到未登记的
+最高可用版本（方向不限，可能是相邻较低稳定版，也可能最新稳定版本身未登记）；
+同一轮把失败组合登记进 `scripts/versions/restrictions.json`；同一轮收紧承载该
+依赖的钉版文件（`package.json` / `Cargo.toml` / `pyproject.toml`）中声明的版本
+要求，使其不再覆盖已登记版本，并刷新对应 lockfile 使锁定版本落在新范围内。
+收紧 MUST 沿用原有范围写法只抬高下界，MUST NOT 新增或删除上界。该记录 MUST NOT
+接进 `pnpm check`、`pnpm check:meta` 或 CI 闸门——正确性由下游构建与测试保证。
+
+#### Scenario: 收紧范围只抬下界
+
+- **WHEN** 已登记 `npm:tsdown` 的 `0.23.0`，承载文件写的是 `^0.23.0`
+  （本 Scenario 数值为示例，实际取值以承载钉版文件与实测为准）
+- **THEN** 改为 `^0.23.2`（抬高下界），MUST NOT 写成 `>=0.23.2`
+  （那会新增未实测的放行面），也 MUST NOT 钉死为单一版本
+
+#### Scenario: 无更高版本可抬时降线
+
+- **WHEN** 已登记版本就是该包最新稳定版，抬高下界会排除全部可用版本
+- **THEN** 降到上一稳定线（如 `^7` → `^6`），caret 自带的同 major 上界属既有
+  写法惯例，不视为新增未实测限制
+
+#### Scenario: 记录不进闸门
+
+- **WHEN** 某包当前锁定版本命中已登记组合
+- **THEN** `pnpm check` 与 CI 不因该记录 FAIL；问题由下游构建/测试暴露
+
+#### Scenario: 漏改范围由下游暴露
+
+- **WHEN** 登记记录后忘记收紧某钉版文件的版本要求
+- **THEN** 不设专门机器校验；lockfile 刷新解析到坏版本时构建或测试失败即暴露
+
+### Requirement: 限制记录读取的错误语义
+
+读取 `scripts/versions/restrictions.json` MUST 区分三种情况：文件不存在 =
+无记录，正常继续；文件存在但内容不合契约（非法 JSON、缺 `reason`、缺组合清单、
+包名缺生态前缀、版本号非具体版本）= MUST 抛出异常中断，MUST NOT 静默跳过或
+降级为警告；记录引用的包在当前仓库中已不存在 = 跳过该条判定、记录原样保留
+（该依赖将来被加回时约束重新生效）。
+
+#### Scenario: 文件缺失等于无约束
+
+- **WHEN** `scripts/versions/restrictions.json` 不存在
+- **THEN** 体检照常完成四段报告，不因缺文件报错
+
+#### Scenario: 格式错误当场抛异常
+
+- **WHEN** 记录文件非法 JSON 或缺必填字段
+- **THEN** 读取处抛出异常、traceback 可见、脚本中断，不得继续输出"看起来正常"
+  的体检结果
+
+#### Scenario: 包已不在仓库则跳过并保留记录
+
+- **WHEN** 记录引用的包在仓库所有 manifest/lockfile 中都找不到
+- **THEN** 跳过该条判定，不报错也不删除记录
 
 ### Requirement: 升级分级
 
@@ -174,10 +231,11 @@ manifest，MUST NOT 读取任何登记表。规则是**通用律**而非具体�
 
 每次升级 MUST 按序执行：全局 CLI 体检（nvm、rustup、node、npm/pnpm、uv、
 OpenSpec、markdownlint-cli2 等是否落后 LTS/稳定线，落后先升）→ 工具链升级与
-组件/target 补装 → 配对依赖联动（napi-cli↔napi crate、pyo3↔numpy、
-wasm-pack↔binaryen 等）→ 项目依赖刷新 → 代码兼容修改 → 全闸门 + 四端对拍 →
-文档同步（grep 全仓旧版本号与旧事实）。配对联动清单以本节散文为当前唯一载体；
-其 JSON 化（数据文件 + 闸门读表、禁硬编码）为待触发项，见 `Plan/软件升级.md`。
+组件/target 补装 → 项目依赖刷新（刷新时按「版本限制记录」跳过已登记版本）→
+代码兼容修改 → 全闸门 + 四端对拍 → 文档同步（grep 全仓旧版本号与旧事实）。
+配对联动 MUST NOT 以本 spec 散文为凭：依赖间版本关系只认两类依据——上游官方
+声明（由包管理器/编译器自身强制，本仓不重复登记）与本仓实测记录
+（`scripts/versions/restrictions.json`）。
 
 #### Scenario: 工具链升版后补装
 
@@ -189,6 +247,13 @@ wasm-pack↔binaryen 等）→ 项目依赖刷新 → 代码兼容修改 → 全
 
 - **WHEN** 体检发现已装 wasm-pack / binaryen 落后于其 GitHub 最新 release
 - **THEN** 重跑对应 `scripts/install_*.sh` 升级到最新 release
+
+#### Scenario: 无依据的配对规矩不得作为升级约束
+
+- **WHEN** 升级规划需要判断两个依赖是否必须同升
+- **THEN** 只认上游官方文档声明或本仓实测记录；两者皆无则视为无约束，
+  按各自最新稳定版处理
+- **AND** 若事后实测发现不兼容，按「版本限制记录」登记，而非回头补写散文规矩
 
 #### Scenario: 升级完成判据
 
@@ -235,9 +300,10 @@ cargo workspace。新环境落地后自动纳入，无需改脚本。
 子命令（已装版本 vs 最新 release）、CI actions（workflow 内 `uses:` 的
 action 当前 tag vs 最新 release tag）。体检按发现覆盖环境（见「体检按发现
 覆盖全部环境」），全局 CLI 与直装工具的探针集为体检程序内常量（新增探针
-改一处）。坏版本黑名单机制当前不实现，体检按最新稳定版报告 target；机制
-落地后由体检消费黑名单（见「坏版本降级与 blocked 触发式实施」）。该命令
-人工触发，MUST NOT 进 CI 或 `pnpm check`（结果随上游每日变化且需联网）。
+改一处）。体检给出的升级 target MUST 消费版本限制记录（见「版本限制记录
+数据文件」）。该命令人工触发，MUST NOT 进 CI 或 `pnpm check`（结果随上游
+每日变化且需联网）。体检 MUST NOT 隐藏错误：任何失败段 MUST 报告并以非零
+退出码结束，MUST NOT 降级为警告后仍返回成功。
 
 #### Scenario: 一条命令看全貌
 
@@ -251,21 +317,33 @@ action 当前 tag vs 最新 release tag）。体检按发现覆盖环境（见�
   release
 - **THEN** 体检输出该 action 的当前 tag 与最新 tag，标记落后
 
+#### Scenario: target 命中已登记坏组合即换版本
+
+- **WHEN** 某包的最新稳定版与对端当前锁定版本凑成已登记组合
+- **THEN** 该行不推荐最新稳定版，改推荐"与对端搭配后未登记的最高可用版本"
+  （可能低于最新稳定版，也可能最新稳定版本身未命中即照报），并注明该组合的
+  登记原因
+- **AND** 只调整本行这一个包的 target，对端行不受影响
+
+#### Scenario: 出错不得静默
+
+- **WHEN** 体检某段联网失败（registry / API 不可达、限流）
+- **THEN** 该段报告失败原因，其余段照常跑完，命令以非零退出码结束
+- **AND** 命令不存在"无论结果如何退出码恒为 0"的行为
+
 ### Requirement: 经验回写
 
-升级过程中踩的坑 MUST 当轮回写并按性质归位：版本级 bug（哪个版本坏、
-为什么）按「坏版本降级与 blocked 触发式实施」处理——当轮在 `Plan/` 新建
-计划文件记录版本、原因与跟踪链接；非版本性的坑（工具行为变化、配对失败
-模式等）记 lessons-learned 账本（scope 分片 + INDEX 条目）。钉版点漏声明
-由规则驱动闸门当场拦截，当轮补声明即可，无人工登记环节。本 spec 随该
-循环持续改进。
+升级过程中踩的坑 MUST 当轮回写并按性质归位：版本级坏版本（哪个版本、哪个组合
+不可用）按「版本限制记录与坏版本降级」登记进 `scripts/versions/restrictions.json`
+（含具体版本与一句原因）；非版本性的坑（工具行为变化、配对失败模式等）记
+lessons-learned 账本（scope 分片 + INDEX 条目）。钉版点漏声明由规则驱动闸门当场
+拦截，当轮补声明即可，无人工登记环节。本 spec 随该循环持续改进。
 
 #### Scenario: 版本级 bug 归登记表
 
-- **WHEN** 升级确认某上游版本带 bug 需回退
-- **THEN** 当轮在 `Plan/` 新建 blocked 实施计划文件记录版本与原因及跟踪
-  issue，lessons-learned 只记其中非版本性的教训（如升级流程坑），
-  不重复版本清单
+- **WHEN** 升级实测确认某版本或某版本组合不可用
+- **THEN** 当轮登记进 `scripts/versions/restrictions.json`，lessons-learned
+  只记其中非版本性的教训（如升级流程坑），不重复版本清单
 
 #### Scenario: 漏登记当轮补全
 
