@@ -45,6 +45,18 @@ class TestRuntimePins:
     def test_rustc_pin_from_toolchain_channel(self, tmp_path):
         assert runtime_pins(_repo(tmp_path))["cargo:rustc"] == "1.99.1"
 
+    def test_node_pin_from_nvmrc(self, tmp_path):
+        (tmp_path / ".nvmrc").write_text("26.13.0\n", encoding="utf-8")
+        assert runtime_pins(_repo(tmp_path))["npm:node"] == "26.13.0"
+
+    def test_pnpm_pin_from_package_manager(self, tmp_path):
+        # corepack takes pnpm from packageManager, so the repo field — not the
+        # machine's global — is pnpm's real version
+        (tmp_path / "package.json").write_text(
+            '{"packageManager": "pnpm@12.18.0"}', encoding="utf-8"
+        )
+        assert runtime_pins(_repo(tmp_path))["npm:pnpm"] == "12.18.0"
+
     def test_action_pin_keyed_by_repo(self, tmp_path):
         assert runtime_pins(_repo(tmp_path))["github:actions/checkout"] == "v4"
 
@@ -53,6 +65,14 @@ class TestRuntimePins:
 
     def test_missing_files_omit_keys(self, tmp_path):
         assert runtime_pins(tmp_path) == {}
+
+    def test_nvmrc_absent_omits_node_key(self, tmp_path):
+        pins = runtime_pins(_repo(tmp_path))
+        assert "npm:node" not in pins
+
+    def test_package_manager_absent_omits_pnpm_key(self, tmp_path):
+        pins = runtime_pins(_repo(tmp_path))
+        assert "npm:pnpm" not in pins
 
 
 class TestRuntimePinJoinsCombos:

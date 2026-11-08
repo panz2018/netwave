@@ -77,6 +77,7 @@ PROBES = [
 # probes whose latest is judgeable against records (registered names only —
 # CI actions carry no ecosystem prefix and can never appear in a combo)
 PROBE_NAMES = {
+    "node": "npm:node",
     "npm": "npm:npm",
     "pnpm": "npm:pnpm",
     "rustc": "cargo:rustc",
@@ -219,6 +220,11 @@ def main() -> int:
     for name, probe, source in PROBES:
         rc, installed = run_cmd(probe)
         installed = first_line(installed)
+        rname = PROBE_NAMES.get(name)
+        if rname is not None and rname in peers:
+            # a repo pin (.nvmrc / packageManager / rust-toolchain.toml) is the
+            # reproducible current version; the machine probe only backs it up
+            installed = peers[rname]
         head = f"{name:18s} installed: {installed:28s}"
         if rc == 125:  # local probe cannot run — a real error, not network luck
             failures.append(name)
