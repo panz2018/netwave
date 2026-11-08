@@ -94,13 +94,14 @@ impl FromStr for FrequencyUnit {
 // `kHz` is the correct SI spelling (lowercase prefix k); the Rust naming
 // convention cannot apply to unit symbols.
 #[allow(non_camel_case_types)]
-// `skip_from_py_object`: a unit is passed by its enum member, never coerced
-// from an arbitrary Python object (that would bypass FromStr validation).
+// A unit is passed by its enum member, never coerced from an arbitrary
+// Python object (that would bypass FromStr validation); pyo3 generates no
+// FromPyObject for a pyclass unless one is derived.
 #[cfg_attr(
     feature = "pyo3-stub-gen",
     gen_stub_pyclass_enum(module = "netwave._netwave")
 )]
-#[cfg_attr(all(feature = "python", not(coverage)), pyclass(skip_from_py_object))]
+#[cfg_attr(all(feature = "python", not(coverage)), pyclass)]
 // `not(coverage)` drops the runtime-only registration glue (pytest/vitest
 // cover the binding surface); `not(browser)`/`not(node)` avoid the clippy
 // --workspace macro collision between the napi and wasm-bindgen derive
@@ -184,7 +185,7 @@ impl FromStr for WavelengthUnit {
     feature = "pyo3-stub-gen",
     gen_stub_pyclass_enum(module = "netwave._netwave")
 )]
-#[cfg_attr(all(feature = "python", not(coverage)), pyclass(skip_from_py_object))]
+#[cfg_attr(all(feature = "python", not(coverage)), pyclass)]
 #[cfg_attr(all(feature = "node", not(feature = "browser"), not(coverage)), napi)]
 #[cfg_attr(
     all(feature = "browser", not(feature = "node"), not(coverage)),
