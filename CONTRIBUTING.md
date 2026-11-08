@@ -88,8 +88,9 @@ Upgrades are governed by the
 strategy (latest stable, LTS lines), the pin files themselves as the single
 source of truth for where versions are pinned, the rule gate
 (`scripts/versions/check_versions.py`, wired into `pnpm check:meta`), the fixed
-upgrade order, and the manual freshness check `pnpm check:outdated` (project
-deps + global CLIs + GitHub-tarball tools + CI actions). Machine-wide CLIs are
+upgrade order, and the freshness check `pnpm check:outdated` (project
+deps + global CLIs + GitHub-tarball tools + CI actions; runs at the end of
+every OpenSpec apply, never in CI). Machine-wide CLIs are
 checked and upgraded as part of that flow too. This section keeps no rules of
 its own (LL-065: pointer retargets to the main spec at sync).
 

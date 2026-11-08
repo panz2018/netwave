@@ -33,10 +33,14 @@ only in root `package.json`).
 
 - `check_versions.py`: 0 = all laws hold, 1 = violations (each printed as
   `::error::` on stderr).
-- `check_outdated.py`: 0 = every probe answered, 1 = at least one segment
-  failed (`FAILED:` names them). Informational report, never a gate — but a
-  failure is never hidden: a failing probe prints `WARN`, the rest of the
-  report still runs, and the exit code says so.
+- `check_outdated.py`: SKIP vs FAILED layering (spec「过期体检命令」).
+  An unreachable source retries once, then its lines print `SKIP <source>`
+  and the exit code is unaffected (network luck is not a failure).
+  FAILED (non-zero exit, `FAILED:` names them) stays reserved for real
+  errors: a local probe command that cannot run (`WARN`), or
+  `restrictions.json` breaking its contract (the report aborts — a
+  misleading judgement baseline must never drive upgrades). Informational
+  report, never a gate — but a real failure is never hidden.
 
 ## Usage (from repo root)
 
@@ -47,6 +51,11 @@ uv run python scripts/versions/check_outdated.py   # networked freshness (also: 
 
 Both run in the root uv tooling project (`pyproject.toml` / `uv.lock` at the
 repo root); no global Python packages required.
+
+`check:outdated` runs automatically as the last task of every OpenSpec
+apply (wired in `openspec/config.yaml`); the LAGs it reports are
+pre-authorized upgrades per the dependency-upgrade spec. It can also be
+run by hand any time.
 
 ## Registering a version restriction
 
@@ -84,6 +93,11 @@ and records are append-only — never delete one, even after the upstream fix.
    - Package names carry an ecosystem prefix — `npm:` / `cargo:` / `pypi:` —
      because names collide across ecosystems (`numpy` is both a PyPI package
      and a Rust crate).
+   - Runtime/tool pins join combos under prefixed names too
+     (`pypi:python`, `cargo:rustc`), at the pin's own granularity (CPython
+     minor): write every party of a measured runtime×library incompatibility
+     into one combo, e.g.
+     `{ "pypi:python": "3.16", "pypi:numpy": "2.3.0" }`.
    - Versions are the exact ones you tested. Ranges (`^`, `>=`, `*`) are
      rejected by the loader.
 
