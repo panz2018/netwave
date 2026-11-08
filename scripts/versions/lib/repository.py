@@ -105,8 +105,6 @@ def runtime_pins(root: Path) -> dict[str, str]:
         pins["pypi:python"] = ".".join(parts[:2]) if len(parts) >= 2 else value
     if (root / "rust-toolchain.toml").exists():
         pins["cargo:rustc"] = toolchain_channel(root)
-    if (root / ".nvmrc").exists():
-        pins["npm:node"] = (root / ".nvmrc").read_text(encoding="utf-8").strip()
     pm = find_package_managers(root).get("package.json", "")
     # corepack pins pnpm here (`pnpm@12.18.0` or `pnpm@12.18.0+sha512...`);
     # the repo field — not the machine's global — is pnpm's real version

@@ -156,18 +156,18 @@ class TestOutdatedReportsAndExits:
             assert lines, f"section {section_no} has no lines"
             assert all(ln.endswith((" OK", " LAG", " ?")) for ln in lines), lines
         assert "pnpm 1.0.0" in out and "LAG" in out  # 1.0.0 behind 9.9.9
-        assert "v26.1.1" in out  # node: no repo pin here -> machine probe fallback
+        assert "v26.1.1" in out  # node: current version = machine probe
 
-    def test_node_line_prefers_repo_nvmrc_pin(self, monkeypatch, capsys):
-        # node's reproducible current version is the repo's .nvmrc pin (like
-        # .python-version for python), not whatever nvm happens to have active
+    def test_node_line_uses_machine_probe_not_repo_pin(self, monkeypatch, capsys):
+        # node has no auto-applied repo pin (.nvmrc is passive — nvm does not
+        # read it on cd), so its current version is what the machine reports
         monkeypatch.setattr(check_outdated, "runtime_pins", lambda root: {"npm:node": "26.13.0"})
         _quiet_sections(monkeypatch)
         monkeypatch.setattr(check_outdated, "run_cmd", lambda cmd: (0, "v24.0.0"))
         monkeypatch.setattr(check_outdated, "refine_node_lts", lambda line: "26.13.0")
         assert check_outdated.main() == 0
         line = next(ln for ln in _lines_of(capsys.readouterr().out, "2") if ln.startswith("node"))
-        assert "26.13.0" in line and "OK" in line
+        assert "v24.0.0" in line and "LAG" in line
 
 
 class TestRestrictedTargets:

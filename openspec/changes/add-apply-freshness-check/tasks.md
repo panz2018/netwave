@@ -114,3 +114,23 @@ LL 候选：改 `Plan/` 标题会使归档工件的锚点链接断链——波�
 （check_outdated.py）+ `PROBE_NAMES` 补 node；测试红→绿，`scripts/versions`
 覆盖率维持 100%。三态时效：dependency-upgrade delta 扩充；workspace-layout
 无需 delta（未声称 node 无 pin、非穷举清单，加 `.nvmrc` 不使其变旧）。
+
+## 8. 第三/四轮裁决（.nvmrc 证伪与回退，人工点名"执行"）
+
+- 实测推翻 Q2：`.nvmrc` 是被动声明——nvm 源码 `nvm_auto`（nvm.sh
+  5168–5206）优先 default 别名，无 cd 钩子时不读 `.nvmrc`；本机
+  `~/.bashrc` 只 source nvm.sh 无钩子，`nvm current` 不受 `.nvmrc` 影响
+  （nvm.sh 3577 注释自证）。上一轮"验证通过"因本人终端曾手动
+  `nvm use default`，无效。假 pin 比无 pin 更坏（报告谎称可复现）。
+- 回退方式 b2（人工选"直接b2，省事"）：不 reset 历史，追加一笔回退
+  commit——删根 `.nvmrc`；`runtime_pins` 撤 `npm:node`（保留
+  `npm:pnpm`/`cargo:rustc`/`pypi:python`/`github:*` 真 pin）；
+  `PROBE_NAMES` 撤 node，node 当前值回机器探针；测试改为回归断言
+  （`.nvmrc` 存在也不得进 peers、node 行恒取机器值），防假 pin 复活。
+- node 升级机制写死进 spec（新 scenario「node 升级保打开即用」）：
+  `nvm install <最新> --reinstall-packages-from=<旧版>` +
+  `nvm alias default <最新>`，保证新终端打开即用最新版且全局包迁移；
+  缺一不算升级完成。原「仓库 pin 的 CLI 以 pin 为准」更名「自动生效
+  pin 的 CLI 以 pin 为准」，只留 corepack/rustup 两类自动生效机制。
+- LL-086（workflow）登记：跨机器一致性 pin 必须自动生效，被动声明文件
+  不算 pin。

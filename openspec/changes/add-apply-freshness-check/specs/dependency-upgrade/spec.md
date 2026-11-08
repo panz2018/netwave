@@ -4,17 +4,15 @@
 
 ### Requirement: 升级执行权限划分
 
-升级分两类：**上限升级**（lockfile 依赖刷新含 major、工具链 pin
-（`rust-toolchain.toml` channel）、运行时 pin 切换（`.python-version`、
-`.nvmrc`）、CI 矩阵最新格、直装工具、全局 CLI、CI actions）MUST 由
+升级分两类：**上限升级**（lockfile 依赖刷新含 major、工具链与运行时
+pin 切换、CI 矩阵最新格、直装工具、全局 CLI、CI actions）MUST 由
 agent 直接执行，MUST NOT 要求开 OpenSpec change；验收按触及面选闸门
 （见「按触及面选验收闸门」），实测失败按「版本限制记录与坏版本降级」
 回退并当轮登记。**下限变更**（MSRV `rust-version`、`engines.node`、
 CI 底线矩阵格、新增/移除钉版点）由人工发起，agent MUST NOT 自动执行。
-有仓库 pin 者以 pin 为准升级（见「仓库 pin 的 CLI 以 pin 为准」），
-无 pin 的全局 CLI/直装工具在本机执行、回退靠重装。追溯靠 git log，
-坏版本事实靠 `scripts/versions/restrictions.json`（仓库内组合）与
-账本（机器级工具），散文不复制。
+有自动生效仓库 pin 者以 pin 为准升级，其余在本机执行、回退靠重装
+（机制见各 scenario）。追溯靠 git log，坏版本事实靠
+`scripts/versions/restrictions.json`（仓库内组合）与账本（机器级工具）。
 
 #### Scenario: 上限升级直接执行不开 change
 
@@ -30,13 +28,23 @@ CI 底线矩阵格、新增/移除钉版点）由人工发起，agent MUST NOT �
   / 重下 tarball），不停下等点名；实测坏则重装回退到上一可用版并当轮
   记账本
 
-#### Scenario: 仓库 pin 的 CLI 以 pin 为准
+#### Scenario: node 升级保打开即用
 
-- **WHEN** 体检报出的 CLI 在仓库有 pin（node `.nvmrc`、pnpm
-  `packageManager`、rustc `rust-toolchain.toml`）
-- **THEN** 其当前版本以仓库 pin 为准（非机器 `--version`），升级 =
-  改仓库 pin 文件（进 git、可复现）而非重装全局；机器 active 版本与
-  pin 不一致时向 pin 对齐
+- **WHEN** 体检报出 node 落后（node 无自动生效的仓库 pin，当前版本以
+  机器 `node --version` 为准）
+- **THEN** agent 执行 `nvm install <最新> --reinstall-packages-from=<旧版>`
+  并 `nvm alias default <最新>`，使新终端打开即用最新版且全局 npm 包
+  （openspec、markdownlint-cli2 等）随版本迁移不丢失；仅 install 不
+  alias、或不带 `--reinstall-packages-from` 均不算升级完成
+
+#### Scenario: 自动生效 pin 的 CLI 以 pin 为准
+
+- **WHEN** 体检报出的 CLI 在仓库有自动生效的 pin（pnpm
+  `packageManager` 由 corepack 读、rustc `rust-toolchain.toml` 由 rustup
+  读）
+- **THEN** 其当前版本以仓库 pin 为准（非机器全局安装版），升级 =
+  改仓库 pin 文件（进 git、跨机器一致）而非重装全局；机器 active
+  版本与 pin 不一致时向 pin 对齐
 
 #### Scenario: 按触及面选验收闸门
 
