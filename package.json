@@ -19,7 +19,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.15",
-    "markdownlint-cli2": "^0.23",
+    "markdownlint-cli2": "^0.24",
     "prettier": "^3.9.9"
   }
 }
