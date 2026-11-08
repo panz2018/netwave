@@ -10,15 +10,15 @@ networked freshness report. Spec:
 
 ## Layout
 
-| Path                  | Role                                                                                                                                                                                                                                                                                                  |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `check_versions.py`   | Offline rule gate facade (four laws: rust-version, Python project, packageManager, CI python matrix coverage). Wired into `pnpm check:meta`                                                                                                                                                           |
-| `check_outdated.py`   | Networked freshness report facade (manual, never a CI gate): latest LTS/stable versions vs pins. Entry point: `pnpm check:outdated`                                                                                                                                                                   |
-| `lib/version.py`      | Version parsing/comparison: `parse_version` (zero-padded triple), `is_exact`, `is_exact_patch`, `is_major_only`, `is_outdated`                                                                                                                                                                        |
-| `lib/repository.py`   | Repo scanning & pin extraction: `ROOT`, `SKIP_DIRS` (single source), `find_files`, `find_python_versions`, `find_ci_workflows`, `workspace_members`, `rust_versions`, `toolchain_channel`, `ci_python_cells`, `find_package_managers`, `is_python_project`                                            |
-| `lib/rules.py`        | The four laws: `check_rust_version`, `check_python_projects`, `check_package_manager`, `check_ci_python_versions` (each returns error strings); plus `all_laws` / `summary`                                                                                                                           |
-| `lib/latest.py`       | Networked probes (only `check_outdated.py` consumes them): `fetch_json`, `run_cmd`, `first_line`, `latest_version`, `package_versions`, `refine_node_lts`, `find_uv_projects`, `action_refs`, `is_version_tag`                                                                                        |
-| `lib/restrictions.py` | Bad-version records (`restrictions.json`): `load_restrictions` (contract check, raises `RestrictionFormatError`), `is_restricted` (exact combo match), `pick_unrestricted` (highest candidate forming no recorded combo), `locked_versions` (ecosystem prefix → lockfile). Pure functions, no network |
+| Path                  | Role                                                                                                                                                                                                                                                                                                                                                                       |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `check_versions.py`   | Offline rule gate facade (four laws: rust-version, Python project, packageManager, CI python matrix coverage). Wired into `pnpm check:meta`                                                                                                                                                                                                                                |
+| `check_outdated.py`   | Networked freshness report facade (manual, never a CI gate): latest LTS/stable versions vs pins. Entry point: `pnpm check:outdated`                                                                                                                                                                                                                                        |
+| `lib/version.py`      | Version parsing/comparison: `parse_version` (zero-padded triple), `is_exact`, `is_exact_patch`, `is_major_only`, `is_outdated`                                                                                                                                                                                                                                             |
+| `lib/repository.py`   | Repo scanning & pin extraction: `ROOT`, `SKIP_DIRS` (single source), `find_files`, `find_python_versions`, `find_ci_workflows`, `workspace_members`, `rust_versions`, `toolchain_channel`, `ci_python_cells`, `find_package_managers`, `runtime_pins` (`.python-version`/`.nvmrc`/`packageManager`/`rust-toolchain.toml`/CI `uses:` → prefixed peers), `is_python_project` |
+| `lib/rules.py`        | The four laws: `check_rust_version`, `check_python_projects`, `check_package_manager`, `check_ci_python_versions` (each returns error strings); plus `all_laws` / `summary`                                                                                                                                                                                                |
+| `lib/latest.py`       | Networked probes (only `check_outdated.py` consumes them): `fetch_json`, `run_cmd`, `first_line`, `latest_version`, `package_versions`, `refine_node_lts`, `find_uv_projects`, `action_refs`, `is_version_tag`                                                                                                                                                             |
+| `lib/restrictions.py` | Bad-version records (`restrictions.json`): `load_restrictions` (contract check, raises `RestrictionFormatError`), `is_restricted` (exact combo match), `pick_unrestricted` (highest candidate forming no recorded combo), `locked_versions` (ecosystem prefix → lockfile). Pure functions, no network                                                                      |
 
 Facades only assemble inputs, select checks, and aggregate the exit code;
 judgement lives in `lib/`. Unit tests: `scripts/tests/versions/` (offline
@@ -54,11 +54,13 @@ repo root); no global Python packages required.
 
 `check:outdated` runs automatically as the last task of every OpenSpec
 apply (wired in `openspec/config.yaml`); the LAGs it reports are
-pre-authorized upgrades per the dependency-upgrade spec — repository pins
-_and_ machine-wide CLIs/tarball tools (upgraded on the host via
-nvm / `npm install -g` / `cargo install` / re-downloaded tarballs,
-repo pins first then global CLIs, each gated). It can also be run by hand
-any time.
+pre-authorized upgrades per the dependency-upgrade spec. A tool the repo
+pins (node `.nvmrc`, pnpm `packageManager`, rustc `rust-toolchain.toml`)
+is upgraded by editing that pin file — the pin, not the machine, is its
+source of truth. A tool with no repo pin (npm, openspec, uv, wasm-pack…)
+is upgraded on the host (`npm install -g` / `cargo install` /
+re-downloaded tarball). Repo pins first, then global CLIs, each gated.
+It can also be run by hand any time.
 
 ## Registering a version restriction
 

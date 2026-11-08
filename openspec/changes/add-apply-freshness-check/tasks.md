@@ -93,3 +93,24 @@ scenario、`config.yaml` 两条接线、`AGENTS.md` 例外句、README 同步）
 
 LL 候选：改 `Plan/` 标题会使归档工件的锚点链接断链——波及面自查须含
 归档工件对 Plan 的引用。是否登记待点名。
+
+## 7. 第二轮裁决（grilling Q1–Q5，人工确认"更新"）
+
+- Q1 pnpm 归仓库 pin：`runtime_pins` 读根 `package.json` 的
+  `packageManager` 产出 `npm:pnpm`（corepack 接管，仓库字段才是真版本，
+  非机器全局）；spec 新增「仓库 pin 的 CLI 以 pin 为准」scenario。
+- Q2 node 补仓库 pin：新增根 `.nvmrc`（`26.13.0`），`runtime_pins` 读它
+  产出 `npm:node`；体检 node 行当前值优先取 pin、机器探针仅 fallback
+  （泛化到所有有 pin 的 probe：node/pnpm/rustc）。属"新增钉版点"，
+  人工点名发起，合规。
+- Q3 CI actions 坏版无法降级：接受限制（只报最新 + 人工退），不加 tag
+  列表拉取——无改动。
+- Q4 验收按触及面选闸门：spec 新增「按触及面选验收闸门」scenario，
+  纯 lint/文档/CLI 工具只跑 `pnpm check` 不跑 `check:cross`；权限划分
+  正文的"验收 = 全闸门 + 四端对拍"改为指向该 scenario。
+- Q5 openspec 冒烟固化：不加 `check:smoke` 命令（YAGNI），保持人工冒烟。
+
+代码：`runtime_pins`（repository.py）+ facade node/pnpm/rustc pin 优先
+（check_outdated.py）+ `PROBE_NAMES` 补 node；测试红→绿，`scripts/versions`
+覆盖率维持 100%。三态时效：dependency-upgrade delta 扩充；workspace-layout
+无需 delta（未声称 node 无 pin、非穷举清单，加 `.nvmrc` 不使其变旧）。

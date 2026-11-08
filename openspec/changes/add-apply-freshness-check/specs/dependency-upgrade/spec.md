@@ -5,15 +5,16 @@
 ### Requirement: 升级执行权限划分
 
 升级分两类：**上限升级**（lockfile 依赖刷新含 major、工具链 pin
-（`rust-toolchain.toml` channel）、运行时 pin minor 切换、CI 矩阵最新格、
-直装工具、全局 CLI、CI actions）MUST 由 agent 直接执行，MUST NOT 要求
-开 OpenSpec change；验收 = `pnpm check` 全绿 + `pnpm check:cross` 四端
-对拍，实测失败按「版本限制记录与坏版本降级」回退并当轮登记。**下限
-变更**（MSRV `rust-version`、`engines.node`、CI 底线矩阵格、新增/移除
-钉版点）由人工发起，agent MUST NOT 自动执行。全局 CLI/直装工具的升级在
-本机执行、回退靠重装（见「全局 CLI 与直装工具机器级升级」）。升级动作
-的追溯靠 git log，坏版本事实靠 `scripts/versions/restrictions.json`
-（仓库内组合）与账本（机器级工具），散文不复制。
+（`rust-toolchain.toml` channel）、运行时 pin 切换（`.python-version`、
+`.nvmrc`）、CI 矩阵最新格、直装工具、全局 CLI、CI actions）MUST 由
+agent 直接执行，MUST NOT 要求开 OpenSpec change；验收按触及面选闸门
+（见「按触及面选验收闸门」），实测失败按「版本限制记录与坏版本降级」
+回退并当轮登记。**下限变更**（MSRV `rust-version`、`engines.node`、
+CI 底线矩阵格、新增/移除钉版点）由人工发起，agent MUST NOT 自动执行。
+有仓库 pin 者以 pin 为准升级（见「仓库 pin 的 CLI 以 pin 为准」），
+无 pin 的全局 CLI/直装工具在本机执行、回退靠重装。追溯靠 git log，
+坏版本事实靠 `scripts/versions/restrictions.json`（仓库内组合）与
+账本（机器级工具），散文不复制。
 
 #### Scenario: 上限升级直接执行不开 change
 
@@ -21,13 +22,28 @@
 - **THEN** agent 直接执行升级 + 全闸门 + 四端对拍，不开 OpenSpec change，
   提交信息注明升级内容与体检出处
 
-#### Scenario: 全局 CLI 与直装工具机器级升级
+#### Scenario: 无仓库 pin 的全局 CLI 与直装工具机器级升级
 
-- **WHEN** 体检报出全局 CLI 或 GitHub 压缩包直装工具落后（node、npm、
-  openspec、markdownlint-cli2、wasm-pack 等）
-- **THEN** agent 在本机直接升级到最新（nvm / `npm install -g` /
-  `cargo install` / 重下 tarball），不停下等点名；实测坏则重装回退到
-  上一可用版并当轮记账本
+- **WHEN** 体检报出无仓库 pin 的全局 CLI 或 GitHub 压缩包直装工具落后
+  （npm、openspec、uv、rustup、wasm-pack、binaryen、cargo-llvm-cov 等）
+- **THEN** agent 在本机直接升级到最新（`npm install -g` / `cargo install`
+  / 重下 tarball），不停下等点名；实测坏则重装回退到上一可用版并当轮
+  记账本
+
+#### Scenario: 仓库 pin 的 CLI 以 pin 为准
+
+- **WHEN** 体检报出的 CLI 在仓库有 pin（node `.nvmrc`、pnpm
+  `packageManager`、rustc `rust-toolchain.toml`）
+- **THEN** 其当前版本以仓库 pin 为准（非机器 `--version`），升级 =
+  改仓库 pin 文件（进 git、可复现）而非重装全局；机器 active 版本与
+  pin 不一致时向 pin 对齐
+
+#### Scenario: 按触及面选验收闸门
+
+- **WHEN** 升级一项依赖/工具后确定验收范围
+- **THEN** 触及四端绑定或数值路径者跑 `pnpm check` + `pnpm check:cross`
+  四端对拍；纯 lint/文档/CLI 工具（不碰绑定与数值）只跑 `pnpm check`，
+  不跑 `check:cross`
 
 #### Scenario: 下限变更人工发起
 
