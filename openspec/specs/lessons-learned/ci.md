@@ -130,3 +130,31 @@
   版本落在新范围内
 - 复发检测：review Standards 轴看依赖范围 diff——写法形态改变（caret 换成
   比较符）或上界出现/消失即索要实测证据，给不出即打回
+
+### LL-084 本机 node 26 无 corepack，npm 全局装 pnpm 被 allow-scripts 静默拦
+
+- 犯过：升 pnpm 时按 spec 走 `corepack prepare`，本机 nvm 装的 node 26
+  无 corepack（`command -v corepack` 空、`lib/node_modules` 无该包）报
+  command not found；改 `npm install -g pnpm@12.18.0` 后 `pnpm -v` 仍
+  显示旧版 12.5.1——npm 新版 allow-scripts 安全策略拦下 pnpm 的
+  install.js（preinstall/postinstall），二进制未替换却 exit 0 静默成功
+- 规则：本机 node 26 无 corepack，改用
+  `npm install -g --allow-scripts=pnpm pnpm@<ver>` 装 pnpm；验证升级成功
+  MUST 看 `pnpm -v` 实际输出，不信 npm 的退出码。仓库内 `pnpm -v` 读
+  `packageManager` 钉版（非全局二进制），验证全局版须 `cd /tmp && pnpm -v`。
+  附带：`nvm install --reinstall-packages-from` 不迁移手动 `npm i -g` 装的
+  npm 本体，node 自带 npm 落后须另装
+- 复发检测：升级 pnpm 后 `cd /tmp && pnpm -v` 不等于目标版即中招；
+  `command -v corepack` 空即知本机无 corepack
+
+### LL-085 `~/.cargo/bin` 在 PATH 更前，遮蔽 `~/.local/bin` 直装工具旧版
+
+- 犯过：`install_wasm_pack.sh` 把 wasm-pack 0.15.1 装进 `~/.local/bin`，
+  但本机 `~/.cargo/bin`（PATH 第 2 位，早于 `~/.local/bin`）残留历史
+  `cargo install` 的 wasm-pack 0.15.0，`which wasm-pack` 仍命中旧版，
+  升级静默无效
+- 规则：直装工具升级后 MUST `which <tool> && <tool> --version` 确认命中的
+  是新版；若被更靠前的 PATH 目录遮蔽，删除遮蔽目录里的旧二进制
+  （`rm ~/.cargo/bin/<tool>`）使脚本安装位生效
+- 复发检测：`install_*.sh` 跑完后 `which <tool>` 路径不含脚本的
+  安装目录（`~/.local/bin`）即中招
