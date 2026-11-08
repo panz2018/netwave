@@ -42,7 +42,7 @@ jobs:
         with:
           node-version: 26
           cache: pnpm
-      - uses: astral-sh/setup-uv@v10.2.0
+      - uses: astral-sh/setup-uv@v10.3.3
       - name: lint gate (md + ts + rs + py, defined in root package.json)
         # Build-free by design: `check:ts` is Biome only. The tsc type gate
         # resolves the shells' imports of the generated bindings (dist/),
@@ -173,7 +173,7 @@ jobs:
       # preinstalled, windows does not — install it explicitly.
       - uses: dtolnay/rust-toolchain@stable
       # pinned full tag: setup-uv publishes no floating major tag (v10)
-      - uses: astral-sh/setup-uv@v10.2.0
+      - uses: astral-sh/setup-uv@v10.3.3
         with:
           python-version: ${{ matrix.python-version }}
       - name: sync + build + test
@@ -210,7 +210,7 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
-      - uses: astral-sh/setup-uv@v10.2.0
+      - uses: astral-sh/setup-uv@v10.3.3
       - run: pnpm install
       - name: install wasm toolchain
         # Own step: the installers append to GITHUB_PATH, which only
