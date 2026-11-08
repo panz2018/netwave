@@ -63,8 +63,9 @@
       组合、无已登记版本，按 spec「只登记实测失败的具体版本组合」与 LL-081
       「禁加未实测限制」，保持 `^0.23.0` 不动（验证：无登记即无收紧需求，
       `pnpm check` 全绿）
-- [ ] 3.4 跑 `pnpm check` 全绿 + `pnpm check:cross` 四端对拍（容差不变），
-      确认收紧范围与登记未破坏构建与数值行为
+- [x] 3.4 跑 `pnpm check` 全绿 + `pnpm check:cross` 四端对拍（容差不变），
+      确认登记未破坏构建与数值行为（验证：两命令退出码均 0，四端
+      bit-exact / wasm within tol；因无失败组合，本轮无收紧范围改动）
 
 ## 4. 文档与波及面同步
 
@@ -90,9 +91,8 @@
 扫描 `openspec/specs/` 全目录，与本 change 相关的时效结论：
 
 - **新增**：`dependency-upgrade` spec 的「版本限制记录数据文件」「版本限制记录与
-  坏版本降级」「限制记录读取的错误语义」三条 Requirement 由本 change delta 定义，
-  主 spec 尚未含（sync/archive 时写入）——符合预期，非遗留。
-- **退役**：主 spec `dependency-upgrade` 现存「坏版本降级与 blocked 触发式实施」
+  坏版本降级」「限制记录读取的错误语义」三条 Requirement 已随 sync 写入主 spec。
+- **退役**：主 spec `dependency-upgrade` 原「坏版本降级与 blocked 触发式实施」
   Requirement（spec.md:125）及正文 "blocked" 措辞（spec.md:15/137/143/146/153/239），
   由本 change delta 的 REMOVED 段声明移除，sync/archive 时删除——主 spec 现仍含
   旧措辞属未同步的正常中间态，非漏改。
