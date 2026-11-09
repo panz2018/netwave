@@ -75,5 +75,6 @@ biome 2.x 自带 YAML 格式化器（官方称解析器 100% 通过官方测试�
   Standards 轴引用。
 - `.vscode/extensions.json` 补 `biomejs.biome` 推荐，防止各人本地缺扩展、
   保存时不触发格式化而与闸门输出打架。
-- 在 Non-goals 写明再评估触发器（biome md formatter 出试验期 + 兼容率
-  提升），防止"以后再说"变成永远不说。
+- 在 Non-goals 写明再评估触发器（biome 的 markdown formatter 出试验期且
+  兼容率在官方 release notes <https://github.com/biomejs/biome/releases>
+  中提升时重开 `biome.jsonc` 的 md 排除议题），防止"以后再说"变成永远不说。
