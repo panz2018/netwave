@@ -6,7 +6,7 @@
 `.python-version` 比对、`restricted_lines()`、CLI/直装工具/actions 探针，
 每段独立 try/except 收集 failures，退出码 = 有无 failures。restrictions
 判定只在 `restricted_lines()` 一段生效，且 `locked_versions()` 只认
-lockfile（pnpm/Cargo/uv），运行时 pin 不在其列，故 `pypi:python` 类组合
+lockfile（pnpm/Cargo/uv），运行时钉版不在其列，故 `pypi:python` 类组合
 永不命中。触发靠人工点名，无稳定节奏。动机与人工裁决见 `proposal.md` —
 Why；行为契约见本 change `specs/dependency-upgrade/spec.md`。
 
@@ -19,7 +19,7 @@ Why；行为契约见本 change `specs/dependency-upgrade/spec.md`。
 **Goals:**
 
 - restrictions 过滤下沉为各段共用的"出行为前过一道"步骤，peers 扩到
-  运行时/工具 pin。
+  运行时/工具钉版。
 - 触发接线落在 `openspec/config.yaml` 的 apply guidance，零新代码、零新
   状态文件。
 - 退出码语义迁移不破坏现有单测的断言结构（FAILED 集合仍在）。
@@ -50,8 +50,8 @@ apply 开头——否：开头跑完若升级红，回退动作混在 change 任
 `pypi:python`（值取 minor，与登记粒度一致）、`rust-toolchain.toml`
 channel → `cargo:rustc`、CI action `uses:` tag → `github:<repo>`（复用
 `action_refs()`）。`restricted_lines()` 与新增的"全段过滤"共用
-`locked_versions ∪ runtime_pins` 作为 peers。备选：把 pin 写进 lockfile
-解析——否，pin 不在 lockfile 里，伪造数据源违反"钉版文件即真相源"。
+`locked_versions ∪ runtime_pins` 作为 peers。备选：把钉版写进 lockfile
+解析——否，钉版不在 lockfile 里，伪造数据源违反"钉版文件即真相源"。
 
 ### D3 全段过滤 = 出行为统一走 `target_line()`
 
@@ -103,7 +103,7 @@ spec 不改 AGENTS.md——否，硬护栏凌驾其余条目，例外不写进�
   人工裁决"稳定触发优先"——本仓 change 频繁，实际接近每日；无 change
   或任务未跑完的日子不体检，本就是 apply 触发形态的固有代价。
 - [升级后闸门当天跑两遍] → 接受：change 任务收尾一遍、升级验收一遍，
-  lockfile/pin 变了上一遍作废，两遍是"升级必须带自己的验收"的固有成本。
+  lockfile/钉版变了上一遍作废，两遍是"升级必须带自己的验收"的固有成本。
 - [dry-run 命令输出解析复杂，过滤改造面大] → 缓解：dry-run 段维持原样
   透传 + 仅对 restrictions 点名包追加 target 行（现状 `restricted_lines`
   模式的推广），不重写三家命令的输出解析。

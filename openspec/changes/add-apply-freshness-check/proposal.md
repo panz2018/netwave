@@ -17,7 +17,7 @@
 
 - `check_outdated.py` **全部检查段统一消费 restrictions**：每段报
   latest/target 前过 `pick_unrestricted()`，命中已登记组合即改报"未登记的
-  最高可用版 + SKIP 原因"；运行时/工具 pin（`.python-version` →
+  最高可用版 + SKIP 原因"；运行时/工具钉版（`.python-version` →
   `pypi:python`、`rust-toolchain.toml` channel → `cargo:rustc`、CI action
   tag）纳入 peers，使"运行时 × 库"组合真正可命中（例：`pypi:python`
   3.16 与 `pypi:numpy` 2.3.0 同锁时报 SKIP 而非 LAG）。
@@ -46,9 +46,9 @@
 ### Modified Capabilities
 
 - `dependency-upgrade`：「过期体检命令」重写（全段消费 restrictions、
-  运行时/工具 pin 参与组合判定、SKIP 与 FAILED 分层、不报下限声明、
+  运行时/工具钉版参与组合判定、SKIP 与 FAILED 分层、不报下限声明、
   apply 自动触发且仍 MUST NOT 进 CI 或 `pnpm check`）；「版本限制记录
-  数据文件」补充运行时/工具 pin 以生态前缀名参与组合的登记写法；
+  数据文件」补充运行时/工具钉版以生态前缀名参与组合的登记写法；
   「运行时大版本升级流程」改实测语义（删支持矩阵调研，留一次改齐
   原子性）；REMOVED「升级分级」；新增「升级执行权限划分」（上限升级
   agent 直接执行不开 change，下限变更人工发起）与「apply 末尾体检与
@@ -58,7 +58,7 @@
 
 - 代码：`scripts/versions/check_outdated.py`（各段出行为统一过滤 +
   SKIP/FAILED 分层 + 重试一次）、`scripts/versions/lib/repository.py`
-  （运行时/工具 pin 提取进 peers）。
+  （运行时/工具钉版提取进 peers）。
 - 测试：`scripts/tests/versions/`（覆盖率 100% 门槛由 `check:py` 的
   `--cov-fail-under` 强制，铁律七）。
 - 配置：`openspec/config.yaml`（`operations.apply.guidance` 一条 +

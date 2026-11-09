@@ -151,17 +151,17 @@
 - 复发检测：review 见"门禁失效/形同虚设"类结论时索要受控错误实测证据，
   无证据即打回改写为"疑似缺口 + 验证方法"
 
-### LL-086 跨机器一致性 pin 必须自动生效，被动声明文件不算 pin
+### LL-086 跨机器一致性钉版必须自动生效，被动声明文件不算钉版
 
 - 犯过：为"保证所有机器 node 同版本"新增根 `.nvmrc` 并让体检以它为
   node 当前值；实测证伪——nvm 源码 `nvm_auto`（nvm.sh 5168–5206）优先
   default 别名，无 cd 钩子时不读 `.nvmrc`（nvm.sh 3577 注释自证
   `nvm current` 不受其影响），本机 `~/.bashrc` 只 source nvm.sh 无钩子；
   上一轮"验证通过"因终端曾手动 `nvm use default`，属无效取证
-- 规则：声称某文件是"跨机器一致性 pin"前，MUST 验证它在干净环境
+- 规则：声称某文件是"跨机器一致性钉版"前，MUST 验证它在干净环境
   （新终端、无手动 use）自动生效——corepack `packageManager`、rustup
   `rust-toolchain.toml`、uv `.python-version` 属此类；被动声明文件
-  （`.nvmrc` 无钩子）不算 pin，不得进 `runtime_pins`，否则体检谎报
+  （`.nvmrc` 无钩子）不算钉版，不得进 `runtime_pins`，否则体检谎报
   可复现当前版本。node 一致性靠机器级 `nvm install <latest>` 配
   `--reinstall-packages-from=<old>`，再 `nvm alias default <latest>`
 - 复发检测：review Standards 轴见新增钉版文件时索要"干净终端自动生效"

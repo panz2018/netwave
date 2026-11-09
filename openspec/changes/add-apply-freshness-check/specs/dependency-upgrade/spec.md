@@ -5,24 +5,24 @@
 ### Requirement: 升级执行权限划分
 
 升级分两类：**上限升级**（lockfile 依赖刷新含 major、工具链与运行时
-pin 切换、CI 矩阵最新格、直装工具、全局 CLI、CI actions）MUST 由
+钉版切换、CI 矩阵最新格、直装工具、全局 CLI、CI actions）MUST 由
 agent 直接执行，MUST NOT 要求开 OpenSpec change；验收按触及面选闸门
 （见「按触及面选验收闸门」），实测失败按「版本限制记录与坏版本降级」
 回退并当轮登记。**下限变更**（MSRV `rust-version`、`engines.node`、
 CI 底线矩阵格、新增/移除钉版点）由人工发起，agent MUST NOT 自动执行。
-有自动生效仓库 pin 者以 pin 为准升级，其余在本机执行、回退靠重装
+有自动生效仓库钉版者以钉版为准升级，其余在本机执行、回退靠重装
 （机制见各 scenario）。追溯靠 git log，坏版本事实靠
 `scripts/versions/restrictions.json`（仓库内组合）与账本（机器级工具）。
 
 #### Scenario: 上限升级直接执行不开 change
 
-- **WHEN** 体检报出任一上限 LAG（lockfile、pin、矩阵最新格、工具）
+- **WHEN** 体检报出任一上限 LAG（lockfile、钉版、矩阵最新格、工具）
 - **THEN** agent 直接执行升级 + 全闸门 + 四端对拍，不开 OpenSpec change，
   提交信息注明升级内容与体检出处
 
-#### Scenario: 无仓库 pin 的全局 CLI 与直装工具机器级升级
+#### Scenario: 无仓库钉版的全局 CLI 与直装工具机器级升级
 
-- **WHEN** 体检报出无仓库 pin 的全局 CLI 或 GitHub 压缩包直装工具落后
+- **WHEN** 体检报出无仓库钉版的全局 CLI 或 GitHub 压缩包直装工具落后
   （npm、openspec、uv、rustup、wasm-pack、binaryen、cargo-llvm-cov 等）
 - **THEN** agent 在本机直接升级到最新（`npm install -g` / `cargo install`
   / 重下 tarball），不停下等点名；实测坏则重装回退到上一可用版并当轮
@@ -30,21 +30,21 @@ CI 底线矩阵格、新增/移除钉版点）由人工发起，agent MUST NOT �
 
 #### Scenario: node 升级保打开即用
 
-- **WHEN** 体检报出 node 落后（node 无自动生效的仓库 pin，当前版本以
+- **WHEN** 体检报出 node 落后（node 无自动生效的仓库钉版，当前版本以
   机器 `node --version` 为准）
 - **THEN** agent 执行 `nvm install <最新> --reinstall-packages-from=<旧版>`
   并 `nvm alias default <最新>`，使新终端打开即用最新版且全局 npm 包
   （openspec、markdownlint-cli2 等）随版本迁移不丢失；仅 install 不
   alias、或不带 `--reinstall-packages-from` 均不算升级完成
 
-#### Scenario: 自动生效 pin 的 CLI 以 pin 为准
+#### Scenario: 自动生效钉版的 CLI 以钉版为准
 
-- **WHEN** 体检报出的 CLI 在仓库有自动生效的 pin（pnpm
+- **WHEN** 体检报出的 CLI 在仓库有自动生效的钉版（pnpm
   `packageManager` 由 corepack 读、rustc `rust-toolchain.toml` 由 rustup
   读）
-- **THEN** 其当前版本以仓库 pin 为准（非机器全局安装版），升级 =
-  改仓库 pin 文件（进 git、跨机器一致）而非重装全局；机器 active
-  版本与 pin 不一致时向 pin 对齐
+- **THEN** 其当前版本以仓库钉版为准（非机器全局安装版），升级 =
+  改仓库钉版文件（进 git、跨机器一致）而非重装全局；机器 active
+  版本与钉版不一致时向钉版对齐
 
 #### Scenario: 按触及面选验收闸门
 
@@ -82,7 +82,7 @@ CI 底线矩阵格、新增/移除钉版点）由人工发起，agent MUST NOT �
 
 #### Scenario: LAG 直接执行
 
-- **WHEN** 体检报出任一 LAG（含工具链 pin、CI 矩阵最新格、运行时 minor
+- **WHEN** 体检报出任一 LAG（含工具链钉版、CI 矩阵最新格、运行时 minor
   切换、lockfile major）
 - **THEN** agent 直接执行升级并跑全闸门 + 四端对拍，绿后汇报，红则回退
   并当轮登记，不再询问、不阻塞
@@ -111,7 +111,7 @@ CI 底线矩阵格、新增/移除钉版点）由人工发起，agent MUST NOT �
 #### Scenario: 先仓库后全局的升级顺序
 
 - **WHEN** 一次体检同时报出仓库内 LAG 与全局 CLI LAG
-- **THEN** 先在当前稳定工具链上升级仓库内项（lockfile、pin、CI action）
+- **THEN** 先在当前稳定工具链上升级仓库内项（lockfile、钉版、CI action）
   并跑全闸门验绿，再逐个升级全局 CLI，每升一个重跑全闸门复验；
   某工具弄红即重装回退该工具，仓库改动不受牵连
 
@@ -132,7 +132,7 @@ CI 底线矩阵格、新增/移除钉版点）由人工发起，agent MUST NOT �
 action 当前 tag vs 最新 release tag）。体检按发现覆盖环境（见「体检按发现
 覆盖全部环境」），全局 CLI 与直装工具的探针集为体检程序内常量（新增探针
 改一处）。**每一段**报出 latest/target 前 MUST 消费版本限制记录判定
-（见「版本限制记录数据文件」），MUST NOT 有绕过过滤的段；运行时/工具 pin
+（见「版本限制记录数据文件」），MUST NOT 有绕过过滤的段；运行时/工具钉版
 以生态前缀名参与组合判定。该命令由 apply 末尾自动触发（见「apply 末尾
 体检与升级预授权」），MUST NOT 进 CI 或 `pnpm check`（结果随上游每日
 变化且需联网）。体检 MUST NOT 报下限声明（`rust-version`、`engines.node`、CI
@@ -153,7 +153,7 @@ MUST NOT 影响退出码；FAILED 仅保留给不依赖网络运气的真错误�
 
 - **WHEN** 体检跑完四段
 - **THEN** 末尾打印一行 `SUMMARY: <N> LAG (<分段计数>)`，N 为各段落后项总数
-  （pnpm 表数据行、cargo `Updating … -> …` 行、uv 变更行、运行时 pin、
+  （pnpm 表数据行、cargo `Updating … -> …` 行、uv 变更行、运行时钉版、
   全局 CLI、直装工具、CI actions 各按 LAG 标记计数）
 - **AND** 无落后时打印 `SUMMARY: 0 LAG (all current)`，使截断视图也能一眼
   看出是否整段被漏看
@@ -173,16 +173,16 @@ MUST NOT 影响退出码；FAILED 仅保留给不依赖网络运气的真错误�
 
 #### Scenario: target 命中已登记坏组合即换版本
 
-- **WHEN** 任一段（包管理器 dry-run、运行时 pin、全局 CLI、直装工具、
+- **WHEN** 任一段（包管理器 dry-run、运行时钉版、全局 CLI、直装工具、
   CI actions）报出的最新版与对端当前版本凑成已登记组合
 - **THEN** 该行不推荐最新稳定版，改推荐"与对端搭配后未登记的最高可用版本"
   （可能低于最新稳定版，也可能最新稳定版本身未命中即照报），并注明该组合的
   登记原因
 - **AND** 只调整本行这一个包的 target，对端行不受影响
 
-#### Scenario: 运行时 pin 参与组合判定
+#### Scenario: 运行时钉版参与组合判定
 
-- **WHEN** 运行时 pin 的当前值与某库当前锁定版本凑成已登记组合
+- **WHEN** 运行时钉版的当前值与某库当前锁定版本凑成已登记组合
 - **THEN** 运行时行不报向该新版的 LAG，改报未登记的最高可用 target 并
   注明 SKIP 原因；对端升到组合外版本后精确匹配不再命中，LAG 自然回归
 
@@ -207,8 +207,8 @@ MUST NOT 影响退出码；FAILED 仅保留给不依赖网络运气的真错误�
 每个组合 MUST 由 1~N 个包名各自对应一个**具体版本号**构成（N 不限：N=1 表示
 该包自身 bug，N≥2 表示联动 bug）。包名 MUST 带生态前缀（`npm:` / `cargo:` /
 `pypi:`）以区分跨生态同名包。版本号 MUST 是实测过的具体版本，MUST NOT 写版本
-范围，MUST NOT 登记未经实测的版本或组合。运行时/工具 pin 参与组合时以生态
-前缀名登记（如 `pypi:python`、`cargo:rustc`），版本值取该 pin 自身粒度
+范围，MUST NOT 登记未经实测的版本或组合。运行时/工具钉版参与组合时以生态
+前缀名登记（如 `pypi:python`、`cargo:rustc`），版本值取该钉版自身粒度
 （如 CPython 的 minor）。记录 MUST NOT 含"修复于哪个版本"、可用状态或重试
 标记——未登记的版本与组合一律视为可试。记录 MUST 只增不删。
 
@@ -244,15 +244,15 @@ MUST NOT 影响退出码；FAILED 仅保留给不依赖网络运气的真错误�
 #### Scenario: 全局工具坏版本记账本不入本文件
 
 - **WHEN** 全局 CLI 或直装工具（node、openspec、wasm-pack 等，不在本仓
-  lockfile/pin 内）某版本实测坏
+  lockfile/钉版内）某版本实测坏
 - **THEN** 该坏版本事实记 lessons-learned 账本，MUST NOT 写进
-  `restrictions.json`——本文件只承载仓库内 lockfile/pin 能凑成的组合，
+  `restrictions.json`——本文件只承载仓库内 lockfile/钉版能凑成的组合，
   机器级工具版本不由体检 peers 追踪，写入也永不命中
 
 ### Requirement: 运行时大版本升级流程
 
 运行时大版本升级（Python 稳定 minor 切换、Node LTS 线切换）MUST 按实测
-流程：直接切到目标版本 → 同一轮一次改齐全部钉版点（运行时 pin、CI 矩阵
+流程：直接切到目标版本 → 同一轮一次改齐全部钉版点（运行时钉版、CI 矩阵
 最新格、oracle 环境；MUST NOT 留半切状态）→ 全闸门 + 四端对拍 → 绿即
 完成，红则按「版本限制记录与坏版本降级」登记失败组合并回退。MUST NOT
 预先调研库支持矩阵——兼容性只认实测结果，不认声明。Node 换线另须以
@@ -277,7 +277,7 @@ MSRV）不在本流程范围，由人工发起抬升。
 
 ### Requirement: 升级分级
 
-**Reason**: 旧分级要求一切结构性升级（工具链 pin、语言矩阵格、选线）
+**Reason**: 旧分级要求一切结构性升级（工具链钉版、语言矩阵格、选线）
 MUST 开 OpenSpec change，但此类升级没有可留痕的设计决策——兼容性由全
 闸门 + 四端对拍验证，不兼容由 `restrictions.json` 登记回退，change 仪式
 只带来摩擦不带来信息。

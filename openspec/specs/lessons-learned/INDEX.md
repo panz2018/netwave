@@ -62,5 +62,5 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-083 | workflow   | 宣称门禁失效先造受控错误实测取证，无证据只能说"疑似缺口"                     |
 | LL-084 | ci         | 本机 node 26 无 corepack，npm 装 pnpm 须 `--allow-scripts`，验证看 `pnpm -v` |
 | LL-085 | ci         | `~/.cargo/bin` 遮蔽 `~/.local/bin`，直装工具升级后须 `which` 确认命中新版    |
-| LL-086 | workflow   | 跨机器 pin 须自动生效（干净终端实测），`.nvmrc` 被动声明不算 pin             |
+| LL-086 | workflow   | 跨机器钉版须自动生效（干净终端实测），`.nvmrc` 被动声明不算钉版              |
 | LL-087 | workflow   | 多段报告禁 tail 截断后下"无问题"结论，须看 SUMMARY 总览行或完整输出          |
