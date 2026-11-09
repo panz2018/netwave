@@ -8,6 +8,9 @@
     // Markdown: this repo lints all md with markdownlint rules
     // (.markdownlint.jsonc shared with the CLI).
     "davidanson.vscode-markdownlint",
+    // Biome: formatter + linter for js/ts/json/yaml (pnpm check:ts),
+    // keeping the editor in sync with the gate layer.
+    "biomejs.biome",
     // Vitest: run/debug the typescript test suites from the sidebar
     // (vitest.native.config.ts / vitest.wasm.config.ts).
     "vitest.explorer",

@@ -2,12 +2,14 @@
   // Local schema shipped inside the @biomejs/biome package: resolves
   // offline, no remote-fetch trust prompt. Bump together with the dep.
   "$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
-  // Single tool for JS/TS/JSON lint+format across the whole repo
-  // (decided 2026-09-25, replaces ESLint+Prettier-for-JS; Markdown is
-  // Prettier's job, see .prettierrc.json — biome 2.x ships its own Markdown
-  // and YAML formatters whose list-continuation indent and quote style
-  // disagree with Prettier and the pnpm convention, so md/yaml are excluded
-  // here to keep each file type under a single owner).
+  // Single tool for JS/TS/JSON/YAML lint+format across the whole repo
+  // (decided 2026-09-25, replaces ESLint+Prettier-for-JS; YAML joined the
+  // biome claim later — biome's YAML formatter is Prettier-compatible and
+  // the repo's YAML had no enforcement before).
+  // Markdown stays Prettier's job (see .prettierrc.json): biome's Markdown
+  // formatter is ~92% Prettier-compatible (official figure) and its lint
+  // rules are still Nursery, so *.md is excluded to keep each file type
+  // under a single owner.
   "files": {
     "ignoreUnknown": true,
     "includes": [
@@ -21,9 +23,7 @@
       "!**/.claude",
       "!**/codecov.json",
       "!**/pnpm-lock.yaml",
-      "!**/*.md",
-      "!**/*.yaml",
-      "!**/*.yml"
+      "!**/*.md"
     ]
   },
   "formatter": {
