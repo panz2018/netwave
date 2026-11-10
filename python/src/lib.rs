@@ -460,10 +460,10 @@ impl Touchstone {
 
     /// Render Touchstone text in `parameter`/`format` (shortest-roundtrip
     /// numbers; `#` line uses the stored version).
-    fn write_touchstone(&self, parameter: &str, format: &str) -> PyResult<String> {
+    fn to_text(&self, parameter: &str, format: &str) -> PyResult<String> {
         let p = arg_ts_str::<TouchstoneParameter>(parameter)?;
         let f = arg_ts_str::<TouchstoneFormat>(format)?;
-        self.core()?.write_touchstone(p, f).map_err(ts_err)
+        self.core()?.to_text(p, f).map_err(ts_err)
     }
 
     /// Write to disk (native; GIL released). The filename is corrected by

@@ -142,10 +142,10 @@ describe("browser touchstone data plane", () => {
 });
 
 describe("browser touchstone write", () => {
-  it("writeTouchstone renders text in core", async () => {
+  it("toText renders text in core", async () => {
     const m = await import("../../src/index.browser.ts");
     const ts = await m.Touchstone.fromText(Z2P, 2);
-    const text = await ts.writeTouchstone("S", "RI");
+    const text = await ts.toText("S", "RI");
     const back = await m.Touchstone.fromText(text, 2);
     expect(Array.from(await back.s)).toEqual(Array.from(await ts.s));
     expect(await back.version()).toBe(await ts.version());

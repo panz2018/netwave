@@ -138,9 +138,9 @@ describe("touchstone node data plane", () => {
 });
 
 describe("touchstone node write", () => {
-  it("writeTouchstone RI round-trips bit-exact", () => {
+  it("toText RI round-trips bit-exact", () => {
     const ts = Touchstone.fromText(Z2P, 2);
-    const text = ts.writeTouchstone("S", "RI");
+    const text = ts.toText("S", "RI");
     const back = Touchstone.fromText(text, 2);
     expect(Array.from(back.s)).toEqual(Array.from(ts.s));
     expect(back.version).toBe(ts.version);

@@ -349,8 +349,8 @@ export class Touchstone {
   }
 
   /** Render Touchstone text in `parameter`/`format` (rendered in core). */
-  writeTouchstone(parameter: string, format: string): Promise<string> {
-    return call<string>(this.handle, "writeTouchstone", [parameter, format]);
+  toText(parameter: string, format: string): Promise<string> {
+    return call<string>(this.handle, "toText", [parameter, format]);
   }
 
   /** Download the rendered text (shell-only platform glue). Core renders

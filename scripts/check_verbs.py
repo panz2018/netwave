@@ -69,7 +69,7 @@ TOUCHSTONE_VERBS = {
     "version",
     "parameter",
     "data",
-    "writeTouchstone",
+    "toText",
     "writeFile",
     "filenameFromPath",
     "nameFromFilename",
@@ -82,7 +82,7 @@ TOUCHSTONE_VERBS = {
 # pinned by the per-end display-string tests instead.
 PROTOCOL_HOOKS = {"toString", "str", "repr", "len"}
 # Retired verbs: must never appear as a name on any user-visible surface.
-FORBIDDEN = {"free", "release"}
+FORBIDDEN = {"free", "release", "writeTouchstone"}
 
 PYI = ROOT / "python" / "netwave" / "_netwave.pyi"
 NODE_DTS = ROOT / "typescript" / "dist" / "index.node.generated.d.mts"

@@ -75,7 +75,7 @@ impl FromStr for TouchstoneParameter {
 
 /// A Touchstone text data format: how complex numbers are written in the
 /// file. Memory always holds complex numbers; this enum only matters at the
-/// two text boundaries (parsing a `#` line, rendering with `writeTouchstone`).
+/// two text boundaries (parsing a `#` line, rendering with `toText`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, AsRefStr, EnumIter)]
 pub enum TouchstoneFormat {
     /// Real / Imaginary.
@@ -1130,7 +1130,7 @@ impl Touchstone {
     /// Render Touchstone text: `#` option line (stored version — never
     /// re-derived) + comments + data rows in `parameter`/`format`.
     /// Numbers use shortest-roundtrip formatting (write→read bit-exact).
-    pub fn write_touchstone(
+    pub fn to_text(
         &self,
         parameter: TouchstoneParameter,
         format: TouchstoneFormat,
@@ -1219,7 +1219,7 @@ impl Touchstone {
         format: TouchstoneFormat,
     ) -> Result<(), TouchstoneError> {
         let full = self.write_path(Some(path), parameter);
-        let text = self.write_touchstone(parameter, format)?;
+        let text = self.to_text(parameter, format)?;
         std::fs::write(&full, text).map_err(|e| TouchstoneError::Syntax {
             token: format!("{full}: {e}"),
         })
@@ -1484,10 +1484,10 @@ impl crate::resources::Resource for Touchstone {
                     ("shape", shape.into()),
                 ]))
             }
-            "writeTouchstone" => {
+            "toText" => {
                 let p = js_ts_kw(args.first().ok_or_else(|| js("parameter required"))?)?;
                 let f = js_ts_kw(args.get(1).ok_or_else(|| js("format required"))?)?;
-                self.write_touchstone(p, f)
+                self.to_text(p, f)
                     .map(|t| JsValue::from_str(&t))
                     .map_err(|e| js(e.to_string()))
             }
@@ -1498,7 +1498,7 @@ impl crate::resources::Resource for Touchstone {
                 let p = js_ts_kw(args.first().ok_or_else(|| js("parameter required"))?)?;
                 let f = js_ts_kw(args.get(1).ok_or_else(|| js("format required"))?)?;
                 let path = crate::resources::arg_opt_str(args, 2);
-                let text = self.write_touchstone(p, f).map_err(|e| js(e.to_string()))?;
+                let text = self.to_text(p, f).map_err(|e| js(e.to_string()))?;
                 let filename = self.write_path(path.as_deref(), p);
                 Ok(js_object(&[
                     ("text", JsValue::from_str(&text)),

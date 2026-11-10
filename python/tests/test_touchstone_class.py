@@ -149,9 +149,9 @@ def test_from_data_z0_shape_error() -> None:
         netwave.Touchstone.from_data(f, [1.0, 0.0], [50.0, 45.0], "S")
 
 
-def test_write_touchstone_ri_roundtrip_bit_exact() -> None:
+def test_to_text_ri_roundtrip_bit_exact() -> None:
     ts = netwave.Touchstone.from_text(Z2P, 2)
-    text = ts.write_touchstone("S", "RI")
+    text = ts.to_text("S", "RI")
     back = netwave.Touchstone.from_text(text, 2)
     assert back.s.tobytes() == ts.s.tobytes()
     assert back.z0.tolist() == ts.z0.tolist()

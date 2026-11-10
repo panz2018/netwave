@@ -173,7 +173,7 @@ skrf 同策（`io/touchstone.py` rank==2 时 transpose）；rf-touchstone
 
 #### Scenario: 2 端口写出换回 legacy 序且往返 bit-exact
 
-- **WHEN** 对非对称 2 端口网络调用 `write_touchstone(S, RI)`
+- **WHEN** 对非对称 2 端口网络调用 `to_text(S, RI)`
 - **THEN** 数据行为 legacy 序（S11, S21, S12, S22）；重新解析得
   与原始 `s` 逐 bit 相同的 row-major 存储
 
@@ -237,7 +237,7 @@ MUST 全部私有。独立真值：域换算对 skrf golden 对拍（引用 mani
 
 ### Requirement: 写出接口——文本与落盘两动词、扩展名 parameter+nports 单源
 
-`writeTouchstone(parameter, format)` MUST 返回 Touchstone 文本（全平铺必填、
+`toText(parameter, format)` MUST 返回 Touchstone 文本（全平铺必填、
 无 opts 包、无 `version` 选项——写出直接用存储的 version 字段：解析入口
 从文件记录，`fromData` 工厂构造时由 z0 推导，不在写出时重推；无 `rRef`——
 z0 唯一权威），
@@ -263,7 +263,7 @@ N = 真实 nports，双双由对象说了算；四形态：空→`name`+`.{P}Np`
 
 #### Scenario: 写出往返一致
 
-- **WHEN** `writeTouchstone(p, f)` 输出文本再经 `fromText` 读回
+- **WHEN** `toText(p, f)` 输出文本再经 `fromText` 读回
 - **THEN** `f = RI` 时 `s` 逐 bit 相等（shortest-roundtrip 十进制保证）；
   `f = MA/DB` 时 `s` 在 manifest `core_tol` 容差内相等（极坐标↔直角为
   超越函数换算，逐 bit 物理不可能，容差即标准）；`z0`/`parameter`/
@@ -342,7 +342,7 @@ nports 优先级 = 显式 `nports` 参数 > filename 文法抠 > 两者都无 MU
 #### Scenario: version 写出用存储字段不重推
 
 - **WHEN** 解析 `# GHZ S MA R 50 50 50 50` 的 1.1 四端口文件（全端口同值）
-  后立即 `writeTouchstone('S', 'MA')`
+  后立即 `toText('S', 'MA')`
 - **THEN** 写出 `#` 行仍为 1.1（用解析时记录的 version 字段，不由 z0 重推
   成 1.0）；纯数据构造的对象才在构造时由 z0 推导 version 入库
 

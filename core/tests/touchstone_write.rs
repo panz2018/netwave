@@ -1,4 +1,4 @@
-//! Write-out contract: `write_path` four shapes, `write_touchstone`
+//! Write-out contract: `write_path` four shapes, `to_text`
 //! roundtrip bit-exactness, stored-version metadata preservation, and
 //! native `write_file` landing.
 
@@ -19,7 +19,7 @@ fn write_two_port_emits_legacy_order() {
     // Row-major storage: S11=1+2j, S12=5+6j, S21=3+4j, S22=7+8j.
     assert_eq!(ts.s(), vec![1.0, 2.0, 5.0, 6.0, 3.0, 4.0, 7.0, 8.0]);
     let out = ts
-        .write_touchstone(TouchstoneParameter::S, TouchstoneFormat::RI)
+        .to_text(TouchstoneParameter::S, TouchstoneFormat::RI)
         .unwrap();
     // Written data row must be legacy order: S11, S21, S12, S22
     // (frequency formats shortest: "1" not "1.0").
@@ -33,10 +33,10 @@ fn write_two_port_emits_legacy_order() {
 }
 
 #[test]
-fn write_touchstone_roundtrip_bit_exact() {
+fn to_text_roundtrip_bit_exact() {
     let ts = two_port_z();
     let text = ts
-        .write_touchstone(TouchstoneParameter::Z, TouchstoneFormat::RI)
+        .to_text(TouchstoneParameter::Z, TouchstoneFormat::RI)
         .unwrap();
     let back = Touchstone::from_text(&text, Some(2), None).unwrap();
     assert_eq!(ts.s(), back.s(), "roundtrip must be bit-exact");
@@ -46,7 +46,7 @@ fn write_touchstone_roundtrip_bit_exact() {
 }
 
 #[test]
-fn write_touchstone_ma_db_roundtrip_within_tol() {
+fn to_text_ma_db_roundtrip_within_tol() {
     // RI roundtrips bit-exact (shortest-roundtrip decimal); MA/DB pass
     // through polar<->rectangular transcendental functions, so the bound
     // is a test-local tolerance (spec scenario "写出往返一致").
@@ -54,12 +54,12 @@ fn write_touchstone_ma_db_roundtrip_within_tol() {
     let text = "# GHZ S MA R 50\n1.0 0.5 -30 0.1 170 0.1 170 0.8 -45";
     let ts = Touchstone::from_text(text, Some(2), None).unwrap();
     let ri = ts
-        .write_touchstone(TouchstoneParameter::S, TouchstoneFormat::RI)
+        .to_text(TouchstoneParameter::S, TouchstoneFormat::RI)
         .unwrap();
     let back = Touchstone::from_text(&ri, Some(2), None).unwrap();
     assert_eq!(ts.s(), back.s(), "RI roundtrip must be bit-exact");
     for f in [TouchstoneFormat::MA, TouchstoneFormat::DB] {
-        let out = ts.write_touchstone(TouchstoneParameter::S, f).unwrap();
+        let out = ts.to_text(TouchstoneParameter::S, f).unwrap();
         let back = Touchstone::from_text(&out, Some(2), None).unwrap();
         for (a, b) in ts.s().iter().zip(back.s()) {
             assert!(
@@ -78,7 +78,7 @@ fn write_preserves_stored_version_11_all_equal_z0() {
     let ts = Touchstone::from_text(text, Some(2), None).unwrap();
     assert_eq!(ts.version(), "1.1");
     let out = ts
-        .write_touchstone(TouchstoneParameter::S, TouchstoneFormat::MA)
+        .to_text(TouchstoneParameter::S, TouchstoneFormat::MA)
         .unwrap();
     assert!(
         out.contains("# GHZ S MA R 50 50"),
@@ -89,10 +89,10 @@ fn write_preserves_stored_version_11_all_equal_z0() {
 }
 
 #[test]
-fn write_touchstone_domain_conversion_matches_properties() {
+fn to_text_domain_conversion_matches_properties() {
     let ts = two_port_z();
     let z_text = ts
-        .write_touchstone(TouchstoneParameter::Z, TouchstoneFormat::RI)
+        .to_text(TouchstoneParameter::Z, TouchstoneFormat::RI)
         .unwrap();
     // The written Z data must match the z property (both from stored S).
     let back = Touchstone::from_text(&z_text, Some(2), None).unwrap();
@@ -110,7 +110,7 @@ fn format_number_shortest_roundtrip_extremes() {
     }
     let ts = Touchstone::from_text(&text, Some(1), None).unwrap();
     let out = ts
-        .write_touchstone(TouchstoneParameter::S, TouchstoneFormat::RI)
+        .to_text(TouchstoneParameter::S, TouchstoneFormat::RI)
         .unwrap();
     let back = Touchstone::from_text(&out, Some(1), None).unwrap();
     assert_eq!(ts.s(), back.s(), "extreme values must roundtrip bit-exact");
@@ -153,21 +153,21 @@ fn write_file_directory_form() {
 }
 
 #[test]
-fn write_touchstone_emits_comments() {
+fn to_text_emits_comments() {
     let text = "! first\n! second\n# GHZ S RI R 50\n1.0 0.1 0.2";
     let ts = Touchstone::from_text(text, Some(1), None).unwrap();
     let out = ts
-        .write_touchstone(TouchstoneParameter::S, TouchstoneFormat::RI)
+        .to_text(TouchstoneParameter::S, TouchstoneFormat::RI)
         .unwrap();
     assert!(out.starts_with("! first\n! second\n"), "got: {out}");
 }
 
 #[test]
-fn write_touchstone_gh_on_non_two_port_errors() {
+fn to_text_gh_on_non_two_port_errors() {
     let text = "# GHZ S RI R 50\n1.0 0.1 0.2";
     let ts = Touchstone::from_text(text, Some(1), None).unwrap();
     let err = ts
-        .write_touchstone(TouchstoneParameter::H, TouchstoneFormat::RI)
+        .to_text(TouchstoneParameter::H, TouchstoneFormat::RI)
         .unwrap_err();
     assert!(
         err.to_string().contains('H'),
@@ -177,7 +177,7 @@ fn write_touchstone_gh_on_non_two_port_errors() {
 
 #[test]
 fn write_file_h_on_non_two_port_errors() {
-    // The domain/port-count rejection happens inside write_touchstone via
+    // The domain/port-count rejection happens inside to_text via
     // the data accessor, so write_file surfaces it before touching disk.
     let text = "# GHZ S RI R 50\n1.0 0.1 0.2";
     let ts = Touchstone::from_text(text, Some(1), None).unwrap();

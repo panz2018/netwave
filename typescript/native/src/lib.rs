@@ -375,11 +375,11 @@ impl Touchstone {
     /// Render Touchstone text in `parameter`/`format` (shortest-roundtrip
     /// numbers; `#` line uses the stored version).
     #[napi]
-    pub fn write_touchstone(&self, parameter: String, format: String) -> Result<String> {
+    pub fn to_text(&self, parameter: String, format: String) -> Result<String> {
         let p = resolve_ts_kw(&parameter)?;
         let f = resolve_ts_kw(&format)?;
         self.core()?
-            .write_touchstone(p, f)
+            .to_text(p, f)
             .map_err(|e| Error::from_reason(e.to_string()))
     }
 
