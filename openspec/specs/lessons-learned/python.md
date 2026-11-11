@@ -75,3 +75,17 @@
   桩打在门面模块仍有效——两种缝各自成立，不可混用
 - 复发检测：`scripts/tests/versions/test_check_*.py::TestMainGuard` 断言
   守卫退出码，桩绑错模块时 violations 例的 `SystemExit.code` 变 0 即红
+
+### LL-088 abi3-py310 门控掉 `pyo3::buffer`，memoryview 走 `tobytes()`
+
+- 犯过：`from_bytes` 收 buffer 三件套首版 `use pyo3::buffer::PyBuffer` 编译
+  失败——`pyo3::buffer` 整模块 `#![cfg(any(not(Py_LIMITED_API), Py_3_11))]`，
+  本仓 pyo3 开 `abi3-py310`（Limited API + 3.10）两条件皆不满足；同轮
+  连带两错：0.30 的 `PyBytes::as_bytes()` 不收 `Python` 参数、
+  `PyBytes::new` 返回 `Bound` 需 `.unbind()` 才配 `Py<PyBytes>` 签名
+- 规则：abi3-py310 下 bytes-like 提取只用稳定面——`cast::<PyBytes>()` +
+  `as_bytes()`、`cast::<PyByteArray>()` + `to_vec()`、memoryview 经
+  `call_method0("tobytes")`；类型门控（cast 失败即拒）天然排除 numpy 数组，
+  与"不收 numpy uint8"裁决一致
+- 复发检测：`python/tests/test_touchstone_class.py` 的 buffer 三件套用例 +
+  numpy 拒绝用例钉住行为；`cargo clippy -p netwave-python` 编译即门禁
