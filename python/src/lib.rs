@@ -12,6 +12,7 @@ use netwave::frequency::Frequency as CoreFrequency;
 use netwave::frequency::FrequencyUnit;
 use netwave::frequency::WavelengthUnit;
 use netwave::touchstone::Touchstone as CoreTouchstone;
+use netwave::touchstone::TouchstoneEncoding;
 use netwave::touchstone::TouchstoneFormat;
 use netwave::touchstone::TouchstoneParameter;
 use numpy::Complex64;
@@ -19,6 +20,10 @@ use numpy::ndarray;
 use numpy::{IntoPyArray, PyArray1, PyArray3, PyReadonlyArray1};
 use pyo3::exceptions::PyValueError;
 use pyo3::prelude::*;
+use pyo3::types::PyByteArray;
+use pyo3::types::PyByteArrayMethods;
+use pyo3::types::PyBytes;
+use pyo3::types::PyMemoryView;
 
 /// Map a core `TouchstoneError` to `PyValueError` quoting the offending
 /// input verbatim (the error Display carries it, single-source in core).
@@ -33,6 +38,31 @@ where
     T::Err: std::fmt::Display,
 {
     T::from_str(s).map_err(|e| PyValueError::new_err(e.to_string()))
+}
+
+/// Read an optional `encoding` keyword: `None`/`str` (core `FromStr`
+/// normalizes aliases and quotes the offending word in the error).
+fn arg_opt_encoding(obj: Option<&str>) -> PyResult<Option<TouchstoneEncoding>> {
+    obj.map(arg_ts_str::<TouchstoneEncoding>).transpose()
+}
+
+/// Read a bytes-like argument: `bytes`/`bytearray`/`memoryview` (the buffer
+/// protocol trio; a bare numpy array is deliberately not accepted — callers
+/// pass `arr.tobytes()`). `memoryview` is flattened via `.tobytes()`.
+fn arg_bytes(obj: &Bound<'_, PyAny>) -> PyResult<Vec<u8>> {
+    if let Ok(b) = obj.cast::<PyBytes>() {
+        return Ok(b.as_bytes().to_vec());
+    }
+    if let Ok(b) = obj.cast::<PyByteArray>() {
+        return Ok(b.to_vec());
+    }
+    if obj.is_instance_of::<PyMemoryView>() {
+        let bytes = obj.call_method0("tobytes")?;
+        return Ok(bytes.cast::<PyBytes>()?.as_bytes().to_vec());
+    }
+    Err(PyValueError::new_err(
+        "bytes must be bytes, bytearray, or memoryview",
+    ))
 }
 
 /// Read a frequency/wavelength argument that may be an array OR a scalar
@@ -294,6 +324,31 @@ impl Touchstone {
             .map_err(ts_err)
     }
 
+    /// Parse raw bytes. `encoding` whitelists `"UTF-8"` and `"ISO-8859-1"`
+    /// (case/hyphen-insensitive aliases `utf8`/`latin1`/`latin-1`/
+    /// `iso88591`); omit it to guess: strict UTF-8 (BOM stripped) first,
+    /// falling back to ISO-8859-1. An explicit `encoding` is an
+    /// instruction — decode failures raise, never silently switch encoding.
+    /// Accepts `bytes`/`bytearray`/`memoryview` (buffer protocol).
+    #[staticmethod]
+    #[pyo3(signature = (bytes, nports = None, path = None, encoding = None))]
+    fn from_bytes(
+        py: Python<'_>,
+        bytes: &Bound<'_, PyAny>,
+        nports: Option<usize>,
+        path: Option<&str>,
+        encoding: Option<&str>,
+    ) -> PyResult<Self> {
+        let owned = arg_bytes(bytes)?;
+        let enc = arg_opt_encoding(encoding)?;
+        let owned_path = path.map(str::to_owned);
+        py.detach(move || {
+            CoreTouchstone::from_bytes(&owned, nports, owned_path.as_deref(), enc)
+                .map(|t| Touchstone(t, false))
+                .map_err(ts_err)
+        })
+    }
+
     /// Read and parse a file (sync; the GIL is released during I/O).
     #[staticmethod]
     fn from_file(py: Python<'_>, path: &str) -> PyResult<Self> {
@@ -464,6 +519,24 @@ impl Touchstone {
         let p = arg_ts_str::<TouchstoneParameter>(parameter)?;
         let f = arg_ts_str::<TouchstoneFormat>(format)?;
         self.core()?.to_text(p, f).map_err(ts_err)
+    }
+
+    /// Render and encode to `bytes`. `encoding` whitelists `"UTF-8"` and
+    /// `"ISO-8859-1"` (same aliases as `from_bytes`); default UTF-8. Chars
+    /// beyond U+00FF raise under latin-1 instead of truncating.
+    #[pyo3(signature = (parameter, format, encoding = None))]
+    fn to_bytes(
+        &self,
+        py: Python<'_>,
+        parameter: &str,
+        format: &str,
+        encoding: Option<&str>,
+    ) -> PyResult<Py<PyBytes>> {
+        let p = arg_ts_str::<TouchstoneParameter>(parameter)?;
+        let f = arg_ts_str::<TouchstoneFormat>(format)?;
+        let enc = arg_opt_encoding(encoding)?;
+        let bytes = self.core()?.to_bytes(p, f, enc).map_err(ts_err)?;
+        Ok(PyBytes::new(py, &bytes).unbind())
     }
 
     /// Write to disk (native; GIL released). The filename is corrected by

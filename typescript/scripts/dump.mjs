@@ -95,7 +95,7 @@ const ask = async (handle, method, args) => {
 // filesystem); s/z0/version come back cloned and are dumped.
 for (const c of ["s1p", "s2p", "s4p"]) {
   const buf = readFileSync(join(samplesDir, `dut.${c}`));
-  const th = await ask("touchstone", "fromBytes", [new Uint8Array(buf), `dut.${c}`]);
+  const th = await ask("touchstone", "fromBytes", [new Uint8Array(buf), null, `dut.${c}`, null]);
   const sampleDir = join(out, "wasm", `dut.${c}`);
   mkdirSync(sampleDir, { recursive: true });
   const sarr = new Float64Array(await ask(th, "s", []));

@@ -165,6 +165,79 @@ def test_write_file_corrects_extension(tmp_path) -> None:
     assert not (tmp_path / "filter.s9p").exists()
 
 
+# --- byte boundary (from_bytes / to_bytes) -------------------------------------
+
+# ASCII body; the µ comment marker is injected at the byte level so tests
+# control the exact encoding bytes (ironclad rule 2: independent literals).
+_BODY_1P = b"# GHZ S RI R 50\n1.0 1.0 0.1\n2.0 0.9 -0.2\n"
+_LATIN1 = b"! \xb5\n" + _BODY_1P  # µ as single byte B5 (invalid UTF-8)
+_UTF8 = "! \u00b5\n".encode("utf-8") + _BODY_1P  # µ as C2 B5
+
+
+def test_from_bytes_guesses_latin1() -> None:
+    ts = netwave.Touchstone.from_bytes(_LATIN1, 1)
+    assert ts.comments == "\u00b5"
+    assert ts.s.tolist() == [[[1.0 + 0.1j]], [[0.9 - 0.2j]]]
+
+
+def test_from_bytes_default_guess_matches_explicit_latin1() -> None:
+    guessed = netwave.Touchstone.from_bytes(_LATIN1, 1)
+    explicit = netwave.Touchstone.from_bytes(_LATIN1, 1, encoding="ISO-8859-1")
+    assert guessed.s.tobytes() == explicit.s.tobytes()
+    assert guessed.comments == explicit.comments
+
+
+def test_from_bytes_accepts_buffer_trio() -> None:
+    # bytes / bytearray / memoryview all accepted (buffer protocol).
+    for buf in (_LATIN1, bytearray(_LATIN1), memoryview(_LATIN1)):
+        ts = netwave.Touchstone.from_bytes(buf, 1)
+        assert ts.comments == "\u00b5"
+
+
+def test_from_bytes_explicit_utf8_on_latin1_raises() -> None:
+    with pytest.raises(ValueError, match="UTF-8"):
+        netwave.Touchstone.from_bytes(_LATIN1, 1, encoding="UTF-8")
+
+
+def test_from_bytes_rejects_numpy() -> None:
+    # numpy uint8 is deliberately outside the accepted trio.
+    with pytest.raises(ValueError, match="bytes"):
+        netwave.Touchstone.from_bytes(np.frombuffer(_LATIN1, np.uint8), 1)
+
+
+def test_from_bytes_bad_encoding_name_raises() -> None:
+    with pytest.raises(ValueError, match="UTF-16"):
+        netwave.Touchstone.from_bytes(_UTF8, 1, encoding="UTF-16")
+
+
+def test_to_bytes_default_utf8_and_latin1() -> None:
+    ts = netwave.Touchstone.from_bytes(_LATIN1, 1)
+    # Default write = UTF-8: µ becomes C2 B5.
+    assert ts.to_bytes("S", "RI").startswith(b"! \xc2\xb5\n")
+    # Explicit latin-1: µ stays single byte B5.
+    assert ts.to_bytes("S", "RI", "ISO-8859-1").startswith(b"! \xb5\n")
+
+
+def test_to_bytes_returns_bytes() -> None:
+    ts = netwave.Touchstone.from_text(S1P, 1)
+    assert isinstance(ts.to_bytes("S", "RI"), bytes)
+
+
+def test_to_bytes_rejects_char_beyond_latin1() -> None:
+    body = b"# GHZ S RI R 50\n1.0 1.0 0.1\n"
+    ts = netwave.Touchstone.from_bytes("! \u2103\n".encode("utf-8") + body, 1)
+    with pytest.raises(ValueError, match="ISO-8859-1"):
+        ts.to_bytes("S", "RI", "ISO-8859-1")
+
+
+def test_bytes_roundtrip_bit_exact_same_encoding() -> None:
+    ts = netwave.Touchstone.from_bytes(_LATIN1, 1, encoding="ISO-8859-1")
+    written = ts.to_bytes("S", "RI", "ISO-8859-1")
+    back = netwave.Touchstone.from_bytes(written, 1, encoding="ISO-8859-1")
+    assert back.s.tobytes() == ts.s.tobytes()
+    assert back.comments == ts.comments
+
+
 class _Handler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         if self.path.startswith("/data/"):

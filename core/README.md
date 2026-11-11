@@ -7,9 +7,12 @@ deliberately thin transports over this crate — they must never recompute value
 [`openspec/specs/project-governance/spec.md`](../openspec/specs/project-governance/spec.md)).
 
 Current stage: the `Touchstone` state class is the single data authority —
-parsing (`from_text`/`from_url`), the pure-data factory (`from_data`), the
-S master buffer (`Arc<Vec<f64>>`, shared zero-copy with the bindings), and
-the derived domains (Z/Y/G/H). `Frequency` is the frequency axis.
+parsing (`from_text`/`from_bytes`/`from_url`), the pure-data factory
+(`from_data`), the S master buffer (`Arc<Vec<f64>>`, shared zero-copy with the
+bindings), and the derived domains (Z/Y/G/H). `Frequency` is the frequency axis.
+`from_bytes`/`to_bytes` are the byte boundary: encoding whitelists `UTF-8` and
+`ISO-8859-1` (read default guesses UTF-8 → latin-1, write default UTF-8; see
+the touchstone-core spec's encoding contract).
 
 ## Layout
 

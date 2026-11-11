@@ -156,6 +156,65 @@ describe("touchstone node write", () => {
   });
 });
 
+// Byte boundary (fromBytes / toBytes). ASCII body; the µ comment marker is
+// injected at the byte level so tests control the exact encoding bytes.
+const BODY_1P = new TextEncoder().encode("# GHZ S RI R 50\n1.0 1.0 0.1\n2.0 0.9 -0.2\n");
+const LATIN1 = Uint8Array.from([0x21, 0x20, 0xb5, 0x0a, ...BODY_1P]); // µ = single byte B5
+const UTF8 = new TextEncoder().encode("! µ\n");
+
+describe("touchstone node bytes", () => {
+  it("fromBytes guesses latin-1 when UTF-8 is invalid", () => {
+    const ts = Touchstone.fromBytes(LATIN1, 1);
+    expect(ts.comments).toBe("\u00b5");
+    expect(Array.from(ts.s)).toEqual([1.0, 0.1, 0.9, -0.2]);
+  });
+
+  it("fromBytes default guess matches explicit latin-1", () => {
+    const guessed = Touchstone.fromBytes(LATIN1, 1);
+    const explicit = Touchstone.fromBytes(LATIN1, 1, undefined, "ISO-8859-1");
+    expect(Array.from(guessed.s)).toEqual(Array.from(explicit.s));
+    expect(guessed.comments).toBe(explicit.comments);
+  });
+
+  it("fromBytes accepts a Buffer (Uint8Array subclass)", () => {
+    const ts = Touchstone.fromBytes(Buffer.from(LATIN1), 1);
+    expect(ts.comments).toBe("\u00b5");
+  });
+
+  it("fromBytes explicit UTF-8 on latin-1 throws", () => {
+    expect(() => Touchstone.fromBytes(LATIN1, 1, undefined, "UTF-8")).toThrow(/UTF-8/);
+  });
+
+  it("fromBytes rejects an encoding outside the whitelist", () => {
+    expect(() => Touchstone.fromBytes(UTF8, 1, undefined, "UTF-16")).toThrow(/UTF-16/);
+  });
+
+  it("toBytes default UTF-8 and explicit latin-1", () => {
+    const ts = Touchstone.fromBytes(LATIN1, 1);
+    // Default write = UTF-8: µ becomes C2 B5.
+    expect(Array.from(ts.toBytes("S", "RI")).slice(0, 4)).toEqual([0x21, 0x20, 0xc2, 0xb5]);
+    // Explicit latin-1: µ stays single byte B5.
+    expect(Array.from(ts.toBytes("S", "RI", "ISO-8859-1")).slice(0, 3)).toEqual([0x21, 0x20, 0xb5]);
+  });
+
+  it("toBytes rejects a char beyond latin-1", () => {
+    const body = new TextEncoder().encode("# GHZ S RI R 50\n1.0 1.0 0.1\n");
+    const ts = Touchstone.fromBytes(
+      Uint8Array.from([...new TextEncoder().encode("! ℃\n"), ...body]),
+      1,
+    );
+    expect(() => ts.toBytes("S", "RI", "ISO-8859-1")).toThrow(/ISO-8859-1/);
+  });
+
+  it("bytes round-trip bit-exact at the same encoding", () => {
+    const ts = Touchstone.fromBytes(LATIN1, 1, undefined, "ISO-8859-1");
+    const written = ts.toBytes("S", "RI", "ISO-8859-1");
+    const back = Touchstone.fromBytes(written, 1, undefined, "ISO-8859-1");
+    expect(Array.from(back.s)).toEqual(Array.from(ts.s));
+    expect(back.comments).toBe(ts.comments);
+  });
+});
+
 describe("touchstone node fromUrl", () => {
   it("fetches and parses; HTTP errors propagate", async () => {
     const server = createServer((req, res) => {

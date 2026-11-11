@@ -4,7 +4,11 @@
 //! pipeline. All tests enter through the public surface (`from_text` and
 //! the static pipeline trio).
 
+use std::str::FromStr;
+
 use netwave::touchstone::Touchstone;
+use netwave::touchstone::TouchstoneEncoding;
+use netwave::touchstone::TouchstoneError;
 
 const HEADER_1P: &str = "# GHZ S RI R 50";
 const DATA_1P: &str = "1.0 0.1 -0.2\n2.0 0.3 -0.4";
@@ -455,4 +459,229 @@ fn ext_match_grammar_failures() {
     assert!(Touchstone::nports_from_filename("x.sp").is_err());
     // Port digits overflow usize.
     assert!(Touchstone::nports_from_filename("x.s99999999999999999999999p").is_err());
+}
+
+#[test]
+fn encoding_vocabulary_normalizes_aliases() {
+    // Matching trims, lowercases, and strips `-`/`_`/space before the
+    // whitelist comparison, so every spelling of the two accepted encodings
+    // resolves to the same variant.
+    for name in ["UTF-8", "utf8", "Utf_8", " utf-8 ", "UTF 8"] {
+        assert_eq!(
+            TouchstoneEncoding::from_str(name).unwrap(),
+            TouchstoneEncoding::Utf8,
+            "{name:?} must resolve to Utf8"
+        );
+    }
+    for name in [
+        "ISO-8859-1",
+        "latin1",
+        "Latin_1",
+        "iso88591",
+        "LATIN-1",
+        " ISO_8859_1 ",
+    ] {
+        assert_eq!(
+            TouchstoneEncoding::from_str(name).unwrap(),
+            TouchstoneEncoding::Iso88591,
+            "{name:?} must resolve to Iso88591"
+        );
+    }
+    // Canonical spellings for bindings reflecting the vocabulary.
+    assert_eq!(TouchstoneEncoding::Utf8.as_ref(), "UTF-8");
+    assert_eq!(TouchstoneEncoding::Iso88591.as_ref(), "ISO-8859-1");
+}
+
+#[test]
+fn encoding_outside_whitelist_errors_with_original_token() {
+    // Anything outside {UTF-8, ISO-8859-1} + the alias set errors, quoting
+    // the original word. `latin`/`L1`/`cp819` are deliberate exclusions: the
+    // alias list is an intentional subset, not the full codecs.lookup set.
+    for bad in ["UTF-16", "ASCII", "latin", "L1", "cp819", "not-an-encoding"] {
+        let err = TouchstoneEncoding::from_str(bad).unwrap_err();
+        assert!(
+            matches!(err, TouchstoneError::EncodingUnsupported { ref name } if name == bad),
+            "{bad:?} must error as EncodingUnsupported quoting the original, got: {err}"
+        );
+    }
+}
+
+/// Minimal 1-port body, ASCII only; comment lines get the non-ASCII marker
+/// at the byte level so tests control the exact encoding bytes.
+const BODY_1P: &[u8] = b"# GHZ S RI R 50\n1.0 0.1 -0.2\n2.0 0.3 -0.4\n";
+
+fn latin1_bytes() -> Vec<u8> {
+    // `! µ` — micro sign as the single byte 0xB5 (latin-1), which is NOT
+    // valid UTF-8 and forces the guess chain to fall through.
+    let mut v = vec![b'!', b' ', 0xB5, b'\n'];
+    v.extend_from_slice(BODY_1P);
+    v
+}
+
+fn utf8_bytes() -> Vec<u8> {
+    // Same content encoded UTF-8: µ = 0xC2 0xB5.
+    let mut v = b"! \xc2\xb5\n".to_vec();
+    v.extend_from_slice(BODY_1P);
+    v
+}
+
+#[test]
+fn from_bytes_guesses_latin1_when_utf8_invalid() {
+    let ts = Touchstone::from_bytes(&latin1_bytes(), Some(1), None, None).unwrap();
+    assert_eq!(ts.comments(), "\u{b5}");
+    assert_eq!(ts.s(), vec![0.1, -0.2, 0.3, -0.4]);
+}
+
+#[test]
+fn from_bytes_strips_bom_on_default_and_explicit_utf8() {
+    let mut bom = vec![0xEF, 0xBB, 0xBF];
+    bom.extend_from_slice(BODY_1P);
+    let default = Touchstone::from_bytes(&bom, Some(1), None, None).unwrap();
+    let explicit =
+        Touchstone::from_bytes(&bom, Some(1), None, Some(TouchstoneEncoding::Utf8)).unwrap();
+    assert_eq!(default.f(), explicit.f());
+    assert_eq!(default.s(), explicit.s());
+    // Explicit latin-1 keeps the BOM bytes as the three chars ï»¿ —
+    // stripping belongs to the UTF-8 path. The first line reads
+    // `ï»¿# ...`, which is not a valid option line, so the parse errors
+    // (the BOM is never silently swallowed on the latin-1 path).
+    let latin = Touchstone::from_bytes(&bom, Some(1), None, Some(TouchstoneEncoding::Iso88591));
+    assert!(
+        latin.is_err(),
+        "explicit latin-1 must not strip the BOM: the option line breaks, got {:?}",
+        latin.map(|t| t.comments().to_owned())
+    );
+}
+
+#[test]
+fn from_bytes_explicit_utf8_never_falls_back() {
+    let err = Touchstone::from_bytes(
+        &latin1_bytes(),
+        Some(1),
+        None,
+        Some(TouchstoneEncoding::Utf8),
+    )
+    .unwrap_err();
+    assert!(
+        matches!(err, TouchstoneError::EncodingDecode { ref encoding } if encoding == "UTF-8"),
+        "explicit UTF-8 on latin-1 bytes must error EncodingDecode, got: {err}"
+    );
+}
+
+#[test]
+fn from_bytes_default_guess_matches_explicit_latin1() {
+    let bytes = latin1_bytes();
+    let guessed = Touchstone::from_bytes(&bytes, Some(1), None, None).unwrap();
+    let explicit =
+        Touchstone::from_bytes(&bytes, Some(1), None, Some(TouchstoneEncoding::Iso88591)).unwrap();
+    // Same implementation behind both entry points — bit-exact equality.
+    assert_eq!(
+        guessed.s().iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+        explicit.s().iter().map(|v| v.to_bits()).collect::<Vec<_>>()
+    );
+    assert_eq!(guessed.comments(), explicit.comments());
+    assert_eq!(guessed.version(), explicit.version());
+    assert_eq!(guessed.z0(), explicit.z0());
+}
+
+#[test]
+fn from_bytes_utf8_input_parses_and_keeps_name_pipeline() {
+    let ts = Touchstone::from_bytes(&utf8_bytes(), Some(1), Some("/tmp/d/f.s1p"), None).unwrap();
+    assert_eq!(ts.comments(), "\u{b5}");
+    assert_eq!(ts.name(), "f");
+}
+
+#[test]
+fn from_bytes_garbage_bytes_error_never_panics() {
+    // NUL bytes, UTF-16 residue (ASCII with interleaved 0x00), and a
+    // truncated multi-byte sequence: every input must surface a
+    // TouchstoneError, never a panic.
+    let cases: Vec<Vec<u8>> = vec![
+        vec![0x00, 0x01, 0x02, 0x03],
+        b"#\x00G\x00H\x00Z\x00".to_vec(),
+        vec![
+            b'#', b' ', b'G', b'H', b'Z', b' ', b'S', b' ', b'R', b'I', b' ', b'R', b' ', b'5',
+            b'0', b'\n', 0xC3,
+        ],
+    ];
+    for bytes in cases {
+        let res = std::panic::catch_unwind(|| Touchstone::from_bytes(&bytes, Some(1), None, None));
+        assert!(
+            res.is_ok_and(|r| r.is_err()),
+            "garbage must error, not panic: {bytes:?}"
+        );
+    }
+}
+
+#[test]
+fn to_bytes_default_utf8_and_explicit_latin1() {
+    let ts = Touchstone::from_bytes(&latin1_bytes(), Some(1), None, None).unwrap();
+    // Default write = UTF-8: µ becomes the two bytes C2 B5.
+    let out = ts
+        .to_bytes(
+            netwave::touchstone::TouchstoneParameter::S,
+            netwave::touchstone::TouchstoneFormat::RI,
+            None,
+        )
+        .unwrap();
+    assert!(
+        out.starts_with(b"! \xc2\xb5\n"),
+        "default write must be UTF-8, got {out:?}"
+    );
+    // Explicit latin-1: µ stays the single byte B5.
+    let out = ts
+        .to_bytes(
+            netwave::touchstone::TouchstoneParameter::S,
+            netwave::touchstone::TouchstoneFormat::RI,
+            Some(TouchstoneEncoding::Iso88591),
+        )
+        .unwrap();
+    assert!(
+        out.starts_with(b"! \xb5\n"),
+        "explicit latin-1 must emit single byte B5, got {out:?}"
+    );
+}
+
+#[test]
+fn to_bytes_rejects_char_beyond_latin1() {
+    // ℃ (U+2103) is outside latin-1's U+0000–U+00FF range.
+    let text = "# GHZ S RI R 50\n1.0 0.1 -0.2\n";
+    let mut v = "! \u{2103}\n".as_bytes().to_vec();
+    v.extend_from_slice(text.as_bytes());
+    let ts = Touchstone::from_bytes(&v, Some(1), None, None).unwrap();
+    let err = ts
+        .to_bytes(
+            netwave::touchstone::TouchstoneParameter::S,
+            netwave::touchstone::TouchstoneFormat::RI,
+            Some(TouchstoneEncoding::Iso88591),
+        )
+        .unwrap_err();
+    assert!(
+        matches!(err, TouchstoneError::CharNotLatin1 { ch: '\u{2103}' }),
+        "must quote the offending char, got: {err}"
+    );
+}
+
+#[test]
+fn bytes_roundtrip_bit_exact_same_encoding() {
+    // from_bytes → to_bytes with the source encoding → from_bytes again:
+    // the two objects agree bit-for-bit (closed loop at the byte level).
+    let bytes = latin1_bytes();
+    let first =
+        Touchstone::from_bytes(&bytes, Some(1), None, Some(TouchstoneEncoding::Iso88591)).unwrap();
+    let written = first
+        .to_bytes(
+            netwave::touchstone::TouchstoneParameter::S,
+            netwave::touchstone::TouchstoneFormat::RI,
+            Some(TouchstoneEncoding::Iso88591),
+        )
+        .unwrap();
+    let second =
+        Touchstone::from_bytes(&written, Some(1), None, Some(TouchstoneEncoding::Iso88591))
+            .unwrap();
+    assert_eq!(
+        first.s().iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+        second.s().iter().map(|v| v.to_bits()).collect::<Vec<_>>()
+    );
+    assert_eq!(first.comments(), second.comments());
 }

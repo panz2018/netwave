@@ -214,6 +214,60 @@ describe("browser touchstone write", () => {
   });
 });
 
+// Byte boundary (fromBytes / toBytes) through the resident worker. ASCII
+// body; the µ comment marker is injected at the byte level so tests control
+// the exact encoding bytes (ironclad rule 2).
+const BODY_1P = new TextEncoder().encode("# GHZ S RI R 50\n1.0 1.0 0.1\n2.0 0.9 -0.2\n");
+const LATIN1 = Uint8Array.from([0x21, 0x20, 0xb5, 0x0a, ...BODY_1P]); // µ = single byte B5
+
+describe("browser touchstone bytes", () => {
+  it("fromBytes guesses latin-1 through the worker", async () => {
+    const m = await import("../../src/index.browser.ts");
+    const ts = await m.Touchstone.fromBytes(Uint8Array.from(LATIN1), 1);
+    expect(await ts.comments()).toBe("\u00b5");
+    expect(Array.from(await ts.s)).toEqual([1.0, 0.1, 0.9, -0.2]);
+    await ts.drop();
+  });
+
+  it("fromBytes transfers the bytes (buffer detached afterwards)", async () => {
+    const m = await import("../../src/index.browser.ts");
+    const buf = Uint8Array.from(LATIN1).buffer as ArrayBuffer;
+    const ts = await m.Touchstone.fromBytes(new Uint8Array(buf), 1);
+    expect(buf.byteLength).toBe(0); // moved into the worker (ironclad rule 8)
+    expect(await ts.comments()).toBe("\u00b5");
+    await ts.drop();
+  });
+
+  it("fromBytes explicit UTF-8 on latin-1 rejects", async () => {
+    const m = await import("../../src/index.browser.ts");
+    await expect(
+      m.Touchstone.fromBytes(Uint8Array.from(LATIN1), 1, undefined, "UTF-8"),
+    ).rejects.toThrow(/UTF-8/);
+  });
+
+  it("toBytes returns a Uint8Array (default UTF-8, explicit latin-1)", async () => {
+    const m = await import("../../src/index.browser.ts");
+    const ts = await m.Touchstone.fromBytes(Uint8Array.from(LATIN1), 1);
+    const utf8 = await ts.toBytes("S", "RI");
+    expect(utf8).toBeInstanceOf(Uint8Array);
+    expect(Array.from(utf8.slice(0, 4))).toEqual([0x21, 0x20, 0xc2, 0xb5]);
+    const latin = await ts.toBytes("S", "RI", "ISO-8859-1");
+    expect(Array.from(latin.slice(0, 3))).toEqual([0x21, 0x20, 0xb5]);
+    await ts.drop();
+  });
+
+  it("bytes round-trip bit-exact at the same encoding", async () => {
+    const m = await import("../../src/index.browser.ts");
+    const ts = await m.Touchstone.fromBytes(Uint8Array.from(LATIN1), 1, undefined, "ISO-8859-1");
+    const written = await ts.toBytes("S", "RI", "ISO-8859-1");
+    const back = await m.Touchstone.fromBytes(written, 1, undefined, "ISO-8859-1");
+    expect(Array.from(await back.s)).toEqual(Array.from(await ts.s));
+    expect(await back.comments()).toBe(await ts.comments());
+    await back.drop();
+    await ts.drop();
+  });
+});
+
 describe("browser touchstone name pipeline", () => {
   it("static helpers route through the namespace", async () => {
     const m = await import("../../src/index.browser.ts");

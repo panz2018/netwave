@@ -48,12 +48,13 @@ FREQUENCY_VERBS = {
     "drop",
 }
 FREE_VERBS = {"frequencyUnits", "liveCount"}
-# Touchstone instance/static verbs (excl. the constructor): the three
+# Touchstone instance/static verbs (excl. the constructor): the four
 # factories, the pure-data constructor's data surface, the name pipeline, and
 # the unified drop verb (memory-lifecycle spec — drop() on all three ends).
 TOUCHSTONE_VERBS = {
     "fromData",
     "fromText",
+    "fromBytes",
     "fromFile",
     "fromUrl",
     "s",
@@ -70,6 +71,7 @@ TOUCHSTONE_VERBS = {
     "parameter",
     "data",
     "toText",
+    "toBytes",
     "writeFile",
     "filenameFromPath",
     "nameFromFilename",

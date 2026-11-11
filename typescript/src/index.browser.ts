@@ -212,8 +212,9 @@ export interface TouchstoneData {
 
 /**
  * A parsed Touchstone shell. Construction IS parsing: the factories
- * (`fromText`/`fromFile`/`fromUrl`) host a fully validated object in the
- * worker's core table and return a shell over its numeric handle. Data
+ * (`fromText`/`fromBytes`/`fromFile`/`fromUrl`) host a fully validated
+ * object in the worker's core table and return a shell over its numeric
+ * handle. Data
  * lives in the worker (ironclad rule 8); the shell holds only the handle.
  * `writeFile`/`fromFile` are shell-only async platform glue (the browser
  * has no filesystem): `fromFile` transfers the bytes in, `writeFile`
@@ -232,6 +233,27 @@ export class Touchstone {
     );
   }
 
+  /** Parse raw bytes inside the worker. `encoding` whitelists `"UTF-8"` and
+   * `"ISO-8859-1"` (case/hyphen-insensitive aliases `utf8`/`latin1`/
+   * `latin-1`/`iso88591`); omit it to guess: strict UTF-8 (BOM stripped)
+   * first, falling back to ISO-8859-1. An explicit `encoding` is an
+   * instruction — decode failures error, never silently switch encoding.
+   * The bytes are MOVED via transfer (single ownership, ironclad rule 8):
+   * afterwards the caller's buffer is detached. */
+  static fromBytes(
+    bytes: Uint8Array,
+    nports?: number,
+    path?: string,
+    encoding?: string,
+  ): Promise<Touchstone> {
+    return call<Handle>(
+      "touchstone",
+      "fromBytes",
+      [bytes, nports ?? null, path ?? null, encoding ?? null],
+      [bytes.buffer as ArrayBuffer],
+    ).then((handle) => new Touchstone(handle));
+  }
+
   /** Read a `File` and parse it in the worker. The bytes are MOVED via
    * transfer (single ownership, ironclad rule 8): afterwards the caller's
    * buffer is detached. The filename rides along for the name pipeline. */
@@ -240,7 +262,7 @@ export class Touchstone {
     const handle = await call<Handle>(
       "touchstone",
       "fromBytes",
-      [new Uint8Array(buf), file.name],
+      [new Uint8Array(buf), null, file.name, null],
       [buf],
     );
     return new Touchstone(handle);
@@ -351,6 +373,15 @@ export class Touchstone {
   /** Render Touchstone text in `parameter`/`format` (rendered in core). */
   toText(parameter: string, format: string): Promise<string> {
     return call<string>(this.handle, "toText", [parameter, format]);
+  }
+
+  /** Render and encode to bytes in core (JS `TextEncoder` only speaks
+   * UTF-8, so latin-1 lives in Rust). `encoding` whitelists `"UTF-8"` and
+   * `"ISO-8859-1"` (same aliases as `fromBytes`); default UTF-8. Chars
+   * beyond U+00FF reject under latin-1 instead of truncating. The bytes
+   * come back as a fresh `Uint8Array` (output direction never transfers). */
+  toBytes(parameter: string, format: string, encoding?: string): Promise<Uint8Array> {
+    return call<Uint8Array>(this.handle, "toBytes", [parameter, format, encoding ?? null]);
   }
 
   /** Download the rendered text (shell-only platform glue). Core renders

@@ -6,8 +6,11 @@ PyO3 binding over the Rust core (`../core`): a thin transport that hands numpy a
 [`openspec/specs/project-governance/spec.md`](../openspec/specs/project-governance/spec.md)).
 
 Current stage: the `Touchstone` pyclass is the data authority — `from_data`
-/`from_text`/`from_file`/`from_url` factories in, the writable zero-copy
-`s` view (`owndata=False`) out; `Frequency` is the frequency axis.
+/`from_text`/`from_bytes`/`from_file`/`from_url` factories in, the writable
+zero-copy `s` view (`owndata=False`) out; `Frequency` is the frequency axis.
+`from_bytes` accepts `bytes`/`bytearray`/`memoryview` and `to_bytes` returns
+`bytes`; encoding whitelists `UTF-8`/`ISO-8859-1` (read default guesses,
+write default UTF-8 — see the touchstone-core spec).
 
 ## Layout
 

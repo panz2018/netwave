@@ -2,7 +2,8 @@
 //! its error type.
 //!
 //! This module is the single source of truth for the Touchstone vocabulary
-//! (parameter domains and text formats) and for every parse/construct error.
+//! (parameter domains, text formats, and byte-boundary encodings) and for
+//! every parse/construct error.
 //! Bindings expose the enums by reflection, never by copying a name list.
 //!
 //! # Storage model
@@ -100,6 +101,48 @@ impl FromStr for TouchstoneFormat {
     }
 }
 
+/// A byte-boundary text encoding: the `encoding` argument of
+/// [`Touchstone::from_bytes`] / [`Touchstone::to_bytes`].
+///
+/// The canonical spelling comes from the strum serialize attribute
+/// (`"UTF-8"` / `"ISO-8859-1"`).
+/// This enum is the only place any encoding name appears in the repository;
+/// bindings expose it by reflection. The whitelist is deliberately narrow:
+/// an intentional subset of Python `codecs.lookup`'s full alias set — only
+/// the spellings below resolve, everything else errors.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, AsRefStr, EnumIter)]
+pub enum TouchstoneEncoding {
+    /// UTF-8 (the write default; BOM stripped on the read path).
+    #[strum(serialize = "UTF-8")]
+    Utf8,
+    /// ISO/IEC 8859-1 (latin-1): the byte↔U+0000–U+00FF one-to-one mapping.
+    #[strum(serialize = "ISO-8859-1")]
+    Iso88591,
+}
+
+impl FromStr for TouchstoneEncoding {
+    type Err = TouchstoneError;
+
+    /// Parse an encoding name: trim, lowercase, and strip `-`/`_`/space,
+    /// then match against the canonical spellings and the alias set
+    /// `{utf8, iso88591, latin1}`. Anything else — `utf16`, `ascii`,
+    /// `latin`, `l1`, `cp819`, gibberish — is rejected quoting the
+    /// original token.
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let key: String = s
+            .trim()
+            .chars()
+            .filter(|c| !matches!(c, '-' | '_' | ' '))
+            .flat_map(|c| c.to_lowercase())
+            .collect();
+        match key.as_str() {
+            "utf8" => Ok(TouchstoneEncoding::Utf8),
+            "iso88591" | "latin1" => Ok(TouchstoneEncoding::Iso88591),
+            _ => Err(TouchstoneError::EncodingUnsupported { name: s.to_owned() }),
+        }
+    }
+}
+
 /// Core parse/construction errors.
 ///
 /// Every variant carries the offending input verbatim so every binding
@@ -146,6 +189,28 @@ pub enum TouchstoneError {
     Syntax {
         /// The offending token, verbatim.
         token: String,
+    },
+    /// An `encoding` name outside the whitelist `{UTF-8, ISO-8859-1}` (plus
+    /// the alias set). The original word is quoted so every binding surface
+    /// can show what the caller passed.
+    #[error("unsupported encoding {name:?}: whitelist is UTF-8 / ISO-8859-1")]
+    EncodingUnsupported {
+        /// The offending encoding name, verbatim as passed.
+        name: String,
+    },
+    /// An explicit `encoding="UTF-8"` whose bytes are not valid UTF-8.
+    /// Explicit encodings are instructions: no silent latin-1 fallback.
+    #[error("{encoding} decode failed: bytes are not valid {encoding}")]
+    EncodingDecode {
+        /// The encoding that was requested, canonical spelling.
+        encoding: String,
+    },
+    /// A character beyond U+00FF cannot be encoded as ISO-8859-1 (latin-1
+    /// covers only U+0000–U+00FF). The offending character is quoted.
+    #[error("character {ch:?} cannot be encoded as ISO-8859-1 (beyond U+00FF)")]
+    CharNotLatin1 {
+        /// The offending character, verbatim.
+        ch: char,
     },
     /// An HTTP fetch failed; the failure reason is quoted verbatim.
     #[error("fetch failed for {url}: {reason}")]
@@ -337,6 +402,80 @@ impl Touchstone {
             version,
             parameter: option.parameter,
         })
+    }
+
+    /// Decode bytes at the byte boundary into text (private: shared by the
+    /// guess path and the explicit path so both run the SAME implementation —
+    /// the "default vs explicit same result" contract).
+    ///
+    /// - `None` (guess): strict UTF-8 (BOM stripped first); on failure fall
+    ///   back to latin-1, which never fails.
+    /// - `Some(Utf8)`: instruction — strip BOM, strict UTF-8, failure is
+    ///   `EncodingDecode` (no silent latin-1 fallback).
+    /// - `Some(Iso88591)`: byte↔char one-to-one (U+0000–U+00FF), never
+    ///   fails, BOM NOT stripped (stripping belongs to the UTF-8 path).
+    fn decode_bytes(
+        bytes: &[u8],
+        encoding: Option<TouchstoneEncoding>,
+    ) -> Result<String, TouchstoneError> {
+        /// UTF-8 byte-order mark; stripped on every UTF-8 read path.
+        const BOM: &[u8] = &[0xEF, 0xBB, 0xBF];
+        match encoding {
+            None => match std::str::from_utf8(bytes.strip_prefix(BOM).unwrap_or(bytes)) {
+                Ok(s) => Ok(s.to_owned()),
+                // Not valid UTF-8: latin-1 over the ORIGINAL bytes (BOM
+                // stripping belongs to the UTF-8 path; a stream that fails
+                // UTF-8 keeps its leading EF BB BF as ï»¿, matching explicit
+                // latin-1 — default and explicit must agree).
+                Err(_) => Ok(bytes.iter().map(|b| *b as char).collect()),
+            },
+            Some(TouchstoneEncoding::Utf8) => {
+                std::str::from_utf8(bytes.strip_prefix(BOM).unwrap_or(bytes))
+                    .map(|s| s.to_owned())
+                    .map_err(|_| TouchstoneError::EncodingDecode {
+                        encoding: TouchstoneEncoding::Utf8.as_ref().to_owned(),
+                    })
+            }
+            Some(TouchstoneEncoding::Iso88591) => Ok(bytes.iter().map(|b| *b as char).collect()),
+        }
+    }
+
+    /// Parse Touchstone from raw bytes. Decoding follows the encoding
+    /// contract (whitelist `{UTF-8, ISO-8859-1}`; default = guess UTF-8 →
+    /// latin-1; explicit = instruction, no fallback) and then reuses
+    /// [`Touchstone::from_text`] — one parser, two entry points. `nports`
+    /// and `path` behave exactly as in `from_text`.
+    pub fn from_bytes(
+        bytes: &[u8],
+        nports: Option<usize>,
+        path: Option<&str>,
+        encoding: Option<TouchstoneEncoding>,
+    ) -> Result<Self, TouchstoneError> {
+        let text = Self::decode_bytes(bytes, encoding)?;
+        Self::from_text(&text, nports, path)
+    }
+
+    /// Encode one char as ISO-8859-1 (the U+0000–U+00FF bijection). A char
+    /// beyond U+00FF has no latin-1 byte and errors quoting it.
+    fn encode_latin1(ch: char) -> Result<u8, TouchstoneError> {
+        u8::try_from(u32::from(ch)).map_err(|_| TouchstoneError::CharNotLatin1 { ch })
+    }
+
+    /// Render Touchstone text (as [`Touchstone::to_text`]) and encode it to
+    /// bytes. Default encoding = UTF-8 (deliberate deviation from
+    /// scikit-rf's latin-1 write default, recorded in the spec); explicit
+    /// latin-1 errors on any char beyond U+00FF rather than truncating.
+    pub fn to_bytes(
+        &self,
+        parameter: TouchstoneParameter,
+        format: TouchstoneFormat,
+        encoding: Option<TouchstoneEncoding>,
+    ) -> Result<Vec<u8>, TouchstoneError> {
+        let text = self.to_text(parameter, format)?;
+        match encoding.unwrap_or(TouchstoneEncoding::Utf8) {
+            TouchstoneEncoding::Utf8 => Ok(text.into_bytes()),
+            TouchstoneEncoding::Iso88591 => text.chars().map(Self::encode_latin1).collect(),
+        }
     }
 
     /// Fetch Touchstone text over HTTP and parse it via [`Touchstone::from_text`].
@@ -1376,6 +1515,18 @@ mod tests {
     }
 
     #[test]
+    fn latin1_roundtrip_covers_all_256_bytes() {
+        // ISO-8859-1 is the byte↔U+0000–U+00FF bijection: every byte value
+        // survives a latin-1 decode/encode roundtrip unchanged.
+        for b in 0u8..=255 {
+            let decoded =
+                Touchstone::decode_bytes(&[b], Some(TouchstoneEncoding::Iso88591)).unwrap();
+            let encoded = Touchstone::encode_latin1(decoded.chars().next().unwrap()).unwrap();
+            assert_eq!(encoded, b, "byte {b} must round-trip latin-1");
+        }
+    }
+
+    #[test]
     #[cfg(any(
         all(not(target_arch = "wasm32"), feature = "native-http"),
         all(target_arch = "wasm32", feature = "browser-http")
@@ -1435,6 +1586,19 @@ where
         .and_then(|s| T::from_str(&s).map_err(|e| crate::resources::js(e.to_string())))
 }
 
+/// Read an optional keyword argument (`undefined`/`null` → `None`; a string
+/// goes through core `FromStr`, which quotes the offending token).
+#[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
+fn js_ts_kw_opt<T: FromStr>(v: Option<&JsValue>) -> Result<Option<T>, JsValue>
+where
+    T::Err: std::fmt::Display,
+{
+    match v {
+        Some(v) if !v.is_undefined() && !v.is_null() => js_ts_kw(v).map(Some),
+        _ => Ok(None),
+    }
+}
+
 /// Instance dispatch: the numeric-handle half of the shell's `Touchstone`.
 /// `drop` never reaches here — the dispatcher intercepts it (removing the
 /// table entry is the table's own operation).
@@ -1491,6 +1655,17 @@ impl crate::resources::Resource for Touchstone {
                     .map(|t| JsValue::from_str(&t))
                     .map_err(|e| js(e.to_string()))
             }
+            // Byte-boundary output: encode in core (JS TextEncoder only
+            // speaks UTF-8) and hand the bytes back as a Uint8Array
+            // (structured clone; output direction never transfers,
+            // ironclad rule 8).
+            "toBytes" => {
+                let p = js_ts_kw(args.first().ok_or_else(|| js("parameter required"))?)?;
+                let f = js_ts_kw(args.get(1).ok_or_else(|| js("format required"))?)?;
+                let enc = js_ts_kw_opt::<TouchstoneEncoding>(args.get(2))?;
+                let bytes = self.to_bytes(p, f, enc).map_err(|e| js(e.to_string()))?;
+                Ok(js_sys::Uint8Array::from(bytes.as_slice()).into())
+            }
             // The browser has no filesystem: render in core and hand
             // `{text, filename}` back (structured clone); the shell's Blob +
             // `<a download>` is the platform glue (ironclad rule 8/11).
@@ -1524,18 +1699,21 @@ pub fn call_namespace(method: &str, args: &[JsValue]) -> Result<JsValue, JsValue
                 .map_err(|e| js(e.to_string()))?;
             Ok(JsValue::from_f64(insert(Box::new(ts)) as f64))
         }
-        // The bytes arrive transferred from the shell (`fromFile(file)`);
-        // the filename rides along for the name pipeline.
+        // The bytes arrive transferred from the shell (`fromFile(file)` or
+        // the public `fromBytes`); the filename rides along for the name
+        // pipeline. Decoding (guess chain / explicit whitelist) lives in
+        // core — the same `from_bytes` every other surface uses.
         "fromBytes" => {
             let bytes = args
                 .get(0)
                 .and_then(|v| v.dyn_ref::<js_sys::Uint8Array>())
                 .map(js_sys::Uint8Array::to_vec)
                 .ok_or_else(|| js("argument 0 must be a Uint8Array"))?;
-            let path = arg_str(args, 1)?;
-            let text = String::from_utf8(bytes).map_err(|e| js(e.to_string()))?;
-            let ts =
-                Touchstone::from_text(&text, None, Some(&path)).map_err(|e| js(e.to_string()))?;
+            let nports = args.get(1).and_then(|v| v.as_f64()).map(|v| v as usize);
+            let path = arg_opt_str(args, 2);
+            let enc = js_ts_kw_opt::<TouchstoneEncoding>(args.get(3))?;
+            let ts = Touchstone::from_bytes(&bytes, nports, path.as_deref(), enc)
+                .map_err(|e| js(e.to_string()))?;
             Ok(JsValue::from_f64(insert(Box::new(ts)) as f64))
         }
         // Pure-data factory: arg 0 is the handle of an already-hosted

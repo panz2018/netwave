@@ -234,6 +234,28 @@ impl Touchstone {
             .map_err(|e| Error::from_reason(e.to_string()))
     }
 
+    /// Parse raw bytes. `encoding` whitelists `"UTF-8"` and `"ISO-8859-1"`
+    /// (case/hyphen-insensitive aliases `utf8`/`latin1`/`latin-1`/
+    /// `iso88591`); omit it to guess: strict UTF-8 (BOM stripped) first,
+    /// falling back to ISO-8859-1. An explicit `encoding` is an instruction
+    /// — decode failures throw, never silently switch encoding. `bytes`
+    /// crosses as a `Uint8Array` (a Node `Buffer` is one).
+    #[napi(factory, js_name = "fromBytes")]
+    pub fn from_bytes(
+        bytes: Uint8Array,
+        nports: Option<u32>,
+        path: Option<String>,
+        encoding: Option<String>,
+    ) -> Result<Self> {
+        let enc = match encoding.as_deref() {
+            Some(s) => Some(resolve_ts_kw::<netwave::touchstone::TouchstoneEncoding>(s)?),
+            None => None,
+        };
+        CoreTouchstone::from_bytes(&bytes, nports.map(|n| n as usize), path.as_deref(), enc)
+            .map(|t| Touchstone(t, false))
+            .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
     /// Read and parse a file (async AsyncTask; std::fs off the main thread).
     #[napi(factory)]
     pub async fn from_file(path: String) -> Result<Self> {
@@ -381,6 +403,30 @@ impl Touchstone {
         self.core()?
             .to_text(p, f)
             .map_err(|e| Error::from_reason(e.to_string()))
+    }
+
+    /// Render and encode to bytes (`Uint8Array`; Node hands back a
+    /// `Buffer`, which is a `Uint8Array`). `encoding` whitelists `"UTF-8"`
+    /// and `"ISO-8859-1"` (same aliases as `fromBytes`); default UTF-8.
+    /// Chars beyond U+00FF throw under latin-1 instead of truncating.
+    #[napi(js_name = "toBytes")]
+    pub fn to_bytes(
+        &self,
+        parameter: String,
+        format: String,
+        encoding: Option<String>,
+    ) -> Result<Uint8Array> {
+        let p = resolve_ts_kw(&parameter)?;
+        let f = resolve_ts_kw(&format)?;
+        let enc = match encoding.as_deref() {
+            Some(s) => Some(resolve_ts_kw::<netwave::touchstone::TouchstoneEncoding>(s)?),
+            None => None,
+        };
+        let bytes = self
+            .core()?
+            .to_bytes(p, f, enc)
+            .map_err(|e| Error::from_reason(e.to_string()))?;
+        Ok(Uint8Array::from(bytes))
     }
 
     /// Write to disk (async AsyncTask; the filename is corrected by core

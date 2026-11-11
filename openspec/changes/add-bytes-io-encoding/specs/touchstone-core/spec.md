@@ -60,7 +60,8 @@ Scenario，出处 `skrf/io/touchstone.py` L261–267、`skrf/network.py` L2631�
 - **WHEN** 喂开头带 `EF BB BF` 的 UTF-8 字节流，分别经缺省 `encoding` 与
   显式 `encoding="UTF-8"` 调 `from_bytes`
 - **THEN** 两次均剥 BOM、选项行识别成功、解析结果相同；显式
-  `encoding="ISO-8859-1"` 时 BOM 不剥，`comments`/首行含 `ï»¿` 三字符
+  `encoding="ISO-8859-1"` 时 BOM 不剥，首行变为 `ï»¿# …` 不再是合法选项行，
+  报语法类错误（`ï»¿` 不被吞掉——剥离只属 UTF-8 路径）
 
 #### Scenario: 显式 UTF-8 解码失败不兜底
 
