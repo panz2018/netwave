@@ -32,16 +32,19 @@ advisory 文本、archive 时自动注入；`code-review` skill 提供 diff 尺�
    `add-apply-freshness-check` 的双写策略不同——体检是只读审查，漏做的
    后果是"少一份报告"而非"坏版本入库"，advisory 足够；双写会让每个
    tasks.md 多一项与数值实现无关的任务，违背最小规则原则。
-3. **纯只读 + 当场实证**：只读命令（`command -v`、grep、`node -v`）不改
-   状态，包含在体检授权内，使输出是"已验证事实+建议处置"，人圈定成本
-   最低。备选"确信即修"被否——"确信"无机器退出判据，等同给自主改码开
-   口子（AGENTS.md 硬护栏「动词 = 授权全集」）。
+3. **扫描只读 + 当场实证，发现落 Plan/**：扫描阶段只读命令（`command -v`、
+   grep、`node -v`）不改状态，包含在体检授权内；发现由主代理汇总后写入
+   `Plan/`（Plan/ 是输出载体，不在只读管辖内），使输出是"已验证事实+建议
+   处置"，人圈定成本最低。备选"确信即修"被否——"确信"无机器退出判据，
+   等同给自主改码开口子（AGENTS.md 硬护栏「动词 = 授权全集」）。
 4. **三级去重、归属一处**：账本→Plan 命中→Plan 补充，逐级并入既有载体，
    同一主题的问题届时一起处理；只有全新发现才允许新文件。备选"全部集中
    写体检新文件"被否——同一问题两处记录必然漂移。
-5. **硬伤卡归档、待拍板不卡**：归档 = 结论进主 spec 的时刻，项目现状与
-   刚归档的 spec 矛盾还照常归档会让"spec 唯一真相源"漏水；判断题卡归档
-   则让人每次陪跑。
+5. **先归档、后体检；硬伤只标注不阻塞**：归档本职（sync 核对与目录移动）
+   先完成，体检为收尾附加。备选"体检卡归档"被实证否——首跑即出现死锁：
+   体检发现的硬伤恰是体检接线自身（config.yaml guidance vs spec）的措辞
+   矛盾，卡住归档使本职无法完成，也不宜后退；改为硬伤置顶+标"硬"、
+   留 Plan/ 等人工点名，既不漏水也不让人每次陪跑。
 6. **机制移植 code-review skill、坏味道基线不搬**：fresh-context 子代理、
    字数上限、硬/判断分级、闸门已覆盖不报、不跨轴重排、前置校验即停为
    通用机制直接采用；Fowler 12 坏味道是 diff 尺度检查表，全项目套用每次
@@ -58,6 +61,13 @@ advisory 文本、archive 时自动注入；`code-review` skill 提供 diff 尺�
    上执行不了。每维 ≤2 由各维独立执行，五维天然 ≤10，小步快跑；备选
    "每维 ≤5 + 全文 ≤15"（全文上限与禁排序矛盾，否）与"每维 ≤3"（人工
    裁决收紧为 ≤2）。
+10. **审查时点两处各审自己产出**：本次两个真实缺陷各属不同时点——工件间
+    矛盾（全文上限 vs 禁重排）propose 出口可拦；实现与工件漂移（config.yaml
+    vs spec）只能在 apply 出口拦（propose 时该文件还不存在）。故
+    `rules.proposal` 加工件自洽审、`rules.tasks`+apply guidance 双写三轴审
+    diff（判据真相源仍是 governance「元规则 review 三轴」，不重述）。备选
+    "只在一处审全部文件"被否——propose 时实现不存在，apply 重审提案是重复劳
+    动。
 
 ## Risks / Trade-offs
 
@@ -74,9 +84,9 @@ advisory 文本、archive 时自动注入；`code-review` skill 提供 diff 尺�
 
 ## Migration Plan
 
-一次性落地：改 `openspec/config.yaml` 加一条 guidance + 新能力 spec 入
-`openspec/specs/` + 路由表同步。无迁移、无回滚复杂度（删除该条 guidance
-即完全回退）。
+一次性落地：改 `openspec/config.yaml`（archive 体检触发句 + propose/apply
+出口审查两条）+ 新能力 spec 入 `openspec/specs/` + 路由表同步。无迁移、
+无回滚复杂度（删除相关 guidance/rules 条目即完全回退）。
 
 ## Open Questions
 

@@ -26,7 +26,7 @@
 | spec                                                 | 何时读                                                                 |
 | ---------------------------------------------------- | ---------------------------------------------------------------------- |
 | [api-contract](api-contract/spec.md)                 | 设计/改动任一端公开 API 面、类形态、动词与释放入口、worker 分发命令表  |
-| [archive-health-check](archive-health-check/spec.md) | 归档前全项目只读体检、存量审查（五维清单、三级去重、硬伤卡归档）       |
+| [archive-health-check](archive-health-check/spec.md) | 归档完成后全项目只读体检、存量审查（五维清单、三级去重、硬伤醒目标注） |
 | [ci-matrix](ci-matrix/spec.md)                       | 改 `.github/workflows/`、构建矩阵、lint/基准/覆盖率门槛与 job 编排     |
 | [dependency-upgrade](dependency-upgrade/spec.md)     | 升级任何工具链或依赖、改版本钉死点、加体检脚本                         |
 | [frequency-class](frequency-class/spec.md)           | 改 `Frequency` 频率轴功能面（构造、访问器、换算、显示串）              |

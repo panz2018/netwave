@@ -4,14 +4,13 @@
 red/green 与 cross-binding 对拍不适用；验收以门禁命令与人工核对为准。
 
 - [x] 1. 改 `openspec/config.yaml`：`operations.archive.guidance` 新增
-      归档前全项目只读体检一条（五维清单、只读+当场实证、三级去重归属一处、
-      上限与分级、硬伤卡归档、子代理降级、闸门已覆盖不报），只写规则不写
-      出处
+      归档完成后全项目只读体检一条（触发句 + 指针，规则本体见
+      `archive-health-check` spec，不复述），只写规则不写出处
 - [x] 2. 将本 change 的 `specs/archive-health-check/spec.md` delta 内容
       确认可原样并入主 spec（archive 时由 openspec 落盘），核对与 governance
       spec「元规则 review 三轴」、既有 archive"Plan/ 瘦身"条无措辞冲突
 - [x] 3. 更新 `openspec/specs/README.md` 能力 spec 路由表，新增
-      `archive-health-check` 行（何时读：归档前体检、存量审查）
+      `archive-health-check` 行（何时读：归档完成后体检、存量审查）
 - [x] 4. 验收：`openspec validate add-archive-health-check` 通过；
       `pnpm check:md` 退出码 0（含 SPECS ROUTER 一致性）；
       `python3 scripts/check_proposal.py` 通过
@@ -22,6 +21,13 @@ governance 三轴与既有 archive 瘦身条无冲突）；新增——
 退役——无。附带：修复存量断链
 `archive/2026-11-11-add-bytes-io-encoding/proposal.md:9`（归档目录加深致
 相对路径少一层，check:md BROKEN FILE 清零）。
+
+三轴打回记录（首跑体检发现本 change 自身硬伤，已当场处置）：
+config.yaml guidance 复述 spec 拄漏只读例外造成口径矛盾 + 双正文漂移——
+guidance 压成触发句+指针；措辞全链改"归档完成后"，硬伤卡归档改醒目标注
+（不阻塞）；顺带接线 propose 出口工件自洽审与 apply 倒数第二步三轴审 diff
+（`rules.proposal` / `rules.tasks` / apply guidance）。发现清单见
+`Plan/体检-2026-11-11.md`。
 
 - [x] 5. 跑 `pnpm check:outdated` 并按 dependency-upgrade spec「apply
       末尾体检与升级预授权」消化所报 LAG：升级 + 全闸门 + 四端对拍（含全局
