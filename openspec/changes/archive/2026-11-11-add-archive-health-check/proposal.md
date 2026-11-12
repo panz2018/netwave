@@ -43,7 +43,7 @@ change 把"全项目只读体检"挂到 archive 钩子，让 AI 在每次归档�
   design↔tasks 互查矛盾/超限/与 governance 口径冲突，硬伤清零才算提案完成）；
   `rules.tasks` 与 `operations.apply.guidance` 双写"apply 倒数第二步（
   `check:outdated` 之前）MUST 按 governance「元规则 review 三轴」对照工件审
-  实现 diff，硬伤清零才提请 commit"。
+  实现 diff，硬伤清零才准入最后一项 `check:outdated`"。
 
 ## Capabilities
 

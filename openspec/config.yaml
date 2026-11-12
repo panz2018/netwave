@@ -30,7 +30,8 @@ rules:
     - 数值实现任务的验收标准须包含"docs 达到教学式标准（宪法元规则）"
     - tasks.md 在 check:outdated 任务之前 MUST 有一条三轴 review 任务：按
       governance spec「元规则 review 三轴」（Standards/Spec/Lessons）对照
-      本 change 工件审实现 diff，硬伤清零才提请 commit
+      本 change 工件审实现 diff，硬伤清零才准入最后一项 check:outdated
+      任务
     - tasks.md 最后一项任务 MUST 是跑 pnpm check:outdated 并按
       dependency-upgrade spec「apply 末尾体检与升级预授权」消化所报 LAG：
       升级 + 全闸门 + 四端对拍（含全局 CLI/直装工具的机器级升级），
@@ -54,7 +55,7 @@ operations:
         check_md.py SPECS ROUTER 门禁兜底
       - apply 倒数第二步（check:outdated 之前）MUST 按 governance spec
         「元规则 review 三轴」对照本 change 工件（proposal/specs/design/
-        tasks）审实现 diff，硬伤清零才提请 commit
+        tasks）审实现 diff，硬伤清零才准入最后一项 check:outdated
       - apply 全部任务完成后，最后一项 MUST 是跑 pnpm check:outdated
         并按 dependency-upgrade spec「apply 末尾体检与升级预授权」消化
         所报 LAG（升级 + 全闸门 + 四端对拍，含全局 CLI/直装工具的
