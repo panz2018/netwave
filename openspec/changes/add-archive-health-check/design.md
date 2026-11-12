@@ -1,0 +1,78 @@
+# Design
+
+## Context
+
+见 proposal.md - Why。约束现状：`openspec/config.yaml` 的
+`operations.archive.guidance` 已有两条（Plan/ 瘦身、specs 三态时效），均为
+advisory 文本、archive 时自动注入；`code-review` skill 提供 diff 尺度双轴
+并行子代理模式；lessons-learned 账本与 Plan/ 是既有发现归置位。本 change
+只加 guidance 与能力 spec，零代码。
+
+## Goals / Non-Goals
+
+**Goals:**
+
+- 存量问题（死条款、孤儿、规则冲突、LL 未落闸、Plan 过期）在每次归档被
+  AI 自动发现并落成可圈定的清单。
+- 输出稳定可消化：固定五维、固定格式、固定上限，人一眼圈定。
+
+**Non-Goals:**
+
+- 见 proposal.md Non-goals；设计层补充：不做体检结果的机器评分/打分制
+  （分级只有"硬/待拍板"两级，避免伪精确）；不做体检历史归档（报告消化
+  即删，追溯靠 git log）。
+
+## Decisions
+
+1. **触发只挂 archive，不挂 apply、不设人工入口**：apply 末尾已被
+   `check:outdated` 占用且是改动面节奏；整体扫描成本高，per-change 重复
+   扫同一存量是浪费。备选"apply+archive 双挂"与"人工点名入口"均被人工
+   裁决否（平时整体检查已足够多，diff 审查走 `/code-review` skill）。
+2. **落点 = config.yaml guidance 单写，不双写 rules**：与
+   `add-apply-freshness-check` 的双写策略不同——体检是只读审查，漏做的
+   后果是"少一份报告"而非"坏版本入库"，advisory 足够；双写会让每个
+   tasks.md 多一项与数值实现无关的任务，违背最小规则原则。
+3. **纯只读 + 当场实证**：只读命令（`command -v`、grep、`node -v`）不改
+   状态，包含在体检授权内，使输出是"已验证事实+建议处置"，人圈定成本
+   最低。备选"确信即修"被否——"确信"无机器退出判据，等同给自主改码开
+   口子（AGENTS.md 硬护栏「动词 = 授权全集」）。
+4. **三级去重、归属一处**：账本→Plan 命中→Plan 补充，逐级并入既有载体，
+   同一主题的问题届时一起处理；只有全新发现才允许新文件。备选"全部集中
+   写体检新文件"被否——同一问题两处记录必然漂移。
+5. **硬伤卡归档、待拍板不卡**：归档 = 结论进主 spec 的时刻，项目现状与
+   刚归档的 spec 矛盾还照常归档会让"spec 唯一真相源"漏水；判断题卡归档
+   则让人每次陪跑。
+6. **机制移植 code-review skill、坏味道基线不搬**：fresh-context 子代理、
+   字数上限、硬/判断分级、闸门已覆盖不报、不跨轴重排、前置校验即停为
+   通用机制直接采用；Fowler 12 坏味道是 diff 尺度检查表，全项目套用每次
+   报一堆历史遗留，且 per-change 坏味道已由三轴 Standards 覆盖。
+7. **报告文件名带日期、不滚动覆盖**：`Plan/体检-<日期>.md` 使消化进度
+   以文件为单位可见，终态随 Plan/ 整目录删除；滚动覆盖会把已消化与待
+   处理混在一文件里。
+8. **条款不写出处**：config.yaml 每次全量注入，出处属考古信息无人阅读，
+   纯耗 token；且案例载体 `Plan/工具链核对.md` 执行完即删，引路径会
+   悬空。追溯靠 git log 与归档工件。此为对 AGENTS.md"改动要有去向"的
+   人工裁决豁免（仅限 config.yaml 注入类条款）。
+
+## Risks / Trade-offs
+
+- [LLM 全仓扫描误报] → 证据标准（文件+行号+已实证命令输出）+ 上限截断
+  - 三级去重三道闸；误报的代价被压为"人划掉一条"。
+- [五维固定清单外的盲区] → 接受——开放式"找一切问题"不可测且爆量；
+  新盲区类别出现时按规则生命周期扩维度，改 spec 即可。
+- [跨项目漂移等到下次归档才被捞起] → 人工裁决接受的代价（无人工入口）；
+  当前已知漂移仍走 `Plan/工具链核对.md` 待办。
+- [guidance 是 advisory 可被漏做] → 接受单写（决策 2）；若实际发生漏做，
+  再按账本流程升级为 rules 双写。
+- [体检增加归档耗时] → 上限与字数约束封顶单次成本；无发现时五维各一句
+  "已查，无"即结束。
+
+## Migration Plan
+
+一次性落地：改 `openspec/config.yaml` 加一条 guidance + 新能力 spec 入
+`openspec/specs/` + 路由表同步。无迁移、无回滚复杂度（删除该条 guidance
+即完全回退）。
+
+## Open Questions
+
+- 无。
