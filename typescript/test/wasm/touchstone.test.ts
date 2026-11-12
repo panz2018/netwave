@@ -229,6 +229,14 @@ describe("browser touchstone bytes", () => {
     await ts.drop();
   });
 
+  it("fromBytes infers nports from the path grammar", async () => {
+    const m = await import("../../src/index.browser.ts");
+    const ts = await m.Touchstone.fromBytes(Uint8Array.from(LATIN1), undefined, "dut.s1p");
+    expect(await ts.nports()).toBe(1);
+    expect(await ts.name()).toBe("dut");
+    await ts.drop();
+  });
+
   it("fromBytes transfers the bytes (buffer detached afterwards)", async () => {
     const m = await import("../../src/index.browser.ts");
     const buf = Uint8Array.from(LATIN1).buffer as ArrayBuffer;
