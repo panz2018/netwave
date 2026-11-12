@@ -86,9 +86,9 @@ change 把"全项目只读体检"挂到 archive 钩子，让 AI 在每次归档�
 - `scripts/check_md.py` 的 SPECS ROUTER 门禁随新能力 spec 目录
   `archive-health-check` 落地同轮更新 `openspec/specs/README.md` 路由表，
   防路由缺项打红（LL-034 波及面同步）。
-- 体检五维度中④"LL 未落闸门"与 governance spec「元规则 review 三轴」的
-  "可门禁化 LL 落闸门"判据同源，条款措辞直接引用该 Requirement 名而非
-  重述判据，防两处正文漂移。
+- 体检五维度中④"LL 未落闸门"与 `openspec/specs/project-governance/spec.md`
+  「元规则 review 三轴」的"可门禁化 LL 落闸门"判据同源，条款措辞直接引用
+  该 Requirement 名而非重述判据，防两处正文漂移。
 - `Plan/体检-<日期>.md` 文件名带日期而非滚动覆盖，使"消化一条删一条"有
   明确文件生命周期，与 `openspec/config.yaml` archive"Plan/ 瘦身"检查的
   grep 对象兼容。

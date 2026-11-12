@@ -23,19 +23,20 @@
 
 ## 能力 spec（何时读哪份）
 
-| spec                                               | 何时读                                                                 |
-| -------------------------------------------------- | ---------------------------------------------------------------------- |
-| [api-contract](api-contract/spec.md)               | 设计/改动任一端公开 API 面、类形态、动词与释放入口、worker 分发命令表  |
-| [ci-matrix](ci-matrix/spec.md)                     | 改 `.github/workflows/`、构建矩阵、lint/基准/覆盖率门槛与 job 编排     |
-| [dependency-upgrade](dependency-upgrade/spec.md)   | 升级任何工具链或依赖、改版本钉死点、加体检脚本                         |
-| [frequency-class](frequency-class/spec.md)         | 改 `Frequency` 频率轴功能面（构造、访问器、换算、显示串）              |
-| [frequency-unit](frequency-unit/spec.md)           | 改频率/波长单位词汇表、倍率、单位暴露形态与未知单位错误                |
-| [license-compliance](license-compliance/spec.md)   | 改许可文件、发布元数据、第三方声明、samples 登记、商标用法             |
-| [memory-lifecycle](memory-lifecycle/spec.md)       | 改跨 realm 内存回收、`drop()`、finalizer、句柄所有权                   |
-| [oracle-harness](oracle-harness/spec.md)           | 改 `oracle/` 阅卷、golden 生成、dump 布局、manifest 容差               |
-| [touchstone-core](touchstone-core/spec.md)         | 改 Touchstone 解析/写出、选项行语义、端口列序、域×格式访问、文件名规则 |
-| [workspace-layout](workspace-layout/spec.md)       | 改仓库目录结构、Cargo/pnpm workspace 组织、发布名与版本同步            |
-| [zero-copy-roundtrip](zero-copy-roundtrip/spec.md) | 改零拷贝视图往返、worker 异步边界、元数据回传、transfer 语义           |
+| spec                                                 | 何时读                                                                 |
+| ---------------------------------------------------- | ---------------------------------------------------------------------- |
+| [api-contract](api-contract/spec.md)                 | 设计/改动任一端公开 API 面、类形态、动词与释放入口、worker 分发命令表  |
+| [archive-health-check](archive-health-check/spec.md) | 归档前全项目只读体检、存量审查（五维清单、三级去重、硬伤卡归档）       |
+| [ci-matrix](ci-matrix/spec.md)                       | 改 `.github/workflows/`、构建矩阵、lint/基准/覆盖率门槛与 job 编排     |
+| [dependency-upgrade](dependency-upgrade/spec.md)     | 升级任何工具链或依赖、改版本钉死点、加体检脚本                         |
+| [frequency-class](frequency-class/spec.md)           | 改 `Frequency` 频率轴功能面（构造、访问器、换算、显示串）              |
+| [frequency-unit](frequency-unit/spec.md)             | 改频率/波长单位词汇表、倍率、单位暴露形态与未知单位错误                |
+| [license-compliance](license-compliance/spec.md)     | 改许可文件、发布元数据、第三方声明、samples 登记、商标用法             |
+| [memory-lifecycle](memory-lifecycle/spec.md)         | 改跨 realm 内存回收、`drop()`、finalizer、句柄所有权                   |
+| [oracle-harness](oracle-harness/spec.md)             | 改 `oracle/` 阅卷、golden 生成、dump 布局、manifest 容差               |
+| [touchstone-core](touchstone-core/spec.md)           | 改 Touchstone 解析/写出、选项行语义、端口列序、域×格式访问、文件名规则 |
+| [workspace-layout](workspace-layout/spec.md)         | 改仓库目录结构、Cargo/pnpm workspace 组织、发布名与版本同步            |
+| [zero-copy-roundtrip](zero-copy-roundtrip/spec.md)   | 改零拷贝视图往返、worker 异步边界、元数据回传、transfer 语义           |
 
 ## 文档地图（内容分配清单，增删只改本节）
 
