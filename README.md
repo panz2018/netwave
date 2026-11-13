@@ -16,9 +16,8 @@ optics.
 
 Why this exists: pure-TypeScript stacks (e.g. `mathjs`-based
 `RF-Touchstone`) drown in heap allocations and freeze on large Touchstone
-files (>50 MB); netwave parses with `memmap2` + `rayon` (tens of
-milliseconds for a 50 MB s4p) and shares one buffer across all three
-language runtimes without copies. Byte layout is identical to scikit-rf
+files (>50 MB); netwave shares one buffer across all three language
+runtimes without copies. Byte layout is identical to scikit-rf
 `Network.s` (complex128), so interop is a reinterpret, not a conversion.
 
 Current stage: **Touchstone core** — `Touchstone` parses and holds S-parameter
