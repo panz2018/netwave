@@ -41,7 +41,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SKIP_DIRS = ("target", "target-wasm", "node_modules", ".venv", ".git", "dist", "coverage")
+sys.path.insert(0, str(ROOT / "scripts" / "versions"))
+from lib.repository import SKIP_DIRS  # noqa: E402 — single source, LL-076
 # statements that legitimately terminate an else fallback: raise = error,
 # break/continue = loop-termination exemption. `return` is NOT a fallback —
 # it can silently hand back a normal value, exactly what the rule forbids;
