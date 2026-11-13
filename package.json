@@ -18,8 +18,8 @@
     "check:outdated": "uv run python scripts/versions/check_outdated.py"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.6.6",
-    "markdownlint-cli2": "^0.24.0",
-    "prettier": "^3.9.10"
+    "@biomejs/biome": "^2.6.7",
+    "markdownlint-cli2": "^0.24.1",
+    "prettier": "^3.10.1"
   }
 }
