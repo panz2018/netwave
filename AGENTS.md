@@ -104,7 +104,6 @@ governance spec、`openspec/config.yaml`、子项目 README）由 AI 读取并�
   `timeout 60 <cmd>`。超时即报告并拆分排查，不原地干等。
 - **首次联网操作预告**：`pnpm install`、`uv sync`（下载 Python）、
   `wasm-pack build`、`cargo` 首次拉 crate 均可能数分钟，执行前说明预计耗时。
-- corepack 命令必须带 `COREPACK_ENABLE_DOWNLOAD_PROMPT=0`（否则交互卡死）。
 
 ## 依赖版本策略
 
