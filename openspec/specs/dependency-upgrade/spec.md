@@ -298,11 +298,14 @@ OpenSpec、markdownlint-cli2 等是否落后 LTS/稳定线，落后先升）→ 
 
 - **WHEN** `rust-toolchain.toml` 升到新钉版
 - **THEN** 向新激活工具链补装 rustfmt/clippy 组件与 wasm32-unknown-unknown
-  target，并以 `cargo install --locked` 重装 cargo 子命令（rustup 不更新它们）
+  target；cargo-llvm-cov 为 GitHub 预编译 tarball 直装工具
+  （`scripts/install_cargo_llvm_cov.sh`），其二进制与工具链版本无关，
+  MUST NOT 随工具链升版重装
 
 #### Scenario: GitHub 直装工具落后即重跑安装脚本
 
-- **WHEN** 体检发现已装 wasm-pack / binaryen 落后于其 GitHub 最新 release
+- **WHEN** 体检发现已装 wasm-pack / binaryen / cargo-llvm-cov 落后于其
+  GitHub 最新 release
 - **THEN** 重跑对应 `scripts/install_*.sh` 升级到最新 release
 
 #### Scenario: 无依据的配对规矩不得作为升级约束
