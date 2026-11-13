@@ -17,7 +17,7 @@ the touchstone-core spec's encoding contract).
 ## Layout
 
 - `src/lib.rs` — public API + the interleaved complex layout contract
-- `tests/` — integration tests (the API has no unit tests besides these; TDD
+- `tests/` — integration tests (a few inline unit tests live in `src/`; TDD
   applies to every future verb)
 - `scripts/dump.rs` — cross-binding dump: writes the λ↔f axis and the
   Touchstone S master data into `oracle/tmp/core/`
