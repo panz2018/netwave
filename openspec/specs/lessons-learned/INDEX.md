@@ -66,3 +66,4 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-087 | workflow   | 多段报告禁 tail 截断后下"无问题"结论，须看 SUMMARY 总览行或完整输出            |
 | LL-088 | python     | abi3-py310 门控掉 `pyo3::buffer`，memoryview 走 `tobytes()`、PyBytes 0.30 签名 |
 | LL-089 | workflow   | 流程规则只写本步动作并核对步骤锚点，禁前移后置动作/复述 commit                 |
+| LL-090 | workflow   | 规划/设计文档的名字是未来接口提案，禁按现行 spec 判冲突（先判句子的时态）      |
