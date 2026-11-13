@@ -22,8 +22,8 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def main() -> int:
-    pkg = json.loads((ROOT / "typescript" / "package.json").read_text())
-    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+    pkg = json.loads((ROOT / "typescript" / "package.json").read_text(encoding="utf-8"))
+    ci = (ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
     missing = [
         name
         for name in pkg.get("scripts", {})

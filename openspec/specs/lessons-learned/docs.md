@@ -18,7 +18,8 @@
 
 - 犯过：Windows cp1252 读含中文 manifest 抛 `UnicodeDecodeError`（`89e28f2`）
 - 规则：所有 `read_text()`/`open()` 显式 `encoding="utf-8"`
-- 复发检测：可门禁化——grep `read_text()`/`open(` 无 encoding 即红
+- 复发检测：已落闸门 `scripts/check_py.py`（AST 查 `read_text()` 与文本模式
+  `open()` 缺 `encoding=`，二进制豁免）；`write_text()` 不在本条口径内
 
 ### LL-028 sync 后 archive 会重复追加 delta
 

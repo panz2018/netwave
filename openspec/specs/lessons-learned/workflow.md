@@ -99,8 +99,9 @@
 - 规则：跨脚本共用的常量（目录清单）与算法（版本解析/比较）MUST 收进
   `scripts/versions/lib/` 单一来源（`repository.SKIP_DIRS`、
   `version.parse_version`），门面与后续域收编一律引用，禁止再抄一份
-- 复发检测：grep `scripts/` 出现第二份 `SKIP_DIRS`/`skip =` 清单或第二套
-  版本解析实现（`semver`/`parse_ver`/`_semver`）即打回；
+- 复发检测：`SKIP_DIRS` 唯一性已落闸门 `scripts/check_py.py`（全仓顶层赋值
+  ≠1 处即红）；`skip =` 变体清单与第二套版本解析实现仍靠 review grep
+  （`semver`/`parse_ver`/`_semver`）打回；
   `scripts/tests/test_repository.py::test_skip_dirs_cover_build_outputs`
   钉住集合内容
 
