@@ -81,6 +81,14 @@ jobs:
         with:
           components: rustfmt, clippy
       - uses: mozilla-actions/sccache-action@v0.0.11
+      - name: install cargo-llvm-cov (latest official binary)
+        # cargo install compiles for minutes; official prebuilt tarballs.
+        # Every platform cell installs and smoke-tests the binary (the
+        # coverage step below still runs on linux-x64 only).
+        # GITHUB_TOKEN: authenticated API calls (see wasm job).
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/install_cargo_llvm_cov.sh
       - name: cargo test
         run: cargo test --workspace
       - name: llvm-cov (core 100% floor, ubuntu x64 only)
@@ -97,7 +105,6 @@ jobs:
         # standard OR merge every other language tool uses).
         if: matrix.target == 'linux-x64'
         run: |
-          cargo install cargo-llvm-cov --locked
           cargo llvm-cov -p netwave --codecov --output-path codecov.json
           python3 scripts/coverage_gate.py codecov.json 100
 
