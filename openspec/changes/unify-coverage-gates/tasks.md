@@ -49,5 +49,6 @@
 ## Workflow follow-up
 
 - 提交全景表（分组 → 文件 → commit 标题）在闸门绿后给出，等人工点名提交；禁止直推 main。
-- 归档前按 archive guidance 执行 Plan/ 瘦身检查与 openspec/specs/ 三态时效检查，归档后跑 archive-health-check 五维体检。
+- 归档前按 archive guidance 执行 Plan/ 瘦身检查与 openspec/specs/ 三态时效检查。
+- 本 change 经人工点名（2026-11-13）**跳过** archive guidance 中"归档完成后执行 archive-health-check 五维只读体检"一项，归档完成即收口。
 - 延后项去向：根聚合入口 `test:*`（闸门重排档 T1/T2/T4）、wasm 胶水覆盖率 spike（S5）——各自独立点名立项，不在本 change。
