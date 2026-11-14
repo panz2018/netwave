@@ -213,3 +213,16 @@
   （对象路径/透传错配会产出 exit 0 的空或缺行报告）
 - 复发检测：review 时核对退役执行者的 commit 附 grep 前提实证；胶水阅卷前核对
   报告含目标路径行且命中 > 0
+
+### LL-095 llvm-cov 不建输出目录——CI 写报告前须 mkdir -p
+
+- 犯过：CI run 43603143333 全部 rust/python/node job 红——`llvm-cov` 的
+  `--output-path coverage/...json` 不创建父目录，而 `coverage/` 被
+  `.gitignore` 排除、CI 干净检出里不存在，报
+  `failed to create file ... No such file or directory`；本地因目录已存在
+  而全绿，LL-004 的本地模拟未覆盖"干净检出"这一差异面
+- 规则：CI 步骤凡写 `coverage/` 下产物，MUST 先 `mkdir -p coverage`；
+  本地模拟 CI 时凡目标目录在 `.gitignore` 内，须先删该目录再跑，
+  否则模拟不出干净检出态
+- 复发检测：review 时 grep ci.yml 中 `--output-path coverage/` 的 step
+  是否同 step 含 `mkdir -p coverage`
