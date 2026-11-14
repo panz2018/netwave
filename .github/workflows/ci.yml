@@ -219,7 +219,7 @@ jobs:
           (cd python && uv run pytest --cov=netwave --cov-fail-under=100)
           cargo llvm-cov report --codecov \
             --output-path coverage/coverage-python.json \
-            --ignore-filename-regex '/core/'
+            --ignore-filename-reg ex '[\\/]core[\\/]'
           python3 scripts/coverage_gate.py coverage/coverage-python.json 0
       - name: upload python glue coverage report
         uses: actions/upload-artifact@v7
@@ -306,7 +306,7 @@ jobs:
             --pool=threads --execArgv="" --no-file-parallelism
           cargo llvm-cov report --target "$(rustc -vV | sed -n 's/^host: //p')" \
             --codecov --output-path coverage/coverage-native.json \
-            --ignore-filename-regex '/core/'
+            --ignore-filename-regex '[\\/]core[\\/]'
           python3 scripts/coverage_gate.py coverage/coverage-native.json 0
       - name: upload native glue coverage report
         uses: actions/upload-artifact@v7
