@@ -28,8 +28,13 @@ Plan/         Unexecuted planning docs only; lifecycle rules live in
   `pnpm fix`. Root `package.json` scripts are the single source of truth
   for command details — never restate them elsewhere.
 - **Coverage floor**: thresholds are defined in the ci-matrix and
-  project-governance specs (iron rule 7); the gate commands live in the
-  root `package.json` scripts and CI.
+  project-governance specs (iron rule 7). Core rust is measured by
+  `cargo llvm-cov -p netwave` on every native platform; the python and
+  native rust glue lines are measured inside their language jobs via
+  `cargo llvm-cov show-env` + pytest/vitest + `report` (external-driver
+  collection). Each report is graded independently by
+  `scripts/coverage_gate.py`. Commands are inlined in `ci.yml` (the root
+  aggregation entry is deferred).
 - **Cross-binding compare**: `pnpm check:cross` dumps all four ends into
   `oracle/tmp/` and `oracle/compare_cross.py` verifies them (native ends
   bit-exact, wasm within manifest tolerance, plus an anti-tautology
@@ -47,7 +52,8 @@ Plan/         Unexecuted planning docs only; lifecycle rules live in
 
 ```bash
 pnpm install                        # JS dev tooling (biome, prettier, markdownlint)
-cargo test --workspace            # Rust core + binding tests
+cargo llvm-cov -p netwave       # Rust core tests + coverage (all platforms in CI)
+cargo build --workspace --all-targets  # binding crates compile gate
 pnpm -C typescript build:native   # napi .node addon
 pnpm -C typescript build:wasm     # wasm-bindgen artifacts
 uv sync --project python          # Python env (uv)
