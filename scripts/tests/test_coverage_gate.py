@@ -72,3 +72,77 @@ class TestNoDoubleCounting:
         out = capsys.readouterr().out
         assert "2/2 = 100.00%" in out
         assert "core/src" not in out
+
+
+class TestMacroAttributeExemption:
+    """Pattern-driven exemption for impl-block macro attribute lines.
+
+    `#[pymethods]` / `#[napi ...]` on an `impl` block carry one llvm-cov
+    region whose count never merges back from the macro-generated wrappers
+    (rustc#79651), so the line shows 0 even when every method runs. llvm-cov
+    honors no line-level exclusion marker (LCOV_EXCL_* is lcov-perl only;
+    `#[coverage(off)]` is nightly-only, LL-020), so the grading layer exempts
+    by pattern: line missed in the report + source line matches the macro
+    attribute + the next code line (skipping attrs/comments) starts `impl`.
+    A missed line whose source cannot be read is never exempted — it stays
+    missed (red at the production floor) and is reported as unverifiable."""
+
+    def _src(self, tmp_path, name: str, lines: list[str]) -> str:
+        p = tmp_path / name
+        p.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return str(p)
+
+    def test_pymethods_before_impl_is_exempted(self, tmp_path, capsys):
+        src = self._src(
+            tmp_path,
+            "glue.rs",
+            ["#[pymethods]", "impl Frequency {", "    fn m() {}", "}"],
+        )
+        files = {src: {"1": "0/1", "2": "1/1"}}
+        path = _report(tmp_path, "coverage-glue.json", files)
+        assert coverage_gate.main([path, "100"]) == 0
+        out = capsys.readouterr().out
+        # exempted lines count as covered; the denominator stays honest
+        assert "2/2 = 100.00%" in out
+        assert f"exempted {src}: [1]" in out
+
+    def test_napi_with_args_before_impl_is_exempted(self, tmp_path, capsys):
+        src = self._src(
+            tmp_path,
+            "native.rs",
+            ['#[napi(js_name = "Touchstone")]', "impl Touchstone {", "}"],
+        )
+        files = {src: {"1": "0/1"}}
+        path = _report(tmp_path, "coverage-native.json", files)
+        assert coverage_gate.main([path, "100"]) == 0
+        out = capsys.readouterr().out
+        assert "1/1 = 100.00%" in out
+        assert f"exempted {src}: [1]" in out
+
+    def test_macro_attribute_before_fn_stays_red(self, tmp_path, capsys):
+        # A macro attribute on a plain fn is a real untested line: the
+        # exemption requires the next code line to be `impl`.
+        src = self._src(tmp_path, "glue.rs", ["#[napi]", "fn from_url() {}", "}"])
+        files = {src: {"1": "0/1", "2": "1/1"}}
+        path = _report(tmp_path, "coverage-glue.json", files)
+        assert coverage_gate.main([path, "100"]) == 1
+        out = capsys.readouterr().out
+        assert f"missed {src}: [1]" in out
+        assert "exempted" not in out
+
+    def test_non_macro_attribute_stays_red(self, tmp_path, capsys):
+        src = self._src(tmp_path, "glue.rs", ["#[derive(Debug)]", "impl S {", "}"])
+        files = {src: {"1": "0/1", "2": "1/1"}}
+        path = _report(tmp_path, "coverage-glue.json", files)
+        assert coverage_gate.main([path, "100"]) == 1
+        out = capsys.readouterr().out
+        assert f"missed {src}: [1]" in out
+        assert "exempted" not in out
+
+    def test_unreadable_source_is_never_exempted(self, tmp_path, capsys):
+        files = {"no/such/dir/glue.rs": {"7": "0/1"}}
+        path = _report(tmp_path, "coverage-glue.json", files)
+        assert coverage_gate.main([path, "100"]) == 1
+        out = capsys.readouterr().out
+        assert "unverifiable no/such/dir/glue.rs: [7]" in out
+        assert "exempted no/such/dir/glue.rs" not in out
