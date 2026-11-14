@@ -107,6 +107,9 @@ jobs:
         # flips it to 100 after the numbers are reviewed).
         shell: bash
         run: |
+          # coverage/ is gitignored and absent on a clean checkout; llvm-cov
+          # does not create parent dirs of --output-path (CI run 43603143333).
+          mkdir -p coverage
           cargo llvm-cov -p netwave --codecov --output-path coverage/coverage-core.json
           python3 scripts/coverage_gate.py coverage/coverage-core.json 0
           cargo build --workspace --all-targets
@@ -209,6 +212,7 @@ jobs:
         # unchanged.
         shell: bash
         run: |
+          mkdir -p coverage
           eval "$(cargo llvm-cov show-env --sh --no-cfg-coverage)"
           cargo llvm-cov clean --workspace
           (cd python && uv sync && uv run maturin develop)
@@ -293,6 +297,7 @@ jobs:
         # Floor 0 = calibration round (task 6.3 flips to 100).
         shell: bash
         run: |
+          mkdir -p coverage
           eval "$(cargo llvm-cov show-env --sh --no-cfg-coverage)"
           export NODE_OPTIONS=--expose-gc
           cargo llvm-cov clean --workspace
