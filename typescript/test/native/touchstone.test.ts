@@ -172,6 +172,16 @@ describe("touchstone node data plane", () => {
       expect(h[i]).toBeCloseTo(v, 9);
     });
   });
+
+  it("empty-data touchstone exposes an empty s view", () => {
+    // A `#` option line with zero data rows parses to a valid object whose S
+    // buffer is empty (0 is a multiple of any stride). `get_s` must return an
+    // empty view via its len==0 guard rather than an external buffer over a
+    // dangling pointer.
+    const ts = Touchstone.fromText("# GHZ S RI R 50\n", 1);
+    expect(ts.nports).toBe(1);
+    expect(ts.s.length).toBe(0);
+  });
 });
 
 describe("touchstone node write", () => {

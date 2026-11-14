@@ -127,6 +127,15 @@ def test_gh_domain_requires_two_ports() -> None:
         _ = ts.g
 
 
+def test_empty_data_touchstone_has_empty_s() -> None:
+    # A `#` option line with zero data rows parses to a valid object whose S
+    # buffer is empty (0 is a multiple of any stride); the s view is empty.
+    ts = netwave.Touchstone.from_text("# GHZ S RI R 50\n", 1)
+    assert ts.nports == 1
+    assert ts.s.shape == (0, 1, 1)
+    assert ts.s.size == 0
+
+
 def test_y_domain_matches_ingested_matrix() -> None:
     # `.y` recomputes Y from the stored S; a Y file round-trips back to the
     # ingested matrix (independent truth = the input literals). Zero-pivot
