@@ -45,11 +45,14 @@ CI MUST 启用覆盖率采集并使 100% 行覆盖门槛生效，且 MUST 按 cr
   nightly-only 禁用，LL-020）并附理由。
 
 绑定 crate（python、typescript/native）的 rust 胶水行 MUST 在各自语言 job
-内以 `cargo llvm-cov exec` 包住外部测试驱动（pytest / vitest）采集，
+内以 `cargo llvm-cov show-env --sh --no-cfg-coverage` + 构建 + 外部测试驱动
+（pytest / vitest）+ `cargo llvm-cov report --codecov` 采集（show-env、clean、
+构建、外部测试、report MUST 同一 step——环境变量不跨 step；
+`--no-cfg-coverage` 防 show-env 默认 `cfg(coverage)` 剥掉源码胶水），
 报告以 `--ignore-filename-regex` 剔除 core 路径后独立阅卷——core 行归
 core 报告、胶水行归胶水报告，互不重复计分。原"绑定 crate 不进 llvm-cov
 job 属工具作用域分离"口径废止：该口径的成立前提（绑定 crate 无法被
-llvm-cov 度量）已被 `exec` 外部驱动采集推翻。typescript/wasm crate 的
+llvm-cov 度量）已被 show-env/report 外部驱动采集推翻。typescript/wasm crate 的
 rust 行覆盖率暂不采集（vitest 驱动下插桩计数倒出未验证，另行 spike
 立项），wasm 端 TS 层 vitest 100% 门槛不变。
 

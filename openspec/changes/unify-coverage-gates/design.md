@@ -24,11 +24,16 @@
 
 ## Decisions
 
-1. **`cargo llvm-cov exec` 包住外部驱动，而非 show-env 手工三步**。
-   `exec --codecov --output-path ... -- <构建+测试链>` 一条命令完成
-   插桩环境注入、profraw 收集、报告导出。备选：show-env + clean + report
-   手工三步（README「Get coverage of external tests」）——仪式多、易漏
-   clean 导致复用未插桩缓存假 0%，弃用。
+1. **官方 `show-env` + `report` 三步包住外部驱动**。`exec` 子命令**不存在**
+   （`cargo llvm-cov --help` 实证：仅 `test|run|report|show-env|clean|nextest`），
+   官方外部测试机制为同一 shell 内四步：
+   `eval "$(cargo llvm-cov show-env --sh --no-cfg-coverage)"` →
+   `cargo llvm-cov clean --workspace` → 插桩构建 + pytest/vitest 驱动 →
+   `cargo llvm-cov report --codecov --output-path ...`。
+   `--no-cfg-coverage` 必需：show-env 默认自动设 `cfg(coverage)`，会把源码
+   `cfg_attr(..., not(coverage), napi/pyclass)` 胶水剥掉，与胶水扩面目标相冲。
+   约束：show-env、clean、构建、外部测试、report MUST 同一 CI step（环境变量
+   不跨 step）。
 2. **命令内联 ci.yml，不落 package.json**。铁律七钉的命令字面本就写在
    spec，内联与 spec 一致零冲突；根聚合入口 `test:*` 属闸门重排档 T1/T2/T4，
    人工定夺延后。代价：本地暂无单命令复现 CI 测试面（已知缺口，T1 点名时补）。
@@ -52,11 +57,11 @@
 
 ## Risks / Trade-offs
 
-- [napi build 不透传 exec 注入的 RUSTFLAGS → 胶水报告假 0%] → apply 首步
+- [napi build 不透传 show-env 注入的 RUSTFLAGS → 胶水报告假 0%] → apply 首步
   本地 spike 验证；不通则改用 napi 配置的 cargo 参数注入
   （`napi.config.rust` 段或 env 显式传递）。
 - [vitest 多进程 profraw 互相覆盖 → 计数丢失] → spike 验证
-  `LLVM_PROFILE_FILE` 默认含 `%p`；不含则 exec 参数显式指定。
+  `LLVM_PROFILE_FILE` 默认含 `%p`；不含则 show-env 后显式 export 补 `%p`。
 - [windows/mac 格内联命令的 shell 语义差异（pwsh 无 bash 语法）] → 胶水
   步骤统一 `shell: bash`（LL-011 既有裁决）。
 - [四平台覆盖率数字差异（内联决策）致某格 <100] → 两阶段标定吸收；
