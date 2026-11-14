@@ -226,3 +226,16 @@
   否则模拟不出干净检出态
 - 复发检测：review 时 grep ci.yml 中 `--output-path coverage/` 的 step
   是否同 step 含 `mkdir -p coverage`
+
+### LL-096 路径 regex 须兼容双分隔符——Windows 反斜杠击穿 `/core/`
+
+- 犯过：CI run 43608401037 标定轮发现 `--ignore-filename-regex '/core/'`
+  匹配不到 Windows 的 `D:\a\netwave\netwave\core\src\...`，core 行漏进
+  python/native 胶水报告（81.61%/81.20%，拆开验证胶水部分与 linux/macOS
+  完全一致）；本地 Linux 路径恒为 `/`，单 OS 模拟（LL-004）复现不了
+- 规则：凡对文件路径做 regex 匹配（include/ignore/排除），MUST 用
+  `[\\/]` 同时兼容两种分隔符，禁写裸 `/`；spec 写 regex 同理；
+  平台特有形态（路径分隔符、换行、ABI）不得假设跨端一致，本地模拟
+  声明"每格已验"时须注明哪些面只有 CI 真跑才能覆盖
+- 复发检测：review 时 grep ci.yml/spec 中路径 regex 是否含裸 `/xxx/`
+  模式；标定轮对比同报告跨平台数字，离群格先查路径形态再查代码

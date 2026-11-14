@@ -72,3 +72,4 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-093 | ci         | 覆盖率口径漂移假绿：退役执行者须 grep 实证前提，胶水报告须验命中 > 0                               |
 | LL-094 | python     | 改 pytest 全局配置须当轮全量跑并贴覆盖率文件清单证据（pythonpath≠覆盖率范围）                      |
 | LL-095 | ci         | llvm-cov 不建输出目录：CI 写 coverage/ 前须 mkdir -p，本地模拟先删 gitignored 目录                 |
+| LL-096 | ci         | 路径 regex 须 `[\\/]` 兼容反斜杠：Windows 路径击穿 `/core/` 混入 core 行，单 OS 模拟复现不了       |
