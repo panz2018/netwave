@@ -83,19 +83,16 @@ jobs:
       - uses: mozilla-actions/sccache-action@v0.0.11
       - name: install cargo-llvm-cov (latest official binary)
         # cargo install compiles for minutes; official prebuilt tarballs.
-        # Every platform cell installs and smoke-tests the binary (the
-        # coverage step below still runs on linux-x64 only).
+        # Every platform cell installs and smoke-tests the binary.
         # GITHUB_TOKEN: authenticated API calls (see wasm job).
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/install_cargo_llvm_cov.sh
-      - name: cargo test
-        run: cargo test --workspace
-      - name: llvm-cov (core 100% floor, ubuntu x64 only)
+      - name: llvm-cov (core tests, all platforms) + build watchdog
         # Per-crate ownership: core coverage is measured by core's own
-        # tests (`-p netwave`); binding glue is measured by pytest-cov /
-        # vitest in its own jobs. The 100% floor is enforced by
-        # scripts/coverage_gate.py on codecov.json, NOT by
+        # tests (`-p netwave`); binding glue is measured by pytest /
+        # vitest driving instrumented builds in its own jobs. The floor
+        # is enforced by scripts/coverage_gate.py on codecov.json, NOT by
         # `--fail-under-lines`: that flag evaluates the `llvm-cov report`
         # numbers, which count each unexecuted inlined instantiation
         # separately (defensive arms executed only by the lib unit test
@@ -103,10 +100,21 @@ jobs:
         # 99.x%). The codecov export uses `llvm-cov show` semantics: a
         # line executed in ANY instantiation counts as covered (the
         # standard OR merge every other language tool uses).
-        if: matrix.target == 'linux-x64'
+        # `cargo test --workspace` retired: core tests run exactly once
+        # here, and binding-crate compilation moves to the build watchdog
+        # below (llvm-cov -p netwave does not compile the binding crates).
+        # Floor 0 = calibration round (unify-coverage-gates task 6.3
+        # flips it to 100 after the numbers are reviewed).
+        shell: bash
         run: |
-          cargo llvm-cov -p netwave --codecov --output-path codecov.json
-          python3 scripts/coverage_gate.py codecov.json 100
+          cargo llvm-cov -p netwave --codecov --output-path coverage/coverage-core.json
+          python3 scripts/coverage_gate.py coverage/coverage-core.json 0
+          cargo build --workspace --all-targets
+      - name: upload core coverage report
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-core-${{ matrix.target }}
+          path: coverage/coverage-core.json
 
   # wasm: browser is the primary target -> first-class job, zero
   # conditionals, full OS matrix: wasm codegen differs per host toolchain,
@@ -183,12 +191,37 @@ jobs:
       - uses: astral-sh/setup-uv@v10.3.3
         with:
           python-version: ${{ matrix.python-version }}
-      - name: sync + build + test
-        working-directory: python
+      - name: install cargo-llvm-cov (latest official binary)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/install_cargo_llvm_cov.sh
+      - name: sync + build + test (python layer + rust glue coverage)
+        # bash + repo-root cwd: show-env/report need the root target/ dir,
+        # while maturin/pytest must run inside python/ (the root
+        # pyproject.toml has no build-system section — maturin from the
+        # repo root misreads it). `(cd python && ...)` subshells isolate
+        # the directory change (LL-011). show-env, clean, build, test and
+        # report MUST share one step — the instrumentation env does not
+        # cross steps. maturin passes RUSTC_WRAPPER through to cargo, so
+        # the extension builds instrumented; pytest drives it and the
+        # profraw lands in root target/. Floor 0 = calibration round
+        # (task 6.3 flips to 100). The python-layer pytest-cov floor is
+        # unchanged.
+        shell: bash
         run: |
-          uv sync
-          uv run maturin develop
-          uv run pytest --cov=netwave --cov-fail-under=100
+          eval "$(cargo llvm-cov show-env --sh --no-cfg-coverage)"
+          cargo llvm-cov clean --workspace
+          (cd python && uv sync && uv run maturin develop)
+          (cd python && uv run pytest --cov=netwave --cov-fail-under=100)
+          cargo llvm-cov report --codecov \
+            --output-path coverage/coverage-python.json \
+            --ignore-filename-regex '/core/'
+          python3 scripts/coverage_gate.py coverage/coverage-python.json 0
+      - name: upload python glue coverage report
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-python-${{ matrix.os }}-${{ matrix.python-version }}
+          path: coverage/coverage-python.json
 
   # Node matrix: ubuntu runs the floor (22) + latest (26);
   # windows/macos run latest only — the point there is the platform ABI
@@ -236,8 +269,45 @@ jobs:
         # wasm first keeps the browser shell's dts fully typed (a missing
         # wasm glue makes tsdown emit `any` for the re-exported verbs).
         run: pnpm -C typescript build:wasm
-      - name: napi build (+ tsdown shells)
-        run: pnpm -C typescript build:native
+      - name: install cargo-llvm-cov (latest official binary)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: bash scripts/install_cargo_llvm_cov.sh
+      - name: napi build + vitest native (+ rust glue coverage)
+        # One step: show-env, clean, instrumented build, vitest and report
+        # MUST share it — the instrumentation env does not cross steps.
+        # debug build (not release): instrumented release is slow and
+        # optimization shifts line mappings off the source (design decision
+        # 7); the .node exports the same symbols and zero-copy protocol.
+        # `--no-cfg-coverage` keeps the napi glue compiled in (show-env
+        # would otherwise set cfg(coverage) and strip it). vitest runs on
+        # the threads pool with execArgv cleared and gc via NODE_OPTIONS:
+        # worker threads reject --expose-gc (ERR_WORKER_INVALID_EXEC_ARGV)
+        # and do not run libc atexit, so the threads pool's normal main-
+        # process exit is what flushes profraw; --no-file-parallelism
+        # serializes files because every worker shares one .node's Rust
+        # static live_count (memory-lifecycle counts would race). v8 TS
+        # coverage still hits its 100% threshold under the threads pool.
+        # report needs --target: napi --platform builds objects under
+        # target/<triple>/, which report does not search by default.
+        # Floor 0 = calibration round (task 6.3 flips to 100).
+        shell: bash
+        run: |
+          eval "$(cargo llvm-cov show-env --sh --no-cfg-coverage)"
+          export NODE_OPTIONS=--expose-gc
+          cargo llvm-cov clean --workspace
+          pnpm -C typescript build:native:debug
+          pnpm -C typescript test:native --coverage \
+            --pool=threads --execArgv="" --no-file-parallelism
+          cargo llvm-cov report --target "$(rustc -vV | sed -n 's/^host: //p')" \
+            --codecov --output-path coverage/coverage-native.json \
+            --ignore-filename-regex '/core/'
+          python3 scripts/coverage_gate.py coverage/coverage-native.json 0
+      - name: upload native glue coverage report
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-native-${{ matrix.os }}-${{ matrix.node-version }}
+          path: coverage/coverage-native.json
       - name: tsc type gate (after both glues exist)
         # Lives here, not in the lint job: the shells import the generated
         # bindings from dist/, so the type gate needs napi + wasm glue
@@ -253,8 +323,6 @@ jobs:
             echo "::error::shell dts has any-typed exports - glues were not built before tsdown (LL-034)"
             exit 1
           fi
-      - name: vitest (native, coverage 100)
-        run: pnpm -C typescript test:native --coverage
       - name: vitest (wasm, coverage 100)
         run: pnpm -C typescript test:wasm --coverage
       - name: cross-binding compare + cross-end vocabulary types
