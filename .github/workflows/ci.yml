@@ -103,15 +103,15 @@ jobs:
         # `cargo test --workspace` retired: core tests run exactly once
         # here, and binding-crate compilation moves to the build watchdog
         # below (llvm-cov -p netwave does not compile the binding crates).
-        # Floor 0 = calibration round (unify-coverage-gates task 6.3
-        # flips it to 100 after the numbers are reviewed).
+        # Floor 100: calibration closed (unify-coverage-gates task 6.3) —
+        # core is fully covered on every cell; untested lines are red.
         shell: bash
         run: |
           # coverage/ is gitignored and absent on a clean checkout; llvm-cov
           # does not create parent dirs of --output-path (CI run 43603143333).
           mkdir -p coverage
           cargo llvm-cov -p netwave --codecov --output-path coverage/coverage-core.json
-          python3 scripts/coverage_gate.py coverage/coverage-core.json 0
+          python3 scripts/coverage_gate.py coverage/coverage-core.json 100
           cargo build --workspace --all-targets
       - name: upload core coverage report
         uses: actions/upload-artifact@v7
@@ -207,9 +207,10 @@ jobs:
         # report MUST share one step — the instrumentation env does not
         # cross steps. maturin passes RUSTC_WRAPPER through to cargo, so
         # the extension builds instrumented; pytest drives it and the
-        # profraw lands in root target/. Floor 0 = calibration round
-        # (task 6.3 flips to 100). The python-layer pytest-cov floor is
-        # unchanged.
+        # profraw lands in root target/. Floor 100: calibration closed
+        # (task 6.3) — the only uncovered lines were the #[pymethods]
+        # attribute lines (rustc#79651), exempted by pattern in the gate.
+        # The python-layer pytest-cov floor is unchanged.
         shell: bash
         run: |
           mkdir -p coverage
@@ -219,8 +220,8 @@ jobs:
           (cd python && uv run pytest --cov=netwave --cov-fail-under=100)
           cargo llvm-cov report --codecov \
             --output-path coverage/coverage-python.json \
-            --ignore-filename-reg ex '[\\/]core[\\/]'
-          python3 scripts/coverage_gate.py coverage/coverage-python.json 0
+            --ignore-filename-regex '[\\/]core[\\/]'
+          python3 scripts/coverage_gate.py coverage/coverage-python.json 100
       - name: upload python glue coverage report
         uses: actions/upload-artifact@v7
         with:
@@ -294,7 +295,9 @@ jobs:
         # coverage still hits its 100% threshold under the threads pool.
         # report needs --target: napi --platform builds objects under
         # target/<triple>/, which report does not search by default.
-        # Floor 0 = calibration round (task 6.3 flips to 100).
+        # Floor 100: calibration closed (task 6.3) — the only uncovered
+        # lines were the #[napi] attribute lines (rustc#79651), exempted
+        # by pattern in the gate.
         shell: bash
         run: |
           mkdir -p coverage
@@ -307,7 +310,7 @@ jobs:
           cargo llvm-cov report --target "$(rustc -vV | sed -n 's/^host: //p')" \
             --codecov --output-path coverage/coverage-native.json \
             --ignore-filename-regex '[\\/]core[\\/]'
-          python3 scripts/coverage_gate.py coverage/coverage-native.json 0
+          python3 scripts/coverage_gate.py coverage/coverage-native.json 100
       - name: upload native glue coverage report
         uses: actions/upload-artifact@v7
         with:
