@@ -334,6 +334,79 @@ fn constructor_rejects_non_square_cells() {
 }
 
 #[test]
+fn constructor_empty_axis_and_data_builds_empty_object() {
+    // npoints=0 ∧ data empty -> empty object; nports from the z0 shape
+    // (len 1 -> 1). Roundtrip-consistent with from_text zero-row objects:
+    // the passed axis's display unit is preserved on write.
+    let f = netwave::frequency::Frequency::from_f(vec![], netwave::frequency::FrequencyUnit::GHz);
+    let ts = Touchstone::from_data(&f, &[], &[50.0], TouchstoneParameter::S, "e", "c").unwrap();
+    assert_eq!(ts.nports(), 1);
+    assert_eq!(ts.f(), Vec::<f64>::new());
+    assert!(ts.s().is_empty());
+    assert_eq!(ts.version(), "1.0");
+    assert_eq!(ts.name(), "e");
+    assert_eq!(ts.comments(), "c");
+    assert_eq!(
+        ts.to_text(TouchstoneParameter::S, TouchstoneFormat::RI)
+            .unwrap(),
+        "! c\n# GHZ S RI R 50\n"
+    );
+    let again = Touchstone::from_text("# GHZ S RI R 50\n", Some(1), None).unwrap();
+    assert_eq!(again.nports(), 1);
+    assert!(again.s().is_empty());
+}
+
+#[test]
+fn constructor_empty_object_nports_from_z0_len() {
+    let f = netwave::frequency::Frequency::from_f(vec![], netwave::frequency::FrequencyUnit::Hz);
+    // per-port z0 -> nports = len, version from values (as usual).
+    let ts = Touchstone::from_data(&f, &[], &[50.0, 45.0], TouchstoneParameter::S, "", "").unwrap();
+    assert_eq!(ts.nports(), 2);
+    assert_eq!(ts.version(), "1.1");
+    // empty z0 has no shape to derive ports from.
+    let err = Touchstone::from_data(&f, &[], &[], TouchstoneParameter::S, "", "").unwrap_err();
+    assert!(
+        matches!(err, TouchstoneError::Z0Shape { len: 0, .. }),
+        "{err}"
+    );
+}
+
+#[test]
+fn constructor_nonempty_axis_empty_data_errors() {
+    // npoints≠0 ∧ data empty -> DimensionMismatch (never a broken
+    // nports=0 object).
+    let f =
+        netwave::frequency::Frequency::from_f(vec![1.0e9], netwave::frequency::FrequencyUnit::Hz);
+    let err = Touchstone::from_data(&f, &[], &[50.0], TouchstoneParameter::S, "", "").unwrap_err();
+    let msg = err.to_string();
+    assert!(
+        msg.contains("data length 0") && msg.contains("npoints 1"),
+        "must quote data_len 0 and npoints 1: {msg}"
+    );
+}
+
+#[test]
+fn constructor_empty_axis_nonempty_data_errors() {
+    let f = netwave::frequency::Frequency::from_f(vec![], netwave::frequency::FrequencyUnit::Hz);
+    let err =
+        Touchstone::from_data(&f, &[0.0; 2], &[50.0], TouchstoneParameter::S, "", "").unwrap_err();
+    let msg = err.to_string();
+    assert!(
+        msg.contains("data length 2") && msg.contains("npoints 0"),
+        "must quote data_len 2 and npoints 0: {msg}"
+    );
+}
+
+#[test]
+fn constructor_empty_object_rejects_gh_on_one_port() {
+    // Same validation from_text applies to zero-row G/H files: the domain
+    // port check runs before the (empty) conversion loop.
+    let f = netwave::frequency::Frequency::from_f(vec![], netwave::frequency::FrequencyUnit::Hz);
+    let err = Touchstone::from_data(&f, &[], &[50.0], TouchstoneParameter::G, "", "").unwrap_err();
+    assert!(err.to_string().contains('G'), "{err}");
+}
+
+#[test]
 fn data_gh_on_non_two_port_errors() {
     // The unified accessor reaches the same G/H port guard as the
     // shortcut properties.

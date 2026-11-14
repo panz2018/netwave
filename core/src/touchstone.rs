@@ -959,7 +959,12 @@ impl Touchstone {
     ///
     /// Validation: `data.len() == npoints × nports² × 2`; `z0` length 1 or
     /// nports; no duplicate frequencies (shuffled input sorts ascending);
-    /// G/H only for 2 ports.
+    /// G/H only for 2 ports. Empty semantics: an empty axis with empty data
+    /// builds an empty object — nports comes from the z0 shape (len 1 → 1,
+    /// len ≥ 2 → len, len 0 → `Z0Shape`) and the axis keeps the passed
+    /// display unit, so `to_text` round-trips like a `from_text` zero-row
+    /// object; an empty axis carrying data, or a non-empty axis without
+    /// data, is `DimensionMismatch`.
     pub fn from_data(
         frequency: &crate::frequency::Frequency,
         data: &[f64],
@@ -971,6 +976,51 @@ impl Touchstone {
         // nports is inferred from the data shape (npoints known from the
         // axis); z0 must then be scalar or match it.
         let npoints = frequency.npoints().expect("live frequency");
+        if npoints == 0 && data.is_empty() {
+            // Empty axis + empty data: an empty object. Nothing else
+            // carries the port count, so nports comes from the z0 shape;
+            // the passed axis's display unit is preserved (the axis is
+            // rebuilt here because `Frequency` is not `Clone` — the LIVE
+            // count is per-owner).
+            let nports = match z0.len() {
+                0 => return Err(TouchstoneError::Z0Shape { len: 0, nports: 0 }),
+                1 => 1,
+                len => len,
+            };
+            // Same domain port check the (empty) conversion loop would
+            // never reach: mirrors from_text on zero-row G/H files.
+            if parameter.requires_two_ports() && nports != 2 {
+                return Err(TouchstoneError::DomainPortCount {
+                    domain: parameter.as_ref().to_owned(),
+                    nports,
+                });
+            }
+            let version = if z0.windows(2).all(|w| w[0] == w[1]) {
+                "1.0".to_owned()
+            } else {
+                "1.1".to_owned()
+            };
+            let unit = frequency.unit().expect("live frequency");
+            return Ok(Self {
+                frequency: crate::frequency::Frequency::from_f(vec![], unit),
+                s: Arc::new(Vec::new()),
+                z0: z0.to_vec(),
+                nports: nports as u32,
+                name: name.to_owned(),
+                comments: comments.to_owned(),
+                version,
+                parameter,
+            });
+        }
+        // Exactly one side empty: no port count can be derived, and the
+        // shape math below would build a broken nports=0 object.
+        if npoints == 0 || data.is_empty() {
+            return Err(TouchstoneError::DimensionMismatch {
+                data_len: data.len(),
+                npoints,
+                nports: 0,
+            });
+        }
         if !data.len().is_multiple_of(npoints * 2) {
             return Err(TouchstoneError::DimensionMismatch {
                 data_len: data.len(),
