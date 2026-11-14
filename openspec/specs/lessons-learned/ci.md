@@ -41,8 +41,12 @@
   `protocol=https` + `host=github.com`）取 token，调
   `api.github.com/repos/{owner}/{repo}/pulls` 创建（token 不得回显进
   对话）。找不到 gh CLI / token 环境变量 ≠ 无凭据，先试 credential helper
+- 复发（2026-11-13）：查 CI 运行状态时见 PATH 无 `gh` 即报"本机没有 gh，
+  查不了 CI"，未跑 `git credential fill` 取证——照本条方法取 token 调
+  `actions/runs` API 一次即查到 18 格全绿。未遵守原因：下"能力不可用"
+  结论前没扫本账本
 - 复发检测：review 时核对 main 历史无 agent 直推 commit；对话中声称
-  "无凭据建不了 PR"前，必须附 credential fill 失败的证据
+  "无凭据建不了 PR/查不了 CI"前，必须附 credential fill 失败的证据
 
 ### LL-011 Windows GITHUB_PATH 原生路径且分 step
 
@@ -158,3 +162,22 @@
   （`rm ~/.cargo/bin/<tool>`）使脚本安装位生效
 - 复发检测：`install_*.sh` 跑完后 `which <tool>` 路径不含脚本的
   安装目录（`~/.local/bin`）即中招
+
+### LL-091 llvm-cov show-env 泄漏进常驻终端污染构建，致本地假失败
+
+- 犯过：2026-11-13 apply 会话在常驻终端裸跑
+  `eval "$(cargo llvm-cov show-env --sh)"`，环境变量
+  （`RUSTC_WRAPPER=-Cinstrument-coverage`、`LLVM_PROFILE_FILE`、
+  `CARGO_LLVM_COV_*`）泄漏残留；此后所有 `pnpm build:native` 都带
+  `--cfg coverage` 编译，源码 `not(coverage)` 门控的 napi 胶水被剥掉，
+  `.node` 缺 `FrequencyUnit` 等导出，vitest 13/63 假失败，agent 一度
+  误判为"arm64 链接器丢 napi 符号"的仓库 bug（CI 实为 18 格全绿）
+- 规则：show-env 只在子 shell 内用——用 `bash -c` 把 show-env、构建、
+  测试、report 整条链一次跑完，随子 shell 销毁，MUST NOT 在常驻终端
+  裸 eval。清缓存 MUST 连 napi/wasm 的独立 target 一起清
+  （`typescript/native/target`、`typescript/wasm/target` 不在根
+  `cargo clean` 范围，同 python.md LL-023 的 `python/target` 同理）。
+  本地测试失败先 `env -i` 干净环境复跑：复跑变绿 = 环境污染非代码问题，
+  禁止据脏环境结果对仓库下 bug 结论
+- 复发检测：报"仓库有 bug"前对话里须有 `env -i` 复跑证据；
+  `env | grep CARGO_LLVM_COV` 非空即终端已污染

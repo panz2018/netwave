@@ -4,9 +4,16 @@
 
 ### LL-005 命令先验证存在
 
-- 犯过：建议不存在的 `openspec validate` 子命令（session 两次追问）
+- 犯过：建议不存在的 `openspec validate` 子命令（session 两次追问）；
+  复发（2026-11-13）：`unify-coverage-gates` 工件写 `cargo llvm-cov exec`
+  包住外部驱动——该子命令不存在（`cargo llvm-cov --help` 仅
+  `test|run|report|show-env|clean|nextest`），apply 首步即报
+  `unrecognized subcommand`。未遵守原因：写工件时凭印象拼命令，未跑
+  `--help`，且 review 抽查未覆盖到该字面
 - 规则：让用户/文档引用的命令先自己跑或引 `--help`
-- 复发检测：review 抽查文档命令可执行
+- 复发检测：review 抽查文档命令可执行；可门禁化去向——第二次复发即建
+  `scripts/check_artifact_commands.py`（扫工件命令字面比对 `--help`/
+  `cargo --list`）接入 `check:meta`（人工裁决 2026-11-13：本轮先记账不上闸）
 
 ### LL-006 输出写绝对路径
 

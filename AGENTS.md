@@ -80,6 +80,9 @@ governance spec、`openspec/config.yaml`、子项目 README）由 AI 读取并�
 
 - **机制断言先实证**：凡 GC/FFI/工具链行为断言，先读源码或官方文档并给
   出处（文件+行号/链接）；未实证标「未验证」。
+- **声称工具/能力不可用前先搜账本**：报"没有 X / 做不了 Y"前，MUST 先查
+  spec/账本有无本仓取用方法（如 LL-040 credential helper），按方法实跑并
+  附失败证据才可下结论（出处：LL-040 复发 2026-11-13）。
 - **多步操作先给全景表**：提交分组/文档归属/命名/波及面，先列完整方案表
   让人一次圈定，不增量上报。
 - **方案先查现成做法**：提技术方案前先查同生态现成实现，注明采用或偏离及理由。
@@ -116,7 +119,10 @@ governance spec、`openspec/config.yaml`、子项目 README）由 AI 读取并�
 ## 反思铁律（防复发，机制见 lessons-learned spec）
 
 - 动手前扫 [openspec/specs/lessons-learned/INDEX.md](openspec/specs/lessons-learned/INDEX.md)，命中再开对应 scope 分片。
-- 被人工纠正当轮登记：命中旧条目=引用编号并说明未遵守原因；无=新增 LL 到对应分片+INDEX。不拖到归档。
+- 遇错误/失败当轮即启动根因循环：先扫 INDEX/账本与 spec → 定根因（区分
+  代码问题还是环境问题，附证据；本地失败先 `env -i` 复跑排除污染，
+  出处：LL-091）→ 落防复发（LL 或闸门）。被人工纠正同轮适用：命中旧条目
+  =引用编号并说明未遵守原因；无=新增 LL 到对应分片+INDEX。不拖到归档。
 - review 三轴与可门禁化 LL 落闸门的判据，唯一正文见
   [governance spec「元规则 review 三轴」](openspec/specs/project-governance/spec.md#requirement-元规则-review-三轴)。
 
