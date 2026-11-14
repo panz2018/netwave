@@ -89,3 +89,19 @@
   与"不收 numpy uint8"裁决一致
 - 复发检测：`python/tests/test_touchstone_class.py` 的 buffer 三件套用例 +
   numpy 拒绝用例钉住行为；`cargo clippy -p netwave-python` 编译即门禁
+
+### LL-094 改 pytest 全局配置须当轮全量跑并贴语义范围证据
+
+- 犯过：`unify-coverage-gates` 给根 `pyproject.toml` 的 `pythonpath` 补
+  `scripts`，当轮只跑 `-k coverage_gate` 过滤用例，未跑全量 pytest，
+  也未在改动时刻贴"覆盖率范围未变"的证据；人工质疑"是否把整个 scripts
+  纳入覆盖率"时只能事后补跑取证
+- 规则：`pythonpath` 只注入 `sys.path`（pytest 源码
+  `_pytest/config/__init__.py` "Add paths to sys.path"），覆盖率范围由
+  `check:py` 的 `--cov=scripts/versions` 决定，两者不是一回事；改
+  `pythonpath`/`testpaths` 等全局测试配置 MUST 当轮跑全量 pytest，
+  并贴被统计的文件清单（`--cov-report=term` 输出）证明语义范围如所述
+- 两问分开取证："改动没破坏"（全量绿）与"改动语义范围如我所说"
+  （文件清单证据），后者不可用前者代替
+- 复发检测：暂不可 CI 门禁化（属验证时序纪律）；review Standards 轴
+  核对"改全局测试配置的 commit 是否附全量 pytest 文件清单证据"
