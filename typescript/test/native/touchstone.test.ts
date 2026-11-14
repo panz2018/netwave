@@ -135,6 +135,43 @@ describe("touchstone node data plane", () => {
     const ts = Touchstone.fromText(S1P, 1);
     expect(() => ts.data("G", "RI")).toThrow(/2-port/);
   });
+
+  it("y getter recomputes the ingested Y matrix", () => {
+    // `.y` derives Y from stored S; a Y file round-trips to the ingested
+    // matrix (independent truth = input literals). Flat interleaved re/im.
+    const text = "# GHZ Y RI R 50\n1.0 -0.02 0 0.01 0 0.01 0 0.02 0";
+    const ts = Touchstone.fromText(text, 2);
+    const y = ts.y;
+    expect(Array.from(y)).toHaveLength(8);
+    const expected = [-0.02, 0, 0.01, 0, 0.01, 0, 0.02, 0];
+    expected.forEach((v, i) => {
+      expect(y[i]).toBeCloseTo(v, 9);
+    });
+  });
+
+  it("g getter recomputes the ingested G matrix", () => {
+    // `.g` on a valid 2-port G file round-trips to the ingested matrix
+    // (G = [[0.02,0.001],[0.002,0.01]]; legacy order g11,g21,g12,g22).
+    const text = "# GHZ G RI R 50\n1.0 0.02 0 0.002 0 0.001 0 0.01 0";
+    const ts = Touchstone.fromText(text, 2);
+    const g = ts.g;
+    const expected = [0.02, 0, 0.001, 0, 0.002, 0, 0.01, 0];
+    expected.forEach((v, i) => {
+      expect(g[i]).toBeCloseTo(v, 9);
+    });
+  });
+
+  it("h getter recomputes the ingested H matrix", () => {
+    // `.h` on a valid 2-port H file round-trips to the ingested matrix
+    // (H = [[0.5,0.1],[0.2,0.4]]; legacy order h11,h21,h12,h22).
+    const text = "# GHZ H RI R 50\n1.0 0.5 0 0.2 0 0.1 0 0.4 0";
+    const ts = Touchstone.fromText(text, 2);
+    const h = ts.h;
+    const expected = [0.5, 0, 0.1, 0, 0.2, 0, 0.4, 0];
+    expected.forEach((v, i) => {
+      expect(h[i]).toBeCloseTo(v, 9);
+    });
+  });
 });
 
 describe("touchstone node write", () => {

@@ -127,6 +127,71 @@ def test_gh_domain_requires_two_ports() -> None:
         _ = ts.g
 
 
+def test_y_domain_matches_ingested_matrix() -> None:
+    # `.y` recomputes Y from the stored S; a Y file round-trips back to the
+    # ingested matrix (independent truth = the input literals). Zero-pivot
+    # case (Y11 = -1/z0) exercises the row swap in the inversion.
+    text = "# GHZ Y RI R 50\n1.0 -0.02 0 0.01 0 0.01 0 0.02 0"
+    ts = netwave.Touchstone.from_text(text, 2)
+    y = ts.y
+    assert y.shape == (1, 2, 2)
+    expected = np.array([[[-0.02 + 0j, 0.01 + 0j], [0.01 + 0j, 0.02 + 0j]]])
+    np.testing.assert_allclose(y, expected, rtol=1e-9, atol=1e-12)
+
+
+def test_g_domain_two_port_matches_ingested_matrix() -> None:
+    # `.g` on a valid 2-port G file round-trips to the ingested matrix
+    # (G = [[0.02, 0.001],[0.002, 0.01]]; legacy file order g11,g21,g12,g22).
+    text = "# GHZ G RI R 50\n1.0 0.02 0 0.002 0 0.001 0 0.01 0"
+    ts = netwave.Touchstone.from_text(text, 2)
+    g = ts.g
+    assert g.shape == (1, 2, 2)
+    expected = np.array([[[0.02 + 0j, 0.001 + 0j], [0.002 + 0j, 0.01 + 0j]]])
+    np.testing.assert_allclose(g, expected, rtol=1e-9, atol=1e-12)
+
+
+def test_h_domain_two_port_matches_ingested_matrix() -> None:
+    # `.h` on a valid 2-port H file round-trips to the ingested matrix
+    # (H = [[0.5, 0.1],[0.2, 0.4]]; legacy file order h11,h21,h12,h22).
+    text = "# GHZ H RI R 50\n1.0 0.5 0 0.2 0 0.1 0 0.4 0"
+    ts = netwave.Touchstone.from_text(text, 2)
+    h = ts.h
+    assert h.shape == (1, 2, 2)
+    expected = np.array([[[0.5 + 0j, 0.1 + 0j], [0.2 + 0j, 0.4 + 0j]]])
+    np.testing.assert_allclose(h, expected, rtol=1e-9, atol=1e-12)
+
+
+def test_data_non_s_ri_returns_complex_matrix() -> None:
+    # `data(p, "RI")` with p != S takes the owned (non-zero-copy) RI branch:
+    # complex (nfreq, n, n). Z2P ingests z11=10 z12=20∠90 z21=30∠-90
+    # z22=40∠180 (legacy order z11,z21,z12,z22).
+    ts = netwave.Touchstone.from_text(Z2P, 2)
+    d = ts.data("Z", "RI")
+    assert d.shape == (1, 2, 2)
+    assert d.dtype == np.complex128
+    expected = np.array([[[10 + 0j, 0 + 20j], [0 - 30j, -40 + 0j]]])
+    np.testing.assert_allclose(d, expected, rtol=1e-9, atol=1e-9)
+
+
+def test_filename_from_path_static() -> None:
+    assert netwave.Touchstone.filename_from_path("/tmp/dir/filter.s1p") == "filter.s1p"
+    assert netwave.Touchstone.filename_from_path("https://x/y/dut.s2p") == "dut.s2p"
+
+
+def test_name_from_filename_static() -> None:
+    assert netwave.Touchstone.name_from_filename("filter.s1p") == "filter"
+    # No Touchstone grammar match -> whole string returned.
+    assert netwave.Touchstone.name_from_filename("plain") == "plain"
+
+
+def test_nports_from_filename_static() -> None:
+    assert netwave.Touchstone.nports_from_filename("dut.s2p") == 2
+    assert netwave.Touchstone.nports_from_filename("amp.z4p") == 4
+    # Grammar `\.[ghsyz]\d+p` requires a match; otherwise ValueError.
+    with pytest.raises(ValueError, match="nports"):
+        netwave.Touchstone.nports_from_filename("notes.txt")
+
+
 def test_from_data_version_from_z0_values() -> None:
     f = netwave.Frequency.from_f([1.0, 2.0], "GHz")
     ts = netwave.Touchstone.from_data(f, [1.0, 0.1, 0.9, -0.2], 50.0, "S")

@@ -94,3 +94,20 @@ def test_len_and_display_string() -> None:
     assert repr(f) == "Frequency(1.0-5.0 GHz, 3 pts)"
     empty = netwave.Frequency.from_f([], "Hz")
     assert str(empty) == "Frequency([no freqs])"
+
+
+def test_from_wavelength_string_unit() -> None:
+    # `arg_wavelength_unit` accepts a string (core FromStr), not only the
+    # enum member. Closed-form truth: f = c / (n * lambda).
+    c = 299_792_458.0
+    f = netwave.Frequency.from_wavelength([60.0], "mm", 2.2)
+    assert f.f[0] == pytest.approx(c / (2.2 * 0.06))
+
+
+def test_wavelength_string_unit_matches_enum() -> None:
+    # The string arm and the enum arm of `arg_wavelength_unit` are the same
+    # contract (interchangeable unit spellings).
+    f = netwave.Frequency.from_f([1e9, 2e9], "Hz")
+    by_str = f.wavelength("mm", 2.2)
+    by_enum = f.wavelength(netwave.WavelengthUnit.mm, 2.2)
+    assert by_str.tolist() == pytest.approx(by_enum.tolist())

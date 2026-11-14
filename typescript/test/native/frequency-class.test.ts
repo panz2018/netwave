@@ -81,6 +81,21 @@ describe("native frequency functional surface", () => {
     expect(f.f[0]).toBe(want);
   });
 
+  it("fromWavelength accepts a string unit", () => {
+    // `resolve_wl_unit` Either::B arm: a string crosses as the string variant
+    // (core FromStr), not only the numeric enum ordinal.
+    const f = Frequency.fromWavelength([60.0], "mm", 2.2);
+    const want = 299_792_458.0 / (2.2 * 0.06);
+    expect(f.f[0]).toBe(want);
+  });
+
+  it("wavelength accepts a string unit matching the enum", () => {
+    const f = Frequency.fromF([1e9, 2e9], "Hz");
+    const byStr = f.wavelength("mm", 2.2);
+    const byEnum = f.wavelength(WavelengthUnit.mm, 2.2);
+    expect(Array.from(byStr)).toEqual(Array.from(byEnum));
+  });
+
   it("copy is independent and equal", () => {
     const f = Frequency.fromF([1.0, 2.0], "GHz");
     const c = f.copy();
