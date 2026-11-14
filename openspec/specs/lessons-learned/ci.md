@@ -181,3 +181,35 @@
   禁止据脏环境结果对仓库下 bug 结论
 - 复发检测：报"仓库有 bug"前对话里须有 `env -i` 复跑证据；
   `env | grep CARGO_LLVM_COV` 非空即终端已污染
+
+### LL-092 外部驱动 rust 胶水覆盖率三坑（vitest/napi/maturin，spike 实证）
+
+- 犯过：2026-11-13 unify-coverage-gates spike 在 vitest/napi/maturin 上反复
+  试错数轮才跑通胶水覆盖率（被人工批评"瞎试"），三处非显性障碍：
+  ① vitest worker 线程不跑 libc atexit，profraw 不倒出（默认池 0 份）；
+  ② napi `--platform` 把插桩对象建进 `target/<triple>/debug/`，
+  `cargo llvm-cov report` 默认只搜 host `target/debug` 报 not found；
+  ③ maturin 从仓库根跑误读根 `pyproject.toml`（无 build-system 段）直接报错
+- 规则：napi 胶水采集 = show-env（`--no-cfg-coverage`）→ clean → build debug →
+  vitest `--pool=threads --execArgv="" --no-file-parallelism`（threads 池主进程
+  正常退出触发 atexit；worker 拒绝 `--expose-gc` 故 gc 走 `NODE_OPTIONS`；
+  串行避免多 worker 共享同一 `.node` 的 Rust 静态计数 race）→
+  `report --target "$(rustc -vV | sed -n 's/^host: //p')"`。python 胶水 = 同链但
+  maturin/pytest 须 `cd python`，report 不带 `--target`（maturin 对象落 host
+  `target/debug`）。动手前先查上游：cargo-llvm-cov README「Get coverage of
+  external tests」+ issue #207（clean 须在 build 前），勿原地试
+- 复发检测：wasm 胶水 spike（S5）或任何新绑定覆盖率立项先核对本条三坑是否命中；
+  胶水报告以"含目标 src 路径行且命中 > 0"为准，仅 exit 0 不算通
+
+### LL-093 覆盖率口径漂移假绿——退役执行者须补前提实证，胶水报告须验命中
+
+- 犯过：2026-11-13 退役 `cargo test --workspace` 后 doctest 失去执行者
+  （`llvm-cov -p netwave` 不跑 doctest），若不实证"源码无 doctest"则静默漏测；
+  spike 中 `report` 命令 exit 0 却因对象路径错配产出缺胶水行的报告，
+  仅看退出码即假绿
+- 规则：退役某测试执行者时，其覆盖的测试类型（doctest 等）MUST grep 实证
+  "确无此类测试"并把前提写进 spec，将来引入须另行立项补执行者；胶水覆盖率
+  报告 MUST 断言"含目标 crate 的 src 路径行且命中数 > 0"，不能只看命令 exit 0
+  （对象路径/透传错配会产出 exit 0 的空或缺行报告）
+- 复发检测：review 时核对退役执行者的 commit 附 grep 前提实证；胶水阅卷前核对
+  报告含目标路径行且命中 > 0
