@@ -12,8 +12,9 @@ native 四格 MUST 执行 rust 测试与覆盖率合并命令：
 加 `cargo build --workspace --all-targets` 作编译看门闸
 （命令构成见「覆盖率门槛生效（铁律七）」）；MUST NOT 另跑
 `cargo test --workspace`（core 测试由 llvm-cov 执行，绑定 crate 编译闸门
-由 build 承担；本仓库源码无 doctest——grep `core/src`、`python/src`、
-`typescript/*/src` 无代码围栏实证，将来引入 doctest 须另行立项补执行者）。
+由 build 承担；本仓库源码无可执行 doctest——grep `core/src`、`python/src`、
+`typescript/*/src` 的文档注释围栏仅 `text` 标注（非 rust、不可执行）且位于
+bin target（bin 不跑 doctest），将来引入可执行 doctest 须另行立项补执行者）。
 wasm32 格为 `cargo check`/wasm-pack 构建 + Node 侧 vitest 跑 wasm 产物。
 
 #### Scenario: 矩阵全绿方可合并
@@ -46,9 +47,12 @@ CI MUST 启用覆盖率采集并使 100% 行覆盖门槛生效，且 MUST 按 cr
 
 绑定 crate（python、typescript/native）的 rust 胶水行 MUST 在各自语言 job
 内以 `cargo llvm-cov show-env --sh --no-cfg-coverage` + 构建 + 外部测试驱动
-（pytest / vitest）+ `cargo llvm-cov report --codecov` 采集（show-env、clean、
-构建、外部测试、report MUST 同一 step——环境变量不跨 step；
-`--no-cfg-coverage` 防 show-env 默认 `cfg(coverage)` 剥掉源码胶水），
+（pytest / vitest）+ `cargo llvm-cov report --codecov` 采集
+（show-env、clean、构建、外部测试、report MUST 同一 step——环境变量不跨 step；
+`--no-cfg-coverage` 防 show-env 默认 `cfg(coverage)` 剥掉源码胶水；
+typescript/native 的 report MUST 带 `--target <triple>`——napi `--platform` 把对象
+建进 `target/<triple>/debug/`，不带则 report 只搜 host `target/debug` 报 not found；
+python 的 maturin 不带 `--target`，对象落 host `target/debug`，report 无需 `--target`），
 报告以 `--ignore-filename-regex` 剔除 core 路径后独立阅卷——core 行归
 core 报告、胶水行归胶水报告，互不重复计分。原"绑定 crate 不进 llvm-cov
 job 属工具作用域分离"口径废止：该口径的成立前提（绑定 crate 无法被
