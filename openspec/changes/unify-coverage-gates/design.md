@@ -19,8 +19,10 @@
 
 **Non-Goals:**
 
-- 设计级边界：不改 `coverage_gate.py` 代码（多报告=多次调用，参数已够）；
-  不动 wasm/lint/bench job；不引入 codecov.io 上传（报告仅 artifact 留存）。
+- 设计级边界：不改 `coverage_gate.py` 的阅卷口径（多报告=多次调用，参数已够）；
+  例外=宏属性行模式豁免（决策 8，标定轮缺行定性产物，口径本身不变——
+  仍是对 codecov.json 行命中判地板）；不动 wasm/lint/bench job；不引入
+  codecov.io 上传（报告仅 artifact 留存）。
 
 ## Decisions
 
@@ -77,6 +79,26 @@
 7. **node 端用 `build:native:debug` 而非 release**。插桩 release 构建慢且
    优化改变行映射，debug 保行号对得上源码；ABI 验证语义不受影响
    （`.node` 导出符号与零拷贝协议同形）。
+8. **宏属性行豁免 = gate 模式驱动（标定轮缺行定性产物，人工裁决
+   2026-11-14）**。标定轮双胶水报告各缺两行：`python/src/lib.rs` 129/291
+   （`#[pymethods]`）与 `typescript/native/src/lib.rs` 50/199（`#[napi]`），
+   方法体全覆盖、唯宏属性行计 0。实证（`llvm-cov show --show-expansions`
+   对 python 报告 + rustc#79651）：宏属性行挂一个 region，宏展开生成的
+   wrapper 实例计数不并回该行（"Unexecuted instantiation"），该行结构性
+   不可命中。上游无稳定行级排除手段（subagent 一手来源实证：llvm-cov 不认
+   LCOV_EXCL_*——lcov-perl 私有约定，`CoverageExporterLcov.cpp` 写固定记录；
+   过滤器只有文件名/函数名 regex，`CoverageFilters.cpp`；`#[coverage(off)]`
+   nightly-only，LL-020；cargo-llvm-cov 无行级排除参数；polars 整 crate 排除
+   不适用）。故豁免落在阅卷层：三重条件（该行缺命中 + 源码行匹配
+   `#[pymethods]`/`#[napi` + 下方首个代码行——跳过空行/注释/属性——以
+   `impl` 开头）；源码读不到即不豁免、照常报红并打 unverifiable；豁免行
+   打印附理由。无行号硬编码，标记随宏走；三报告统一应用不分特判。
+   `from_data` 空语义同步定案（人工裁决）：npoints=0∧data=0 → 空对象提前
+   返回（nports 由 z0 形状推导：len=1→1、len≥2→len、len=0→`Z0Shape`，
+   轴保留所传显示单位，与 `from_text` 零行对象往返一致）；单边空
+   （npoints≠0∧data=0 或 npoints=0∧data≠0）→ `DimensionMismatch`——
+   修复原实现 `is_multiple_of(0)` 除零 panic 与 npoints≠0∧data=0 放行
+   nports=0 坏对象两处缺陷。
 
 ## Risks / Trade-offs
 

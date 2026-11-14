@@ -43,7 +43,12 @@ CI MUST 启用覆盖率采集并使 100% 行覆盖门槛生效，且 MUST 按 cr
   MUST 逐条
   标注豁免（stable 通道 `#[cfg(not(coverage))]` / `# pragma: no cover` /
   `/* v8 ignore start/stop */`，vitest v8 provider；`#[coverage(off)]`
-  nightly-only 禁用，LL-020）并附理由。
+  nightly-only 禁用，LL-020）并附理由。impl 块宏属性行（`#[pymethods]` /
+  `#[napi ...]`）MUST 由阅卷脚本按模式豁免（该行缺命中 + 源码行匹配该宏属性
+  - 下方首个代码行以 `impl` 开头）——llvm-cov 把宏属性行计作一个 region，宏
+    展开 wrapper 的实例计数不并回该行（rustc#79651），该行结构性不可命中，且
+    llvm-cov 不认 lcov-perl 的 `LCOV_EXCL_*` 行级标记、无稳定行级排除参数；
+    源码读不到的缺行 MUST NOT 豁免（照常报红）；豁免 MUST NOT 硬编码行号。
 
 绑定 crate（python、typescript/native）的 rust 胶水行 MUST 在各自语言 job
 内以 `cargo llvm-cov show-env --sh --no-cfg-coverage` + 构建 + 外部测试驱动
@@ -77,6 +82,13 @@ rust 行覆盖率暂不采集（vitest 驱动下插桩计数倒出未验证，�
 - **THEN** 对应 job 的胶水阅卷（`coverage_gate.py` 对
   `coverage/coverage-python.json` / `coverage/coverage-native.json`）
   失败（exit ≠ 0），PR 不可合并
+
+#### Scenario: 宏属性行按模式豁免不误红
+
+- **WHEN** 胶水报告缺行是 `impl` 块上的 `#[pymethods]` / `#[napi ...]`
+  宏属性行（宏展开 wrapper 实例计数不并回该行，rustc#79651）
+- **THEN** 阅卷脚本按三重条件豁免该行并打印理由，阅卷不因此判红；
+  缺行源码读不到时不豁免、照常报红
 
 ## ADDED Requirements
 

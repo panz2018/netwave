@@ -32,8 +32,8 @@
 ## 6. 标定轮收数字与地板启用（依赖 3/4/5 的 CI 首轮）
 
 - [ ] 6.1 下载首轮 CI 的四格 core + 双胶水共六份报告，逐格记录行覆盖率与缺行清单到本 change 目录 `calibration.md`；验证：六份数字齐全，无格缺报
-- [ ] 6.2 逐条定性缺行：真缺口 → 补测试（python 补 pytest 用例、native 补 vitest 用例、core 补 `core/tests/` 用例，先跑失败用例再让它通过）；结构性不可达 → 按铁律七逐条标注（`#[cfg(not(coverage))]` / `# pragma: no cover` / `/* v8 ignore start/stop */`）并在标注处附一句理由；验证：`timeout 300 pnpm check` 绿 + 本地重跑对应覆盖率命令缺行清零
-- [ ] 6.3 把三处阅卷地板参数由 0 翻至 100（ci.yml：core、python、native 各一处，数值唯一定义处）；验证：CI 全绿且三域阅卷输出均为 `floor 100`
+- [x] 6.2 逐条定性缺行：真缺口 → 补测试（python 补 pytest 用例、native 补 vitest 用例、core 补 `core/tests/` 用例，先跑失败用例再让它通过）；结构性不可达 → 按铁律七逐条标注（`#[cfg(not(coverage))]` / `# pragma: no cover` / `/* v8 ignore start/stop */`）并在标注处附一句理由；验证：`timeout 300 pnpm check` 绿 + 本地重跑对应覆盖率命令缺行清零（实证：双胶水缺行恰为 4 行宏属性行——python 129/291 `#[pymethods]`、native 50/199 `#[napi]`，`llvm-cov show --show-expansions` 实证宏属性行 region 计数不并回（rustc#79651），上游无稳定行级排除手段（llvm-cov 不认 LCOV_EXCL_*、无行级参数、`coverage(off)` nightly-only）→ 落 gate 模式豁免（design.md 决策 8，人工裁决 2026-11-14）：三重条件缺行+宏属性+下一代码行 `impl`，源码读不到不豁免，豁免打印附理由；`scripts/tests/test_coverage_gate.py` 新增 5 用例（宏+impl 豁免 / napi 带参豁免 / 宏+fn 报红 / 非宏报红 / 读不到源码报红），TDD 先红（3 failed）后绿（9 passed）；本地重跑 gate：python 351/351、native 241/241 均 exit 0。core 侧同轮修复 `from_data` 除零 panic 与 nports=0 坏对象（人工裁决空语义三分，见 design.md 决策 8），`core/tests/touchstone_data.rs` TDD 先红（4 failed）后绿（26 passed），`cargo test -p netwave` 14 二进制全绿）
+- [x] 6.3 把三处阅卷地板参数由 0 翻至 100（ci.yml：core、python、native 各一处，数值唯一定义处）；验证：CI 全绿且三域阅卷输出均为 `floor 100`（实证：三处参数已翻 100，注释同步改"calibration closed"；本地 core 959/959、python 351/351、native 241/241 均 floor 100 exit 0；CI 全绿待 push。同轮顺手修复 python job `--ignore-filename-reg ex` 错字——09fb411 引入的空格断词，report 会报未知参数致 python job 红）
 
 ## 7. spec、账本与文档收口（LL-034）
 
