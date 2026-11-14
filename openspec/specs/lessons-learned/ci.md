@@ -239,3 +239,33 @@
   声明"每格已验"时须注明哪些面只有 CI 真跑才能覆盖
 - 复发检测：review 时 grep ci.yml/spec 中路径 regex 是否含裸 `/xxx/`
   模式；标定轮对比同报告跨平台数字，离群格先查路径形态再查代码
+
+### LL-100 宏属性行计数不并回——行级豁免落 gate 模式驱动
+
+- 犯过：unify-coverage-gates 标定轮双胶水报告各缺两行（python 129/291
+  `#[pymethods]`、native 50/199 `#[napi]`），方法体全覆盖唯宏属性行计 0；
+  实证（`llvm-cov show --show-expansions` + rustc#79651）：宏属性行挂一个
+  region，宏展开 wrapper 的实例计数不并回该行，结构性不可命中；曾误提
+  硬编码行号豁免与 nightly `coverage(off)` 两案，均被人工驳回
+- 规则：llvm-cov 无稳定行级排除手段（不认 lcov-perl 的 `LCOV_EXCL_*`，
+  过滤器只有文件名/函数名 regex，`#[coverage(off)]` nightly-only 即 LL-020），
+  宏属性行豁免 MUST 落阅卷脚本模式驱动：三重条件（该行缺命中 + 源码行
+  匹配 `#[pymethods]`/`#[napi` + 下方首个代码行以 `impl` 开头），禁硬编码
+  行号；源码读不到的缺行 MUST NOT 豁免（照常报红）；豁免行打印附理由
+- 复发检测：review 时核对 gate 豁免逻辑是否模式驱动无行号表；新增绑定
+  宏（`#[wasm_bindgen]` 等）致胶水报告出现宏属性行缺行时，先查本条再
+  设计豁免，禁回硬编码行号
+
+### LL-101 llvm-cov clean 静默跳过致旧插桩二进制污染报告
+
+- 犯过：改 `from_data` 后本地 `cargo llvm-cov -p netwave` 出 992/1124=88.26%
+  （应 100%），缺行清单含整段 doc 注释行——`cargo llvm-cov clean --workspace`
+  因 `target/llvm-cov-target/CACHEDIR.TAG` 缺失而中止（"missing or invalid
+  CACHEDIR.TAG"，仅 warning 不改退出码），旧插桩测试二进制（改前源码编译）
+  残留，其 region 表按旧行号贡献 0 计数污染新报告
+- 规则：本地重跑 llvm-cov 前若改过被测源码，MUST 确认 `cargo llvm-cov clean`
+  真的删了旧二进制（看 deps/ 下目标测试二进制时间戳），不能只看命令 exit 0；
+  `CACHEDIR.TAG` 缺失时手动补（cargo 标准签名）或删 `target/llvm-cov-target`
+  重来；报告缺行含 doc 注释行/行号与当前源码错位 = 旧二进制污染信号
+- 复发检测：review 时若覆盖率数字与改动规模不符（加几行却掉十几个点），
+  先查 clean 是否生效再查代码
