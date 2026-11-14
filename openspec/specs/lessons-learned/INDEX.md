@@ -74,3 +74,4 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-095 | ci         | llvm-cov 不建输出目录：CI 写 coverage/ 前须 mkdir -p，本地模拟先删 gitignored 目录                 |
 | LL-096 | ci         | 路径 regex 须 `[\\/]` 兼容反斜杠：Windows 路径击穿 `/core/` 混入 core 行，单 OS 模拟复现不了       |
 | LL-097 | workflow   | 本地已知缺口须本 change 内闭环：标定只推迟阈值不推迟补测，延后须点名批准                           |
+| LL-098 | workflow   | 写操作严守点名文件白名单，"跳过/暂缓"绝不等于删除，提交前逐行回看 diff                             |
