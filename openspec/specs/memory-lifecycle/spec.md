@@ -37,8 +37,8 @@ worker MUST 零状态纯转发——句柄注册、查表、分发、释放 MUST
 模块里手写 `match` 分发并在 `#[wasm_bindgen(start)]` 注册）；
 `{handle, method:"drop"}` MUST 在 core 侧 `remove(handle)` 直接触发 Rust `Drop`，
 MUST NOT 经 JS 对象中转。worker JS MUST NOT 存在任何句柄 `Map`、`nextHandle`
-计数器或逐动词命令表（现有 `hosted`/`frequencies` 两表与逐动词 `cmds` 表废止，
-wasm 导出恒为单条泛化 `call`，见 api-contract「worker 泛化分发与单常驻拓扑」）；
+计数器或逐动词命令表（wasm 导出恒为单条泛化 `call`，见 api-contract
+「worker 泛化分发与单常驻拓扑」）；
 释放动词唯一为 `drop`（句柄全局唯一，单表查找无歧义）；`postMessage` 协议名
 `dropFrequency`/`newFrequency` MUST NOT 存在。句柄表本身 MUST NOT 被删除
 （跨边界只传 handle，core 靠它路由消息）。

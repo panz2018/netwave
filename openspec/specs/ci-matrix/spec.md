@@ -115,11 +115,9 @@ typescript/native 的 report MUST 带 `--target <triple>`——napi `--platform`
 建进 `target/<triple>/debug/`，不带则 report 只搜 host `target/debug` 报 not found；
 python 的 maturin 不带 `--target`，对象落 host `target/debug`，report 无需 `--target`），
 报告以 `--ignore-filename-regex` 剔除 core 路径后独立阅卷——core 行归
-core 报告、胶水行归胶水报告，互不重复计分。原"绑定 crate 不进 llvm-cov
-job 属工具作用域分离"口径废止：该口径的成立前提（绑定 crate 无法被
-llvm-cov 度量）已被 show-env/report 外部驱动采集推翻。typescript/wasm crate 的
-rust 行覆盖率暂不采集（vitest 驱动下插桩计数倒出未验证，另行 spike
-立项），wasm 端 TS 层 vitest 100% 门槛不变。
+core 报告、胶水行归胶水报告，互不重复计分；绑定 crate 由 show-env/report
+外部驱动采集度量。typescript/wasm crate 的 rust 行覆盖率暂不采集
+（vitest 驱动下插桩计数倒出未验证），wasm 端 TS 层 vitest 100% 门槛不变。
 
 #### Scenario: 空 crate 即 100%
 
@@ -190,10 +188,15 @@ CI MUST 运行治理脚本单测（`scripts/tests/`，命令细节唯一定义�
 lint job MUST 经 `pnpm check` 覆盖该单测，MUST NOT 在 `pnpm check` 之外
 重复跑单测命令（命令唯一真相源），MUST NOT 新增独立 job 或重复环境
 准备，MUST NOT 引入联网测试（联网一致性验证为本地一次性基线，见
-workspace-layout「根级 Python 工具环境」）。`check:py` MUST 以
-`--cov-fail-under` 对 `scripts/versions` 域设行覆盖率地板，阈值数值以
-根 `package.json` 该 flag 为唯一定义处（散文不复制数字）；度量范围外
-的 `scripts/` 其余脚本不设地板（另议题）。
+workspace-layout「根级 Python 工具环境」）。
+
+覆盖率的范围与阈值 MUST 定义在根 `pyproject.toml` 的 `[tool.coverage]`
+与 `[tool.pytest.ini_options]`（单一真相源），`check:py` 命令行 MUST NOT
+再携带 `--cov=` 范围或 `--cov-fail-under=` 阈值——范围列于命令行属易漏
+清单，改测试域时须同步改命令与 CI，漂移即失效。行覆盖率地板范围 =
+`scripts/versions` 域 + `scripts/coverage_gate.py` + `scripts/check_comments.py`
+三者，阈值数值以 `pyproject.toml` 为唯一定义处（散文不复制数字）；
+范围外的 `scripts/` 其余脚本暂不设地板。
 
 #### Scenario: 闸门回归 CI 兜底
 
@@ -208,10 +211,24 @@ workspace-layout「根级 Python 工具环境」）。`check:py` MUST 以
 
 #### Scenario: versions 域覆盖率地板生效
 
-- **WHEN** `scripts/versions` 域行覆盖率低于 `check:py` 所钉
-  `--cov-fail-under` 阈值（含新增未测行、也含删除既有覆盖用例）
+- **WHEN** `scripts/versions` 域行覆盖率低于 `pyproject.toml` 所钉
+  `fail_under` 阈值（含新增未测行、也含删除既有覆盖用例）
 - **THEN** `pnpm check:py` 退出码非 0，lint job FAIL——覆盖率不得
   无声下滑；结构性不可达行如需豁免，按铁律七逐条标注并附理由
+
+#### Scenario: 阅卷人与门禁脚本覆盖率地板生效
+
+- **WHEN** `scripts/coverage_gate.py` 或 `scripts/check_comments.py` 出现
+  未测行（新增分支、或删除既有覆盖用例）
+- **THEN** `pnpm check:py` 退出码非 0，lint job FAIL——阅卷人回归 =
+  全部覆盖率地板失效，门禁脚本回归 = 该门禁静默失效，两者必须有测试兜底
+
+#### Scenario: 覆盖率配置单一真相源
+
+- **WHEN** 查看根 `package.json` 的 `check:py` 命令
+- **THEN** 其中不含 `--cov=` 或 `--cov-fail-under=`——范围与阈值只在
+  `pyproject.toml` 声明一处；命令行与配置文件两处并存即 review 打回
+  （两份清单必漂移）
 
 ### Requirement: 格式化归属单一来源
 
@@ -227,8 +244,8 @@ Prettier，YAML、JavaScript、TypeScript、JSON 归 biome。认领关系 MUST �
 
 - **WHEN** 运行 `pnpm check:ts`
 - **THEN** 仓库内 YAML 文件（`pnpm-lock.yaml` 等生成物除外）经 biome
-  格式检查，未经格式化的 YAML 使闸门 FAIL——YAML 自此有执法者，不再是
-  仅靠散文约定的真空
+  格式检查，未经格式化的 YAML 使闸门 FAIL——YAML 格式有执法者，
+  不靠散文约定
 
 #### Scenario: Markdown 认领不重叠
 

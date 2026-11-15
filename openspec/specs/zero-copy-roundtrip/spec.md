@@ -15,12 +15,12 @@ core 持有的缓冲是同一块内存，视图改写对 core 立即可见。这
 1. **JS 公开计算面单一 async**：core 内部全部同步；JS 绑定层计算动词**不加后缀、
    直接返回 `Promise`**，用户唯一写法是 `await toY(x)`，不存在同步/异步双版本选择。
    同步直通逃生口 `_toY(x)` **仅 node 端保留**（napi core 在进程内，同步直通永远
-   可行；`@internal`、签名不承诺稳定）；**浏览器端 `_` 同步计算函数废止**——主线程
+   可行；`@internal`、签名不承诺稳定）；**浏览器端无 `_` 同步计算函数**——主线程
    无 wasm，同步计算无处发生（铁律八）。属性/元数据读取从已 resolve 的结果描述符上
    同步读；未持有结果时元数据读取 MUST 异步进 worker。Python 端不受影响
    （同步 + `allow_threads`）。不提供 callback 风格。
-2. **计算全进常驻 worker，分流废止**：浏览器端所有计算 MUST 经同一常驻 worker 内
-   wasm 执行，MUST NOT 按输入规模分流（"小数据主线程算"废止）。worker 由库的
+2. **计算全进常驻 worker，不分流**：浏览器端所有计算 MUST 经同一常驻 worker 内
+   wasm 执行，MUST NOT 按输入规模分流（无"小数据主线程算"路径）。worker 由库的
    async 壳内部托管、常驻至页面关闭；`standalone.js` 内部自起常驻 worker，
    Pages / `<script type="module">` 零配置体验不变。Node 端计算在进程内 napi
    core 执行，大计算入口防阻塞走 napi AsyncTask（绑定高级能力立项时落地）。
@@ -81,9 +81,9 @@ core 持有的缓冲是同一块内存，视图改写对 core 立即可见。这
 （引用 manifest key `core_tol`，manifest 位于 `oracle/manifest.json`）。
 dump 产物 MUST 按分层布局写入 `oracle/tmp/<end>/<sample>/<field>.bin`。
 浏览器端 wasm 往返 MUST 在真浏览器（vitest browser mode，Chromium）经常驻
-worker 执行，不再以 node 模拟代替浏览器路径的验收。scaffold 图案对拍
-（`core.bin`/`python.bin`/`node.bin`/`wasm.bin`，源自 `fill_pattern`）废止，
-anti-tautology 自检改扰分层布局下的 Touchstone S bin。
+worker 执行，浏览器路径的验收 MUST 在真浏览器完成（不以 node 模拟替代）。
+scaffold 图案对拍（`core.bin`/`python.bin`/`node.bin`/`wasm.bin`，源自 `fill_pattern`）
+不存在，anti-tautology 自检扰分层布局下的 Touchstone S bin。
 
 #### Scenario: 四端往返一致
 

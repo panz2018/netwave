@@ -60,7 +60,7 @@ wasm 端数据进入 worker 线性内存 MUST 经显式命名工厂
 worker（调用后原 buffer 声明失效，破坏性语义由 transfer 表达），返回主线程
 `Touchstone` 壳实例（壳内数字 handle，真数据与句柄表在 worker 内 core）。
 `fromData` 是四端统一的数据入口（node/Python 同名工厂，浏览器经 transfer 移入
-worker）；`upload` 概念全仓废止——浏览器无 `upload`，node/Python 亦无。内存回收
+worker）；公开面无 `upload` 概念（浏览器、node、Python 均无）。内存回收
 MUST 提供显式实例方法 `drop()` 立即归还 arena，GC/Drop 仅作兜底；公开面 MUST NOT
 存在 `drop(handle)` 函数形态（数字 handle 是 `@internal` 协议细节）。`drop()` 的
 跨 realm 语义（浏览器 registry 驱动 worker 释放、node napi finalizer、共享不误删）

@@ -16,8 +16,8 @@ typescript/wasm），以及 `pnpm-workspace.yaml`（typescript）。`oracle/` �
 workspace）。TypeScript 侧为**单一 npm 包单目录**：`typescript/` 内含 `native/`（napi Rust
 crate）与 `wasm/`（wasm-bindgen Rust crate）两个构建目标，exports 条件分发，
 不再拆 `@netwave/node`/`@netwave/wasm` 独立包。目录一律
-短名，发布名在各清单文件独立声明。`testdata/` 废止，其内容
-（manifest、样本、LICENSE-NOTES）整体迁入 `oracle/`。
+短名，发布名在各清单文件独立声明。数值真值内容（manifest、样本、
+LICENSE-NOTES）居 `oracle/`，仓库根无 `testdata/` 目录。
 
 #### Scenario: workspace 清单一致
 

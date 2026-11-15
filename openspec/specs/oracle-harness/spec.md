@@ -35,8 +35,8 @@
 阅后即焚；根 `.gitignore` 不改），布局 MUST 为 `<end>/<sample>/<field>.bin`：
 `end` ∈ core/python/node/wasm；`sample` 为输入样本名（空格 sanitize 为
 下划线，原件文件名不改）；`field` ∈ `s`/`z0`/`version.txt`。非 Touchstone
-轴（λ↔f 往返）写 `<end>/freq.bin`。平铺命名（仓库根 `.cross-tmp/` 与
-`<end>_ts_<case>_z0.bin` 类）废止。二进制格式契约不变：小端 f64、re/im
+轴（λ↔f 往返）写 `<end>/freq.bin`。产物命名恒为上述分层布局，
+不用平铺形态。二进制格式契约不变：小端 f64、re/im
 交错（governance 铁律一）。
 
 #### Scenario: 分层路径可寻址
