@@ -56,10 +56,10 @@ jobs:
           uv sync --locked
           pnpm check
 
-  # Rust matrix: native platforms only (macOS only Apple Silicon, Intel x64
-  # dropped). wasm32 lives in its own `wasm` job below: it shares no step
+  # Rust matrix: native platforms only (macOS covers Apple Silicon).
+  # wasm32 lives in its own `wasm` job below: it shares no step
   # with the native cells (no cargo test; needs wasm target + wasm-pack +
-  # pnpm), so keeping it here meant an `if` on nearly every step.
+  # pnpm), so keeping it here would need an `if` on nearly every step.
   rust:
     name: rust (${{ matrix.target }})
     strategy:
@@ -100,14 +100,14 @@ jobs:
         # 99.x%). The codecov export uses `llvm-cov show` semantics: a
         # line executed in ANY instantiation counts as covered (the
         # standard OR merge every other language tool uses).
-        # `cargo test --workspace` retired: core tests run exactly once
-        # here, and binding-crate compilation moves to the build watchdog
-        # below (llvm-cov -p netwave does not compile the binding crates).
+        # Core tests run exactly once here; binding-crate compilation is the
+        # build watchdog below (llvm-cov -p netwave does not compile the
+        # binding crates).
         # Floor 100: core is fully covered on every cell; untested lines are red.
         shell: bash
         run: |
-          # coverage/ is gitignored and absent on a clean checkout; llvm-cov
-          # does not create parent dirs of --output-path (CI run 43603143333).
+          # coverage/ is gitignored and absent on a clean checkout, and llvm-cov
+          # does not create parent dirs of --output-path — create it first.
           mkdir -p coverage
           cargo llvm-cov -p netwave --codecov --output-path coverage/coverage-core.json
           python3 scripts/coverage_gate.py coverage/coverage-core.json 100
@@ -136,7 +136,7 @@ jobs:
           target: wasm32-unknown-unknown
       - name: install binaryen (wasm-opt, latest)
         # Always latest: wasm-pack's built-in download is stuck on binaryen
-        # 117; pinning a version here would rot (dependency-upgrade spec).
+        # 117, and pinning a version here would rot.
         # GITHUB_TOKEN: authenticated API calls (runners share IPs; the
         # anonymous 60 req/h quota gets exhausted by parallel jobs).
         env:
@@ -159,9 +159,8 @@ jobs:
           ls -la typescript/dist/wasm-web
           pnpm -C typescript test:wasm --coverage
       - name: install Chromium (headless shell only)
-        # The real-browser suite (ironclad rule 8: main thread has no wasm
-        # can only be proven in a REAL browser) runs headless, so the
-        # headless shell suffices.
+        # The main thread must never touch wasm, which is only provable in a
+        # real browser; the suite runs headless, so the headless shell suffices.
         run: pnpm -C typescript exec playwright install --only-shell chromium
       - name: vitest (real browser, coverage 100)
         run: pnpm -C typescript test:browser --coverage
@@ -204,12 +203,12 @@ jobs:
         # bash + repo-root cwd: show-env/report need the root target/ dir,
         # while maturin/pytest must run inside python/ (the root
         # pyproject.toml has no build-system section — maturin from the
-        # repo root misreads it). `(cd python && ...)` subshells isolate
-        # the directory change (LL-011). show-env, clean, build, test and
-        # report MUST share one step — the instrumentation env does not
-        # cross steps. maturin passes RUSTC_WRAPPER through to cargo, so
-        # the extension builds instrumented; pytest drives it and the
-        # profraw lands in root target/. Floor 100: the #[pymethods]
+        # repo root misreads it). `(cd python && ...)` subshells isolate the
+        # directory change. show-env, clean, build, test and report MUST share
+        # one step — the instrumentation env does not cross steps. maturin
+        # passes RUSTC_WRAPPER through to cargo, so the extension builds
+        # instrumented; pytest drives it and the profraw lands in root
+        # target/. Floor 100: the #[pymethods]
         # attribute lines (rustc#79651) are exempted by pattern in the gate.
         shell: bash
         run: |
@@ -232,7 +231,6 @@ jobs:
   # windows/macos/linux-arm64 run latest only — the point there is the
   # platform ABI (.node addon + napi external zero-copy), not the
   # version spread.
-  # Re-enabled 2026-09-26 after the typescript manual review landed.
   node:
     name: node (${{ matrix.os }}, ${{ matrix.node-version }})
     strategy:
@@ -285,8 +283,8 @@ jobs:
         # One step: show-env, clean, instrumented build, vitest and report
         # MUST share it — the instrumentation env does not cross steps.
         # debug build (not release): instrumented release is slow and
-        # optimization shifts line mappings off the source (design decision
-        # 7); the .node exports the same symbols and zero-copy protocol.
+        # optimization shifts line mappings off the source; the .node exports
+        # the same symbols and zero-copy protocol.
         # `--no-cfg-coverage` keeps the napi glue compiled in (show-env
         # would otherwise set cfg(coverage) and strip it). vitest runs on
         # the threads pool with execArgv cleared and gc via NODE_OPTIONS:
@@ -324,13 +322,13 @@ jobs:
         # present. Runs once per OS matrix cell on the newest Node.
         if: matrix.node-version == '26'
         run: pnpm -C typescript typecheck
-      - name: dts glue typing check (LL-034)
+      - name: dts glue typing check
         # tsdown silently emits `any` when a generated glue is missing at
         # dts time; fail fast instead of shipping degraded types.
         shell: bash
         run: |
           if grep -q ": any" typescript/dist/index.browser.d.mts typescript/dist/index.node.d.mts; then
-            echo "::error::shell dts has any-typed exports - glues were not built before tsdown (LL-034)"
+            echo "::error::shell dts has any-typed exports - glues were not built before tsdown"
             exit 1
           fi
       - name: vitest (wasm, coverage 100)
@@ -339,18 +337,17 @@ jobs:
         # bash: the `(cd python && ...)` subshells isolate the directory
         # change. PowerShell's `( )` is a subexpression, not a subshell, so
         # its `cd` leaks to the parent scope — the second `(cd python ...)`
-        # would resolve `python/python` on Windows (LL-011: cross-platform
-        # steps with shell semantics pin `shell: bash`).
+        # would resolve `python/python` on Windows. Cross-platform steps with
+        # shell semantics pin `shell: bash`.
         shell: bash
         run: |
           uv sync --project python
           (cd python && uv run maturin develop)
-          # stub_gen dynamically links libpython (pyo3 auto mode): the
-          # loader must find uv's libpython, so export its LIBDIR. It must
-          # precede check:cross, which asserts the three generated type
-          # artifacts agree (LL-047: the cross-end check lives in the
-          # integration step that already builds each end, not in a
-          # single-end test section).
+          # stub_gen dynamically links libpython (pyo3 auto mode): the loader
+          # must find uv's libpython, so export its LIBDIR. It precedes
+          # check:cross, which asserts the three generated type artifacts
+          # agree — the cross-end check lives in the integration step that
+          # already builds each end, not in a single-end test section.
           export LD_LIBRARY_PATH="$(uv run --project python python -c "import sysconfig; print(sysconfig.get_config_var('LIBDIR'))")${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
           (cd python && uv run --no-sync cargo run --features stub-gen --bin stub_gen)
           # check:cross includes the built-in anti-tautology self-check
@@ -358,7 +355,7 @@ jobs:
           # and the cross-end vocabulary types gate.
           pnpm check:cross
 
-  # criterion baseline: regressions >20% fail (ci-matrix spec)
+  # criterion baseline: regressions >20% fail
   bench:
     runs-on: ubuntu-latest
     steps:
@@ -366,11 +363,9 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: bench vs previous baseline
         run: |
-          # Compare against the default 'base' baseline if one exists
-          # (first run has none -> no comparison data, gate passes).
-          # Cross-commit persistence (cache or committed baseline) lands
-          # with the real data model; until then this only measures
-          # run-to-run noise.
+          # Compare against the default 'base' baseline if one exists (the
+          # first run has none -> no comparison data, gate passes). Without
+          # cross-commit persistence this only measures run-to-run noise.
           cargo bench --bench scaffold -- --baseline-lenient=base || true
           cargo bench --bench scaffold -- --save-baseline=ci
           # Fail if current regressed >20% against the saved baseline.
