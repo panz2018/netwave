@@ -126,5 +126,8 @@
       文件的全文做只读体检（语义考古维 + 四维），发现附文件+行号+证据
       落 `Plan/体检-<日期>.md`，不阻塞、修复等点名；无适用文件时记
       "已查，无适用文件"。
-- [ ] 8.4 `pnpm check:outdated` 并按 dependency-upgrade spec
+- [ ] 8.4 归档豁免留痕：经人工裁决（2026-11-15），本 change 归档时一次性
+      跳过 health-check spec 的 archive 态体检——仅豁免本 change 这一次，
+      规则本体（spec 与 `openspec/config.yaml` 的 archive guidance）不变。
+- [ ] 8.5 `pnpm check:outdated` 并按 dependency-upgrade spec
       「apply 末尾体检与升级预授权」消化所报 LAG，复跑至退出码 0。
