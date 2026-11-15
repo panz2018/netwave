@@ -103,8 +103,7 @@ jobs:
         # `cargo test --workspace` retired: core tests run exactly once
         # here, and binding-crate compilation moves to the build watchdog
         # below (llvm-cov -p netwave does not compile the binding crates).
-        # Floor 100: calibration closed (unify-coverage-gates task 6.3) —
-        # core is fully covered on every cell; untested lines are red.
+        # Floor 100: core is fully covered on every cell; untested lines are red.
         shell: bash
         run: |
           # coverage/ is gitignored and absent on a clean checkout; llvm-cov
@@ -168,8 +167,9 @@ jobs:
         run: pnpm -C typescript test:browser --coverage
 
   # Python matrix: ubuntu runs the floor (3.10) + latest (3.15);
-  # windows/macos run latest only — the point there is the platform ABI
-  # (.so/.pyd/.dylib + zero-copy base object), not the version spread.
+  # windows/macos/linux-arm64 run latest only — the point there is the
+  # platform ABI (.so/.pyd/.dylib + zero-copy base object), not the
+  # version spread.
   python:
     name: python (${{ matrix.os }}, ${{ matrix.python-version }})
     strategy:
@@ -183,6 +183,8 @@ jobs:
           - os: windows-latest
             python-version: "3.15"
           - os: macos-latest
+            python-version: "3.15"
+          - os: ubuntu-26.04-arm
             python-version: "3.15"
     runs-on: ${{ matrix.os }}
     steps:
@@ -207,10 +209,8 @@ jobs:
         # report MUST share one step — the instrumentation env does not
         # cross steps. maturin passes RUSTC_WRAPPER through to cargo, so
         # the extension builds instrumented; pytest drives it and the
-        # profraw lands in root target/. Floor 100: calibration closed
-        # (task 6.3) — the only uncovered lines were the #[pymethods]
-        # attribute lines (rustc#79651), exempted by pattern in the gate.
-        # The python-layer pytest-cov floor is unchanged.
+        # profraw lands in root target/. Floor 100: the #[pymethods]
+        # attribute lines (rustc#79651) are exempted by pattern in the gate.
         shell: bash
         run: |
           mkdir -p coverage
@@ -229,8 +229,9 @@ jobs:
           path: coverage/coverage-python.json
 
   # Node matrix: ubuntu runs the floor (22) + latest (26);
-  # windows/macos run latest only — the point there is the platform ABI
-  # (.node addon + napi external zero-copy), not the version spread.
+  # windows/macos/linux-arm64 run latest only — the point there is the
+  # platform ABI (.node addon + napi external zero-copy), not the
+  # version spread.
   # Re-enabled 2026-09-26 after the typescript manual review landed.
   node:
     name: node (${{ matrix.os }}, ${{ matrix.node-version }})
@@ -245,6 +246,8 @@ jobs:
           - os: windows-latest
             node-version: "26"
           - os: macos-latest
+            node-version: "26"
+          - os: ubuntu-26.04-arm
             node-version: "26"
     runs-on: ${{ matrix.os }}
     steps:
@@ -295,9 +298,8 @@ jobs:
         # coverage still hits its 100% threshold under the threads pool.
         # report needs --target: napi --platform builds objects under
         # target/<triple>/, which report does not search by default.
-        # Floor 100: calibration closed (task 6.3) — the only uncovered
-        # lines were the #[napi] attribute lines (rustc#79651), exempted
-        # by pattern in the gate.
+        # Floor 100: the #[napi] attribute lines (rustc#79651) are
+        # exempted by pattern in the gate.
         shell: bash
         run: |
           mkdir -p coverage
