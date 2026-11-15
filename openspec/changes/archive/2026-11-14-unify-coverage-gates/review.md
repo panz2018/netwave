@@ -40,3 +40,28 @@
 
 - task 3.2/4.2/5.3：upload-artifact 步骤已加，artifact 实际下载验证待 push。
 - task 6.1/6.2/6.3：标定轮收六份数字、缺行定性、翻地板 100，依赖 CI 首轮。
+
+## 归档前检查（2026-11-14）
+
+- 遗留收口：CI run 43654081659（head a9f690c）18 job 全绿、12 份 artifact
+  可下载，12 格全部 100%（core 992/992×4；python 351/351×4，豁免
+  [129,291]；native 241/241×4，豁免 [50,199]）——3.2/4.2/5.3/6.x 关闭，
+  逐格证据见 calibration.md。
+- 三态时效（guidance 3）：本 change 净效果 = ci-matrix spec 更新
+  （MODIFIED×2 + ADDED×3，已同步 ee18c24）；无新增能力 spec、无退役
+  spec；specs/README.md 路由表 ci-matrix 条目已存在，无需改动。
+- Plan/ 瘦身（guidance 1）：
+  - `Plan/覆盖率统一-2026-11-12.md`：已定裁决摘要与 S1 指针删除，只留
+    延后项（S5 wasm spike、wasm functions 阈值）。原"归档后整删"与
+    Plan/ 生命周期（未执行任务不得蒸发）冲突，改为保留延后项。
+  - `Plan/闸门重排-2026-11-12.md`：决策一（已定+落地）、T0/T6（已完成）、
+    旧 CI 命令全景表（与 ci-matrix spec 冲突的过期事实）删除；留
+    T1–T5/T7 与待拍板决策二~七。
+  - `Plan/阅卷人覆盖率-2026-11-14.md`：决策 2 前提失效（本 change 已归档、
+    `check:py` 范围未变），承载方式改为新开小 change；仍待拍板。
+  - `Plan/测试规划.md`：覆盖率标准段补宏属性行豁免，对齐 ci-matrix 铁律七。
+  - `Plan/README.md`：路由表补 `覆盖率统一`、`linux-arm64绑定格` 两行。
+  - `Plan/linux-arm64绑定格-2026-11-13.md`：人工裁决单开 change，与本
+    change 无关，不动。
+- archive-health-check（guidance 2）：人工点名（2026-11-13，tasks.md
+  Workflow 记录）跳过五维体检，归档完成即收口；guidance 让位于人工裁决。
