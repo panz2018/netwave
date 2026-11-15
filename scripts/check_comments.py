@@ -24,8 +24,12 @@ a new change is covered without editing this script. Names that are also
 live spec capability names (e.g. `frequency-unit`) are excluded: they are
 ordinary vocabulary in code, not archaeology.
 
-Scanned: comments in .rs/.py/.ts sources only. Markdown is covered by
-scripts/check_md.py, the developer-documentation gate. No exemptions.
+Scanned: comments in .rs/.py/.ts sources and .yml/.yaml/.toml configs.
+Markdown is covered by scripts/check_md.py, the developer-documentation gate.
+File-level exemptions (whitelist, nothing else is exempt): pnpm-lock.yaml
+(generated), .openspec.yaml under openspec/changes/archive/ (frozen history),
+openspec/config.yaml (its path references are the functional meaning of
+workflow instructions, not development leakage), and build directories.
 
 Run from repo root:
 
@@ -49,6 +53,20 @@ DEV_DOC_POINTERS = re.compile(r"spec: |LL-[0-9]+|铁律[一二三四五六七八
 # of the current contract.
 ARCHAEOLOGY = re.compile(r"replaces X|no longer|deviation filed", re.IGNORECASE)
 
+# Run identifiers: a CI run number is only ever a development-process pointer.
+CI_RUN = re.compile(r"CI run [0-9]{6,}")
+
+# Date attribution: a re-enable/calibration date explains why a value is what
+# it is today. A bare date (a version string, a data value) is not attribution,
+# so the verb prefix is required.
+DATE_ATTRIBUTION = re.compile(
+    r"Re-enabled [0-9]{4}-[0-9]{2}-[0-9]{2}|重新启用 [0-9]{4}-[0-9]{2}-[0-9]{2}|已标定"
+)
+
+# Discussion codenames: decision numbers only make sense inside the document
+# that defines them.
+DECISION_CODENAME = re.compile(r"design decision [0-9]+|design D[0-9]+", re.IGNORECASE)
+
 COMMENT_PREFIXES = ("//", "///", "//!", "#", "/*", "*/", "* ", "--")
 
 EXEMPT_DIRS = (
@@ -62,6 +80,30 @@ EXEMPT_DIRS = (
     ".pytest_cache",
     "coverage",
 )
+
+# Files skipped entirely: generated artifacts, frozen history, and the workflow
+# config whose path references are instruction semantics rather than leakage.
+EXEMPT_FILES = (
+    "pnpm-lock.yaml",
+    "openspec/config.yaml",
+)
+
+ARCHIVE_DIR = "openspec/changes/archive/"
+
+SCAN_SUFFIXES = ("rs", "py", "ts", "yml", "yaml", "toml")
+
+
+def is_exempt(rel: str) -> bool:
+    """Match exempt directories by path component, not substring: a substring
+    test would exempt `.github/` because it contains `.git`."""
+    parts = rel.split("/")
+    if any(part in EXEMPT_DIRS for part in parts):
+        return True
+    if rel in EXEMPT_FILES:
+        return True
+    if ARCHIVE_DIR in rel and rel.endswith(".openspec.yaml"):
+        return True
+    return False
 
 
 def change_names(root: str) -> list[str]:
@@ -89,29 +131,49 @@ def is_comment(line: str) -> bool:
     return s.startswith(COMMENT_PREFIXES)
 
 
+def iter_scanned_files(root: str):
+    """Yield (path, relpath) for every scannable source/config file.
+
+    os.walk is used instead of glob because glob skips dot-prefixed paths, and
+    the scan surface includes .github/workflows/ci.yml and .openspec.yaml."""
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = sorted(d for d in dirnames if d not in EXEMPT_DIRS)
+        for name in sorted(filenames):
+            if not name.endswith(tuple("." + s for s in SCAN_SUFFIXES)):
+                continue
+            path = os.path.join(dirpath, name)
+            rel = os.path.relpath(path, root).replace("\\", "/")
+            if is_exempt(rel):
+                continue
+            if "/dist/" in rel or rel.startswith("dist/") or "/generated" in rel:
+                continue
+            yield path, rel
+
+
 def main() -> int:
     root = sys.argv[1] if len(sys.argv) > 1 else "."
     names = change_names(root)
     patterns = [re.compile(re.escape(n)) for n in names]
-    patterns += [STAGE_WORDS, DEV_DOC_POINTERS, ARCHAEOLOGY]
+    patterns += [
+        STAGE_WORDS,
+        DEV_DOC_POINTERS,
+        ARCHAEOLOGY,
+        CI_RUN,
+        DATE_ATTRIBUTION,
+        DECISION_CODENAME,
+    ]
 
     bad = 0
-    for ext in ("rs", "py", "ts"):
-        for path in sorted(glob(os.path.join(root, "**", f"*.{ext}"), recursive=True)):
-            rel = path.replace("\\", "/")
-            if any(d in rel for d in EXEMPT_DIRS):
-                continue
-            if "/dist/" in rel or "/generated" in rel:
-                continue
-            with open(path, encoding="utf-8") as f:
-                for i, line in enumerate(f, 1):
-                    if not is_comment(line):
-                        continue
-                    for pat in patterns:
-                        if pat.search(line):
-                            print(f"STALE REF      {path}:{i} {line.strip()[:70]}")
-                            bad += 1
-                            break
+    for path, _rel in iter_scanned_files(root):
+        with open(path, encoding="utf-8") as f:
+            for i, line in enumerate(f, 1):
+                if not is_comment(line):
+                    continue
+                for pat in patterns:
+                    if pat.search(line):
+                        print(f"STALE REF      {path}:{i} {line.strip()[:70]}")
+                        bad += 1
+                        break
 
     if bad:
         print(f"check_comments: {bad} stale reference(s) found")
