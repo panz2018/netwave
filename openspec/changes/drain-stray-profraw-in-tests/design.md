@@ -1,0 +1,124 @@
+# Design
+
+## Context
+
+见 `proposal.md` — Why。此处只记约束现状：
+
+- profraw 落点由 `LLVM_PROFILE_FILE` 决定；`cargo llvm-cov show-env` 把它指到
+  `target/llvm-cov/`（模板 `netwave-%p-%18m.profraw`，本机实证），env 缺失时 LLVM
+  退回默认模板 `default_%m_%p.profraw` 并写在**进程 cwd**——这就是根目录与
+  `python/` 下 15 个 `default_*` 文件的来源。
+- `cargo llvm-cov report` 只消费 `target/` 内它自己登记的 profraw，`target/` 外的
+  profraw 从来不是任何报告的输入 → 删除零风险。
+- `cargo llvm-cov clean --profraw-only` 存在（本机 `--help` 实证），但按自有清单删，
+  且静默成功。
+- 目录遍历跳过名单已有单一来源 `scripts/versions/lib/repository.py` 的 `SKIP_DIRS`
+  （`target`、`target-wasm`、`node_modules`、`.venv`、`.git`、`dist`、`coverage`），
+  `scripts/check_py.py` 的 `skip_dirs_defs` 机器强制全仓只有一处顶层赋值。
+- vitest 侧实证（`typescript/node_modules/vitest/dist/chunks/index.Di8au7q4.js`）：
+  `globalSetup?: string | string[]`（只接受文件路径，不接受内联函数，L3907）；
+  globalSetup 文件须导出 `default`/`setup`，`setup` 的返回值若为函数则登记为
+  teardown，`_teardownGlobalSetup()` 在测试结束时 `await` 它（L6601-6614）。
+- `typescript/tsconfig.json` 的 `include` 含 `test/**/*.ts` 与 `*.ts`，且
+  `checkJs`/`strict` 开启——新建的 vitest 钩子文件受 `pnpm -C typescript typecheck`
+  约束；`biome.jsonc` 的 includes 覆盖 `typescript/` 全目录。
+- `python/` 目前**没有** conftest.py，pytest 靠 `python/` 为 rootdir 自动发现。
+
+## Goals / Non-Goals
+
+**Goals:**
+
+- 三个插桩 harness 各自在会话首尾清扫本树，散落即先删后非零退出。
+- pytest 侧逻辑可单测（红→绿），vitest 侧靠一次性实证。
+- 名单复用单一来源，不新增第二份 `SKIP_DIRS`。
+
+**Non-Goals:**
+
+- 设计级边界：不改覆盖率采集链本身（show-env 位置、report 参数、地板），
+  只增加"链断时留下可执行信号"这一层；采集链的聚合入口归 `闸门重排` T1。
+- 不追求跨 harness 共享一份实现（见「各 harness 内联等价逻辑，不抽公共模块」）。
+
+## Decisions
+
+### D1 各 harness 内联等价逻辑，不抽公共模块
+
+三处各写十余行遍历删除。备选：抽 `scripts/clean_stray_profraw.py` 供三方调用。
+否决理由：① 进 `[tool.coverage.run].source` 就得背 100% 地板＋单测；② vitest 要
+`execFileSync("python3", ...)`，给 JS 测试引入 Python 运行时依赖，直接违反
+workspace-layout spec「主 CI 零 Python 依赖」requirement；③ 逻辑仅"遍历＋按后缀删"，
+抽象收益低于成本。跨语言无法共享是物理限制，不是选择。
+
+### D2 pytest 侧：conftest 内具名函数 ＋ session fixture 首尾各调一次
+
+`scripts/tests/conftest.py` 新增 `drain_stray_profraw(root: Path) -> list[Path]`
+（返回被删文件，相对 root 的路径），并新增 autouse session fixture：yield 前调一次
+（清上轮残留）、yield 后调一次（清本轮当场断链），任一次有返回即写 stderr 并
+`raise`。`python/conftest.py`（新建）内联同名等价实现——两个 pytest 工程是独立
+rootdir，跨工程 import 需把 `scripts/versions` 加进 `python/` 的 pythonpath，
+为十余行逻辑污染发布工程的测试配置不值；`SKIP_DIRS` 则**必须** import
+（`check_py.py` 机器强制）。根 `pyproject.toml` 的 pytest `pythonpath` 已含
+`scripts/versions`，故 `scripts/tests/conftest.py` 可直接写
+`from lib.repository import SKIP_DIRS`；`python/conftest.py` 需自带 `sys.path`
+引导（同 `check_py.py` 先例：先 `sys.path.insert` 再 import，均置于文件顶部）。
+
+### D3 vitest 侧：`globalSetup` 文件导出 setup 并返回 teardown
+
+新建 `typescript/test/global-drain-profraw.ts`，`export async function setup()`
+清扫并返回 teardown 函数完成收尾清扫；`vitest.native.config.ts` 加
+`globalSetup: "./test/global-drain-profraw.ts"`。跳过名单在此文件里以字面量写出
+（TS 无法 import Python 常量）——`check_py.py` 只扫 `*.py`，不构成第二份
+`SKIP_DIRS` 赋值；名单值与 `repository.py` 的一致性由 tasks 里的核对步骤保证。
+teardown 内**显式设 `process.exitCode = 1`** 并写 stderr，不依赖"teardown 抛错
+是否冒泡"这一未实证的内部行为（vitest 源码显示 `_teardownGlobalSetup` 的 await
+在 close 路径上，抛错语义随版本而异）。
+
+### D4 报错形态：先删、后写证据、再失败
+
+顺序固定为"删除 → 打印 → 非零退出"，保证报错即自愈：报错文本含被删文件名与个数，
+人无需再手动清理。备选"报错不删"否决——那会把清理重新推回人工，正是本次要消灭的。
+报错文案只写当前契约（散落 = 采集链未生效 = 本轮覆盖率数字不可信），不写 LL 编号
+与 spec 指针（`scripts/check_comments.py` 扫描范围内只留当前契约）。
+
+### D5 扫描范围 = 各自子树，跳过名单取单一来源
+
+根 conftest 扫仓库根、`python/conftest.py` 扫 `python/`、vitest 钩子扫
+`typescript/`。`rglob("*.profraw")` ＋ 任一父目录命中 `SKIP_DIRS` 即跳过；
+`target` 与 `target-wasm` 已在名单内，天然满足"不碰 target 内产物"。不做全仓扫：
+谁产生谁清理，边界清楚且避免每次 pytest 全仓遍历。
+
+### D6 治理落点：ci-matrix spec ＋ LL-103，不新增能力域
+
+备选：新开 `coverage-hygiene` 能力。否决——ci-matrix 已承载"覆盖率采集与地板"
+全部契约（`覆盖率门槛生效（铁律七）`、`覆盖率报告命名与留存`），本条是同一主题的
+前置条件，拆新域会稀释路由。delta 用 ADDED（现存 10 条 requirement 全部不动，
+无 MODIFIED，避开 strict 校验的整块复制义务）。
+
+## Risks / Trade-offs
+
+- [同一份逻辑存在三处，改一处漏两处] → tasks 里有一条"三处行为对照"验证：
+  同一伪造文件分别放进三棵子树，三个 harness 各跑一次，断言三者都报错并删除；
+  pytest 侧另有 `tmp_path` 单测锁语义。
+- [开跑前清扫误删本轮正在写的 profraw] → 不会：插桩进程在测试**期间**写文件，
+  清扫发生在会话开始（写之前）与会话结束（进程已退出、文件已 flush）；
+  且 `report` 只读 `target/` 内产物，`target/` 外删除不影响本轮阅卷。
+- [CI 上多跑一次遍历，拖慢闸门] → 遍历跳过全部大目录（`target`、`node_modules`、
+  `.venv`），命中集在健康工作区恒为空，成本为目录 stat 级，实测记录进 tasks。
+- [teardown 抛错语义随 vitest 版本变化] → D3 用显式 `process.exitCode = 1`，
+  不依赖抛错冒泡；vitest 升级后由 tasks 的实证步骤复验。
+- [`python/conftest.py` 的 `sys.path` 引导与 `python/` 自身包名冲突] → 引导只加
+  `scripts/versions` 一个目录（`lib` 与两个闸门模块名不与 `netwave` 包重名），
+  `netwave` 包解析不受影响；apply 时以 `python -c "import netwave"` 复验。
+- [现存 15 个真实残留被一次性实证消耗，将来无真实样本] → 单测用 `tmp_path`
+  伪造，永久回归不依赖真实样本；真实样本仅用于证明"钩子接进了 harness"。
+
+## Migration Plan
+
+1. 先落 pytest 侧（函数＋单测红→绿），再落 `python/conftest.py`，最后落 vitest 侧。
+2. 一次性实证：用现存 15 个真实文件做 before/after `ls`，`typescript/` 侧临时造
+   `zz-drain-proof.profraw` 验证后删除样本。
+3. 回滚：三处钩子各自独立可 revert（两个 conftest ＋ 一个 config 行 ＋ 一个钩子
+   文件），无数据迁移、无产物依赖，revert 即回到现状。
+
+## Open Questions
+
+（无——命名、范围、报错形态、治理去向均已在提案与 spec 中定死。）
