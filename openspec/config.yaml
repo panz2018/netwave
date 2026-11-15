@@ -53,9 +53,13 @@ operations:
         "更新/新增/退役"三态时效结论（哪些 spec 需改而未改、需新增、
         可退役），留痕于本 change 的 tasks.md 完成记录；结构一致性由
         check_md.py SPECS ROUTER 门禁兜底
-      - apply 倒数第二步（check:outdated 之前）MUST 按 governance spec
+      - apply 收尾（check:outdated 之前）MUST 按 governance spec
         「元规则 review 三轴」对照本 change 工件（proposal/specs/design/
-        tasks）审实现 diff，硬伤清零才准入最后一项 check:outdated
+        tasks）审实现 diff，硬伤清零才准入后续步骤
+      - 三轴 review 之后、check:outdated 之前 MUST 执行被触碰文件全文
+        只读体检（health-check spec 的 apply 态：语义考古维 + 四维，
+        发现附文件+行号+证据落 Plan/ 等点名，不阻塞；全豁免时记
+        "已查，无适用文件"；规则本体见 health-check spec，本条不复述）
       - apply 全部任务完成后，最后一项 MUST 是跑 pnpm check:outdated
         并按 dependency-upgrade spec「apply 末尾体检与升级预授权」消化
         所报 LAG（升级 + 全闸门 + 四端对拍，含全局 CLI/直装工具的
@@ -68,8 +72,8 @@ operations:
         已完成/已定案的章节一律删除（结论已在主 spec——openspec 是结论的
         唯一事实源，Plan/ 不留存）、与主 spec 冲突的当场指出；Plan/ 只留
         未执行任务，终态是整目录删除（追溯靠 git log）
-      - 归档完成（sync 核对与目录移动）后 MUST 执行 archive-health-check
-        spec 规定的五维只读体检，发现由主代理写入 Plan/ 等人工点名，
+      - 归档完成（sync 核对与目录移动）后 MUST 执行 health-check spec
+        规定的 archive 态只读体检，发现由主代理写入 Plan/ 等人工点名，
         不阻塞归档（触发时机、只读边界、三级去重、上限与硬伤标注等
         规则本体见该 spec，本条不复述）
       - 归档前扫 openspec/specs/ 全目录做三态时效检查（更新/新增/退役），
