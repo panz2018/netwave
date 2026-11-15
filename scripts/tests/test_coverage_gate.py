@@ -13,6 +13,7 @@ so tests swap argv in place — the script needs zero changes to satisfy this
 contract (the run below records the red/green evidence tasks 2.1 asks for)."""
 
 import json
+import os
 import sys
 
 import coverage_gate
@@ -39,6 +40,12 @@ def _gate_argv(monkeypatch):
 def _report(tmp_path, name: str, files: dict[str, dict[str, str]]) -> str:
     p = tmp_path / name
     p.write_text(_codecov(files), encoding="utf-8")
+    return str(p)
+
+
+def _src(tmp_path, name: str, lines: list[str]) -> str:
+    p = tmp_path / name
+    p.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return str(p)
 
 
@@ -87,13 +94,8 @@ class TestMacroAttributeExemption:
     A missed line whose source cannot be read is never exempted — it stays
     missed (red at the production floor) and is reported as unverifiable."""
 
-    def _src(self, tmp_path, name: str, lines: list[str]) -> str:
-        p = tmp_path / name
-        p.write_text("\n".join(lines) + "\n", encoding="utf-8")
-        return str(p)
-
     def test_pymethods_before_impl_is_exempted(self, tmp_path, capsys):
-        src = self._src(
+        src = _src(
             tmp_path,
             "glue.rs",
             ["#[pymethods]", "impl Frequency {", "    fn m() {}", "}"],
@@ -107,7 +109,7 @@ class TestMacroAttributeExemption:
         assert f"exempted {src}: [1]" in out
 
     def test_napi_with_args_before_impl_is_exempted(self, tmp_path, capsys):
-        src = self._src(
+        src = _src(
             tmp_path,
             "native.rs",
             ['#[napi(js_name = "Touchstone")]', "impl Touchstone {", "}"],
@@ -122,7 +124,7 @@ class TestMacroAttributeExemption:
     def test_macro_attribute_before_fn_stays_red(self, tmp_path, capsys):
         # A macro attribute on a plain fn is a real untested line: the
         # exemption requires the next code line to be `impl`.
-        src = self._src(tmp_path, "glue.rs", ["#[napi]", "fn from_url() {}", "}"])
+        src = _src(tmp_path, "glue.rs", ["#[napi]", "fn from_url() {}", "}"])
         files = {src: {"1": "0/1", "2": "1/1"}}
         path = _report(tmp_path, "coverage-glue.json", files)
         assert coverage_gate.main([path, "100"]) == 1
@@ -131,7 +133,7 @@ class TestMacroAttributeExemption:
         assert "exempted" not in out
 
     def test_non_macro_attribute_stays_red(self, tmp_path, capsys):
-        src = self._src(tmp_path, "glue.rs", ["#[derive(Debug)]", "impl S {", "}"])
+        src = _src(tmp_path, "glue.rs", ["#[derive(Debug)]", "impl S {", "}"])
         files = {src: {"1": "0/1", "2": "1/1"}}
         path = _report(tmp_path, "coverage-glue.json", files)
         assert coverage_gate.main([path, "100"]) == 1
@@ -146,3 +148,55 @@ class TestMacroAttributeExemption:
         out = capsys.readouterr().out
         assert "unverifiable no/such/dir/glue.rs: [7]" in out
         assert "exempted no/such/dir/glue.rs" not in out
+
+
+class TestReportParsingBranches:
+    """Parsing branches the four-line fixtures never exercised: real
+    llvm-cov exports carry non-line keys, and the exemption lookahead must
+    skip blank/comment/attribute lines and cope with EOF."""
+
+    def test_non_digit_keys_are_skipped(self, tmp_path, capsys):
+        # llvm-cov's codecov.json carries a `message` key alongside line
+        # entries; only digit keys count toward the totals.
+        files = {"repo/core/src/lib.rs": {"1": "1/1", "message": "llvm-cov export"}}
+        path = _report(tmp_path, "coverage-core.json", files)
+        assert coverage_gate.main([path, "100"]) == 0
+        assert "1/1 = 100.00%" in capsys.readouterr().out
+
+    def test_lookahead_skips_blank_and_comment_lines(self, tmp_path, capsys):
+        src = _src(
+            tmp_path,
+            "glue.rs",
+            ["#[pymethods]", "", "// separated by prose", "impl Frequency {", "}"],
+        )
+        files = {src: {"1": "0/1", "4": "1/1"}}
+        path = _report(tmp_path, "coverage-glue.json", files)
+        assert coverage_gate.main([path, "100"]) == 0
+        assert f"exempted {src}: [1]" in capsys.readouterr().out
+
+    def test_macro_attribute_at_eof_is_not_exempted(self, tmp_path, capsys):
+        # Nothing follows the attribute line: the lookahead returns "" and
+        # the exemption condition fails, so the line stays missed.
+        src = _src(tmp_path, "glue.rs", ["impl S {", "}", "#[pymethods]"])
+        files = {src: {"1": "1/1", "2": "1/1", "3": "0/1"}}
+        path = _report(tmp_path, "coverage-glue.json", files)
+        assert coverage_gate.main([path, "100"]) == 1
+        assert f"missed {src}: [3]" in capsys.readouterr().out
+
+
+class TestMainGuard:
+    """The process exit code is what CI consumes; pin it through runpy so
+    the `sys.exit(main())` line is covered and a regression that drops the
+    exit code fails the gate."""
+
+    def test_module_exit_code_is_one_on_missed_lines(self, tmp_path, monkeypatch):
+        import runpy
+        import sys
+
+        report = tmp_path / "codecov.json"
+        report.write_text(_codecov({"repo/core/src/lib.rs": {"1": "0/1"}}), encoding="utf-8")
+        script = os.path.join(os.getcwd(), "scripts", "coverage_gate.py")
+        monkeypatch.setattr(sys, "argv", [script, str(report), "100"])
+        with pytest.raises(SystemExit) as excinfo:
+            runpy.run_path(script, run_name="__main__")
+        assert excinfo.value.code == 1

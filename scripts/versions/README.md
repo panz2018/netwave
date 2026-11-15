@@ -26,8 +26,8 @@ fixtures plus swapped-out network/subprocess helpers — tests never reach the
 network; an autouse guard in `scripts/tests/conftest.py` enforces this;
 wired into `pnpm check:py`, which CI runs via `pnpm check`; discovery is
 `testpaths` in root `pyproject.toml`). This domain's line coverage is held
-at a 100% floor by `check:py`'s `--cov-fail-under` (threshold value defined
-only in root `package.json`).
+at a 100% floor by `[tool.coverage]` in root `pyproject.toml` (scope and
+threshold defined only there; `check:py` carries no `--cov` flags).
 
 ## Exit codes
 

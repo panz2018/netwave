@@ -24,3 +24,18 @@ testpaths = ["scripts/tests"]
 # top-level gates (coverage_gate) as bare modules; put both parents on the
 # path so pytest works from the repo root.
 pythonpath = ["scripts", "scripts/versions"]
+# Coverage runs on every pytest invocation; scope and floor live only in
+# [tool.coverage] below (single source of truth, never duplicated in
+# package.json or ci.yml).
+addopts = ["--cov", "--cov-report=term"]
+
+[tool.coverage.run]
+# Grading layer of every coverage floor: the versions domain plus the two
+# gate scripts that grade codecov reports and police comment hygiene. A
+# regression here invalidates all floors, so all three carry a 100% floor.
+# Bare module names (not paths): the gates are imported as top-level
+# modules through `pythonpath` above, and coverage resolves them the same way.
+source = ["scripts/versions", "coverage_gate", "check_comments"]
+
+[tool.coverage.report]
+fail_under = 100
