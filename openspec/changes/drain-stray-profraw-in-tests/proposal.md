@@ -22,10 +22,12 @@ LLVM 默认模板把原始计数文件写到进程当前目录——仓库根现
 - 跳过目录复用单一来源 `scripts/versions/lib/repository.py` 的 `SKIP_DIRS`
   （`check_py.py` 规则 3 机器强制全仓只有一处赋值）。
 - ci-matrix spec 新增一条 requirement，把"覆盖率中间产物不跨轮残留、散落即报错"
-  写成契约；账本 `openspec/specs/lessons-learned/ci.md` 新增 LL-103 记录成因与
-  防复发。
-- `ci.yml` 零改动：清理挂在测试框架钩子上，本地与 CI 跑同一条 pytest/vitest 命令，
-  口径天然一致。
+  写成契约；账本新增两条 LL——`ci.md` 记 profraw 散落成因与防复发，`workflow.md`
+  记本 change 提案阶段暴露的"写 tasks.md 漏抄 config.yaml apply guidance"流程失误。
+- `ci.yml`：三个构建插桩代码的 job（rust / python / node）各加两道清理步骤
+  （测试前、测试后），与本地钩子同流程同语义；未插桩的 job（wasm、lint、bench）
+  不加。步骤体为内联 shell（同现有 `mkdir -p coverage` 这类文件系统准备先例），
+  不新建脚本。
 - `Plan/闸门重排-2026-11-12.md` 补一行去向：覆盖率采集完整链（show-env→clean→
   build→test→report）随该计划 T1 绑进根聚合测试命令，本 change 不重复造入口。
 
@@ -49,9 +51,11 @@ LLVM 默认模板把原始计数文件写到进程当前目录——仓库根现
 - 单测：`scripts/tests/test_drain_profraw.py`（新建）。
 - 复用：`scripts/versions/lib/repository.py` 的 `SKIP_DIRS`（只读引用，不改）。
 - 治理：`openspec/specs/ci-matrix/spec.md`（归档时 sync）、
-  `openspec/specs/lessons-learned/ci.md` ＋ `INDEX.md`（LL-103）、
+  `openspec/specs/lessons-learned/ci.md` 与 `workflow.md` ＋ `INDEX.md`（两条 LL）、
   `Plan/闸门重排-2026-11-12.md`（补去向行）、`Plan/` 新增待议笔记。
-- 不受影响：`ci.yml`、`package.json` 脚本面、`scripts/` 闸门集合、覆盖率地板与
+- CI：`.github/workflows/ci.yml`（rust / python / node 三个 job 各加测试前与
+  测试后两道内联清理步骤；wasm / lint / bench 不动）。
+- 不受影响：`package.json` 脚本面、`scripts/` 闸门集合、覆盖率地板与
   `[tool.coverage.run].source` 名单、`target/` 内 cargo-llvm-cov 自有产物、
   `.coverage` 与 `coverage/*.json` 报告文件、wasm/browser 两个 vitest 配置。
 - 受引用铁律：铁律七（覆盖率 100% 硬约束）——本 change 让"覆盖率数字可信"的前置
@@ -59,9 +63,9 @@ LLVM 默认模板把原始计数文件写到进程当前目录——仓库根现
 
 ## Non-goals
 
-- 不改 `ci.yml`：CI 干净检出且现有 step 已把 show-env/clean/build/test/report 收在
-  同一 step 内，无散落问题，加清理步骤反而违反"命令细节唯一真相源在根
-  `package.json`"原则。
+- CI 清理步骤不抽成 `scripts/` 脚本也不进根 `package.json`：它是 CI 环境专属的
+  文件系统准备（同现有 `mkdir -p coverage` 内联先例），而 `check_ci.py` 的接线
+  闸门只管 `test:*` 命令；抽脚本会把 CI 细节变成第二处真相源。
 - 不新建 `scripts/` 独立清理脚本，也不把清理逻辑纳入 `[tool.coverage.run].source`
   的 100% 地板名单——逻辑仅十余行，为它加脚本＋floor 是过度结构。
 - 不碰 `target/` 内的 profraw 与 `target/netwave-profraw-list`（归

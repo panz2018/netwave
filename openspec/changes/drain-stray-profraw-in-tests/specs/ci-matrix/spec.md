@@ -7,8 +7,11 @@
 凡驱动插桩代码执行的测试 harness MUST 在测试会话的开始与结束两处清除自身子树内
 `target/` 之外的 `*.profraw`；`target/` 外出现 profraw = 覆盖率采集链未生效的
 充分证据，故 harness MUST 先删除再报错退出（非警告、非静默、无跳过开关），
-报错文本列出被删文件名与个数作为证据。清理由 harness 钩子承担而非 CI 步骤，
-使本地与 CI 执行同一条测试命令即同口径。
+报错文本列出被删文件名与个数作为证据。
+
+CI MUST 与本地同流程：每个构建插桩代码的 job MUST 在测试步骤**之前与之后**
+各有一道清理步骤，扫描全仓 `target/` 外的 `*.profraw`，语义与 harness 钩子一致
+（先删后报错）；未插桩的 job（不产 profraw）MUST NOT 加此步骤。
 
 容差：存在性闸门，无数值阈值；判定口径 = `target/` 外 `*.profraw` 计数，目标值 0
 （不涉及数值计算真值，故不引用 oracle manifest key）。
@@ -41,7 +44,10 @@
 - **THEN** 本条款的清理不删除其中任何一项，覆盖率报告与
   `cargo llvm-cov clean` 的自有产物不受影响
 
-#### Scenario: CI 不为此新增步骤
+#### Scenario: CI 测试前后各有一道清理闸门
 
-- **WHEN** 查看 `.github/workflows/ci.yml` 的覆盖率 job 步骤序列
-- **THEN** 无专为清理 profraw 而设的步骤，清理随 harness 钩子在既有测试命令内发生
+- **WHEN** 查看 `.github/workflows/ci.yml` 中构建插桩代码的 job（rust / python /
+  node）步骤序列
+- **THEN** 测试步骤之前与之后各有一个清理步骤，扫描 `target/` 外的 `*.profraw`，
+  发现即先删后以非零码失败并列出文件名与个数
+- **AND** 未插桩的 job（wasm、browser、lint、bench）无此步骤

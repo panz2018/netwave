@@ -81,17 +81,37 @@ teardown 内**显式设 `process.exitCode = 1`** 并写 stderr，不依赖"teard
 
 ### D5 扫描范围 = 各自子树，跳过名单取单一来源
 
-根 conftest 扫仓库根、`python/conftest.py` 扫 `python/`、vitest 钩子扫
-`typescript/`。`rglob("*.profraw")` ＋ 任一父目录命中 `SKIP_DIRS` 即跳过；
-`target` 与 `target-wasm` 已在名单内，天然满足"不碰 target 内产物"。不做全仓扫：
-谁产生谁清理，边界清楚且避免每次 pytest 全仓遍历。
+本地钩子按子树扫：根 conftest 扫仓库根、`python/conftest.py` 扫 `python/`、
+vitest 钩子扫 `typescript/`。`rglob("*.profraw")` ＋ 任一父目录命中 `SKIP_DIRS`
+即跳过；`target` 与 `target-wasm` 已在名单内，天然满足"不碰 target 内产物"。
+本地不做全仓扫：谁产生谁清理，边界清楚且避免每次 pytest 全仓遍历
+（CI 侧例外，见「CI 侧：三个插桩 job 各加测试前与测试后两道内联清理步骤」）。
 
-### D6 治理落点：ci-matrix spec ＋ LL-103，不新增能力域
+### D6 CI 侧：三个插桩 job 各加测试前与测试后两道内联清理步骤
+
+本地按子树扫（谁产生谁清理），CI 按全仓扫（job 工作目录就是仓根，一次扫完更简单，
+且 CI 上不存在误删其他子树活跃数据的风险）。步骤体为内联 shell，不新建脚本、
+不进根 `package.json`：它是 CI 环境专属的文件系统准备，同现有 `mkdir -p coverage`
+内联先例；`check_ci.py` 的接线闸门只管 `test:*` 命令，不会因此项要求报缺接线。
+
+硬约束（顺序）：测试后的清理 MUST 排在 `cargo llvm-cov report` 与
+`coverage_gate.py` **之后**。理由：report 读 `target/` 内 profraw，清理只删
+`target/` 外，本身不冲突；但若清理步骤插在测试与 report 之间，一旦某轮
+show-env 断链使 profraw 落在 `target/` 外，report 会先被跳过而拿不到任何计数，
+报错信号退化为"报告为空"而非"链断"。排在阅卷之后，两个信号各自完整。
+
+未插桩的 job（wasm、lint、bench）不加此步骤：不产 profraw，加了是噪音。
+
+### D7 治理落点：ci-matrix spec ＋ 账本两条 LL，不新增能力域
 
 备选：新开 `coverage-hygiene` 能力。否决——ci-matrix 已承载"覆盖率采集与地板"
 全部契约（`覆盖率门槛生效（铁律七）`、`覆盖率报告命名与留存`），本条是同一主题的
 前置条件，拆新域会稀释路由。delta 用 ADDED（现存 10 条 requirement 全部不动，
 无 MODIFIED，避开 strict 校验的整块复制义务）。
+
+账本两条 LL 的 scope 归属：profraw 散落属 CI/覆盖率工具链坑 → `ci.md`；
+"写 tasks.md 漏抄同文件 apply guidance"属流程失误 → `workflow.md`（与 LL-089
+同族：都是 config.yaml 流程规则执行不完整）。
 
 ## Risks / Trade-offs
 
@@ -103,6 +123,10 @@ teardown 内**显式设 `process.exitCode = 1`** 并写 stderr，不依赖"teard
   且 `report` 只读 `target/` 内产物，`target/` 外删除不影响本轮阅卷。
 - [CI 上多跑一次遍历，拖慢闸门] → 遍历跳过全部大目录（`target`、`node_modules`、
   `.venv`），命中集在健康工作区恒为空，成本为目录 stat 级，实测记录进 tasks。
+- [CI 清理步骤误删本轮报告输入] → 步骤只删 `target/` 外（`find` 剪枝
+  `target`/`target-wasm`），且测试后那道 MUST 排在 report 与 gate 之后（见 CI 侧
+  决策的顺序硬约束）；tasks 里有一条断言：插桩 job 的清理步骤在 ci.yml 中的行号
+  晚于同 job 的 `report` 与 `coverage_gate.py`。
 - [teardown 抛错语义随 vitest 版本变化] → D3 用显式 `process.exitCode = 1`，
   不依赖抛错冒泡；vitest 升级后由 tasks 的实证步骤复验。
 - [`python/conftest.py` 的 `sys.path` 引导与 `python/` 自身包名冲突] → 引导只加
