@@ -65,8 +65,9 @@ CI MUST 运行 criterion 基准 job（在真实基准落地前允许空基准/�
   `python/.python-version`、`typescript/package.json` 的 `engines.node`），
   一致性由 `dependency-upgrade` spec 的规则驱动闸门校验，本 spec 不写死数字。
 - **硬件平台轴**（各 OS 跑最新语言版本，验平台 ABI 而非版本 spread）：
-  python/node job 另在 windows-latest 与 macos-latest 各跑最新一格，
-  验证 `.so`/`.pyd`/`.dylib`/`.node` addon 与零拷贝 base object 的平台 ABI。
+  python/node job 另在 windows-latest、macos-latest 与 linux-arm64
+  （`ubuntu-26.04-arm`）各跑最新一格，验证 `.so`/`.pyd`/`.dylib`/`.node`
+  addon 与零拷贝 base object 的平台 ABI；linux-arm64 格验证 aarch64 ABI。
 
 Rust MUST 只跑单一 stable（`rust-toolchain.toml` 钉死当前 stable）——
 消费者自带 toolchain 编译，`rust-version` 由 cargo 自动检查。
@@ -76,7 +77,8 @@ Rust MUST 只跑单一 stable（`rust-toolchain.toml` 钉死当前 stable）—�
 - **WHEN** PR 触发 `ci.yml`
 - **THEN** python job 在 ubuntu 含 `python/.python-version` 所指底线与
   最新稳定两格、node job 在 ubuntu 含 `engines.node` 所指底线与最新 LTS
-  两格；两者另在 windows/macos 各跑最新一格验 ABI，全部通过方可合并
+  两格；两者另在 windows/macos/linux-arm64 各跑最新一格验 ABI，全部通过
+  方可合并
 
 #### Scenario: 矩阵数字单源
 
@@ -129,7 +131,7 @@ rust 行覆盖率暂不采集（vitest 驱动下插桩计数倒出未验证，�
 - **WHEN** 新增一行未被任何测试执行的产码
 - **THEN** 覆盖率 job 失败（exit ≠ 0），PR 不可合并
 
-#### Scenario: 胶水行未测即红（地板启用后）
+#### Scenario: 胶水行未测即红
 
 - **WHEN** `python/src/` 或 `typescript/native/src/` 新增一行未被
   pytest / vitest 任何用例执行的 rust 胶水产码
@@ -155,26 +157,6 @@ darwin-arm64）全部产出并各自阅卷，MUST NOT 以 step 级 `if` 限定�
 
 - **WHEN** rust job 四格运行完成
 - **THEN** 每格产出 core 覆盖率报告且经 `coverage_gate.py` 阅卷通过
-
-### Requirement: 覆盖率地板两阶段标定
-
-新纳入度量的代码域（首次被某覆盖率报告覆盖的 crate/平台格：core 的
-linux-arm64、windows-x64、darwin-arm64 三格与 python/native 两胶水域）
-MUST 先以地板 0 运行一轮——阅卷照常打印百分比与缺行清单但恒不判红；
-人工核对数字后，缺行逐条定性（真缺口补测试 / 结构性不可达按铁律七逐条
-豁免），再于同一 change 内将地板翻至 100。已标定域（core@linux-x64）
-在过渡期随四格统一命令同受地板 0 约束，标定轮后与其余格同步翻回 100。
-地板数值以 ci.yml 阅卷命令参数为唯一定义处（散文不复制数字）。
-
-#### Scenario: 标定轮只打印不判红
-
-- **WHEN** 某代码域首轮纳入覆盖率度量
-- **THEN** 该域阅卷以地板 0 运行，打印数字与缺行清单且 exit 0
-
-#### Scenario: 标定完成即启用
-
-- **WHEN** 人工核对确认该域缺行已清零（补测试或逐条豁免）
-- **THEN** 同一 change 内该域地板参数翻至 100，此后未测即红
 
 ### Requirement: 覆盖率报告命名与留存
 
