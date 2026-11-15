@@ -78,3 +78,4 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-099 | workflow   | 判"不可达/死分支"须穷举构造路径并实测，单条路失败只证该路失败                                      |
 | LL-100 | ci         | 宏属性行计数不并回（rustc#79651）：行级豁免落 gate 模式驱动三重条件，禁硬编码行号                  |
 | LL-101 | ci         | llvm-cov clean 缺 CACHEDIR.TAG 静默跳过：旧插桩二进制污染报告，重跑前须验 clean 真生效             |
+| LL-102 | workflow   | 改完 .md 必跑 check:md：编辑工具向 CJK markdown 注入 NBSP/尾随空格，肉眼拦不住                     |

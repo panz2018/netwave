@@ -272,3 +272,18 @@
   "已穷举的构造路径 + 各自实测结果"，只有单条失败证据或纯推断的
   不可达断言即打回；覆盖率报告里仍缺的行若被声称为死分支，须能指出
   穷举证据，否则按 LL-097 视为可达缺口补测
+
+### LL-102 编辑工具对 CJK markdown 注入不可见空白，改完 .md 须立即跑 check:md
+
+- 犯过：本 change 勾选 `tasks.md` 完成记录后，提交前只肉眼回看 diff、未跑
+  `pnpm check:md`；编辑工具在中文 markdown 首行注入 NBSP（U+00A0）+ 空格、
+  段间注入连续空行、行尾注入尾随空格，diff 里 NBSP 与普通空格视觉无异拦不住，
+  push 后 CI lint 报 MD009/MD012 三处红（run 43666522002）
+- 根因：AGENTS.md 铁律"改任何 `.md` 后必须跑 `pnpm check:md`"被漏执行；
+  肉眼 review 对不可见字符（NBSP/尾随空格/连续空行）零防御，只有门禁能拦
+- 规则：任何 `.md` 写操作（编辑/勾选/追加）后 MUST 立即跑 `pnpm check:md`
+  至退出码 0 才算该步完成，不许"改完先提交、CI 再验"；本轮动过 `.md` 时
+  `check:md` 是 commit 前置而非后置
+- 复发检测：review Standards 轴核对——本轮 diff 含 `.md` 改动时，commit 前
+  是否有 `check:md` 退出码 0 证据；CI lint 报 MD009/MD012/MD010 等空白类
+  错误而本地曾"绿"，即本地漏跑或修复未覆盖不可见字符，按本条补跑
