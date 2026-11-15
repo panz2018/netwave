@@ -245,9 +245,11 @@
       体检」不落 Plan/；④可门禁化 LL 未落闸门——新固定形态标记已落
       `check_comments.py`，LL-089 属流程软约束不可机械门禁。无新增
       发现需落 `Plan/体检-*.md`。
-- [ ] 8.4 归档豁免留痕：经人工裁决（2026-11-15），本 change 归档时一次性
+- [x] 8.4 归档豁免留痕：经人工裁决（2026-11-15），本 change 归档时一次性
       跳过 health-check spec 的 archive 态体检——仅豁免本 change 这一次，
       规则本体（spec 与 `openspec/config.yaml` 的 archive guidance）不变。
+      完成记录：本 change 归档执行时按本裁决跳过 archive 态只读体检
+      （仅本次；health-check spec 与 config.yaml archive guidance 不变）。
 - [x] 8.5 `pnpm check:outdated` 并按 dependency-upgrade spec
       「apply 末尾体检与升级预授权」消化所报 LAG，复跑至退出码 0。
       完成记录：首跑报 1 LAG（cargo `rand 0.10.3 -> 0.10.4`，传递依赖
