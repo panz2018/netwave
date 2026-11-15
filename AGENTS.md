@@ -146,7 +146,7 @@ governance spec、`openspec/config.yaml`、子项目 README）由 AI 读取并�
 
 **历史** → git log（文档不留存）。
 
-**改动要有去向**：常驻文档新增规则须附出处（LL 编号或 spec 指针）；删除/迁出须写明去向（账本/CONTRIBUTING/spec），内容不得蒸发——行数不是指标，禁止为凑行数删除。缺一在 review Standards 轴打回。
+**改动要有去向**：常驻文档新增规则须附出处——出处落 commit message 与 lessons-learned 账本，被门禁扫描的文件（代码/配置/spec 正文）注释内不写 LL 编号与 spec 指针，只留当前契约；删除/迁出须写明去向（账本/CONTRIBUTING/spec），内容不得蒸发——行数不是指标，禁止为凑行数删除。缺一在 review Standards 轴打回。
 
 ## Plan/ 生命周期
 
