@@ -16,7 +16,9 @@
   3. 动词+日期归因（`Re-enabled` 后接日期、`重新启用` 后接日期、`已标定`）；
   4. 改动名（`openspec/changes/` 含 archive 下现存目录名，动态生成）；
   5. 指向开发文档的指针（`spec: <capability>`、铁律编号、`openspec/`、`Plan/`）；
-  6. 讨论代号（`design decision` 后接数字、`design D` 后接数字）。
+  6. 讨论代号（`design decision` 后接数字、`design D` 后接数字）；
+  7. 既有考古叙述短语（`replaces X`、`no longer`、`deviation filed`，
+     大小写不敏感）——沿用现行模式，扩面不削既有执法。
      路线图数字代号（中文「阶段」后接数字、英文 `stage`/`phase` 后接数字、
      表示"未成形的临时骨架"或"某功能稍后到来"的英文词）沿用既有模式，一并命中即红。
      标准契约用语 `Deprecated: use X instead` 中的 `deprecated` 不属被禁标记。
