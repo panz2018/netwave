@@ -17,6 +17,12 @@ package = false
 dev = ["pytest>=8", "pytest-cov>=5", "ruff>=0.12"]
 
 [tool.pytest.ini_options]
+# This table also anchors the repo root as a pytest rootdir: pytest walks up
+# from the invocation directory to the nearest pyproject.toml carrying it, so a
+# nested uv project without its own [tool.pytest.ini_options] inherits this
+# file — including the bare `--cov` below, which overrides any `--cov=<pkg>`
+# passed on the command line. Nested projects MUST declare their own table
+# (enforced by scripts/check_py.py).
 # Test discovery lives here, not in commands: new test domains under
 # scripts/tests/ are covered without touching package.json or ci.yml.
 testpaths = ["scripts/tests"]

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Gate: repo-wide Python hygiene, three checks over every .py in the repo.
+"""Gate: repo-wide Python hygiene — three checks over every .py in the repo plus
+one over every nested pyproject.toml.
 
 1. else-fallback — in an `if/elif/.../else` chain (one or more `elif`), the
    terminal `else` body MUST start with an error fallback (`raise`, or
@@ -37,6 +38,10 @@
    module repo-wide (`versions/lib/repository.py`); every other gate imports it.
    Two copies drift silently (LL-034 family).
 
+4. project scoping — every nested uv project (a `pyproject.toml` below the repo
+   root) MUST declare its own `[tool.pytest.ini_options]` table and, when it
+   declares `[tool.coverage]`, pin `run.source`. See `check_project_scoping`.
+
 Coverage is discovery-based: every .py in the repo is scanned (build and
 vendored directories excluded), so new Python environments join automatically.
 Rust is covered by the compiler (exhaustive `match`). TypeScript is not
@@ -49,6 +54,10 @@ Usage: python3 scripts/check_py.py   (wired into pnpm check:meta)
 import ast
 import sys
 from pathlib import Path
+
+# ruff groups this as third-party because ruff.toml targets py310; tomllib is
+# stdlib from 3.11, which is what these scripts require (root pyproject).
+import tomllib
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts" / "versions"))
@@ -137,6 +146,40 @@ def skip_dirs_defs(tree, rel):
     return sites
 
 
+def check_project_scoping(root):
+    """Rule 4: nested uv projects pin their own pytest scope.
+
+    pytest walks up to the nearest `pyproject.toml` carrying a
+    `[tool.pytest.ini_options]` table and adopts that file wholesale, so a
+    nested project without one inherits the repo root's `addopts` — whose bare
+    `--cov` overrides any `--cov=<pkg>` passed on the command line (pytest-cov
+    turns a valueless `--cov` into "measure everything"). The project's
+    coverage floor then silently grades the whole repo instead of its own
+    package. A project that declares `[tool.coverage]` must also pin
+    `run.source`, otherwise the floor grades whatever the invocation happens to
+    measure."""
+    errs = []
+    for cfg in sorted(root.rglob("pyproject.toml")):
+        if any(part in SKIP_DIRS for part in cfg.parts):
+            continue
+        if cfg.parent == root:
+            continue
+        rel = cfg.relative_to(root).as_posix()
+        tool = tomllib.loads(cfg.read_text(encoding="utf-8")).get("tool", {})
+        if "ini_options" not in tool.get("pytest", {}):
+            errs.append(
+                f"{rel}: nested uv project without [tool.pytest.ini_options]"
+                " — inherits the repo-root pytest config (widens its coverage scope)"
+            )
+            continue
+        coverage = tool.get("coverage")
+        if coverage is not None and "source" not in coverage.get("run", {}):
+            errs.append(
+                f"{rel}: [tool.coverage] declared without run.source — floor scope undefined"
+            )
+    return errs
+
+
 def main() -> int:
     errors = []
     skip_defs = []
@@ -153,11 +196,15 @@ def main() -> int:
             f"SKIP_DIRS assigned in {len(skip_defs)} modules ({', '.join(skip_defs)})"
             " — single source is versions/lib/repository.py (LL-076)"
         )
+    errors.extend(check_project_scoping(ROOT))
     if errors:
         for e in errors:
             print(f"::error::{e}", file=sys.stderr)
         return 1
-    print(f"python hygiene OK: else-fallback, encoding, single SKIP_DIRS ({scanned} files scanned)")
+    print(
+        "python hygiene OK: else-fallback, encoding, single SKIP_DIRS,"
+        f" project scoping ({scanned} files scanned)"
+    )
     return 0
 
 

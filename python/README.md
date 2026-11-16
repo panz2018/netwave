@@ -36,9 +36,16 @@ uv run ruff check .               # lint the Python side (tests, config)
 uv run ruff format --check .      # format check only (what CI runs)
 uv run ruff check --fix .         # auto-fix lint (review the diff!)
 uv run ruff format .              # auto-format the Python side
-uv run pytest                     # run tests (CI adds --cov-fail-under=100)
-uv run pytest --cov=netwave --cov-fail-under=100
+uv run pytest                     # run tests with coverage (scope and 100% floor
+                                  # come from [tool.coverage] in pyproject.toml)
 ```
+
+Coverage scope and the floor are declared once in `pyproject.toml`
+(`[tool.coverage.run].source = ["netwave"]`, `[tool.coverage.report].fail_under`);
+CI runs the same bare `uv run pytest`, so local and CI grade the same set. The
+`[tool.pytest.ini_options]` table is what keeps pytest from inheriting the repo
+root's config — without it the root's bare `--cov` would widen this project's
+floor to the whole repo.
 
 Ruff config is the repo-root `ruff.toml` (single source of truth covering
 `python/` AND `scripts/`; ruff walks up from each file to find it). For the
