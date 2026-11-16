@@ -82,3 +82,4 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-103 | ci         | profraw 散落在 target 外 = 采集链断：harness/CI 首尾先删后报错，不留开关                           |
 | LL-104 | workflow   | 写 tasks.md 须逐条映射同文件 operations.apply.guidance，只抄 rules.tasks 会漏收尾体检              |
 | LL-105 | ci         | 嵌套 uv 工程缺 pytest 表致上溯，裸 --cov 覆盖 --cov=pkg 使地板静默量整仓                           |
+| LL-106 | docs       | 英文区文件（代码/配置/CI 步骤体含报错文案）禁写中文，中文只进 openspec 与 Plan/                    |

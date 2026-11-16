@@ -21,10 +21,10 @@
       `python3 scripts/check_py.py` 仍绿（未新增第二处 `SKIP_DIRS` 赋值）。
 - [x] 1.4 在 `scripts/tests/conftest.py` 加 autouse session fixture
       `drain_stray_profraw_session`：yield 前调 `drain_stray_profraw(ROOT)`、
-      yield 后再调一次，任一次返回非空即把"profraw 散落在 target 外 = 覆盖率采集链
-      未生效，本轮覆盖率数字不可信"＋被删文件名与个数写 stderr 并 `raise`。
+      yield 后再调一次，任一次返回非空即把英文报错（含 `untrustworthy` 字样）＋
+      被删文件名与个数写 stderr 并 `raise`。
       验证：首次 `uv run pytest scripts/tests -k offline_guard` 即因 1.1 记录的
-      根目录真实残留报错（退出码非 0、stderr 列出文件名与"不可信"字样、
+      根目录真实残留报错（退出码非 0、stderr 列出文件名与 `untrustworthy` 字样、
       `ls *.profraw` 为空 = 真实样本实证）；再 `touch` 一个
       `zz-drain-proof.profraw` 复跑仍报错并删除；第三次复跑退出码 0（自愈）。
 
@@ -129,8 +129,8 @@
 
 ## 6. 治理落点与文档同步（LL-034 波及面）
 
-- [x] 6.1 账本新增三条 LL，并同步 `openspec/specs/lessons-learned/INDEX.md` 路由表
-      加三行：
+- [x] 6.1 账本新增四条 LL，并同步 `openspec/specs/lessons-learned/INDEX.md` 路由表
+      加四行：
       `LL-103`（`ci.md` 分片）——成因（show-env 未生效 → LLVM 默认模板把 profraw
       写进进程 cwd）、规则（散落 = 采集链未生效的充分证据，harness 与 CI 首尾先删
       后报错，不留开关）、复发检测（`find` 排除 `target` 后有 profraw 即中招）。
@@ -148,6 +148,12 @@
       `[tool.coverage]`，各测各的；范围与阈值只写配置文件，CI 不重复传参）、
       复发检测（`python3 scripts/check_py.py` 第 4 条规则机器强制；改任何
       `pyproject.toml` 后 MUST 贴覆盖率文件清单作证据，同 LL-094）。
+      `LL-106`（`docs.md` 分片，提交后人工纠正补登）——犯过（本 change 把报错文案
+      写成中文，落进两个 conftest、vitest 钩子与 `ci.yml` 六处步骤体共 18 行）、
+      规则（报错文案与 stderr 输出同样算代码，属英文区；中文只进 `openspec/` 与
+      `Plan/`；约定正文见 governance spec「元规则 优先级与单一真相源」）、
+      复发检测（可门禁化——`check_comments.py` 加"英文区文件出现 CJK 即红"；
+      未落闸门前由 review Standards 轴逐行核 diff 内新增字符串）。
       验证：`pnpm check:md` 绿，INDEX 行数与分片条目数一致、编号连续无跳号。
 - [x] 6.2 `Plan/闸门重排-2026-11-12.md` 补去向行：覆盖率采集完整链
       （show-env→clean→build→test→report）随该计划 T1 绑进根聚合测试命令
@@ -161,6 +167,12 @@
 - [x] 6.4 `scripts/README.md` 补一行说明：profraw 清扫由测试钩子承担、
       `scripts/` 不提供独立清理命令（防后来者再找脚本）。
       验证：`pnpm check:md` 绿，表格新增行指向两个 conftest 与 vitest 钩子文件。
+- [x] 6.5 语言约定修正（提交后人工纠正，见 LL-106）：报错文案从中文改为英文
+      （全文见下方完成记录 6.5 行），阶段词 `测试前/测试后` 改
+      `pre-test/post-test`，共 18 行（`scripts/tests/conftest.py`、
+      `python/conftest.py`、`typescript/test/global-drain-profraw.ts`、`ci.yml`
+      六处）；本 change 工件内的引用同步。验证：`grep -lP` 按 CJK 字符扫上述
+      四个文件无命中；三 harness 报错与自愈行为复验不变。
 
 ## 7. 集成闸门
 
@@ -227,7 +239,7 @@
 - 1.3 green：同命令 4 passed；`python3 scripts/check_py.py` 绿（单源
   `SKIP_DIRS`，conftest 只 `from lib.repository import ROOT, SKIP_DIRS`）。
 - 1.4 真实样本实证：首次 `uv run pytest scripts/tests -k offline_guard`
-  退出码非 0，stderr 含"不可信"字样并逐行列出 1.1 基线的 15 个文件，
+  退出码非 0，stderr 含 `untrustworthy` 字样并逐行列出 1.1 基线的 15 个文件，
   跑完 `ls *.profraw python/*.profraw` 报 `No such file`；`target/` 内
   2 个产物原样保留。
 - 1.4 自愈实证：`touch zz-drain-proof.profraw` 后复跑退出码 1、报错列出该
@@ -237,7 +249,7 @@
 ### 组 2 python 侧钩子与配置隔离（2026-11-15）
 
 - 2.1：`touch python/zz-drain-proof.profraw` 后 `cd python && uv run pytest -q`
-  退出码 1、stderr 含"不可信"与该文件名、文件已删；复跑 67 passed 退出码 0；
+  退出码 1、stderr 含 `untrustworthy` 与该文件名、文件已删；复跑 67 passed 退出码 0；
   `uv run python -c "import netwave"` 输出 `ok`（sys.path 引导未遮蔽发布包）。
 - 2.2 CI 同款链（`show-env`→`clean --workspace`→`maturin develop`→`pytest`→
   `report`→`coverage_gate`）本地跑通：末行 `CHAIN_OK`、退出码 0，
@@ -276,7 +288,7 @@
   差集 `.venv`/`.git` 在 `typescript/` 子树内不存在（`ls -a typescript/` 实证），
   故两表在本子树内判定等价。
 - 3.2：`touch typescript/zz-drain-proof.profraw` 后
-  `pnpm -C typescript test:native` 退出码 1、stderr 含"不可信"与 `zz-drain-proof.profraw`、
+  `pnpm -C typescript test:native` 退出码 1、stderr 含 `untrustworthy` 与 `zz-drain-proof.profraw`、
   文件已从磁盘消失；复跑 7 files / 69 tests passed 退出码 0；
   `test:native --coverage` 无散落时 Statements/Branches/Functions/Lines 全 100%。
 
@@ -319,23 +331,52 @@
   pre-test < 测试 < report < gate < post-test；wasm（150）/ lint（27）/
   bench（434）三个 job 无 drain 步骤。
 - 5.3 本地模拟步骤体：无散落时退出码 0 且无输出；`touch zz-drain-proof.profraw`
-  后退出码 1、stderr 含该文件名与"（1 个，已删除）"、文件已删。
+  后退出码 1、stderr 含该文件名与 `1 found, deleted`、文件已删。
 
 ### 组 6 治理落点与文档同步（2026-11-15）
 
 - 6.1：`openspec/specs/lessons-learned/ci.md` 新增 LL-103、LL-105，
-  `workflow.md` 新增 LL-104，`INDEX.md` 加对应三行；`pnpm check:md` 绿
+  `workflow.md` 新增 LL-104，`docs.md` 新增 LL-106（提交后人工纠正补登，见 6.5），
+  `INDEX.md` 加对应四行；`pnpm check:md` 绿
   （`Summary: 0 issues in 0 files`、prettier clean、`check_md.py` 报
-  `checked 413 files; OK`），INDEX 末三行编号 103/104/105 连续无跳号。
+  `checked 415 files; OK`），INDEX 末四行编号 103/104/105/106 连续无跳号。
 - 6.2：`Plan/闸门重排-2026-11-12.md` §4 补去向行（完整采集链随该计划 T1
   绑进 `pnpm test:*`，本 change 只提供 harness 钩子、不造入口）。
 - 6.3：新增 `Plan/覆盖率闸门加固-2026-11-15.md`，两条待议各含目标文件路径
   （① `scripts/check_ci.py` 校验 `--output-path coverage/` 同 step 含
   `show-env`；② 覆盖率跑完 `git status --porcelain` 断言无未忽略残留），
-  `Plan/README.md` 加索引行。
+  `Plan/README.md` 加索引行。（该档后续扩到四条：提交后补登第 3 条收集数
+  下限与第 4 条英文区禁中文闸门，见 6.5）
 - 6.4：`scripts/README.md` 表格新增一行，指向 `scripts/tests/conftest.py`、
   `python/conftest.py`、`typescript/test/global-drain-profraw.ts`，
   注明 `scripts/` 不提供独立清理命令。
+- 6.5 语言约定违规与修正（人工纠正）：本 change 首版把报错文案写成中文，
+  共 18 行落在四个英文区文件（`scripts/tests/conftest.py` 3 行、
+  `python/conftest.py` 4 行、`typescript/test/global-drain-profraw.ts` 4 行、
+  `ci.yml` 六处步骤体各 1 行 = 6 行，另三处阶段词共 3 行）。
+  成因：写报错时只考虑"人能不能看懂"，未先判文件属哪个语言区；
+  现有闸门（`check_comments.py`）只拦历史归因/阶段词/spec 指针，不拦 CJK，
+  所以 `pnpm check` 全绿也没拦住。修正：报错文案改英文（单行）
+  `profraw outside target/ = the coverage chain did not take effect, so coverage numbers for this run are untrustworthy`，阶段词 `测试前/测试后` 改
+  `pre-test/post-test`；已按该条落账本 LL-106（`docs.md`）并登记可门禁化
+  建议。验证：`grep -lP '[\x{4e00}-\x{9fff}]'` 扫上述四文件无命中；
+  三 harness 报错与自愈行为复验（见下方行为复验行）。
+
+行为复验（报错文案改英文后，逐树重跑）：
+
+- 根：`touch zz-drain-proof.profraw` 后 `uv run pytest scripts/tests -k offline_guard`
+  → 退出码非 0，stderr 输出（单行）
+  `profraw outside target/ = the coverage chain did not take effect, so coverage numbers for this run are untrustworthy (pre-test: found 1, deleted):`，文件已删；
+  全量 `uv run pytest` 复跑 248 passed、覆盖率 100%、退出码 0。
+- `python/`：`touch python/zz-drain-proof.profraw` 后 `cd python && uv run pytest -q`
+  → 退出码 1、stderr 含 `untrustworthy` 与该文件名、文件已删；复跑 67 passed、
+  `Total coverage: 100.00%`、退出码 0。
+- `typescript/`：`touch typescript/zz-drain-proof.profraw` 后
+  `pnpm -C typescript test:native` → 退出码 1、stderr 含同一英文文案与
+  `(pre-test: found 1, deleted)`、文件已删；复跑退出码 0。
+- `grep -lP '[\x{4e00}-\x{9fff}]'` 扫 `scripts/tests/conftest.py`、
+  `python/conftest.py`、`typescript/test/global-drain-profraw.ts`、
+  `.github/workflows/ci.yml` 无命中（退出码 1 = 无匹配）。
 
 ### 7.1 全闸门（2026-11-15）
 
@@ -354,7 +395,7 @@
 Standards（对照 governance 铁律/元规则 ＋ 坏味道，审本次 diff 行）：
 
 - 语义考古：逐行核过 17 改 ＋ 5 新建，报错文案与注释只陈述当前契约
-  （"散落 = 采集链未生效 = 本轮数字不可信"），无历史归因、无
+  （"散落 = 采集链未生效 = 本轮数字不可信"，按语言约定用英文），无历史归因、无
   "replaces/no longer/phase-N"；`check_comments.py` 绿佐证。结论：无违规。
 - 命名一眼能懂：`drain_stray_profraw` / `check_project_scoping` /
   `global-drain-profraw.ts` 均动词开头、完整单词，与被检对象同名可追溯。无违规。

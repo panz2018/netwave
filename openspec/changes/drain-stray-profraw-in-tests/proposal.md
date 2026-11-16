@@ -22,9 +22,10 @@ LLVM 默认模板把原始计数文件写到进程当前目录——仓库根现
 - 跳过目录复用单一来源 `scripts/versions/lib/repository.py` 的 `SKIP_DIRS`
   （`check_py.py` 规则 3 机器强制全仓只有一处赋值）。
 - ci-matrix spec 新增两条 requirement，把"覆盖率中间产物不跨轮残留、散落即报错"
-  与"嵌套 Python 工程自带 pytest 配置"写成契约；账本新增三条 LL——`ci.md` 记
+  与"嵌套 Python 工程自带 pytest 配置"写成契约；账本新增四条 LL——`ci.md` 记
   profraw 散落成因与防复发、记 pytest 配置上溯致覆盖率范围漂移，`workflow.md`
-  记本 change 提案阶段暴露的"写 tasks.md 漏抄 config.yaml apply guidance"流程失误。
+  记本 change 提案阶段暴露的"写 tasks.md 漏抄 config.yaml apply guidance"流程失误，
+  `docs.md` 记本 change 提交后暴露的"英文区文件误写中文报错文案"。
 - `ci.yml`：三个构建插桩代码的 job（rust / python / node）各加两道清理步骤
   （测试前、测试后），与本地钩子同流程同语义；未插桩的 job（wasm、lint、bench）
   不加。步骤体为内联 shell（同现有 `mkdir -p coverage` 这类文件系统准备先例），
@@ -70,7 +71,8 @@ LLVM 默认模板把原始计数文件写到进程当前目录——仓库根现
   `scripts/tests/test_check_py.py`（新建，TDD）。
 - 复用：`scripts/versions/lib/repository.py` 的 `SKIP_DIRS`（只读引用，不改）。
 - 治理：`openspec/specs/ci-matrix/spec.md`（归档时 sync）、
-  `openspec/specs/lessons-learned/ci.md` 与 `workflow.md` ＋ `INDEX.md`（三条 LL）、
+  `openspec/specs/lessons-learned/ci.md`、`workflow.md` 与 `docs.md` ＋ `INDEX.md`
+  （四条 LL）、
   `Plan/闸门重排-2026-11-12.md`（补去向行）、`Plan/` 新增待议笔记。
 - CI：`.github/workflows/ci.yml`（rust / python / node 三个 job 各加测试前与
   测试后两道内联清理步骤；wasm / lint / bench 不动）。
@@ -120,8 +122,9 @@ LLVM 默认模板把原始计数文件写到进程当前目录——仓库根现
 - 加**会话收尾**这一处检查：只在开跑前查会把"本次跑当场断链"推迟一轮才暴露，
   而中间那份报告已被消费；`conftest.py` 的 session fixture teardown 与 vitest
   globalSetup 文件里 `setup` 返回的 teardown 函数各多调一次同一函数，换来当轮即红。
-- 报错文案只写当前契约（"profraw 散落在 `target/` 外 = 覆盖率采集链未生效，
-  本轮覆盖率数字不可信"），代码注释与报错串内不写 LL 编号与 spec 指针——
+- 报错文案只写当前契约，且按语言约定用英文（代码与 CI 属英文区，见 governance
+  spec「元规则 优先级与单一真相源」语言约定；本仓首次落地时误写中文，已改）：
+  `profraw outside target/ = the coverage chain did not take effect, so coverage numbers for this run are untrustworthy`；代码注释与报错串内不写 LL 编号与 spec 指针——
   `scripts/check_comments.py` 扫描范围内只留当前契约，编号只落 spec 散文与账本。
 - 一次性实证素材：现存 15 个真实散落文件（根 12 ＋ `python/` 3）在钩子落地前保留，
   apply 时以 before/after `ls` 证明钩子真删；`typescript/` 侧无真实样本，手工造一个

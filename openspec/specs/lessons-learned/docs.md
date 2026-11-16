@@ -59,3 +59,21 @@
   用标题跳转链接不用代号
 - 复发检测：可门禁化——`check_md.py` grep "方案[一二三]/阶段 [0-9]" 与
   无意义日期戳于 openspec/specs/ 即红；review Standards 轴对照
+
+### LL-106 英文区文件禁写中文（含报错文案与 CI 步骤体）
+
+- 犯过：change `drain-stray-profraw-in-tests` 把 profraw 清扫的报错文案写成
+  中文，落进 `scripts/tests/conftest.py`、`python/conftest.py`、
+  `typescript/test/global-drain-profraw.ts` 与 `ci.yml` 六处步骤体共 18 行
+  （人工纠正"为什么在英文中混着中文"）；写代码时只想着"报错要看得懂"，
+  没有回看语言约定
+- 规则：语言约定正文见 governance spec「元规则 优先级与单一真相源」末段——
+  代码、代码内文档（rustdoc/docstring/JSDoc）、配置文件与 CI 步骤体属英文区，
+  **报错文案与 stderr 输出同样算代码**，不因"给人读"而豁免；中文只出现在
+  `openspec/` 工件与 `Plan/` 规划文档。写含用户可见字符串的代码前先判该文件
+  属哪个区
+- 复发检测：可门禁化——`check_comments.py` 已扫全仓源码与 `ci.yml`，加一条
+  "英文区文件出现 CJK 即红"即可机器强制（豁免 `check_*.py` 里作为被禁词
+  模式的中文字面量，如 `STAGE_WORDS` 的 `阶段`）；**待落门禁**，立项见
+  `Plan/覆盖率闸门加固-2026-11-15.md` 第 4 条；闸门落地前由 review
+  Standards 轴逐行核 diff 内新增字符串

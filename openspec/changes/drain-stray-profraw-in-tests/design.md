@@ -78,7 +78,8 @@ teardown 内**显式设 `process.exitCode = 1`** 并写 stderr，不依赖"teard
 
 顺序固定为"删除 → 打印 → 非零退出"，保证报错即自愈：报错文本含被删文件名与个数，
 人无需再手动清理。备选"报错不删"否决——那会把清理重新推回人工，正是本次要消灭的。
-报错文案只写当前契约（散落 = 采集链未生效 = 本轮覆盖率数字不可信），不写 LL 编号
+报错文案只写当前契约（散落 = 采集链未生效 = 本轮覆盖率数字不可信），按语言约定
+用英文写出（代码与 CI 属英文区），不写 LL 编号
 与 spec 指针（`scripts/check_comments.py` 扫描范围内只留当前契约）。
 
 ### D5 扫描范围 = 各自子树，跳过名单取单一来源
@@ -104,17 +105,18 @@ show-env 断链使 profraw 落在 `target/` 外，report 会先被跳过而拿�
 
 未插桩的 job（wasm、lint、bench）不加此步骤：不产 profraw，加了是噪音。
 
-### D7 治理落点：ci-matrix spec ＋ 账本三条 LL，不新增能力域
+### D7 治理落点：ci-matrix spec ＋ 账本四条 LL，不新增能力域
 
 备选：新开 `coverage-hygiene` 能力。否决——ci-matrix 已承载"覆盖率采集与地板"
 全部契约（`覆盖率门槛生效（铁律七）`、`覆盖率报告命名与留存`），本条是同一主题的
 前置条件，拆新域会稀释路由。delta 用 ADDED（现存 requirement 全部不动，
 无 MODIFIED，避开 strict 校验的整块复制义务）。
 
-账本三条 LL 的 scope 归属：profraw 散落属 CI/覆盖率工具链坑 → `ci.md`；
+账本四条 LL 的 scope 归属：profraw 散落属 CI/覆盖率工具链坑 → `ci.md`；
 "写 tasks.md 漏抄同文件 apply guidance"属流程失误 → `workflow.md`（与 LL-089
 同族：都是 config.yaml 流程规则执行不完整）；pytest 配置上溯致覆盖率范围漂移
-→ `ci.md`（与 LL-093/LL-094 同族：闸门量错东西）。
+→ `ci.md`（与 LL-093/LL-094 同族：闸门量错东西）；报错文案误写中文属文档/代码
+书写约定 → `docs.md`（提交后人工纠正补登，见「报错形态」决策的报错文案条）。
 
 ### D8 `python/` 自带 pytest 与 coverage 配置，阻断上溯
 
