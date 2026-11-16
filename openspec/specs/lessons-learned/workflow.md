@@ -287,3 +287,18 @@
 - 复发检测：review Standards 轴核对——本轮 diff 含 `.md` 改动时，commit 前
   是否有 `check:md` 退出码 0 证据；CI lint 报 MD009/MD012/MD010 等空白类
   错误而本地曾"绿"，即本地漏跑或修复未覆盖不可见字符，按本条补跑
+
+### LL-104 写 tasks.md 只抄 rules.tasks，漏掉同文件 operations.apply.guidance
+
+- 犯过：本 change 提案首版 `tasks.md` 的收尾任务只映射
+  `openspec/config.yaml` 的 `rules.tasks`，漏了同文件
+  `operations.apply.guidance` 规定的 apply 态只读体检一步；人工追问
+  "怎么缺少了 health-check spec 的 apply 态"才发现（2026-11-15）
+- 根因：把 config.yaml 当成"按 artifact 分段取用"的文件，实际它是
+  rules（写工件时）＋ operations（跑流程时）两套并存；只取一套 = 流程残缺
+- 规则：写 `tasks.md` 时 MUST 把同文件 `operations.apply.guidance` **逐条**映射为
+  收尾任务并逐条核对不遗漏（与 `rules.tasks` 同等地位）；步骤锚点仍按 LL-089
+  对齐，不把后置动作前移
+- 复发检测：review Standards 轴核对 `tasks.md` 收尾任务数是否等于
+  `config.yaml` apply guidance 条数，缺项即打回；apply 跑到最后一组发现"没有
+  体检任务"，即本条复发

@@ -50,4 +50,37 @@ CI MUST 与本地同流程：每个构建插桩代码的 job MUST 在测试步�
   node）步骤序列
 - **THEN** 测试步骤之前与之后各有一个清理步骤，扫描 `target/` 外的 `*.profraw`，
   发现即先删后以非零码失败并列出文件名与个数
-- **AND** 未插桩的 job（wasm、browser、lint、bench）无此步骤
+- **AND** 未插桩的 job（wasm、lint、bench）无此步骤
+
+### Requirement: 嵌套 Python 工程自带 pytest 配置
+
+仓库内每个嵌套的 uv 工程（仓库根以外的 `pyproject.toml`）MUST 自带
+`[tool.pytest.ini_options]` 表，并 MUST 在声明 `[tool.coverage]` 时钉住
+`run.source`。理由：pytest 从调用目录上溯到最近一个含该表的 `pyproject.toml`
+并整套采用，缺表的工程会继承仓库根配置——根 `addopts` 的裸 `--cov` 会覆盖命令行
+传入的 `--cov=<pkg>`，使该工程的覆盖率地板静默扩大到整仓。该约束 MUST 由
+`scripts/check_py.py` 机器强制。
+
+容差：存在性闸门，无数值阈值；判定口径 = 嵌套 `pyproject.toml` 是否含
+`[tool.pytest.ini_options]`、含 `[tool.coverage]` 者是否含 `run.source`，目标值均为
+"是"（不涉及数值计算真值，故不引用 oracle manifest key）。
+
+#### Scenario: 缺 pytest 表即报错
+
+- **WHEN** 仓库根以外存在含 `[project]` 但无 `[tool.pytest.ini_options]` 的
+  `pyproject.toml`
+- **THEN** `python3 scripts/check_py.py` 以非零码失败，报错路径指向该文件
+
+#### Scenario: 声明覆盖率却不钉范围即报错
+
+- **WHEN** 某嵌套工程的 `pyproject.toml` 含 `[tool.coverage.report].fail_under`
+  却无 `[tool.coverage.run].source`
+- **THEN** `python3 scripts/check_py.py` 以非零码失败并指明 `run.source` 缺失
+
+#### Scenario: python 工程覆盖率只测本包
+
+- **WHEN** 在 `python/` 目录执行 `uv run pytest`
+- **THEN** 覆盖率报告只含 `netwave/` 下的 Python 文件，不含 `tests/`、
+  `conftest.py` 与仓库根 `scripts/` 下的文件
+- **AND** 地板取自 `python/pyproject.toml` 的 `[tool.coverage.report].fail_under`，
+  CI 与本地执行同一条命令得到同一测量范围

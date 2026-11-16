@@ -269,3 +269,38 @@
   重来；报告缺行含 doc 注释行/行号与当前源码错位 = 旧二进制污染信号
 - 复发检测：review 时若覆盖率数字与改动规模不符（加几行却掉十几个点），
   先查 clean 是否生效再查代码
+
+### LL-103 profraw 散落在 target 外 = 采集链断，被 gitignore 吞掉致信号丢失
+
+- 犯过：仓库根攒到 12 个、`python/` 攒到 3 个 `default_*_*.profraw`（共 15 个，
+  跨数周无人清）；`cargo llvm-cov show-env` 未生效时 LLVM 退回默认模板
+  `default_%m_%p.profraw` 写在**进程 cwd**，而 `.gitignore` 的 `*.profraw`
+  把它们连同"这一轮覆盖率不可信"的信号一起静默吞掉
+- 规则：`target/` 外出现 profraw = 采集链未生效的**充分证据**（`cargo llvm-cov report`
+  只读 `target/` 内它自己登记的文件，`target/` 外者从来不是报告输入，
+  删除零风险）；跑插桩代码的 harness MUST 在会话首尾各扫一次本树，CI MUST 在
+  测试前后各加一道全仓清理，一律**先删后报错**（非警告、无开关），报错列出文件名
+  与个数；下一轮无残留即自愈。不用 `cargo llvm-cov clean --profraw-only`：它按
+  自有清单删（断链产生的 `default_*` 不在内）且静默成功，担不起信号职责
+- 复发检测：`find . -name target -prune -o ... -name '*.profraw' -print`（剪枝
+  `target`/`target-wasm`/`node_modules`/`.venv`/`.git`/`dist`/`coverage`）有输出
+  即中招；覆盖率报告数字可疑时先跑这条再看代码
+
+### LL-105 嵌套 uv 工程缺 pytest 表致上溯，覆盖率地板静默量整仓
+
+- 犯过：`python/pyproject.toml` 无 `[tool.pytest.ini_options]`，pytest 上溯采用
+  仓库根配置（`cd python && uv run pytest` 的 rootdir/configfile 都是根
+  `pyproject.toml`，pytest 头部实证）；根 `addopts` 的裸 `--cov` 经 pytest-cov
+  `_prepare_cov_source` 把 source 置空（=测全部），覆盖命令行 `--cov=netwave`，
+  于是 python 地板实际测量 `tests/`＋`conftest.py`＋根 `scripts/versions`；
+  地板 0→100（`053b86f`）后该 job 本应红（实测 401 语句缺 1 = 99.75%，缺行
+  `python/tests/test_frequency_unit.py:32` 的防御 `raise`）却无人察觉，直到
+  本 change 给 `python/` 加 conftest 把数字压到 87% 才暴露
+- 规则：嵌套 uv 工程 MUST 自带 `[tool.pytest.ini_options]`（阻断上溯）与钉住
+  `run.source` 的 `[tool.coverage]`（各测各的）；范围与阈值只写该工程配置文件，
+  CI 不重复传参（同根配置注释立的规矩：不在 `package.json`/`ci.yml` 复制）。
+  机器强制落 `scripts/check_py.py` 第 4 条规则（缺 pytest 表 / 有
+  `[tool.coverage]` 却缺 `run.source` 均报错）
+- 复发检测：`python3 scripts/check_py.py`；改任何 `pyproject.toml` 后 MUST 贴
+  覆盖率**文件清单**作证据（只看百分比看不出范围错，同 LL-094）；新工程报
+  "覆盖率不达标"而代码没动，先查范围是否被撑大

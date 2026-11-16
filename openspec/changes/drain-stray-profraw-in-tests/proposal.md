@@ -21,8 +21,9 @@ LLVM 默认模板把原始计数文件写到进程当前目录——仓库根现
   保护）；vitest 侧由 `globalSetup` 引用的模块文件承担同等逻辑。
 - 跳过目录复用单一来源 `scripts/versions/lib/repository.py` 的 `SKIP_DIRS`
   （`check_py.py` 规则 3 机器强制全仓只有一处赋值）。
-- ci-matrix spec 新增一条 requirement，把"覆盖率中间产物不跨轮残留、散落即报错"
-  写成契约；账本新增两条 LL——`ci.md` 记 profraw 散落成因与防复发，`workflow.md`
+- ci-matrix spec 新增两条 requirement，把"覆盖率中间产物不跨轮残留、散落即报错"
+  与"嵌套 Python 工程自带 pytest 配置"写成契约；账本新增三条 LL——`ci.md` 记
+  profraw 散落成因与防复发、记 pytest 配置上溯致覆盖率范围漂移，`workflow.md`
   记本 change 提案阶段暴露的"写 tasks.md 漏抄 config.yaml apply guidance"流程失误。
 - `ci.yml`：三个构建插桩代码的 job（rust / python / node）各加两道清理步骤
   （测试前、测试后），与本地钩子同流程同语义；未插桩的 job（wasm、lint、bench）
@@ -30,6 +31,17 @@ LLVM 默认模板把原始计数文件写到进程当前目录——仓库根现
   不新建脚本。
 - `Plan/闸门重排-2026-11-12.md` 补一行去向：覆盖率采集完整链（show-env→clean→
   build→test→report）随该计划 T1 绑进根聚合测试命令，本 change 不重复造入口。
+- 修 `python/` 的 pytest 配置上溯：`python/pyproject.toml` 原本没有
+  `[tool.pytest.ini_options]`，pytest 因此上溯采用仓库根配置，而根 `addopts` 里的
+  裸 `--cov` 会覆盖命令行传入的 `--cov=netwave`（pytest-cov 把无值 `--cov` 当作
+  "测全部"），使 `python/` 的 100% 地板实际测量整个仓库而非本包——实测该地板在
+  本 change 之前即为 99.75% 不达标。修法：`python/pyproject.toml` 自带
+  `[tool.pytest.ini_options]`（`testpaths`/`addopts`）与 `[tool.coverage]`
+  （`source=["netwave"]`、`fail_under=100`），各测各的；`ci.yml` 的 python job 随之
+  去掉重复的 `--cov=netwave --cov-fail-under=100`，范围与阈值唯一来源是该配置文件。
+- `scripts/check_py.py` 增第 4 条规则防复发：仓库内任何嵌套 `pyproject.toml` 缺
+  `[tool.pytest.ini_options]` 即报错；声明了 `[tool.coverage]` 却缺 `run.source` 同样
+  报错（地板范围未钉 = 静默漂移）。按 TDD 新建 `scripts/tests/test_check_py.py`。
 
 ## Capabilities
 
@@ -41,7 +53,9 @@ LLVM 默认模板把原始计数文件写到进程当前目录——仓库根现
 
 - `ci-matrix`: 新增 requirement「覆盖率中间产物不跨轮残留」——跑插桩代码的测试
   harness MUST 在会话开始与结束时清除 `target/` 外的 `*.profraw`，发现即先删后报错；
-  现有 requirement 的口径与 Scenario 全部不变。
+  新增 requirement「嵌套 Python 工程自带 pytest 配置」——嵌套 uv 工程 MUST 自带
+  `[tool.pytest.ini_options]` 与钉住 `run.source` 的 `[tool.coverage]`，使各工程覆盖率
+  范围互不污染；现有 requirement 的口径与 Scenario 全部不变。
 
 ## Impact
 
@@ -49,20 +63,28 @@ LLVM 默认模板把原始计数文件写到进程当前目录——仓库根现
   `typescript/vitest.native.config.ts`（改，加 `globalSetup`）、
   `typescript/test/global-drain-profraw.ts`（新建）。
 - 单测：`scripts/tests/test_drain_profraw.py`（新建）。
+- 覆盖率配置：`python/pyproject.toml`（改，新增 pytest 与 coverage 两表）、
+  `pyproject.toml`（改，仅补注释说明本表是仓库根 rootdir 锚点）、
+  `python/README.md`（改，本地命令口径）。
+- 闸门：`scripts/check_py.py`（改，新增 project scoping 规则）、
+  `scripts/tests/test_check_py.py`（新建，TDD）。
 - 复用：`scripts/versions/lib/repository.py` 的 `SKIP_DIRS`（只读引用，不改）。
 - 治理：`openspec/specs/ci-matrix/spec.md`（归档时 sync）、
-  `openspec/specs/lessons-learned/ci.md` 与 `workflow.md` ＋ `INDEX.md`（两条 LL）、
+  `openspec/specs/lessons-learned/ci.md` 与 `workflow.md` ＋ `INDEX.md`（三条 LL）、
   `Plan/闸门重排-2026-11-12.md`（补去向行）、`Plan/` 新增待议笔记。
 - CI：`.github/workflows/ci.yml`（rust / python / node 三个 job 各加测试前与
   测试后两道内联清理步骤；wasm / lint / bench 不动）。
-- 不受影响：`package.json` 脚本面、`scripts/` 闸门集合、覆盖率地板与
-  `[tool.coverage.run].source` 名单、`target/` 内 cargo-llvm-cov 自有产物、
-  `.coverage` 与 `coverage/*.json` 报告文件、wasm/browser 两个 vitest 配置。
+- 不受影响：`package.json` 脚本面、`scripts/` 闸门集合（`check_py.py` 新增规则除外）、
+  根 `[tool.coverage.run].source` 名单与根 `addopts`、`target/` 内 cargo-llvm-cov
+  自有产物、`.coverage` 与 `coverage/*.json` 报告文件、wasm/browser 两个 vitest 配置。
 - 受引用铁律：铁律七（覆盖率 100% 硬约束）——本 change 让"覆盖率数字可信"的前置
-  条件（采集链完好）变成可执行闸门，不改动地板本身。
+  条件（采集链完好、测量范围正确）变成可执行闸门，不改动地板数值本身。
 
 ## Non-goals
 
+- 不改覆盖率采集链的构造：`show-env` 位置、`cargo llvm-cov report` 参数、各地板
+  数值全部不动。本 change 只修两处"闸门量的不是它以为的东西"：profraw 散落被
+  `.gitignore` 吞掉、`python/` 覆盖率范围被根配置撑大。
 - CI 清理步骤不抽成 `scripts/` 脚本也不进根 `package.json`：它是 CI 环境专属的
   文件系统准备（同现有 `mkdir -p coverage` 内联先例），而 `check_ci.py` 的接线
   闸门只管 `test:*` 命令；抽脚本会把 CI 细节变成第二处真相源。
