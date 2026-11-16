@@ -302,3 +302,22 @@
 - 复发检测：review Standards 轴核对 `tasks.md` 收尾任务数是否等于
   `config.yaml` apply guidance 条数，缺项即打回；apply 跑到最后一组发现"没有
   体检任务"，即本条复发
+
+### LL-108 解析工具输出的正则须对真实输出实测，夹具臆造动词致闸门假绿
+
+- 犯过：`check_outdated.py` 的 `count_uv_changes()` 用
+  `(Updating|Updated|Adding|Removing)` 数 `uv lock --upgrade --dry-run` 变更行，
+  而 uv 0.13.8 真实动词是 `Update`/`Add`，正则永不命中；单测夹具又用臆造动词
+  `Updated foo v1.0.0 -> v1.1.0`/`Adding bar v2.0.0`，与被测命令真实输出不符，
+  故测试绿而闸门恒报 0 LAG——python 工程明明有 numpy 待升级，
+  `pnpm check:outdated` 仍打 `SUMMARY: 0 LAG (all current)` 退出 0（2026-11-15，
+  受控改钉 `idna` dry-run 取证：真实输出 `Update idna v3.7 -> v3.6`）
+- 根因：夹具是"以为命令会输出什么"的臆造串，不是命令真实输出；测试只验证了
+  正则匹配自己编的字符串，从未匹配过被测命令的实际产物，夹具与实现同错则双绿
+- 规则：任何解析外部命令输出的正则，夹具 MUST 取自该命令的实测输出
+  （受控场景跑一次贴真实行），禁手写臆造动词/格式；新增或改动此类解析时，
+  MUST 先以真实输出做"红"夹具（旧实现应失败）再改实现转绿，使夹具能独立证伪
+- 复发检测：review Standards 轴核对——解析命令输出的单测夹具是否附"实测取证"
+  标注（命令+版本+真实输出行）；夹具动词/格式无实测出处即打回。闸门报 0
+  而对应 `pnpm outdated`/`cargo`/`uv` 原始输出有变更行，即本条复发
+  （同族 LL-083 取证、LL-093 口径漂移假绿、LL-099 穷举实测）

@@ -179,11 +179,16 @@ def count_cargo_updates(out: str) -> int:
 
 def count_uv_changes(out: str) -> int:
     """`uv lock --upgrade --dry-run` prints `No lockfile changes detected` when
-    clean; otherwise one line per added/updated/removed package."""
+    clean; otherwise one change line per added/updated/removed package
+    (`Update name vA -> vB`, `Add name vA`; uv 0.13 verbs are `Update`/`Add`,
+    the -ing forms kept for older uv). A line counts once even when it pairs
+    several versions."""
     if "No lockfile changes detected" in out:
         return 0
     return sum(
-        1 for ln in out.splitlines() if re.search(r"(Updating|Updated|Adding|Removing) \S+", ln)
+        1
+        for ln in out.splitlines()
+        if re.search(r"(?:Update|Updating|Add|Adding|Remove|Removing) \S+", ln)
     )
 
 

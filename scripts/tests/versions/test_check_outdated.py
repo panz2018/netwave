@@ -525,7 +525,14 @@ class TestSummaryAndExit:
         assert check_outdated.count_uv_changes(out) == 0
 
     def test_count_uv_changes_dirty_counts_package_lines(self):
-        out = "Resolved 3 packages\nUpdated foo v1.0.0 -> v1.1.0\nAdding bar v2.0.0"
+        # verbs exactly as uv dry-run prints them (`Update`/`Add`, captured
+        # from a controlled re-pin run); one change line = one lag even when
+        # it pairs several versions on one line
+        out = (
+            "Resolved 17 packages\n"
+            "Update numpy v2.2.6, v2.4.6, v2.5.4 -> v2.2.6, v2.4.6, v2.5.5\n"
+            "Add idna v3.11"
+        )
         assert check_outdated.count_uv_changes(out) == 2
 
     def test_summary_all_current_when_no_lag(self, monkeypatch, capsys):
