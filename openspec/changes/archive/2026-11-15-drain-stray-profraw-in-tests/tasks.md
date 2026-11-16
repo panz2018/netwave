@@ -500,3 +500,21 @@ uv 段打印了 `Update numpy v2.2.6, v2.4.6, v2.5.4 -> v2.2.6, v2.4.6, v2.5.5`
 闸门失效。该缺陷不在本 change 范围（本 change 不触碰 `check_outdated.py`），
 已连证据与建议处置另立 `Plan/依赖闸门uv段假绿-2026-11-15.md` 等点名。
 因此本项"退出码 0"达成的是**门禁口径**，不代表 uv 侧真的无落后。
+
+### archive 收尾（2026-11-15）
+
+- Plan/ 瘦身（archive guidance 第 1 条）：grep `Plan/` 命中 4 文件共 8 处本
+  change 引用，逐条核对均为未执行/待点名项，无已完成章节可删——
+  `闸门重排-2026-11-12.md` §4 去向行指向 T1 未执行入口（保留）；
+  `覆盖率闸门加固-2026-11-15.md` 四条延后项（保留）；
+  `体检-2026-11-15.md` 四条待点名（保留）；
+  `依赖闸门uv段假绿-2026-11-15.md` 硬伤待点名（保留）。本目录零删除。
+- specs 三态时效（archive guidance 第 3 条）：更新 = `ci-matrix`（两条 ADDED
+  requirement 已于归档前 sync 进主 spec，`openspec validate --specs`
+  14 passed / 0 failed）；新增 = 无（profraw 卫生与嵌套工程配置同属
+  ci-matrix 主题，未开新能力域）；退役 = 无。
+  `openspec/specs/README.md` 路由无需改动（能力目录无增删，一致性由
+  `pnpm check:md` 的 SPECS ROUTER 规则强制）。
+- archive 态体检（archive guidance 第 2 条）：按人工裁决 2026-11-15
+  （本文件「Workflow follow-up」）跳过，跳过仅限本 change，不改变
+  health-check spec 对后续 change 的默认要求。
