@@ -55,7 +55,8 @@ operations:
         check_md.py SPECS ROUTER 门禁兜底
       - apply 收尾（check:outdated 之前）MUST 按 governance spec
         「元规则 review 三轴」对照本 change 工件（proposal/specs/design/
-        tasks）审实现 diff，硬伤清零才准入后续步骤
+        tasks）审实现 diff，diff 文件集逐文件对上 tasks.md，对不上即越权、
+        停手还原，硬伤清零才准入后续步骤
       - 三轴 review 之后、check:outdated 之前 MUST 执行被触碰文件全文
         只读体检（health-check spec 的 apply 态：语义考古维 + 四维，
         发现附文件+行号+证据落 Plan/ 等点名，不阻塞；全豁免时记
