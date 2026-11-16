@@ -304,3 +304,20 @@
 - 复发检测：`python3 scripts/check_py.py`；改任何 `pyproject.toml` 后 MUST 贴
   覆盖率**文件清单**作证据（只看百分比看不出范围错，同 LL-094）；新工程报
   "覆盖率不达标"而代码没动，先查范围是否被撑大
+
+### LL-107 跨版本共享模块的顶层 import 受最低版约束，新标准库须函数内延迟导入
+
+- 犯过：`python/conftest.py` 为取 `SKIP_DIRS` 常量而 import `lib.repository`，
+  而 `scripts/versions/lib/repository.py` 在**模块顶层** import `tomllib`
+  （3.11 才进标准库）；`python/` 声明 `requires-python>=3.10`、CI python
+  矩阵跑 3.10 下限格，导入该常量即连带触发 tomllib，CI 报
+  `ModuleNotFoundError: No module named 'tomllib'`、conftest 加载失败退出码 4
+  （本地 3.15 全绿看不出，`uv run --python 3.10 pytest` 复现）
+- 规则：被**低于自身工具链版**的运行环境 import 的模块，顶层 import 表 MUST 满足
+  该环境最低版——只为取常量而 import 的模块，其顶层不得引入常量用不到的新标准库；
+  新标准库（tomllib 等）落在真正解析它的函数体内（延迟导入），让"取常量"与
+  "解析 TOML"解耦。`tomllib` 在 3.10 靠第三方 `tomli` 传递可用不可靠（它只是
+  maturin/coverage 的可选依赖，会随上游漂移），不得依赖
+- 复发检测：`scripts/tests/test_repository_import.py` 用 monkeypatch 屏蔽
+  `tomllib` 后 import `lib.repository` 取 `SKIP_DIRS`，顶层 import 即红；
+  review 时凡被低版运行环境 import 的模块出现新标准库顶层 import 即打回

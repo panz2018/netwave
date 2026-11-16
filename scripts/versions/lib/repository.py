@@ -8,7 +8,9 @@ import re
 from collections.abc import Callable
 from pathlib import Path
 
-import tomllib
+# tomllib is imported inside the functions that parse TOML, not at module top:
+# `python/conftest.py` imports this module only for SKIP_DIRS and runs on the
+# declared floor interpreter (3.10), where tomllib is not yet stdlib.
 
 ROOT = Path(__file__).resolve().parent.parent.parent.parent
 SKIP_DIRS = ("target", "target-wasm", "node_modules", ".venv", ".git", "dist", "coverage")
@@ -47,6 +49,8 @@ def find_ci_workflows(root: Path) -> list[Path]:
 def is_python_project(text: str) -> bool:
     """True if the TOML declares a [project] table (parsed, not substring, so
     comments mentioning it do not count as a Python project)."""
+    import tomllib
+
     try:
         doc = tomllib.loads(text)
     except tomllib.TOMLDecodeError:
@@ -57,6 +61,8 @@ def is_python_project(text: str) -> bool:
 def workspace_members(root: Path) -> list[str]:
     """Repo-relative Cargo.toml paths of the members listed in the root
     Cargo.toml `members` — the authoritative list of subprojects."""
+    import tomllib
+
     doc = tomllib.loads((root / "Cargo.toml").read_text(encoding="utf-8"))
     return [f"{m}/Cargo.toml" for m in doc.get("workspace", {}).get("members", [])]
 
@@ -64,6 +70,8 @@ def workspace_members(root: Path) -> list[str]:
 def rust_versions(root: Path) -> dict[str, str]:
     """Repo-relative member Cargo.toml paths mapped to their `rust-version`
     pin. Members without the field are omitted (the law reports those)."""
+    import tomllib
+
     found: dict[str, str] = {}
     for rel in workspace_members(root):
         path = root / rel
@@ -77,6 +85,8 @@ def rust_versions(root: Path) -> dict[str, str]:
 
 def toolchain_channel(root: Path) -> str:
     """The `channel` value pinned in rust-toolchain.toml."""
+    import tomllib
+
     doc = tomllib.loads((root / "rust-toolchain.toml").read_text(encoding="utf-8"))
     return str(doc["toolchain"]["channel"])
 
