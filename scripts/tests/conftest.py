@@ -50,9 +50,9 @@ def drain_stray_profraw_session():
     """Fail the run when profraw files sit outside `target/`, scanning once
     before the session and once after, deleting what is found so the next run
     starts clean."""
-    _drain_and_report("测试前")
+    _drain_and_report("pre-test")
     yield
-    _drain_and_report("测试后")
+    _drain_and_report("post-test")
 
 
 def _drain_and_report(phase: str) -> None:
@@ -61,8 +61,9 @@ def _drain_and_report(phase: str) -> None:
         return
     names = "\n".join(f"  {p}" for p in removed)
     print(
-        f"profraw 散落在 target 外 = 覆盖率采集链未生效，本轮覆盖率数字不可信"
-        f"（{phase}发现 {len(removed)} 个，已删除）：\n{names}",
+        f"profraw outside target/ = the coverage chain did not take effect, "
+        f"so coverage numbers for this run are untrustworthy "
+        f"({phase}: found {len(removed)}, deleted):\n{names}",
         file=sys.stderr,
     )
-    raise RuntimeError(f"{phase}发现 {len(removed)} 个散落 target 外的 profraw 文件")
+    raise RuntimeError(f"{phase}: found {len(removed)} stray profraw file(s) outside target/")

@@ -44,16 +44,17 @@ function drainAndReport(phase: string): void {
     rmSync(join(SCAN_ROOT, rel));
   }
   process.stderr.write(
-    `profraw 散落在 target 外 = 覆盖率采集链未生效，本轮覆盖率数字不可信` +
-      `（${phase}发现 ${stray.length} 个，已删除）：\n` +
+    `profraw outside target/ = the coverage chain did not take effect, ` +
+      `so coverage numbers for this run are untrustworthy` +
+      ` (${phase}: found ${stray.length}, deleted):\n` +
       `${stray.map((p) => `  ${p}`).join("\n")}\n`,
   );
   process.exitCode = 1;
 }
 
 export async function setup(): Promise<() => void> {
-  drainAndReport("测试前");
+  drainAndReport("pre-test");
   return () => {
-    drainAndReport("测试后");
+    drainAndReport("post-test");
   };
 }

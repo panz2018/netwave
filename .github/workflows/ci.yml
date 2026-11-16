@@ -98,7 +98,7 @@ jobs:
           stray=$(find . -name target -prune -o -name target-wasm -prune -o -name node_modules -prune -o -name .venv -prune -o -name .git -prune -o -name dist -prune -o -name coverage -prune -o -name '*.profraw' -print)
           if [ -n "$stray" ]; then
             printf '%s\n' "$stray" | xargs rm -f
-            printf 'profraw 散落在 target 外 = 覆盖率采集链未生效，本轮覆盖率数字不可信（%d 个，已删除）：\n%s\n' "$(printf '%s\n' "$stray" | wc -l)" "$stray" >&2
+            printf 'profraw outside target/ = the coverage chain did not take effect, so coverage numbers for this run are untrustworthy (%d found, deleted):\n%s\n' "$(printf '%s\n' "$stray" | wc -l)" "$stray" >&2
             exit 1
           fi
       - name: llvm-cov (core tests, all platforms) + build watchdog
@@ -134,7 +134,7 @@ jobs:
           stray=$(find . -name target -prune -o -name target-wasm -prune -o -name node_modules -prune -o -name .venv -prune -o -name .git -prune -o -name dist -prune -o -name coverage -prune -o -name '*.profraw' -print)
           if [ -n "$stray" ]; then
             printf '%s\n' "$stray" | xargs rm -f
-            printf 'profraw 散落在 target 外 = 覆盖率采集链未生效，本轮覆盖率数字不可信（%d 个，已删除）：\n%s\n' "$(printf '%s\n' "$stray" | wc -l)" "$stray" >&2
+            printf 'profraw outside target/ = the coverage chain did not take effect, so coverage numbers for this run are untrustworthy (%d found, deleted):\n%s\n' "$(printf '%s\n' "$stray" | wc -l)" "$stray" >&2
             exit 1
           fi
       - name: upload core coverage report
@@ -234,7 +234,7 @@ jobs:
           stray=$(find . -name target -prune -o -name target-wasm -prune -o -name node_modules -prune -o -name .venv -prune -o -name .git -prune -o -name dist -prune -o -name coverage -prune -o -name '*.profraw' -print)
           if [ -n "$stray" ]; then
             printf '%s\n' "$stray" | xargs rm -f
-            printf 'profraw 散落在 target 外 = 覆盖率采集链未生效，本轮覆盖率数字不可信（%d 个，已删除）：\n%s\n' "$(printf '%s\n' "$stray" | wc -l)" "$stray" >&2
+            printf 'profraw outside target/ = the coverage chain did not take effect, so coverage numbers for this run are untrustworthy (%d found, deleted):\n%s\n' "$(printf '%s\n' "$stray" | wc -l)" "$stray" >&2
             exit 1
           fi
       - name: sync + build + test (python layer + rust glue coverage)
@@ -268,7 +268,7 @@ jobs:
           stray=$(find . -name target -prune -o -name target-wasm -prune -o -name node_modules -prune -o -name .venv -prune -o -name .git -prune -o -name dist -prune -o -name coverage -prune -o -name '*.profraw' -print)
           if [ -n "$stray" ]; then
             printf '%s\n' "$stray" | xargs rm -f
-            printf 'profraw 散落在 target 外 = 覆盖率采集链未生效，本轮覆盖率数字不可信（%d 个，已删除）：\n%s\n' "$(printf '%s\n' "$stray" | wc -l)" "$stray" >&2
+            printf 'profraw outside target/ = the coverage chain did not take effect, so coverage numbers for this run are untrustworthy (%d found, deleted):\n%s\n' "$(printf '%s\n' "$stray" | wc -l)" "$stray" >&2
             exit 1
           fi
       - name: upload python glue coverage report
@@ -339,7 +339,7 @@ jobs:
           stray=$(find . -name target -prune -o -name target-wasm -prune -o -name node_modules -prune -o -name .venv -prune -o -name .git -prune -o -name dist -prune -o -name coverage -prune -o -name '*.profraw' -print)
           if [ -n "$stray" ]; then
             printf '%s\n' "$stray" | xargs rm -f
-            printf 'profraw 散落在 target 外 = 覆盖率采集链未生效，本轮覆盖率数字不可信（%d 个，已删除）：\n%s\n' "$(printf '%s\n' "$stray" | wc -l)" "$stray" >&2
+            printf 'profraw outside target/ = the coverage chain did not take effect, so coverage numbers for this run are untrustworthy (%d found, deleted):\n%s\n' "$(printf '%s\n' "$stray" | wc -l)" "$stray" >&2
             exit 1
           fi
       - name: napi build + vitest native (+ rust glue coverage)
@@ -383,7 +383,7 @@ jobs:
           stray=$(find . -name target -prune -o -name target-wasm -prune -o -name node_modules -prune -o -name .venv -prune -o -name .git -prune -o -name dist -prune -o -name coverage -prune -o -name '*.profraw' -print)
           if [ -n "$stray" ]; then
             printf '%s\n' "$stray" | xargs rm -f
-            printf 'profraw 散落在 target 外 = 覆盖率采集链未生效，本轮覆盖率数字不可信（%d 个，已删除）：\n%s\n' "$(printf '%s\n' "$stray" | wc -l)" "$stray" >&2
+            printf 'profraw outside target/ = the coverage chain did not take effect, so coverage numbers for this run are untrustworthy (%d found, deleted):\n%s\n' "$(printf '%s\n' "$stray" | wc -l)" "$stray" >&2
             exit 1
           fi
       - name: upload native glue coverage report
