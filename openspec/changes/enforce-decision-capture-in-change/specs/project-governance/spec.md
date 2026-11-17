@@ -36,7 +36,7 @@
 - **THEN** 当场追加进 `## 已定裁决` 段并补对应任务行；收尾复查每个关键词任务
   已打勾，未打勾即红——防迟到决定蒸发
 
-#### Scenario: 归档不回溯
+#### Scenario: 归档不回溯决定捕获
 
 - **WHEN** change 归档进 `openspec/changes/archive/`
 - **THEN** 其 `proposal.md`/`tasks.md` 退出扫描范围，闸门不因旧文件缺已定裁决
