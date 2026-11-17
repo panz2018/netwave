@@ -304,8 +304,8 @@
 - 规则：写 `tasks.md` 时 MUST 把同文件 `operations.apply.guidance` **逐条**映射为
   收尾任务并逐条核对不遗漏（与 `rules.tasks` 同等地位）；步骤锚点仍按 LL-089
   对齐，不把后置动作前移
-- 复发检测：由 `scripts/check_proposal.py` 机器强制——guidance 五条锚点
-  （`Plan/`、`三态时效`、`三轴`、`体检`、`check:outdated`）逐条须出现在
+- 复发检测：由 `scripts/check_proposal.py` 机器强制——guidance 六条锚点
+  （`Plan/`、`三态时效`、`三轴`、`体检`、`迟到追加`、`check:outdated`）逐条须出现在
   `tasks.md` 打勾任务行，缺项即红（只查存在性不数次数；明示跳过写同行含
   锚点 + 跳过 + ISO 日期即放行）；`pnpm check:meta` 命中即本条复发
 
@@ -327,3 +327,22 @@
   标注（命令+版本+真实输出行）；夹具动词/格式无实测出处即打回。闸门报 0
   而对应 `pnpm outdated`/`cargo`/`uv` 原始输出有变更行，即本条复发
   （同族 LL-083 取证、LL-093 口径漂移假绿、LL-099 穷举实测）
+
+### LL-110 讨论拍板的决定不写进 change 工件 = apply 看不见 = 永不落笔
+
+- 犯过：`Plan/体检-2026-11-15.md` 的 Q2/Q3/Q4 已在对话中拍板（文档修复方向、
+  归档体检跳过等），却因无 change 载体而悬空——apply 阶段只读 change 工件，
+  看不见散在 Plan/ 与对话里的决定，跨上下文后彻底丢失（2026-11-16）
+- 根因：把"拍板"当成对话里说完即生效的动作，实际决定只有落进在途 change 的
+  `proposal.md`/`tasks.md` 才进入 apply 执行视野；Plan/ 是未执行规划、无约束力
+  （LL-073），对话更会蒸发——决定停在二者即等于从未发生
+- 规则：会话内每拍板一条决定，当场写回在途 change（不含 `archive/`）
+  `proposal.md` 的 `## 已定裁决` 段，逐条以反引号关键词标识，并在 `tasks.md`
+  补含同关键词的任务行；无在途 change 承载先开 change，否则视为未拍板；
+  落不进当前 change 先尝试扩容、不强塞，塞不下则新开 change。本条取代旧裁决
+  "琐碎文档修复直接改、不新开 change"
+- 复发检测：由 `scripts/check_proposal.py` 机器强制——在途 change 的
+  `proposal.md` 须有非空 `## 已定裁决` 段，段内每个反引号关键词须在 `tasks.md`
+  有含同关键词的任务行，apply 收尾全勾态下载体任务亦须打勾，缺项即红并指名
+  关键词；`pnpm check:meta` 命中即本条复发（规则本体见 governance spec
+  「元规则 决定捕获进 change」）
