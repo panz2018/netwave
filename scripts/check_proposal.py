@@ -47,6 +47,25 @@ NO_ADDITION_STATEMENTS = {"无", "无。", "无."}
 CITATION = re.compile(r"https?://|\S+\.(?:rs|py|ts|md|json|ya?ml|toml)\b", re.IGNORECASE)
 BACKTICK = re.compile(r"`[^`]+`")
 
+# Apply-step anchors are read from config.yaml at runtime (each guidance entry
+# ends with a `（锚点 `X`）` marker), so config.yaml is the single source of
+# truth and this gate cannot drift from the guidance it grades against. A
+# closing task line in tasks.md must carry each anchor, otherwise an apply step
+# was silently dropped.
+ANCHOR_MARKER = re.compile(r"锚点\s*`([^`]+)`")
+CHECKED_LINE = re.compile(r"^\s*-\s*\[[ xX]\]")
+CONFIG_YAML = ROOT / "openspec" / "config.yaml"
+
+
+def guidance_anchors():
+    """Return the apply-guidance anchors, in order, parsed from the
+    `operations.apply.guidance` block of openspec/config.yaml. Each guidance
+    entry carries a trailing `（锚点 `X`）` marker; the anchors are extracted
+    in document order so the gate mirrors the guidance exactly."""
+    text = CONFIG_YAML.read_text(encoding="utf-8")
+    apply_block = text.split("  apply:", 1)[1].split("  archive:", 1)[0]
+    return ANCHOR_MARKER.findall(apply_block)
+
 
 def section_body(lines, title):
     """Return body lines of a level-2 `## <title>` section (case-insensitive),
@@ -123,6 +142,26 @@ def check_file(path):
     return errs
 
 
+def check_guidance_coverage(change_dir):
+    """Return the apply-guidance anchors missing from `change_dir/tasks.md`.
+
+    An anchor is covered when at least one checked task line (`- [ ]` or
+    `- [x]`) contains it. Prose, headings and non-checkbox bullets do not
+    count. Existence only, never a count — one guidance step may map to
+    several tasks, and an explicit skip written as a checked task line
+    (anchor + 跳过 + ISO date) still carries the anchor and so counts as
+    covered. Returns the missing anchors in guidance order; empty means the
+    closing tasks cover every apply step."""
+    tasks = change_dir / "tasks.md"
+    anchors = guidance_anchors()
+    if not tasks.is_file():
+        return list(anchors)
+    checked = [
+        ln for ln in tasks.read_text(encoding="utf-8").splitlines() if CHECKED_LINE.match(ln)
+    ]
+    return [anchor for anchor in anchors if not any(anchor in ln for ln in checked)]
+
+
 def main() -> int:
     if not CHANGES_DIR.is_dir():
         print("proposal gate OK: no changes directory")
@@ -135,6 +174,18 @@ def main() -> int:
     errors = []
     for p in proposals:
         errors.extend(check_file(p))
+    for change_dir in sorted(
+        d
+        for d in CHANGES_DIR.glob("*/")
+        if d != ARCHIVE_DIR and not d.name.startswith(".") and (d / "tasks.md").is_file()
+    ):
+        for anchor in check_guidance_coverage(change_dir):
+            errors.append(
+                f"{change_dir.relative_to(ROOT)}: tasks.md closing tasks miss apply-guidance "
+                f"anchor '{anchor}' (every operations.apply.guidance step must map to a "
+                "checked task; an explicit skip is a checked line with the anchor + 跳过 + "
+                "ISO date)"
+            )
     if errors:
         for e in errors:
             print(f"::error::{e}", file=sys.stderr)

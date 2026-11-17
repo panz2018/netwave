@@ -39,6 +39,11 @@ rules:
       破损、流程走不通才停下报告；下限变更（MSRV、engines.node、
       CI 底线格）等人工发起。消化完成后 MUST 复跑 pnpm check:outdated
       至退出码 0（SUMMARY 归零）才算本项完成，防漏消化
+    - 写 tasks.md 时收尾打勾任务 MUST 逐条覆盖本文件 operations.apply.guidance
+      的五条锚点（`Plan/`、`三态时效`、`三轴`、`体检`、`check:outdated`），
+      每条锚点至少出现在一个 `- [ ]`/`- [x]` 行；明示跳过者写成同行含锚点 +
+      "跳过" + ISO 日期（YYYY-MM-DD）的打勾行（门禁 scripts/check_proposal.py
+      同口径判定，只查存在性不数次数）
 
 # Per-operation guidance (optional)
 # Add advisory guidance for how apply and archive work should be conducted.
@@ -48,25 +53,27 @@ operations:
     guidance:
       - 本次 change 完成的任务/定案的结论，其在 Plan/ 中的对应章节必须
         当场删除（不留已完成的规划文字），只保留未执行或待改善的任务；
-        删后跑 pnpm check:md
+        删后跑 pnpm check:md（锚点 `Plan/`）
       - apply 完成前扫 openspec/specs/ 全目录，对照本次改动产出
         "更新/新增/退役"三态时效结论（哪些 spec 需改而未改、需新增、
         可退役），留痕于本 change 的 tasks.md 完成记录；结构一致性由
-        check_md.py SPECS ROUTER 门禁兜底
+        check_md.py SPECS ROUTER 门禁兜底（锚点 `三态时效`）
       - apply 收尾（check:outdated 之前）MUST 按 governance spec
         「元规则 review 三轴」对照本 change 工件（proposal/specs/design/
         tasks）审实现 diff，diff 文件集逐文件对上 tasks.md，对不上即越权、
-        停手还原，硬伤清零才准入后续步骤
+        停手还原，硬伤清零才准入后续步骤（锚点 `三轴`）
       - 三轴 review 之后、check:outdated 之前 MUST 执行被触碰文件全文
         只读体检（health-check spec 的 apply 态：语义考古维 + 四维，
         发现附文件+行号+证据落 Plan/ 等点名，不阻塞；全豁免时记
         "已查，无适用文件"；规则本体见 health-check spec，本条不复述）
+        （锚点 `体检`）
       - apply 全部任务完成后，最后一项 MUST 是跑 pnpm check:outdated
         并按 dependency-upgrade spec「apply 末尾体检与升级预授权」消化
         所报 LAG（升级 + 全闸门 + 四端对拍，含全局 CLI/直装工具的
         机器级升级；登记回退不阻塞，设计级适配/契约破损/流程走不通
         才停下报告；下限变更等人工发起）；消化后 MUST 复跑
         pnpm check:outdated 至退出码 0（SUMMARY 归零）才算完成
+        （锚点 `check:outdated`）
   archive:
     guidance:
       - 归档前必须执行 Plan/ 瘦身检查：grep Plan/ 中与本 change 相关的条目，

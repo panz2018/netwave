@@ -304,9 +304,10 @@
 - 规则：写 `tasks.md` 时 MUST 把同文件 `operations.apply.guidance` **逐条**映射为
   收尾任务并逐条核对不遗漏（与 `rules.tasks` 同等地位）；步骤锚点仍按 LL-089
   对齐，不把后置动作前移
-- 复发检测：review Standards 轴核对 `tasks.md` 收尾任务数是否等于
-  `config.yaml` apply guidance 条数，缺项即打回；apply 跑到最后一组发现"没有
-  体检任务"，即本条复发
+- 复发检测：由 `scripts/check_proposal.py` 机器强制——guidance 五条锚点
+  （`Plan/`、`三态时效`、`三轴`、`体检`、`check:outdated`）逐条须出现在
+  `tasks.md` 打勾任务行，缺项即红（只查存在性不数次数；明示跳过写同行含
+  锚点 + 跳过 + ISO 日期即放行）；`pnpm check:meta` 命中即本条复发
 
 ### LL-108 解析工具输出的正则须对真实输出实测，夹具臆造动词致闸门假绿
 
