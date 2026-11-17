@@ -18,6 +18,12 @@ required to meet new rules) MUST carry two sections with substance:
   silence is valid). When non-empty, every bullet line MUST carry a concrete
   reference — a backticked identifier, a repo file path, or a URL — or it
   is padding and red. Semantic quality stays with review.
+- `## 已定裁决` (decision capture): the section MUST exist and be non-empty;
+  each entry is `- `keyword`：explanation` and each keyword MUST be referenced
+  (backticked) by a task line in tasks.md — the decision's execution carrier.
+  At apply-complete state (every non-carrier task checked), each keyword's
+  carrier task line must also be checked, so a late decision cannot close
+  unchecked.
 
 Zero exemptions: no skip markers, no allowlists. An honest 无现成方案 is a
 legal exit, not an exemption. No in-flight changes means pass, so the gate
@@ -56,6 +62,16 @@ ANCHOR_MARKER = re.compile(r"锚点\s*`([^`]+)`")
 CHECKED_LINE = re.compile(r"^\s*-\s*\[[ xX]\]")
 CONFIG_YAML = ROOT / "openspec" / "config.yaml"
 
+# Decision-capture rule: an in-flight proposal must carry a `## 已定裁决`
+# section listing every decision as `- `keyword`：explanation`, and every
+# keyword must have a task line in tasks.md that references it (the keyword
+# backticked anywhere in the line). At apply-complete state — every task that
+# is not itself a decision carrier is checked — each keyword's carrier task
+# line must also be checked, so a late decision cannot evaporate unchecked.
+DECISION_SECTION = "已定裁决"
+DECISION_KEYWORD = re.compile(r"^-\s*`([^`]+)`：")
+TASK_LINE = re.compile(r"^\s*-\s*\[([ xX])\]")
+
 
 def guidance_anchors():
     """Return the apply-guidance anchors, in order, parsed from the
@@ -65,6 +81,15 @@ def guidance_anchors():
     text = CONFIG_YAML.read_text(encoding="utf-8")
     apply_block = text.split("  apply:", 1)[1].split("  archive:", 1)[0]
     return ANCHOR_MARKER.findall(apply_block)
+
+
+def _rel(path):
+    """Repo-relative path for error messages; falls back to the path itself
+    when it lies outside ROOT (test fixtures under tmp_path)."""
+    try:
+        return path.relative_to(ROOT)
+    except ValueError:
+        return path
 
 
 def section_body(lines, title):
@@ -162,6 +187,72 @@ def check_guidance_coverage(change_dir):
     return [anchor for anchor in anchors if not any(anchor in ln for ln in checked)]
 
 
+def check_decision_capture(change_dir):
+    """Return errors for the `## 已定裁决` decision-capture rule on one change.
+
+    The proposal must carry a non-empty `## 已定裁决` section whose entries are
+    `- `keyword`：explanation`, and every keyword must be referenced (backticked
+    anywhere) by a task line in tasks.md — the decision's execution carrier.
+    At apply-complete state — every task line that is not itself a decision
+    carrier is checked — each keyword's carrier task line must also be checked,
+    so a decision appended mid-apply cannot close unchecked."""
+    rel = _rel(change_dir)
+    lines = (change_dir / "proposal.md").read_text(encoding="utf-8").splitlines()
+    body = section_body(lines, DECISION_SECTION)
+    if body is None:
+        return [f"{rel}: missing required section '## {DECISION_SECTION}'"]
+    keywords = [m.group(1) for ln in body if (m := DECISION_KEYWORD.match(ln))]
+    if not keywords:
+        return [
+            f"{rel}: section '## {DECISION_SECTION}' has no decision "
+            "(need at least one `- `keyword`：` entry)"
+        ]
+    tasks = change_dir / "tasks.md"
+    task_lines = tasks.read_text(encoding="utf-8").splitlines() if tasks.is_file() else []
+    keyword_set = set(keywords)
+    carriers = {kw: [] for kw in keywords}  # keyword -> checked flags of its task items
+    other_unchecked = False  # a task item referencing no keyword stays unchecked
+    # A task item is a `- [ ]`/`- [x]` line plus its indented continuation
+    # lines (markdown wraps long task text); keywords may sit on any of them,
+    # and the item's checked state is the checkbox on its first line.
+    cur_checked = None
+    cur_kws = set()
+
+    def _flush():
+        nonlocal other_unchecked
+        if cur_checked is None:
+            return
+        if cur_kws:
+            for kw in cur_kws:
+                carriers[kw].append(cur_checked)
+        elif not cur_checked:
+            other_unchecked = True
+
+    for ln in task_lines:
+        m = TASK_LINE.match(ln)
+        if m:
+            _flush()
+            cur_checked = m.group(1) != " "
+            cur_kws = {k.strip("`") for k in BACKTICK.findall(ln)} & keyword_set
+        elif cur_checked is not None and ln.strip():
+            cur_kws |= {k.strip("`") for k in BACKTICK.findall(ln)} & keyword_set
+    _flush()
+    errs = [
+        f"{rel}: decision keyword '{kw}' has no task line in tasks.md "
+        "(every 已定裁决 keyword must map to a task carrying it)"
+        for kw in keywords
+        if not carriers[kw]
+    ]
+    if not other_unchecked:
+        errs.extend(
+            f"{rel}: decision keyword '{kw}' carrier task not checked at apply-complete "
+            "state (all other tasks are done; the decision task must close too)"
+            for kw in keywords
+            if carriers[kw] and not all(carriers[kw])
+        )
+    return errs
+
+
 def main() -> int:
     if not CHANGES_DIR.is_dir():
         print("proposal gate OK: no changes directory")
@@ -186,13 +277,15 @@ def main() -> int:
                 "checked task; an explicit skip is a checked line with the anchor + 跳过 + "
                 "ISO date)"
             )
+        if (change_dir / "proposal.md").is_file():
+            errors.extend(check_decision_capture(change_dir))
     if errors:
         for e in errors:
             print(f"::error::{e}", file=sys.stderr)
         return 1
     print(
         f"proposal gate OK: {len(proposals)} in-flight proposal(s) "
-        "carry Non-goals + Prior art + 专家增补"
+        "carry Non-goals + Prior art + 专家增补 + 已定裁决"
     )
     return 0
 

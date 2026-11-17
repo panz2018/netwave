@@ -18,6 +18,7 @@ ALL = [
     "- [ ] 4.4 三态时效检查：扫 `openspec/specs/` 全目录，产出更新/新增/退役结论。",
     "- [ ] 4.2 三轴 review：按 governance「元规则 review 三轴」审实现 diff。",
     "- [ ] 4.3 apply 态体检：对 diff 触碰文件全文只读体检。",
+    "- [ ] 4.7 apply 中途迟到追加的决定已当场写回已定裁决段并补任务。",
     "- [ ] 4.6 跑 `pnpm check:outdated` 并消化所报 LAG。",
 ]
 
@@ -63,12 +64,13 @@ def test_repeated_anchor_still_covered(tmp_path: Path) -> None:
 
 def test_anchors_mirrored_in_config_yaml() -> None:
     # The gate reads anchors from config.yaml at runtime; assert it finds the
-    # five expected ones in guidance order (no second hardcoded list to drift).
+    # six expected ones in guidance order (no second hardcoded list to drift).
     assert check_proposal.guidance_anchors() == [
         "Plan/",
         "三态时效",
         "三轴",
         "体检",
+        "迟到追加",
         "check:outdated",
     ]
 
@@ -90,7 +92,7 @@ motivation
 
 
 def _valid_tasks() -> str:
-    return "# Tasks\n\n" + "\n".join(ALL) + "\n"
+    return "# Tasks\n\n" + "\n".join(ALL) + "\n- [ ] 9.0 落地 `裁决段` 机制。\n"
 
 
 def _make_change(tmp_path: Path, name: str, proposal: str, tasks: str | None) -> Path:
@@ -180,7 +182,7 @@ def test_main_valid_change_passes(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(check_proposal, "ROOT", tmp_path)
     monkeypatch.setattr(check_proposal, "CHANGES_DIR", tmp_path / "changes")
     monkeypatch.setattr(check_proposal, "ARCHIVE_DIR", tmp_path / "changes" / "archive")
-    _make_change(tmp_path, "good", VALID_PROPOSAL, _valid_tasks())
+    _make_change(tmp_path, "good", _decision_proposal(["裁决段"]), _valid_tasks())
 
     assert check_proposal.main() == 0
 
@@ -222,8 +224,85 @@ def test_main_guard_exits_with_code(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(check_proposal, "ROOT", tmp_path)
     monkeypatch.setattr(check_proposal, "CHANGES_DIR", tmp_path / "changes")
     monkeypatch.setattr(check_proposal, "ARCHIVE_DIR", tmp_path / "changes" / "archive")
-    _make_change(tmp_path, "good", VALID_PROPOSAL, _valid_tasks())
+    _make_change(tmp_path, "good", _decision_proposal(["裁决段"]), _valid_tasks())
 
     with pytest.raises(SystemExit) as excinfo:
         runpy.run_path(check_proposal.__file__, run_name="__main__")
     assert excinfo.value.code == 0
+
+
+# --- 已定裁决 capture rule -------------------------------------------------
+
+
+def _decision_proposal(keywords: list[str]) -> str:
+    body = "\n".join(f"- `{k}`：决定。" for k in keywords)
+    return VALID_PROPOSAL + "\n## 已定裁决\n" + body + "\n"
+
+
+def test_decision_section_missing_is_error(tmp_path: Path) -> None:
+    change = tmp_path / "c"
+    change.mkdir()
+    (change / "proposal.md").write_text(VALID_PROPOSAL, encoding="utf-8")
+    (change / "tasks.md").write_text(_valid_tasks(), encoding="utf-8")
+    errs = check_proposal.check_decision_capture(change)
+    assert any("已定裁决" in e for e in errs)
+
+
+def test_decision_section_empty_is_error(tmp_path: Path) -> None:
+    change = tmp_path / "c"
+    change.mkdir()
+    (change / "proposal.md").write_text(VALID_PROPOSAL + "\n## 已定裁决\n\n", encoding="utf-8")
+    (change / "tasks.md").write_text(_valid_tasks(), encoding="utf-8")
+    errs = check_proposal.check_decision_capture(change)
+    assert any("no decision" in e or "no content" in e for e in errs)
+
+
+def test_decision_keyword_without_task_is_error(tmp_path: Path) -> None:
+    change = tmp_path / "c"
+    change.mkdir()
+    (change / "proposal.md").write_text(_decision_proposal(["裁决段", "孤儿"]), encoding="utf-8")
+    (change / "tasks.md").write_text(_valid_tasks(), encoding="utf-8")
+    errs = check_proposal.check_decision_capture(change)
+    assert any("孤儿" in e for e in errs)
+
+
+def test_decision_keyword_with_task_passes(tmp_path: Path) -> None:
+    change = tmp_path / "c"
+    change.mkdir()
+    (change / "proposal.md").write_text(_decision_proposal(["裁决段", "双层"]), encoding="utf-8")
+    tasks = _valid_tasks() + "- [ ] 9.1 实现 `双层` 保障。\n"
+    (change / "tasks.md").write_text(tasks, encoding="utf-8")
+    assert check_proposal.check_decision_capture(change) == []
+
+
+def test_decision_all_checked_requires_tick(tmp_path: Path) -> None:
+    change = tmp_path / "c"
+    change.mkdir()
+    (change / "proposal.md").write_text(_decision_proposal(["裁决段", "双层"]), encoding="utf-8")
+    # every task checked, but the 双层 carrier stays unchecked -> red.
+    tasks = (
+        "\n".join(ln.replace("[ ]", "[x]") for ln in _valid_tasks().splitlines())
+        + "\n- [ ] 9.1 实现 `双层` 保障。\n"
+    )
+    (change / "tasks.md").write_text(tasks, encoding="utf-8")
+    errs = check_proposal.check_decision_capture(change)
+    assert any("双层" in e for e in errs)
+
+
+def test_decision_carrier_checked_when_all_done(tmp_path: Path) -> None:
+    change = tmp_path / "c"
+    change.mkdir()
+    (change / "proposal.md").write_text(_decision_proposal(["裁决段", "双层"]), encoding="utf-8")
+    tasks = _valid_tasks() + "- [x] 9.1 实现 `双层` 保障。\n"
+    tasks = "\n".join(ln.replace("[ ]", "[x]") for ln in tasks.splitlines()) + "\n"
+    (change / "tasks.md").write_text(tasks, encoding="utf-8")
+    assert check_proposal.check_decision_capture(change) == []
+
+
+def test_main_decision_missing_is_error(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(check_proposal, "ROOT", tmp_path)
+    monkeypatch.setattr(check_proposal, "CHANGES_DIR", tmp_path / "changes")
+    monkeypatch.setattr(check_proposal, "ARCHIVE_DIR", tmp_path / "changes" / "archive")
+    # proposal without 已定裁决 section
+    _make_change(tmp_path, "bad", VALID_PROPOSAL, _valid_tasks())
+    assert check_proposal.main() == 1
