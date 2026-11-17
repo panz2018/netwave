@@ -87,6 +87,30 @@ def test_copy_is_independent_and_equal() -> None:
     assert c.unit is netwave.FrequencyUnit.GHz
 
 
+def test_from_wavelength_rejects_illegal_string_unit() -> None:
+    # `arg_wavelength_unit` string arm: an unknown unit string fails FromStr
+    # and the map_err arm raises ValueError quoting the input.
+    with pytest.raises(ValueError, match="xyz"):
+        netwave.Frequency.from_wavelength([60.0], "xyz", 1.0)
+
+
+def test_accessors_raise_after_drop() -> None:
+    f = netwave.Frequency.from_f([1.0], "GHz")
+    f.drop()
+    with pytest.raises(ValueError, match="dropped"):
+        _ = f.f
+    with pytest.raises(ValueError, match="dropped"):
+        _ = f.f_scaled
+    with pytest.raises(ValueError, match="dropped"):
+        _ = f.w
+    with pytest.raises(ValueError, match="dropped"):
+        _ = f.unit
+    with pytest.raises(ValueError, match="dropped"):
+        f.wavelength(netwave.WavelengthUnit.mm, 1.0)
+    with pytest.raises(ValueError, match="dropped"):
+        f.copy()
+
+
 def test_len_and_display_string() -> None:
     f = netwave.Frequency.from_f([1.0, 2.0, 5.0], "GHz")
     assert len(f) == 3

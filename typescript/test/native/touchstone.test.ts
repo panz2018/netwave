@@ -80,6 +80,23 @@ describe("touchstone node factories", () => {
     expect(Array.from(ts.z0)).toEqual([50.0, 45.0]);
   });
 
+  it("fromFile rejects a missing path", async () => {
+    // read_to_string fails on a nonexistent path; the map_err arm quotes the
+    // path and the OS error rather than panicking.
+    await expect(Touchstone.fromFile("/nonexistent/dir/absent.s1p")).rejects.toThrow(
+      /absent\.s1p/,
+    );
+  });
+
+  it("fromFile rejects a file with invalid content", async () => {
+    // The file reads fine but the body fails to parse; the from_text map_err
+    // arm propagates the parse error.
+    const dir = mkdtempSync(join(tmpdir(), "nw-"));
+    const path = join(dir, "bad.s1p");
+    await import("node:fs").then((fs) => fs.writeFileSync(path, "not a touchstone\n"));
+    await expect(Touchstone.fromFile(path)).rejects.toThrow();
+  });
+
   it("fromData derives version from z0 values", () => {
     const f = Frequency.fromF([1.0], "GHz");
     const ts = Touchstone.fromData(f, [10, 0, 20, 90, 30, -90, 40, 180], [50.0, 45.0], "Z");
@@ -134,6 +151,22 @@ describe("touchstone node data plane", () => {
   it("G/H require 2 ports", () => {
     const ts = Touchstone.fromText(S1P, 1);
     expect(() => ts.data("G", "RI")).toThrow(/2-port/);
+  });
+
+  it("g/h getters reject a 1-port device", () => {
+    // The g/h getters forward core's domain conversion; on a 1-port device
+    // core returns Err and the map_err arm propagates it as a throw.
+    const ts = Touchstone.fromText(S1P, 1);
+    expect(() => ts.g).toThrow(/2-port/);
+    expect(() => ts.h).toThrow(/2-port/);
+  });
+
+  it("toText/toBytes reject a 1-port device in G domain", () => {
+    // resolve_ts_kw accepts "G", but core's G conversion fails on 1 port;
+    // the to_text / to_bytes map_err arms propagate the conversion error.
+    const ts = Touchstone.fromText(S1P, 1);
+    expect(() => ts.toText("G", "RI")).toThrow(/2-port/);
+    expect(() => ts.toBytes("G", "RI")).toThrow(/2-port/);
   });
 
   it("y getter recomputes the ingested Y matrix", () => {
@@ -200,6 +233,13 @@ describe("touchstone node write", () => {
     await ts.writeFile(join(dir, "filter.s9p"), "S", "RI");
     expect(existsSync(join(dir, "filter.s1p"))).toBe(true);
     expect(existsSync(join(dir, "filter.s9p"))).toBe(false);
+  });
+
+  it("writeFile rejects an unwritable path", async () => {
+    // Writing into a nonexistent directory fails at the OS level; the
+    // write_file map_err arm propagates the IO error rather than panicking.
+    const ts = Touchstone.fromText(S1P, 1);
+    await expect(ts.writeFile("/nonexistent/dir/out.s1p", "S", "RI")).rejects.toThrow();
   });
 });
 

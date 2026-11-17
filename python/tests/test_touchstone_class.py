@@ -353,3 +353,10 @@ def test_drop_is_idempotent_and_post_drop_raises() -> None:
     with pytest.raises(ValueError, match="dropped"):
         _ = ts.s
     ts.drop()  # idempotent
+
+
+def test_from_file_rejects_missing_path() -> None:
+    # read_to_string fails on a nonexistent path; the map_err arm quotes the
+    # path and the OS error rather than panicking.
+    with pytest.raises(ValueError, match="absent.s1p"):
+        netwave.Touchstone.from_file("/nonexistent/dir/absent.s1p")

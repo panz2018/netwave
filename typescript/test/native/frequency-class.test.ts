@@ -112,10 +112,32 @@ describe("native frequency functional surface", () => {
     expect(empty.toString()).toBe("Frequency([no freqs])");
   });
 
+  it("npoints returns the point count", () => {
+    const f = Frequency.fromF([1.0, 2.0, 3.0], "GHz");
+    expect(f.npoints()).toBe(3);
+  });
+
+  it("fromF rejects an out-of-range numeric unit ordinal", () => {
+    // `resolve_freq_unit` Either::A arm past the last enum member: the
+    // numeric ordinal has no `from_ordinal` match, so the ok_or_else arm
+    // throws instead of silently defaulting.
+    expect(() => Frequency.fromF([1.0], 99 as unknown as FrequencyUnit)).toThrow(/ordinal/);
+  });
+
+  it("fromWavelength rejects an out-of-range numeric unit ordinal", () => {
+    expect(() =>
+      Frequency.fromWavelength([60.0], 99 as unknown as WavelengthUnit, 1.0),
+    ).toThrow(/ordinal/);
+  });
+
   it("accessors throw after drop", () => {
     const f = Frequency.fromF([1.0], "GHz");
     f.drop();
     expect(() => f.f).toThrow();
     expect(() => f.npoints()).toThrow();
+    expect(() => f.fScaled).toThrow();
+    expect(() => f.unit).toThrow();
+    expect(() => f.wavelength("mm", 1.0)).toThrow();
+    expect(() => f.copy()).toThrow();
   });
 });
