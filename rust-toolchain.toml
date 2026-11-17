@@ -1,3 +1,4 @@
 [toolchain]
-channel = "1.99.1"
-# Pinned stable version floor; upgrades go through an OpenSpec change.
+channel = "1.100"
+# Pinned stable toolchain version (a ceiling, not an MSRV floor); bumped to the
+# newest stable by the freshness check (pnpm check:outdated), upgraded directly.

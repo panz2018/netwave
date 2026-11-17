@@ -18,7 +18,7 @@
     "check:outdated": "uv run python scripts/versions/check_outdated.py"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.6.7",
+    "@biomejs/biome": "^2.6.8",
     "markdownlint-cli2": "^0.24.1",
     "prettier": "^3.10.1"
   }
