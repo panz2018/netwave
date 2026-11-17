@@ -57,8 +57,11 @@
       更新/新增/退役三态时效结论（本 change 改 project-governance 元规则、
       lessons-learned 账本），留痕完成记录。验证：完成记录含三态清单，
       `openspec/specs/README.md` 路由无需增删（无新 capability）。
-- [ ] 5.5 Plan/ 瘦身：`Plan/体检-2026-11-15.md` 中已定文档修复对应章节（已由
-      本 change 第 4 节修复）当场删除，只留未执行任务。验证：`grep` 无残留
-      已完成章节；`pnpm check:md` 绿。
+- [ ] 5.5 Plan/ 瘦身：`Plan/体检-2026-11-15.md` 全部发现（§1 两笔 + §2 一笔）
+      已由本 change 第 4 节修复、§3/§4 为"已查，无"，整篇内容已吸收，故整篇
+      删除该文件（去向：结论落本 change 工件与主 spec，追溯靠 git log）。验证：
+      `ls Plan/体检-2026-11-15.md` 不存在；`pnpm check:md` 绿。
 - [ ] 5.6 跑 `pnpm check:outdated` 并按 dependency-upgrade spec「apply 末尾
       体检与升级预授权」消化所报 LAG。验证：复跑至退出码 0。
+- [ ] 5.7 归档态体检：经人工裁决本次跳过（2026-11-16）——仅本次一次性跳过
+      archive 态只读体检，规则本体不变（锚点 `体检`）。
