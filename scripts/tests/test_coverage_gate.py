@@ -150,6 +150,166 @@ class TestMacroAttributeExemption:
         assert "exempted no/such/dir/glue.rs" not in out
 
 
+class TestDefensiveAndArtifactExemption:
+    """Two narrow exemptions for structurally-unreachable lines that llvm-cov
+    1.100 stopped reporting as covered (the prior toolchain's false-positive
+    hid them). Both are pattern-driven, never line-number whitelists:
+
+    - defensive map_err: a `.map_err(` arm of a statement built on an always-
+      succeeds constructor (`from_shape*`/`ArrayView`/`runtime::Builder`/
+      `.build(`) whose argument is derived from the data, so the error arm
+      cannot be reached by any input.
+    - continuation artifact: a branch-free continuation line of a multi-line
+      statement that demonstrably executed (a sibling line is hit), so its 0
+      count is a region non-merge artifact, not a gap.
+
+    The negative cases pin that reachable error paths and whole-statement gaps
+    stay red — the exemption must not widen to cover a real untested line."""
+
+    def test_defensive_map_err_on_from_shape_is_exempted(self, tmp_path, capsys):
+        src = _src(
+            tmp_path,
+            "glue.rs",
+            [
+                "fn s() {",
+                "    let view = ndarray::ArrayView3::from_shape((nf, n, n), c)",
+                "        .map_err(|e| PyValueError::new_err(e.to_string()))?;",
+                "}",
+            ],
+        )
+        # line 2 (the from_shape call) executed; line 3 (the error arm) shows 0.
+        files = {src: {"2": "1/1", "3": "0/6"}}
+        path = _report(tmp_path, "coverage-glue.json", files)
+        assert coverage_gate.main([path, "100"]) == 0
+        out = capsys.readouterr().out
+        assert "2/2 = 100.00%" in out
+        assert f"exempted {src}: [3]" in out
+        assert "defensive map_err" in out
+
+    def test_defensive_map_err_on_runtime_build_is_exempted(self, tmp_path, capsys):
+        src = _src(
+            tmp_path,
+            "glue.rs",
+            [
+                "fn from_url() {",
+                "    let rt = tokio::runtime::Builder::new_current_thread()",
+                "        .build()",
+                "        .map_err(|e| PyValueError::new_err(e.to_string()))?;",
+                "}",
+            ],
+        )
+        files = {src: {"2": "1/1", "3": "1/1", "4": "0/6"}}
+        path = _report(tmp_path, "coverage-glue.json", files)
+        assert coverage_gate.main([path, "100"]) == 0
+        assert f"exempted {src}: [4]" in capsys.readouterr().out
+
+    def test_continuation_artifact_is_exempted(self, tmp_path, capsys):
+        # A multi-line `let` whose first line shows 0 but whose continuation
+        # executed: the statement ran, so the 0 is a region artifact.
+        src = _src(
+            tmp_path,
+            "glue.rs",
+            [
+                "fn s() {",
+                "    let c: &[Complex64] =",
+                "        unsafe { std::slice::from_raw_parts(ptr, len / 2) };",
+                "}",
+            ],
+        )
+        files = {src: {"2": "0/2", "3": "3/4"}}
+        path = _report(tmp_path, "coverage-glue.json", files)
+        assert coverage_gate.main([path, "100"]) == 0
+        out = capsys.readouterr().out
+        assert f"exempted {src}: [2]" in out
+        assert "region non-merge artifact" in out
+
+    def test_reachable_map_err_stays_red(self, tmp_path, capsys):
+        # A `.map_err(` on a core method (no always-succeeds constructor in
+        # the statement) is a real untested error path: it must NOT be exempted.
+        src = _src(
+            tmp_path,
+            "native.rs",
+            [
+                "fn get_f() {",
+                "    self.0",
+                "        .f()",
+                "        .map_err(|e| Error::from_reason(e.to_string()))",
+                "}",
+            ],
+        )
+        files = {src: {"2": "1/1", "3": "1/1", "4": "0/2"}}
+        path = _report(tmp_path, "coverage-native.json", files)
+        assert coverage_gate.main([path, "100"]) == 1
+        out = capsys.readouterr().out
+        assert f"missed {src}: [4]" in out
+        assert "exempted" not in out
+
+    def test_whole_statement_gap_stays_red(self, tmp_path, capsys):
+        # A multi-line statement where NO line executed is a genuine gap: the
+        # artifact exemption requires a sibling hit, so it stays red.
+        src = _src(
+            tmp_path,
+            "glue.rs",
+            [
+                "fn dead() {",
+                "    let x = compute(",
+                "        a, b);",
+                "}",
+            ],
+        )
+        files = {src: {"1": "1/1", "2": "0/2", "3": "0/1"}}
+        path = _report(tmp_path, "coverage-glue.json", files)
+        assert coverage_gate.main([path, "100"]) == 1
+        out = capsys.readouterr().out
+        assert f"missed {src}: [2, 3]" in out
+        assert "exempted" not in out
+
+    def test_branch_continuation_stays_red(self, tmp_path, capsys):
+        # A continuation line that opens a branch (`if`) is a real decision
+        # point, never a structural artifact, even inside an executed statement.
+        src = _src(
+            tmp_path,
+            "glue.rs",
+            [
+                "fn f() {",
+                "    let x = compute(a)",
+                "        if b { 1 } else { 2 };",
+                "}",
+            ],
+        )
+        files = {src: {"2": "1/1", "3": "0/2"}}
+        path = _report(tmp_path, "coverage-glue.json", files)
+        assert coverage_gate.main([path, "100"]) == 1
+        assert f"missed {src}: [3]" in capsys.readouterr().out
+
+    def test_single_line_missed_statement_stays_red(self, tmp_path, capsys):
+        # A missed line that is its own single-line statement has no sibling
+        # to prove it ran, so it is a genuine gap and stays red.
+        src = _src(tmp_path, "glue.rs", ["fn f() {", "    dead();", "}"])
+        files = {src: {"1": "1/1", "2": "0/1"}}
+        path = _report(tmp_path, "coverage-glue.json", files)
+        assert coverage_gate.main([path, "100"]) == 1
+        assert f"missed {src}: [2]" in capsys.readouterr().out
+
+    def test_closure_continuation_stays_red(self, tmp_path, capsys):
+        # A continuation carrying a closure param (`|`) is a real callable
+        # region; a 0 count there is an untested closure, not an artifact.
+        src = _src(
+            tmp_path,
+            "glue.rs",
+            [
+                "fn f() {",
+                "    let x = v.iter()",
+                "        .map(|n| n as u32);",
+                "}",
+            ],
+        )
+        files = {src: {"2": "1/1", "3": "0/1"}}
+        path = _report(tmp_path, "coverage-glue.json", files)
+        assert coverage_gate.main([path, "100"]) == 1
+        assert f"missed {src}: [3]" in capsys.readouterr().out
+
+
 class TestReportParsingBranches:
     """Parsing branches the four-line fixtures never exercised: real
     llvm-cov exports carry non-line keys, and the exemption lookahead must
