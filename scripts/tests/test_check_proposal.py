@@ -299,6 +299,19 @@ def test_decision_carrier_checked_when_all_done(tmp_path: Path) -> None:
     assert check_proposal.check_decision_capture(change) == []
 
 
+def test_decision_keyword_on_continuation_line_is_carrier(tmp_path: Path) -> None:
+    # A long task wraps onto a continuation line; the keyword sits only on the
+    # continuation, not on the checkbox line. The carrier is the whole item, so
+    # the keyword is matched and, once every task is checked, the item closes.
+    change = tmp_path / "c"
+    change.mkdir()
+    (change / "proposal.md").write_text(_decision_proposal(["裁决段", "双层"]), encoding="utf-8")
+    tasks = _valid_tasks() + "- [ ] 9.1 落实跨边界单位约定，\n  由 `双层` 保障其一致性。\n"
+    tasks = "\n".join(ln.replace("[ ]", "[x]") for ln in tasks.splitlines()) + "\n"
+    (change / "tasks.md").write_text(tasks, encoding="utf-8")
+    assert check_proposal.check_decision_capture(change) == []
+
+
 def test_main_decision_missing_is_error(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(check_proposal, "ROOT", tmp_path)
     monkeypatch.setattr(check_proposal, "CHANGES_DIR", tmp_path / "changes")
