@@ -36,12 +36,13 @@ pythonpath = ["scripts", "scripts/versions"]
 addopts = ["--cov", "--cov-report=term"]
 
 [tool.coverage.run]
-# Grading layer of every coverage floor: the versions domain plus the two
-# gate scripts that grade codecov reports and police comment hygiene. A
-# regression here invalidates all floors, so all three carry a 100% floor.
+# Grading layer of every coverage floor: the versions domain plus the four
+# gate scripts that grade codecov reports, police comment hygiene, check
+# proposal sections and apply-guidance coverage, and enforce Python hygiene. A
+# regression here invalidates all floors, so all of them carry a 100% floor.
 # Bare module names (not paths): the gates are imported as top-level
 # modules through `pythonpath` above, and coverage resolves them the same way.
-source = ["scripts/versions", "coverage_gate", "check_comments"]
+source = ["scripts/versions", "coverage_gate", "check_comments", "check_proposal", "check_py"]
 
 [tool.coverage.report]
 fail_under = 100

@@ -10,6 +10,7 @@ not invented text, so the gate is graded against what tasks.md actually looks li
 from pathlib import Path
 
 import check_proposal
+import pytest
 
 # Closing task lines covering each apply-step anchor, in guidance order.
 ALL = [
@@ -70,3 +71,159 @@ def test_anchors_mirrored_in_config_yaml() -> None:
         "体检",
         "check:outdated",
     ]
+
+
+VALID_PROPOSAL = """# Proposal
+
+## Why
+motivation
+
+## Non-goals
+- not this
+
+## Prior art
+- `scripts/check_proposal.py`
+
+## 专家增补
+- tighten `check_proposal.py`
+"""
+
+
+def _valid_tasks() -> str:
+    return "# Tasks\n\n" + "\n".join(ALL) + "\n"
+
+
+def _make_change(tmp_path: Path, name: str, proposal: str, tasks: str | None) -> Path:
+    change = tmp_path / "changes" / name
+    change.mkdir(parents=True)
+    (change / "proposal.md").write_text(proposal, encoding="utf-8")
+    if tasks is not None:
+        (change / "tasks.md").write_text(tasks, encoding="utf-8")
+    return change
+
+
+def test_section_body_present_and_absent() -> None:
+    lines = ["## Foo", "body", "## Bar", "other"]
+    assert check_proposal.section_body(lines, "Foo") == ["body"]
+    assert check_proposal.section_body(lines, "Missing") is None
+
+
+def test_blindspot_missing_section_is_error() -> None:
+    errs = check_proposal.check_blindspot(["## Non-goals", "- x"], "p.md")
+    assert errs == ["p.md: missing required section '## 专家增补'"]
+
+
+def test_blindspot_empty_is_legal() -> None:
+    assert check_proposal.check_blindspot(["## 专家增补", "", "## Next"], "p.md") == []
+
+
+def test_blindspot_lone_none_is_legal() -> None:
+    assert check_proposal.check_blindspot(["## 专家增补", "- 无"], "p.md") == []
+
+
+def test_blindspot_padding_without_reference_is_error() -> None:
+    errs = check_proposal.check_blindspot(["## 专家增补", "- just a vague idea"], "p.md")
+    assert len(errs) == 1
+    assert "lacks a concrete reference" in errs[0]
+
+
+def test_check_file_valid_proposal_passes(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(check_proposal, "ROOT", tmp_path)
+    proposal = tmp_path / "p.md"
+    proposal.write_text(VALID_PROPOSAL, encoding="utf-8")
+
+    assert check_proposal.check_file(proposal) == []
+
+
+def test_check_file_missing_section_is_error(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(check_proposal, "ROOT", tmp_path)
+    proposal = tmp_path / "p.md"
+    proposal.write_text(
+        "# Proposal\n\n## Prior art\n- `x.py`\n\n## 专家增补\n- 无\n",
+        encoding="utf-8",
+    )
+
+    errs = check_proposal.check_file(proposal)
+    assert any("Non-goals" in e for e in errs)
+
+
+def test_check_file_empty_section_is_error(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(check_proposal, "ROOT", tmp_path)
+    proposal = tmp_path / "p.md"
+    proposal.write_text(
+        "# Proposal\n\n## Non-goals\n\n## Prior art\n- `x.py`\n\n## 专家增补\n- 无\n",
+        encoding="utf-8",
+    )
+
+    errs = check_proposal.check_file(proposal)
+    assert any("has no content" in e for e in errs)
+
+
+def test_check_file_prior_art_without_citation_is_error(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(check_proposal, "ROOT", tmp_path)
+    proposal = tmp_path / "p.md"
+    proposal.write_text(
+        "# Proposal\n\n## Non-goals\n- x\n\n## Prior art\n- vague prose\n\n## 专家增补\n- 无\n",
+        encoding="utf-8",
+    )
+
+    errs = check_proposal.check_file(proposal)
+    assert any("no citation" in e for e in errs)
+
+
+def test_main_no_changes_dir_is_ok(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(check_proposal, "CHANGES_DIR", tmp_path / "absent")
+    assert check_proposal.main() == 0
+
+
+def test_main_valid_change_passes(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(check_proposal, "ROOT", tmp_path)
+    monkeypatch.setattr(check_proposal, "CHANGES_DIR", tmp_path / "changes")
+    monkeypatch.setattr(check_proposal, "ARCHIVE_DIR", tmp_path / "changes" / "archive")
+    _make_change(tmp_path, "good", VALID_PROPOSAL, _valid_tasks())
+
+    assert check_proposal.main() == 0
+
+
+def test_main_missing_anchor_is_error(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(check_proposal, "ROOT", tmp_path)
+    monkeypatch.setattr(check_proposal, "CHANGES_DIR", tmp_path / "changes")
+    monkeypatch.setattr(check_proposal, "ARCHIVE_DIR", tmp_path / "changes" / "archive")
+    tasks = "\n".join(ln for ln in _valid_tasks().splitlines() if "体检" not in ln)
+    _make_change(tmp_path, "bad", VALID_PROPOSAL, tasks + "\n")
+
+    assert check_proposal.main() == 1
+
+
+def test_main_skips_archive_dir(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(check_proposal, "CHANGES_DIR", tmp_path / "changes")
+    monkeypatch.setattr(check_proposal, "ARCHIVE_DIR", tmp_path / "changes" / "archive")
+    archived = tmp_path / "changes" / "archive" / "old"
+    archived.mkdir(parents=True)
+    (archived / "proposal.md").write_text("# Proposal\n", encoding="utf-8")
+
+    assert check_proposal.main() == 0
+
+
+def test_blindspot_multi_bullet_with_continuation(tmp_path: Path) -> None:
+    lines = ["## 专家增补", "- ref `a.py`", "  continuation text", "- ref `b.py`"]
+    assert check_proposal.check_blindspot(lines, "p.md") == []
+
+
+def test_guidance_coverage_missing_tasks_returns_all(tmp_path: Path) -> None:
+    change = tmp_path / "no-tasks"
+    change.mkdir()
+    assert check_proposal.check_guidance_coverage(change) == list(check_proposal.guidance_anchors())
+
+
+def test_main_guard_exits_with_code(tmp_path: Path, monkeypatch) -> None:
+    import runpy
+
+    monkeypatch.setattr(check_proposal, "ROOT", tmp_path)
+    monkeypatch.setattr(check_proposal, "CHANGES_DIR", tmp_path / "changes")
+    monkeypatch.setattr(check_proposal, "ARCHIVE_DIR", tmp_path / "changes" / "archive")
+    _make_change(tmp_path, "good", VALID_PROPOSAL, _valid_tasks())
+
+    with pytest.raises(SystemExit) as excinfo:
+        runpy.run_path(check_proposal.__file__, run_name="__main__")
+    assert excinfo.value.code == 0
