@@ -3,7 +3,7 @@
 must be invoked by .github/workflows/ci.yml.
 
 Why: the browser test line landed with `test:browser` locally but was
-missing from CI (LL-037) — a suite that never runs in CI is not a gate.
+missing from CI — a suite that never runs in CI is not a gate.
 This turns that text rule into a machine check.
 
 Rule: each devDependency-backed `test:<name>` script (not the bare `test`

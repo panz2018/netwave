@@ -16,7 +16,7 @@ write default UTF-8 — see the touchstone-core spec).
 
 - `src/lib.rs` — the binding: pyclass base-object views of core memory
 - `netwave/_netwave.pyi` — type stub, shipped inside the wheel
-- `tests/test_roundtrip.py` — zero-copy roundtrip tests (pytest)
+- `tests/` — pytest suite (roundtrip, memory lifecycle, units, classes)
 - `pyproject.toml` / `uv.lock` / `.python-version` — uv-managed env
 
 ## Commands
