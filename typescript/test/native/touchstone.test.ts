@@ -83,9 +83,7 @@ describe("touchstone node factories", () => {
   it("fromFile rejects a missing path", async () => {
     // read_to_string fails on a nonexistent path; the map_err arm quotes the
     // path and the OS error rather than panicking.
-    await expect(Touchstone.fromFile("/nonexistent/dir/absent.s1p")).rejects.toThrow(
-      /absent\.s1p/,
-    );
+    await expect(Touchstone.fromFile("/nonexistent/dir/absent.s1p")).rejects.toThrow(/absent\.s1p/);
   });
 
   it("fromFile rejects a file with invalid content", async () => {

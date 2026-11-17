@@ -125,9 +125,9 @@ describe("native frequency functional surface", () => {
   });
 
   it("fromWavelength rejects an out-of-range numeric unit ordinal", () => {
-    expect(() =>
-      Frequency.fromWavelength([60.0], 99 as unknown as WavelengthUnit, 1.0),
-    ).toThrow(/ordinal/);
+    expect(() => Frequency.fromWavelength([60.0], 99 as unknown as WavelengthUnit, 1.0)).toThrow(
+      /ordinal/,
+    );
   });
 
   it("accessors throw after drop", () => {
