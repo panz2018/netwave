@@ -55,7 +55,7 @@
       更新/新增/退役三态时效结论（本 change 改 project-governance 元规则、
       lessons-learned 账本），留痕完成记录。验证：完成记录含三态清单，
       `openspec/specs/README.md` 路由无需增删（无新 capability）。
-- [ ] 4.5 Plan/ 瘦身：本 change 结论若涉及 `Plan/` 对应章节则当场删除，
+- [x] 4.5 Plan/ 瘦身：本 change 结论若涉及 `Plan/` 对应章节则当场删除，
       只留未执行任务。验证：`grep` 无残留已完成章节；`pnpm check:md` 绿。
 - [x] 4.6 跑 `pnpm check:outdated` 并按 dependency-upgrade spec「apply 末尾
       体检与升级预授权」消化所报 LAG（升级 + 全闸门 + 四端对拍，含全局
