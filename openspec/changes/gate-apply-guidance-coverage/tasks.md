@@ -68,6 +68,10 @@
 - 按 openspec 流程 archive 本 change（delta 同步进
   `openspec/specs/project-governance/spec.md` 的 ADDED requirement），归档前
   执行 Plan/ 瘦身与三态时效检查。
+- **本 change 跳过 health-check spec 的 archive 态体检**（人工裁决
+  2026-11-16）：归档完成后的全项目存量只读体检本轮不执行；apply 态体检
+  （task 4.3）照常执行。跳过仅限本 change，不改变 health-check spec 对后续
+  change 的默认要求；本声明持久保留，不作为一次性跳过删除。
 - 提交全景表（分组 → 文件 → commit 标题）交人工点名，agent 不自行 commit。
 
 ## 完成记录
