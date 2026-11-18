@@ -25,7 +25,10 @@ cargo llvm-cov -p netwave --codecov --output-path coverage/coverage-core.json
 python3 scripts/coverage_gate.py coverage/coverage-core.json 100
 cargo build --workspace --all-targets
 
-# Post-run: stale instrumented binaries are the pollution vector itself; the
-# next run deletes the directory again, so removing it here costs nothing.
-rm -rf target/llvm-cov-target
+# Post-run: drain first so its "broken chain this round" detection is never
+# pushed to the end by a later-appended command; the stray scan (SKIP_DIRS
+# covers target/) and the instrumented clean (target/ only) act on disjoint sets.
+# Stale instrumented binaries are the pollution vector itself; the next run
+# deletes the directory again, so removing it here costs nothing.
 python3 scripts/run/clean_stray_profraw.py
+rm -rf target/llvm-cov-target

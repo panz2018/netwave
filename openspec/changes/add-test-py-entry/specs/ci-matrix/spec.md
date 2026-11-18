@@ -114,18 +114,18 @@ drain 步骤（清扫已内置于脚本）。
 ci.yml python job 调用 `scripts/run/test_py.sh`，胶水覆盖率地板仍为 100
 （地板数值见「覆盖率门槛生效（铁律七）」，本条不重复数值真值）。
 
-#### Scenario: 本地与 CI 同脚本
+#### Scenario: python 入口本地与 CI 同脚本
 
 - **WHEN** 对比本地 `pnpm test:py` 与 ci.yml python job 的测试步骤
 - **THEN** 两端都只调用 `scripts/run/test_py.sh`，show-env、clean、maturin、
   pytest、report、coverage_gate 的参数只在该脚本内定义一处
 
-#### Scenario: 缺工具报错可行动
+#### Scenario: python 入口缺工具报错可行动
 
 - **WHEN** 本地缺 `cargo-llvm-cov` 或 `uv` 时执行 `pnpm test:py`
 - **THEN** 脚本以非零码退出并打印对应安装命令，不静默跳过、不自动安装
 
-#### Scenario: 胶水行未测即红
+#### Scenario: python 胶水行未测即红
 
 - **WHEN** `python/src/` 新增一行未被任何 pytest 用例执行的 rust 胶水产码
 - **THEN** `pnpm test:py` 经 `coverage_gate.py` 对 `coverage/coverage-python.json`

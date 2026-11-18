@@ -14,7 +14,7 @@
 - 新建 `scripts/run/test_py.sh`：python 绑定全链（前后 profraw drain +
   `cargo llvm-cov show-env` + `clean --workspace` + `maturin develop` +
   `python/` pytest + rust 胶水阅卷 `coverage_gate.py coverage-python.json 100`）
-  + 缺工具探测报错，本地与 CI 同一脚本。
+  - 缺工具探测报错，本地与 CI 同一脚本。
 - 后置清理顺序统一为 `drain → clean`：`test_py.sh` 后置块把带检测职责的
   `clean_stray_profraw.py` 顶到最前，`clean --workspace` 其后；`test_rs.sh`
   后置块同步换序（原 `rm -rf llvm-cov-target → drain` 改为 `drain → rm -rf`），

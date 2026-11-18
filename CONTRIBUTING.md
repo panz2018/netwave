@@ -34,9 +34,10 @@ Plan/         Unexecuted planning docs only; lifecycle rules live in
   `cargo llvm-cov show-env` + pytest/vitest + `report` (external-driver
   collection). Each report is graded independently by
   `scripts/coverage_gate.py`. The rust chain is carried by
-  `scripts/run/test_rs.sh` (local `pnpm test:rs` and the CI rust job call the
-  same file); the python/native glue chains remain inlined in `ci.yml` until
-  their aggregation entries land.
+  `scripts/run/test_rs.sh` and the python chain by `scripts/run/test_py.sh`
+  (local `pnpm test:rs` / `pnpm test:py` and the matching CI job call the same
+  file); the native glue chain remains inlined in `ci.yml` until its
+  aggregation entry lands.
 - **Cross-binding compare**: `pnpm check:cross` dumps all four ends into
   `oracle/tmp/` and `oracle/compare_cross.py` verifies them (native ends
   bit-exact, wasm within manifest tolerance, plus an anti-tautology
@@ -56,6 +57,10 @@ Plan/         Unexecuted planning docs only; lifecycle rules live in
 pnpm install                        # JS dev tooling (biome, prettier, markdownlint)
 pnpm test:rs                      # Rust core tests + coverage + build watchdog
                                     # (scripts/run/test_rs.sh; needs cargo-llvm-cov)
+pnpm test:py                      # Python binding tests + rust glue coverage
+                                    # (scripts/run/test_py.sh; needs cargo-llvm-cov + uv;
+                                    # first run compiles maturin — for a fast loop use
+                                    # `(cd python && uv run pytest)`, run test:py before commit)
 pnpm -C typescript build:native   # napi .node addon
 pnpm -C typescript build:wasm     # wasm-bindgen artifacts
 uv sync --project python          # Python env (uv)

@@ -28,8 +28,9 @@ rust 链。验收判据②（加未测胶水行必报红）间接覆盖"旧产�
 
 后置块含两件事：散落 profraw 清扫（`clean_stray_profraw.py`，带"断链当轮即红"
 检测职责）与插桩清理（`clean --workspace` / `rm -rf`）。二者作用集互斥——
-`drain_stray_profraw` 的 `SKIP_DIRS` 含 `target`（`scripts/versions/lib/
-repository.py`）只删 `target/` 外，插桩清理只清 `target/` 内——换序不互相破坏。
+`drain_stray_profraw` 的 `SKIP_DIRS` 含 `target`（见
+`scripts/versions/lib/repository.py`）只删 `target/` 外，插桩清理只清 `target/`
+内——换序不互相破坏。
 
 把 drain 顶到后置块最前是防御性排序：日后若有人向后置块追加命令，drain 不会
 被挤到末尾而失去"当场检测"的时机。`test_rs.sh` 后置块同步从

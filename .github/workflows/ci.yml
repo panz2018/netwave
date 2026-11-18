@@ -183,35 +183,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/install_cargo_llvm_cov.sh
-      - name: drain stray profraw (pre-test)
-        run: python3 scripts/run/clean_stray_profraw.py
-      - name: sync + build + test (python layer + rust glue coverage)
-        # bash + repo-root cwd: show-env/report need the root target/ dir,
-        # while maturin/pytest must run inside python/ (the root
-        # pyproject.toml has no build-system section — maturin from the
-        # repo root misreads it). `(cd python && ...)` subshells isolate the
-        # directory change. show-env, clean, build, test and report MUST share
-        # one step — the instrumentation env does not cross steps. maturin
-        # passes RUSTC_WRAPPER through to cargo, so the extension builds
-        # instrumented; pytest drives it and the profraw lands in root
-        # target/. Floor 100: the #[pymethods]
-        # attribute lines (rustc#79651) are exempted by pattern in the gate.
+      - name: python test entry (glue coverage + python pytest + profraw drain)
+        # Command details live once in scripts/run/test_py.sh — the same file
+        # local `pnpm test:py` calls (show-env, clean --workspace, maturin
+        # develop, pytest, coverage_gate floor 100, pre/post stray-profraw
+        # drain). show-env/clean/build/test/report share the script's single
+        # process, so the instrumentation env never crosses a step boundary.
         shell: bash
-        run: |
-          mkdir -p coverage
-          eval "$(cargo llvm-cov show-env --sh --no-cfg-coverage)"
-          cargo llvm-cov clean --workspace
-          (cd python && uv sync && uv run maturin develop)
-          (cd python && uv run pytest)
-          cargo llvm-cov report --codecov \
-            --output-path coverage/coverage-python.json \
-            --ignore-filename-regex '[\\/]core[\\/]'
-          python3 scripts/coverage_gate.py coverage/coverage-python.json 100
-      - name: drain stray profraw (post-test)
-        # MUST stay after report and coverage_gate: a cleanup step between the
-        # tests and the report would degrade a broken chain into "empty report"
-        # instead of "chain broken".
-        run: python3 scripts/run/clean_stray_profraw.py
+        run: bash scripts/run/test_py.sh
       - name: upload python glue coverage report
         uses: actions/upload-artifact@v7
         with:
