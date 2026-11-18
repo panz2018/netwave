@@ -269,6 +269,13 @@
   重来；报告缺行含 doc 注释行/行号与当前源码错位 = 旧二进制污染信号
 - 复发检测：review 时若覆盖率数字与改动规模不符（加几行却掉十几个点），
   先查 clean 是否生效再查代码
+- 复发（2026-11-17，change `add-test-rs-entry` 验收）：本地 `pnpm test:rs`
+  出 981/1002=97.90%，缺行 21 处（`frequency.rs:56,59` + `touchstone.rs`
+  19 行）均为测试明确触达的行；已跑 `cargo llvm-cov clean --workspace` 但
+  未验删除效果（违本条规则），`target/llvm-cov-target/` 残留 13 个旧 profraw
+  - 5 个旧插桩二进制按旧行号污染；`rm -rf target/llvm-cov-target` 重跑即
+    964/964=100%。新增误判教训：把污染归因"本地平台差异"前 MUST 先做
+    clean-验证实验——CI 含 arm 格且同命令能过即证伪平台说
 
 ### LL-103 profraw 散落在 target 外 = 采集链断，被 gitignore 吞掉致信号丢失
 
