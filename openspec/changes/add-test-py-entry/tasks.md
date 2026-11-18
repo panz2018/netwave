@@ -76,3 +76,6 @@
 - [ ] 7.5 跑 `pnpm check:outdated` 并按 dependency-upgrade spec「apply 末尾体检
   与升级预授权」消化所报 LAG，消化后复跑至退出码 0（SUMMARY 归零）（锚点
   `check:outdated`）
+- [x] 7.6 `归档体检一次性跳过`：本 change 归档时 archive 态只读体检跳过 跳过
+  2026-11-17（仅本次一次性，config.yaml archive guidance 与 health-check spec
+  规则本体不变）

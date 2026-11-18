@@ -117,3 +117,6 @@
   `Plan/闸门重排-2026-11-12.md` 随本 change 同步（LL-034）。
 - `不扩范围`：`check_ci.py` 根级接线闸门升级（T4）、`check:cross` 改名（决策二）
   不在本 change，仅留痕。
+- `归档体检一次性跳过`：本 change 归档流程中的 archive 态只读体检跳过
+  （仅本次一次性，config.yaml archive guidance 与 health-check spec 规则本体
+  不变；人工裁决 2026-11-17）。
