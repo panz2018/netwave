@@ -33,8 +33,10 @@ Plan/         Unexecuted planning docs only; lifecycle rules live in
   native rust glue lines are measured inside their language jobs via
   `cargo llvm-cov show-env` + pytest/vitest + `report` (external-driver
   collection). Each report is graded independently by
-  `scripts/coverage_gate.py`. Commands are inlined in `ci.yml` (the root
-  aggregation entry is deferred).
+  `scripts/coverage_gate.py`. The rust chain is carried by
+  `scripts/run/test_rs.sh` (local `pnpm test:rs` and the CI rust job call the
+  same file); the python/native glue chains remain inlined in `ci.yml` until
+  their aggregation entries land.
 - **Cross-binding compare**: `pnpm check:cross` dumps all four ends into
   `oracle/tmp/` and `oracle/compare_cross.py` verifies them (native ends
   bit-exact, wasm within manifest tolerance, plus an anti-tautology
@@ -52,8 +54,8 @@ Plan/         Unexecuted planning docs only; lifecycle rules live in
 
 ```bash
 pnpm install                        # JS dev tooling (biome, prettier, markdownlint)
-cargo llvm-cov -p netwave       # Rust core tests + coverage (all platforms in CI)
-cargo build --workspace --all-targets  # binding crates compile gate
+pnpm test:rs                      # Rust core tests + coverage + build watchdog
+                                    # (scripts/run/test_rs.sh; needs cargo-llvm-cov)
 pnpm -C typescript build:native   # napi .node addon
 pnpm -C typescript build:wasm     # wasm-bindgen artifacts
 uv sync --project python          # Python env (uv)
