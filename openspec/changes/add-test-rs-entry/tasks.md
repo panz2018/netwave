@@ -70,10 +70,13 @@
 - [ ] 5.3 三态时效：扫 openspec/specs/ 全目录，对本次改动产出
       "更新/新增/退役"结论留痕本文件（ci-matrix 更新；无新增/退役能力）
       （`三态时效`）
-- [x] 5.4 体检：跳过 2026-11-17（`体检`、`体检一次性跳过`——人工裁决本
-      change 一次性跳过全文只读体检，health-check spec 规则本体不变）
+- [ ] 5.4 体检：对触碰文件全文只读体检（health-check spec apply 态），
+      发现附文件+行号+证据落 Plan/ 等点名（`体检`）
 - [ ] 5.5 迟到追加：复查 proposal.md `## 已定裁决` 每关键词载体任务已打勾
       （`迟到追加`）
-- [ ] 5.6 跑 `pnpm check:outdated` 并按 dependency-upgrade spec
+- [ ] 5.6 归档：本 change 完成后的归档流程中，archive 态只读体检跳过
+      2026-11-17（`归档体检一次性跳过`——仅本 change 一次性，config.yaml
+      archive guidance 与 health-check spec 规则本体不变）
+- [ ] 5.7 跑 `pnpm check:outdated` 并按 dependency-upgrade spec
       「apply 末尾体检与升级预授权」消化 LAG，复跑至 SUMMARY 归零
       （`check:outdated`）

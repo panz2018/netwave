@@ -103,5 +103,6 @@
 - `单测随迁移`：`scripts/tests/test_drain_profraw.py` 改测 `lib/repository.py` 新位置并补 CLI 壳 subprocess 冒烟测。
 - `文档spec同步`：ci-matrix spec、`scripts/README.md`、`CONTRIBUTING.md`、
   `Plan/闸门重排-2026-11-12.md` 随本 change 同步（LL-034）；LL-103 账本不动。
-- `体检一次性跳过`：本 change 收尾的全文只读体检步骤跳过（仅本次一次性，
-  health-check spec 规则本体不变；人工裁决 2026-11-17）。
+- `归档体检一次性跳过`：本 change 归档流程中的 archive 态只读体检跳过
+  （仅本次一次性，config.yaml archive guidance 与 health-check spec
+  规则本体不变；人工裁决 2026-11-17）。
