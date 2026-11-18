@@ -13,6 +13,11 @@ fi
 
 python3 scripts/run/clean_stray_profraw.py
 
+# `cargo llvm-cov clean` silently no-ops when target/llvm-cov-target lacks
+# CACHEDIR.TAG, leaving stale instrumented binaries that pollute the report at
+# old line numbers — rm -rf is the deterministic delete.
+rm -rf target/llvm-cov-target
+
 # coverage/ is gitignored and absent on a clean checkout, and llvm-cov
 # does not create parent dirs of --output-path — create it first.
 mkdir -p coverage
@@ -20,4 +25,7 @@ cargo llvm-cov -p netwave --codecov --output-path coverage/coverage-core.json
 python3 scripts/coverage_gate.py coverage/coverage-core.json 100
 cargo build --workspace --all-targets
 
+# Post-run: stale instrumented binaries are the pollution vector itself; the
+# next run deletes the directory again, so removing it here costs nothing.
+rm -rf target/llvm-cov-target
 python3 scripts/run/clean_stray_profraw.py
