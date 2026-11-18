@@ -10,30 +10,9 @@ covered by swapping them out in the tests that use them."""
 
 import socket
 import sys
-from pathlib import Path
 
 import pytest
-from lib.repository import ROOT, SKIP_DIRS
-
-
-def drain_stray_profraw(root: Path) -> list[Path]:
-    """Delete `*.profraw` files under `root` that sit outside build outputs and
-    dependency caches, returning the sorted repo-relative paths removed.
-
-    LLVM writes source-based coverage to `LLVM_PROFILE_FILE`; when that variable
-    is unset at process exit it falls back to `default_%m_%p.profraw` in the
-    process cwd. A profraw outside `target/` is therefore proof the coverage
-    chain did not take effect, and such files are never report inputs — `cargo
-    llvm-cov report` only reads what is registered under `target/`, so deleting
-    them loses nothing."""
-    removed: list[Path] = []
-    for path in root.rglob("*.profraw"):
-        rel = path.relative_to(root)
-        if any(part in SKIP_DIRS for part in rel.parts):
-            continue
-        path.unlink()
-        removed.append(rel)
-    return sorted(removed)
+from lib.repository import ROOT, drain_stray_profraw
 
 
 def _blocked_getaddrinfo(*args, **kwargs):

@@ -1,11 +1,17 @@
-"""Unit tests for `drain_stray_profraw` in conftest.py: profraw files that
-land outside `target/` prove the coverage chain did not take effect, so the
-hook deletes them and reports them. Files under build outputs and dependency
+"""Unit tests for the single stray-profraw implementation: the
+`drain_stray_profraw` function in `lib/repository.py` and its CLI shell
+`scripts/run/clean_stray_profraw.py`. Profraw files that land outside
+`target/` prove the coverage chain did not take effect, so the cleanup
+deletes them and reports them. Files under build outputs and dependency
 caches are report inputs or unrelated and must survive untouched."""
 
+import subprocess
+import sys
 from pathlib import Path
 
-from conftest import drain_stray_profraw
+from lib.repository import drain_stray_profraw
+
+CLI = Path(__file__).resolve().parents[2] / "scripts" / "run" / "clean_stray_profraw.py"
 
 
 def _make_workspace(tmp_path: Path) -> None:
@@ -49,3 +55,33 @@ def test_clean_workspace_returns_empty(tmp_path: Path) -> None:
     (tmp_path / "target" / "inside.profraw").write_text("x", encoding="utf-8")
 
     assert drain_stray_profraw(tmp_path) == []
+
+
+def test_cli_deletes_strays_and_fails(tmp_path: Path) -> None:
+    _make_workspace(tmp_path)
+
+    proc = subprocess.run(
+        [sys.executable, str(CLI), str(tmp_path)],
+        capture_output=True,
+        text=True,
+    )
+
+    assert proc.returncode == 1
+    assert "stray.profraw" in proc.stderr
+    assert "deep.profraw" in proc.stderr
+    assert not (tmp_path / "stray.profraw").exists()
+    assert (tmp_path / "target" / "inside.profraw").exists()
+
+
+def test_cli_clean_workspace_exits_zero(tmp_path: Path) -> None:
+    (tmp_path / "target").mkdir()
+    (tmp_path / "target" / "inside.profraw").write_text("x", encoding="utf-8")
+
+    proc = subprocess.run(
+        [sys.executable, str(CLI), str(tmp_path)],
+        capture_output=True,
+        text=True,
+    )
+
+    assert proc.returncode == 0
+    assert proc.stderr == ""

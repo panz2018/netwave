@@ -21,6 +21,26 @@ def _skip(root: Path, path: Path) -> bool:
     return any(part in SKIP_DIRS for part in rel_parts)
 
 
+def drain_stray_profraw(root: Path) -> list[Path]:
+    """Delete `*.profraw` under `root` outside build outputs and dependency
+    caches (SKIP_DIRS), returning the sorted repo-relative paths removed.
+
+    LLVM writes source-based coverage to `LLVM_PROFILE_FILE`; when that variable
+    is unset at process exit it falls back to `default_%m_%p.profraw` in the
+    process cwd. A profraw outside `target/` is therefore proof the coverage
+    chain did not take effect, and such files are never report inputs — `cargo
+    llvm-cov report` only reads what is registered under `target/`, so deleting
+    them loses nothing."""
+    removed: list[Path] = []
+    for path in root.rglob("*.profraw"):
+        rel = path.relative_to(root)
+        if any(part in SKIP_DIRS for part in rel.parts):
+            continue
+        path.unlink()
+        removed.append(rel)
+    return sorted(removed)
+
+
 def find_files(root: Path, fname: str, cond: Callable[[str], bool] = lambda t: True) -> set[str]:
     """Repo-relative paths of files named `fname` under `root` whose content
     matches `cond`, skipping SKIP_DIRS."""

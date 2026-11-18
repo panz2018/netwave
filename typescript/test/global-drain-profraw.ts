@@ -1,54 +1,40 @@
 /**
  * Stray-profraw guard for the native vitest run.
  *
- * LLVM writes source-based coverage to `LLVM_PROFILE_FILE`; when that variable
- * is unset at process exit it falls back to `default_%m_%p.profraw` in the
- * process cwd. A profraw outside `target/` is therefore proof the coverage
- * chain did not take effect, and such files are never inputs to
- * `cargo llvm-cov report` — deleting them loses nothing.
+ * The scan-and-delete logic lives once in `scripts/run/clean_stray_profraw.py`
+ * (function `drain_stray_profraw` in `scripts/versions/lib/repository.py`);
+ * this global setup shells out to it so every consumer shares one
+ * implementation. A profraw outside `target/` proves the coverage chain did
+ * not take effect, so the run deletes the strays and fails.
  *
  * The scan root is this project (`typescript/`): whoever produces the file
- * cleans it. `cargo llvm-cov report` reads only what it registered under
- * `target/`, so anything outside those directories is debris.
+ * cleans it. Requires `python3` on PATH (preinstalled on CI runners; on
+ * Windows locally, install Python).
  */
 
-import { readdirSync, rmSync } from "node:fs";
-import { join, relative, sep } from "node:path";
+import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
-const SCAN_ROOT = fileURLToPath(new URL("..", import.meta.url));
-
-/** Build outputs and dependency caches — never report inputs, never stray sites. */
-const SKIP_DIRS = new Set(["target", "target-wasm", "node_modules", "dist", "coverage"]);
-
-function findStray(dir: string, found: string[]): string[] {
-  for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const full = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      if (!SKIP_DIRS.has(entry.name)) {
-        findStray(full, found);
-      }
-    } else if (entry.name.endsWith(".profraw")) {
-      found.push(relative(SCAN_ROOT, full).split(sep).join("/"));
-    }
-  }
-  return found;
-}
+const REPO_ROOT = fileURLToPath(new URL("../..", import.meta.url));
+const CLI = "scripts/run/clean_stray_profraw.py";
 
 function drainAndReport(phase: string): void {
-  const stray = findStray(SCAN_ROOT, []).sort();
-  if (stray.length === 0) {
+  const proc = spawnSync("python3", [CLI, "typescript"], {
+    cwd: REPO_ROOT,
+    encoding: "utf8",
+  });
+  if (proc.error) {
+    process.stderr.write(
+      `stray-profraw guard could not run python3 (${proc.error.message}) — ` +
+        `install python3 so ${CLI} can execute\n`,
+    );
+    process.exitCode = 1;
     return;
   }
-  for (const rel of stray) {
-    rmSync(join(SCAN_ROOT, rel));
+  if (proc.status === 0) {
+    return;
   }
-  process.stderr.write(
-    `profraw outside target/ = the coverage chain did not take effect, ` +
-      `so coverage numbers for this run are untrustworthy` +
-      ` (${phase}: found ${stray.length}, deleted):\n` +
-      `${stray.map((p) => `  ${p}`).join("\n")}\n`,
-  );
+  process.stderr.write(`${phase}: ${proc.stderr}`);
   process.exitCode = 1;
 }
 

@@ -1,6 +1,6 @@
 """Coverage-artifact guard for the `python/` subproject: `python/` is an
 independent uv project with its own pytest rootdir, so the repo-root conftest
-does not apply here and the same check is repeated locally.
+does not apply here and the same shared implementation is consumed locally.
 
 A `*.profraw` outside `target/` means `LLVM_PROFILE_FILE` was unset when the
 instrumented process exited, so coverage for that run was never collected into
@@ -15,20 +15,7 @@ import pytest
 
 _HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(_HERE.parent / "scripts" / "versions"))
-from lib.repository import SKIP_DIRS  # noqa: E402 — single source
-
-
-def drain_stray_profraw(root: Path) -> list[Path]:
-    """Delete `*.profraw` under `root` outside build outputs and dependency
-    caches, returning the sorted relative paths removed."""
-    removed: list[Path] = []
-    for path in root.rglob("*.profraw"):
-        rel = path.relative_to(root)
-        if any(part in SKIP_DIRS for part in rel.parts):
-            continue
-        path.unlink()
-        removed.append(rel)
-    return sorted(removed)
+from lib.repository import drain_stray_profraw  # noqa: E402 — single source
 
 
 def _drain_and_report(phase: str) -> None:

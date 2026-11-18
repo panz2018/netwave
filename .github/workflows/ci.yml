@@ -22,7 +22,9 @@ jobs:
   # Lint gate: every language's lint+format+type check, delegated to the
   # root package.json check:* scripts — the single source of truth for
   # command details. Matrix jobs below only run tests (they need compiled
-  # artifacts); never duplicate a check command there.
+  # artifacts); never duplicate a check command there. The rust test chain
+  # is delegated the same way: package.json test:rs and this file both call
+  # scripts/run/test_rs.sh.
   # ubuntu-latest ships rust + python preinstalled; uv and pnpm are setup.
   lint:
     runs-on: ubuntu-latest
@@ -88,55 +90,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/install_cargo_llvm_cov.sh
-      - name: drain stray profraw (pre-test)
-        # A profraw outside target/ = LLVM_PROFILE_FILE was unset at process
-        # exit = the coverage chain did not take effect. Delete first, then
-        # fail, so the broken chain is reported instead of hidden by
-        # .gitignore; the next run starts clean and passes without human input.
-        shell: bash
-        run: |
-          stray=$(find . -name target -prune -o -name target-wasm -prune -o -name node_modules -prune -o -name .venv -prune -o -name .git -prune -o -name dist -prune -o -name coverage -prune -o -name '*.profraw' -print)
-          if [ -n "$stray" ]; then
-            printf '%s\n' "$stray" | xargs rm -f
-            printf 'profraw outside target/ = the coverage chain did not take effect, so coverage numbers for this run are untrustworthy (%d found, deleted):\n%s\n' "$(printf '%s\n' "$stray" | wc -l)" "$stray" >&2
-            exit 1
-          fi
-      - name: llvm-cov (core tests, all platforms) + build watchdog
-        # Per-crate ownership: core coverage is measured by core's own
-        # tests (`-p netwave`); binding glue is measured by pytest /
-        # vitest driving instrumented builds in its own jobs. The floor
-        # is enforced by scripts/coverage_gate.py on codecov.json, NOT by
-        # `--fail-under-lines`: that flag evaluates the `llvm-cov report`
-        # numbers, which count each unexecuted inlined instantiation
-        # separately (defensive arms executed only by the lib unit test
-        # stay "missed" in every integration binary's copy — a permanent
-        # 99.x%). The codecov export uses `llvm-cov show` semantics: a
-        # line executed in ANY instantiation counts as covered (the
-        # standard OR merge every other language tool uses).
-        # Core tests run exactly once here; binding-crate compilation is the
-        # build watchdog below (llvm-cov -p netwave does not compile the
-        # binding crates).
-        # Floor 100: core is fully covered on every cell; untested lines are red.
-        shell: bash
-        run: |
-          # coverage/ is gitignored and absent on a clean checkout, and llvm-cov
-          # does not create parent dirs of --output-path — create it first.
-          mkdir -p coverage
-          cargo llvm-cov -p netwave --codecov --output-path coverage/coverage-core.json
-          python3 scripts/coverage_gate.py coverage/coverage-core.json 100
-          cargo build --workspace --all-targets
-      - name: drain stray profraw (post-test)
-        # MUST stay after report and coverage_gate: a cleanup step between the
-        # tests and the report would degrade a broken chain into "empty report"
-        # instead of "chain broken".
-        shell: bash
-        run: |
-          stray=$(find . -name target -prune -o -name target-wasm -prune -o -name node_modules -prune -o -name .venv -prune -o -name .git -prune -o -name dist -prune -o -name coverage -prune -o -name '*.profraw' -print)
-          if [ -n "$stray" ]; then
-            printf '%s\n' "$stray" | xargs rm -f
-            printf 'profraw outside target/ = the coverage chain did not take effect, so coverage numbers for this run are untrustworthy (%d found, deleted):\n%s\n' "$(printf '%s\n' "$stray" | wc -l)" "$stray" >&2
-            exit 1
-          fi
+      - name: rust test entry (core coverage + build watchdog + profraw drain)
+        # Command details live once in scripts/run/test_rs.sh — the same file
+        # local `pnpm test:rs` calls (llvm-cov -p netwave, coverage_gate floor
+        # 100, build watchdog, pre/post stray-profraw drain). No pnpm/Node
+        # env here: the script only needs cargo + python3.
+        run: bash scripts/run/test_rs.sh
       - name: upload core coverage report
         uses: actions/upload-artifact@v7
         with:
@@ -225,18 +184,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/install_cargo_llvm_cov.sh
       - name: drain stray profraw (pre-test)
-        # A profraw outside target/ = LLVM_PROFILE_FILE was unset at process
-        # exit = the coverage chain did not take effect. Delete first, then
-        # fail, so the broken chain is reported instead of hidden by
-        # .gitignore; the next run starts clean and passes without human input.
-        shell: bash
-        run: |
-          stray=$(find . -name target -prune -o -name target-wasm -prune -o -name node_modules -prune -o -name .venv -prune -o -name .git -prune -o -name dist -prune -o -name coverage -prune -o -name '*.profraw' -print)
-          if [ -n "$stray" ]; then
-            printf '%s\n' "$stray" | xargs rm -f
-            printf 'profraw outside target/ = the coverage chain did not take effect, so coverage numbers for this run are untrustworthy (%d found, deleted):\n%s\n' "$(printf '%s\n' "$stray" | wc -l)" "$stray" >&2
-            exit 1
-          fi
+        run: python3 scripts/run/clean_stray_profraw.py
       - name: sync + build + test (python layer + rust glue coverage)
         # bash + repo-root cwd: show-env/report need the root target/ dir,
         # while maturin/pytest must run inside python/ (the root
@@ -263,14 +211,7 @@ jobs:
         # MUST stay after report and coverage_gate: a cleanup step between the
         # tests and the report would degrade a broken chain into "empty report"
         # instead of "chain broken".
-        shell: bash
-        run: |
-          stray=$(find . -name target -prune -o -name target-wasm -prune -o -name node_modules -prune -o -name .venv -prune -o -name .git -prune -o -name dist -prune -o -name coverage -prune -o -name '*.profraw' -print)
-          if [ -n "$stray" ]; then
-            printf '%s\n' "$stray" | xargs rm -f
-            printf 'profraw outside target/ = the coverage chain did not take effect, so coverage numbers for this run are untrustworthy (%d found, deleted):\n%s\n' "$(printf '%s\n' "$stray" | wc -l)" "$stray" >&2
-            exit 1
-          fi
+        run: python3 scripts/run/clean_stray_profraw.py
       - name: upload python glue coverage report
         uses: actions/upload-artifact@v7
         with:
@@ -330,18 +271,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/install_cargo_llvm_cov.sh
       - name: drain stray profraw (pre-test)
-        # A profraw outside target/ = LLVM_PROFILE_FILE was unset at process
-        # exit = the coverage chain did not take effect. Delete first, then
-        # fail, so the broken chain is reported instead of hidden by
-        # .gitignore; the next run starts clean and passes without human input.
-        shell: bash
-        run: |
-          stray=$(find . -name target -prune -o -name target-wasm -prune -o -name node_modules -prune -o -name .venv -prune -o -name .git -prune -o -name dist -prune -o -name coverage -prune -o -name '*.profraw' -print)
-          if [ -n "$stray" ]; then
-            printf '%s\n' "$stray" | xargs rm -f
-            printf 'profraw outside target/ = the coverage chain did not take effect, so coverage numbers for this run are untrustworthy (%d found, deleted):\n%s\n' "$(printf '%s\n' "$stray" | wc -l)" "$stray" >&2
-            exit 1
-          fi
+        run: python3 scripts/run/clean_stray_profraw.py
       - name: napi build + vitest native (+ rust glue coverage)
         # One step: show-env, clean, instrumented build, vitest and report
         # MUST share it — the instrumentation env does not cross steps.
@@ -378,14 +308,7 @@ jobs:
         # MUST stay after report and coverage_gate: a cleanup step between the
         # tests and the report would degrade a broken chain into "empty report"
         # instead of "chain broken".
-        shell: bash
-        run: |
-          stray=$(find . -name target -prune -o -name target-wasm -prune -o -name node_modules -prune -o -name .venv -prune -o -name .git -prune -o -name dist -prune -o -name coverage -prune -o -name '*.profraw' -print)
-          if [ -n "$stray" ]; then
-            printf '%s\n' "$stray" | xargs rm -f
-            printf 'profraw outside target/ = the coverage chain did not take effect, so coverage numbers for this run are untrustworthy (%d found, deleted):\n%s\n' "$(printf '%s\n' "$stray" | wc -l)" "$stray" >&2
-            exit 1
-          fi
+        run: python3 scripts/run/clean_stray_profraw.py
       - name: upload native glue coverage report
         uses: actions/upload-artifact@v7
         with:
