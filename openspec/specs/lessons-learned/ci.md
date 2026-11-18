@@ -276,6 +276,10 @@
   - 5 个旧插桩二进制按旧行号污染；`rm -rf target/llvm-cov-target` 重跑即
     964/964=100%。新增误判教训：把污染归因"本地平台差异"前 MUST 先做
     clean-验证实验——CI 含 arm 格且同命令能过即证伪平台说
+- 已落闸门（2026-11-17，change `add-test-rs-entry`）：`scripts/run/test_rs.sh`
+  在 llvm-cov 步骤前后各 `rm -rf target/llvm-cov-target`，不再依赖
+  `cargo llvm-cov clean`（其静默 no-op 是本条污染根因）；本地与 CI 同脚本，
+  污染向量物理消除
 
 ### LL-103 profraw 散落在 target 外 = 采集链断，被 gitignore 吞掉致信号丢失
 

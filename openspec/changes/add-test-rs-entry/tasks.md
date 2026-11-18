@@ -32,6 +32,12 @@
       `cargo build --workspace --all-targets`（`build看门闸入rs`）；
       core 测试仅此一处（`合并rs与rs-cov`）；目录与命名按
       `scripts/run/test_rs.sh`（`脚本目录scripts-run`）
+- [x] 2.3 `scripts/run/test_rs.sh` 在 llvm-cov 步骤之前与之后各加一次
+      `rm -rf target/llvm-cov-target`（不依赖 `cargo llvm-cov clean`——
+      `CACHEDIR.TAG` 缺失时静默 no-op 致旧插桩二进制污染报告，LL-101）；
+      ci-matrix spec「覆盖率中间产物不跨轮残留」补条款与场景、
+      「rust 测试根聚合入口」执行顺序同步；LL-101 复发条目补记已落闸门
+      （`插桩目录前后删除`）
 - [x] 2.2 根 `package.json` 加且仅加一行
       `"test:rs": "bash scripts/run/test_rs.sh"`（`脚本承载命令`、
       `范围只建test-rs`——不建其余 `test:*`）

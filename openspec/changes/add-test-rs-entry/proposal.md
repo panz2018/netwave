@@ -13,7 +13,8 @@
 
 - 根 `package.json` 新增 `test:rs` 薄调用入口：`bash scripts/run/test_rs.sh`。
 - 新建 `scripts/run/test_rs.sh`：core 覆盖率全链（llvm-cov → gate 100 →
-  build 看门闸）+ 前后 profraw 清扫 + 缺工具探测报错，本地与 CI 同一脚本。
+  build 看门闸）+ 前后 profraw 清扫 + `target/llvm-cov-target/` 前后整目录
+  删除 + 缺工具探测报错，本地与 CI 同一脚本。
 - 新建 `scripts/run/clean_stray_profraw.py`：profraw 清扫唯一 CLI 壳；
   实现函数 `drain_stray_profraw` 迁入 `scripts/versions/lib/repository.py`
   （与 `SKIP_DIRS` 同家），根 conftest、python conftest、
@@ -103,6 +104,10 @@
 - `单测随迁移`：`scripts/tests/test_drain_profraw.py` 改测 `lib/repository.py` 新位置并补 CLI 壳 subprocess 冒烟测。
 - `文档spec同步`：ci-matrix spec、`scripts/README.md`、`CONTRIBUTING.md`、
   `Plan/闸门重排-2026-11-12.md` 随本 change 同步（LL-034）；LL-103 账本不动。
+- `插桩目录前后删除`：`test_rs.sh` 在 llvm-cov 步骤前后各执行一次
+  `rm -rf target/llvm-cov-target`，不依赖 `cargo llvm-cov clean`（LL-101
+  静默 no-op，旧插桩二进制按旧行号污染报告；前置删防污染、后置删不留旧
+  向量，前置已删故后置零成本；人工裁决 2026-11-17）。
 - `归档体检一次性跳过`：本 change 归档流程中的 archive 态只读体检跳过
   （仅本次一次性，config.yaml archive guidance 与 health-check spec
   规则本体不变；人工裁决 2026-11-17）。

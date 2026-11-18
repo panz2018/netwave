@@ -42,14 +42,15 @@ wasm32 格为 `cargo check`/wasm-pack 构建 + Node 侧 vitest 跑 wasm 产物�
 
 - **WHEN** 对比本地 `pnpm test:rs` 与 ci.yml rust job 的测试步骤
 - **THEN** 两端都只调用 `scripts/run/test_rs.sh`，llvm-cov、覆盖率地板、
-  编译看门闸、profraw 清扫的参数只在该脚本内定义一处
+  编译看门闸、profraw 清扫、插桩目录删除的参数只在该脚本内定义一处
 
 ### Requirement: rust 测试根聚合入口
 
 根 `package.json` MUST 提供 `test:rs` 入口，薄调用 `scripts/run/test_rs.sh`；
 该脚本 MUST 依次执行：profraw 前置清扫、`cargo-llvm-cov` 存在性探测（缺则打印
 `scripts/install_cargo_llvm_cov.sh` 安装命令并非零退出，MUST NOT 自动安装）、
-core 覆盖率链与地板阅卷、编译看门闸、profraw 后置清扫，且 MUST
+删除 `target/llvm-cov-target/`、core 覆盖率链与地板阅卷、编译看门闸、
+再次删除 `target/llvm-cov-target/` 与 profraw 后置清扫，且 MUST
 `set -euo pipefail` 使任一环节失败即非零退出。本地跑绿 MUST 等价于 CI rust
 job 同口径通过。
 
@@ -315,7 +316,13 @@ CI MUST 与本地同流程：每个构建插桩代码的 job MUST 在测试步�
 node job 的清理步骤 MUST 调用 `python3 scripts/run/clean_stray_profraw.py`；
 未插桩的 job（不产 profraw）MUST NOT 加此步骤。
 
-容差：存在性闸门，无数值阈值；判定口径 = `target/` 外 `*.profraw` 计数，目标值 0
+`scripts/run/test_rs.sh` MUST 在覆盖率步骤之前与之后各删除一次
+`target/llvm-cov-target/` 整目录，MUST NOT 依赖 `cargo llvm-cov clean`——
+该命令在 `CACHEDIR.TAG` 缺失时静默 no-op（exit 0 但不删），残留的旧插桩
+二进制会按旧行号污染新报告。
+
+容差：存在性闸门，无数值阈值；判定口径 = `target/` 外 `*.profraw` 计数为 0，
+且 `target/llvm-cov-target/` 于 `test:rs` 运行前后均不存在
 （不涉及数值计算真值，故不引用 oracle manifest key）。
 
 #### Scenario: 散落即报错并清除
@@ -343,8 +350,9 @@ node job 的清理步骤 MUST 调用 `python3 scripts/run/clean_stray_profraw.py
 
 - **WHEN** 工作区存在 `.coverage`、`coverage/*.json` 或 `target/` 内的 profraw
   及清单文件
-- **THEN** 本条款的清理不删除其中任何一项，覆盖率报告与
-  `cargo llvm-cov clean` 的自有产物不受影响
+- **THEN** 散落清扫扫描不删除其中任何一项，覆盖率报告不受影响；
+  `target/llvm-cov-target/` 整目录由 rust 入口的前后置删除，属另一机制，
+  不经散落扫描器
 
 #### Scenario: CI 测试前后各有一道清理闸门
 
@@ -355,6 +363,13 @@ node job 的清理步骤 MUST 调用 `python3 scripts/run/clean_stray_profraw.py
 - **AND** rust job 的清理在 `scripts/run/test_rs.sh` 内，python / node job 的
   清理步骤调用 `python3 scripts/run/clean_stray_profraw.py`
 - **AND** 未插桩的 job（wasm、lint、bench）无此步骤
+
+#### Scenario: 旧插桩二进制不跨轮残留
+
+- **WHEN** `target/llvm-cov-target/` 存在上一轮遗留的插桩二进制与 profraw
+- **THEN** `pnpm test:rs` 在运行 `cargo llvm-cov` 前删除该目录，覆盖率报告
+  只含当前源码编译二进制的 region 数据
+- **AND** 脚本结束后该目录再次删除，下一轮无旧污染向量
 
 #### Scenario: 清扫实现唯一不复制
 
