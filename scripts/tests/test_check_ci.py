@@ -4,9 +4,12 @@ the retired typescript-literal rule must not misfire once the node job calls the
 root script instead of inlining `typescript test:<name>`."""
 
 import json
+import runpy
+import sys
 from pathlib import Path
 
 import check_ci
+import pytest
 
 
 def _root(tmp_path: Path, scripts: dict[str, str], ci: str) -> Path:
@@ -65,3 +68,38 @@ def test_non_test_scripts_ignored(tmp_path: Path) -> None:
         "jobs:\n  lint:\n    steps: []\n",
     )
     assert check_ci.check(root) == []
+
+
+def test_main_reports_missing_and_exits_1(tmp_path: Path, monkeypatch, capsys) -> None:
+    monkeypatch.setattr(check_ci, "ROOT", tmp_path)
+    _root(
+        tmp_path,
+        {"test:ts": "bash scripts/run/test_ts.sh"},
+        "jobs:\n  lint:\n    steps: []\n",
+    )
+    assert check_ci.main() == 1
+    assert "scripts/run/test_ts.sh" in capsys.readouterr().err
+
+
+def test_main_all_wired_exits_0(tmp_path: Path, monkeypatch, capsys) -> None:
+    monkeypatch.setattr(check_ci, "ROOT", tmp_path)
+    _root(
+        tmp_path,
+        {"test:ts": "bash scripts/run/test_ts.sh"},
+        "jobs:\n  node:\n    steps:\n      - run: bash scripts/run/test_ts.sh\n",
+    )
+    assert check_ci.main() == 0
+    assert "all wired" in capsys.readouterr().out
+
+
+class TestMainGuard:
+    """The process exit code is what CI consumes; pin it through runpy so the
+    `sys.exit(main())` line is covered and a regression that drops the exit code
+    fails the gate. The real repo has every root test wired, so the guard exits 0."""
+
+    def test_module_exit_code_is_zero_on_real_repo(self, monkeypatch):
+        script = str(Path(check_ci.__file__).resolve())
+        monkeypatch.setattr(sys, "argv", [script])
+        with pytest.raises(SystemExit) as excinfo:
+            runpy.run_path(script, run_name="__main__")
+        assert excinfo.value.code == 0

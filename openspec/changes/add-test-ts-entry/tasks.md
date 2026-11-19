@@ -63,6 +63,10 @@
       typescript 级旧规则退役
 - [x] 5.3 验证 `check_ci 根级口径`：从 ci.yml 删一条 `test_*.sh` 调用 →
       `pnpm check:meta` 红
+- [x] 5.4 把 `check_ci` 纳入根 `pyproject.toml` 的 `[tool.coverage.run]`
+      `source`（升根级闸门后属阅卷层，与其余 gate 同享 100% 地板），
+      `scripts/tests/test_check_ci.py` 补 `main()` 与 `sys.exit(main())` guard
+      用例至 100%
 
 ## 6. 波及文档同步（LL-034）
 
