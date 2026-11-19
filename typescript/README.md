@@ -65,13 +65,15 @@ pnpm build:wasm             # web target (wasm-pack defaults to release), CARGO_
 pnpm typecheck              # tsc --noEmit type gate; run AFTER build:wasm +
                             # build:native (the shells import dist/ glue, so
                             # the gate needs both bindings present)
-pnpm test                   # all 4 suites, no coverage (quick smoke)
-pnpm test:native            # vitest native (CI adds --coverage, 100% floor)
-pnpm test:wasm              # vitest wasm  (CI adds --coverage, 100% floor)
-pnpm test:native --coverage # native coverage gate (src/ only, 100% required)
-pnpm test:wasm --coverage   # wasm coverage gate (src/ only, 100% required);
+pnpm test                   # all 3 suites, each with coverage (100% floor)
+pnpm test:native            # vitest native + coverage (src/ only, 100% required)
+pnpm test:wasm              # vitest wasm  + coverage (src/ only, 100% required);
                             # HTML report in coverage/; exemptions need
                             # /* v8 ignore start/stop */ + reason comment
+pnpm test:browser           # vitest real-browser (playwright chromium) + coverage
+                            # --coverage is baked into each test:* script so any
+                            # caller gets coverage by default; for a coverage-free
+                            # quick loop pass --coverage.enabled=false explicitly
 ```
 
 Lint/format run from the repo root (both crates are workspace members —
