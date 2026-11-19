@@ -37,7 +37,8 @@ cross 入口名），且 `check_ci.py` 已规定每个根 `test:*` 必须经
   本地与 CI 同脚本、产物缺失行动化报错）与根 `test` 聚合入口 Requirement
   （本地专用、顺序 rs→py→ts→cross）；`check:cross` 相关口径改名为 `test:cross`。
 - `dependency-upgrade`：「升级执行权限划分」「升级流程固定顺序」两条 Requirement
-  的验收 scenario 文本里 `pnpm check:cross` 改名 `pnpm test:cross`（命令名属契约）。
+  的验收 scenario 由 `pnpm check:cross` 改为 `pnpm check` + `pnpm test`
+  （全量测试含四端对拍，单测问题不再漏检）。
 - `project-governance`：「元规则 review 三轴」Requirement 正文里
   `pnpm check:cross` 改名 `pnpm test:cross`。
 
@@ -85,3 +86,7 @@ cross 入口名），且 `check_ci.py` 已规定每个根 `test:*` 必须经
 - `产物探测报错`：`test_cross.sh` 探测 napi/wasm 产物，缺失即非零退出并提示先跑 `pnpm test:ts`，不重复构建逻辑。
 - `Plan整档删除`：`Plan/闸门重排-2026-11-12.md` 整档删除，bench 延后裁决留痕本段。
 - `pnpm test本地专用`：`pnpm test` 不进 CI，CI 保持逐 `test_*.sh` 分 job 调用不变。
+- `升级验收用pnpm test`：dependency-upgrade 验收判据由 `pnpm check:cross` 改为
+  `pnpm check` + `pnpm test`（全量测试含四端对拍），单测问题不再漏检。
+- `本次归档跳过体检`：health-check spec 的 archive 态体检仅本次 change 归档时
+  一次性跳过，规则本体不删不改；apply 态体检照常执行。
