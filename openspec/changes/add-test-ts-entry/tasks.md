@@ -95,3 +95,6 @@
       CLI/直装工具的机器级升级；上游 bug/不兼容登记回退不阻塞；下限变更等人工发起），
       消化后复跑 `pnpm check:outdated` 至退出码 0（SUMMARY 归零）才算完成
       （锚点 `check:outdated`）
+- [x] 7.7 `归档体检一次性跳过`：本 change 归档时 archive 态只读体检跳过 跳过
+      2026-11-18（仅本次一次性，config.yaml archive guidance 与 health-check spec
+      规则本体不变）

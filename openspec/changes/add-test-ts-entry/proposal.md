@@ -106,3 +106,6 @@ rust 半（`test:rs` → `scripts/run/test_rs.sh`）与 python 半（`test:py` �
 - `wasm job 只删 flag`：wasm job 仅删两处冗余 `--coverage`，不拆独立脚本。
 - `延后项`：根 `pnpm test` 总聚合、T5 config.yaml 规则、`check:cross` 改名/接线
   均延后，记回 `Plan/闸门重排-2026-11-12.md`。
+- `归档体检一次性跳过`：本 change 归档流程中的 archive 态只读体检跳过
+  （仅本次一次性，config.yaml archive guidance 与 health-check spec 规则本体
+  不变；人工裁决 2026-11-18）。
