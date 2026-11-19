@@ -38,7 +38,7 @@ Plan/         Unexecuted planning docs only; lifecycle rules live in
   typescript chain (wasm build + native glue coverage + typecheck + dts any +
   wasm suite) by `scripts/run/test_ts.sh` (local `pnpm test:rs` / `pnpm test:py` /
   `pnpm test:ts` and the matching CI job call the same file).
-- **Cross-binding compare**: `pnpm check:cross` dumps all four ends into
+- **Cross-binding compare**: `pnpm test:cross` dumps all four ends into
   `oracle/tmp/` and `oracle/compare_cross.py` verifies them (native ends
   bit-exact, wasm within manifest tolerance, plus an anti-tautology
   tamper self-check); contract in the oracle-harness and
@@ -69,7 +69,9 @@ pnpm -C typescript build:native   # napi .node addon
 pnpm -C typescript build:wasm     # wasm-bindgen artifacts
 uv sync --project python          # Python env (uv)
 (cd python && uv run maturin develop)  # required after touching core
-pnpm check:cross                  # four-end dump + compare
+pnpm test:cross                   # four-end dump + compare
+                                    # (scripts/run/test_cross.sh; needs uv + maturin;
+                                    # requires napi/wasm artifacts — run pnpm test:ts first)
 ```
 
 ## Development workflow

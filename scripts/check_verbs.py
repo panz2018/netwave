@@ -23,7 +23,7 @@ Rules:
     `constructor(` in typescript/src must be `private` — public construction
     is `fromX` factories only
 
-Run after all three glues are built (the node job's `check:cross` step).
+Run after all three glues are built (the node job's `test:cross` step).
 Exit code 1 on any drift. Pure stdlib.
 """
 

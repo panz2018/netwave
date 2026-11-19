@@ -52,6 +52,16 @@ def test_typescript_literal_absence_does_not_misfire(tmp_path: Path) -> None:
     assert check_ci.check(root) == []
 
 
+def test_cross_entry_wired_in_real_repo() -> None:
+    # The renamed cross gate (check:cross -> test:cross) must be wired through
+    # scripts/run/test_cross.sh in the real repo, not just in fixtures.
+    pkg = json.loads((check_ci.ROOT / "package.json").read_text(encoding="utf-8"))
+    assert pkg["scripts"]["test:cross"] == "bash scripts/run/test_cross.sh"
+    ci = (check_ci.ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "bash scripts/run/test_cross.sh" in ci
+    assert "check:cross" not in ci
+
+
 def test_multi_segment_name_maps_by_first_segment(tmp_path: Path) -> None:
     root = _root(
         tmp_path,

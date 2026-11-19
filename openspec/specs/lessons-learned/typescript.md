@@ -23,7 +23,7 @@
 
 - 犯过：未重建即测试/对拍，比到陈旧产物
 - 规则：`pnpm build:native` + `build:wasm` 先于任何测试/对拍
-- 复发检测：`pnpm check:cross` 前置重建
+- 复发检测：`pnpm test:cross` 前置重建
 
 ### LL-025 覆盖率豁免用 v8 ignore 且逐条附理由
 

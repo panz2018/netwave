@@ -11,7 +11,7 @@ shipping a drifted `.d.ts`.
 
 Reads the build outputs directly (no hand-copied vocabulary): each artifact's
 member set is extracted from its own enum/class block. Run after all three
-glues are built (the node job's `check:cross` step, which already builds
+glues are built (the node job's `test:cross` step, which already builds
 python + napi + wasm).
 
     python3 scripts/check_vocab_types.py

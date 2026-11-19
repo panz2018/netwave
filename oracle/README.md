@@ -18,7 +18,7 @@ own computed results into `tmp/` (gitignored).
 From the repo root:
 
 ```sh
-pnpm check:cross
+pnpm test:cross
 ```
 
 Or grade an existing dump directory directly (dumps must already exist):

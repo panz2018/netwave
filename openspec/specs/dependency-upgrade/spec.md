@@ -274,9 +274,9 @@ CI 底线矩阵格、新增/移除钉版点）由人工发起，agent MUST NOT �
 #### Scenario: 按触及面选验收闸门
 
 - **WHEN** 升级一项依赖/工具后确定验收范围
-- **THEN** 触及四端绑定或数值路径者跑 `pnpm check` + `pnpm check:cross`
-  四端对拍；纯 lint/文档/CLI 工具（不碰绑定与数值）只跑 `pnpm check`，
-  不跑 `check:cross`
+- **THEN** 触及四端绑定或数值路径者跑 `pnpm check` + `pnpm test`
+  （全量测试含四端对拍）；纯 lint/文档/CLI 工具（不碰绑定与数值）只跑
+  `pnpm check`，不跑 `pnpm test`
 
 #### Scenario: 下限变更人工发起
 
@@ -318,7 +318,7 @@ OpenSpec、markdownlint-cli2 等是否落后 LTS/稳定线，落后先升）→ 
 #### Scenario: 升级完成判据
 
 - **WHEN** 任一工具链或依赖升级执行完毕
-- **THEN** `pnpm check` 全绿且 `pnpm check:cross` 四端对拍通过方视为完成
+- **THEN** `pnpm check` 全绿且 `pnpm test` 全绿（含四端对拍）方视为完成
 
 ### Requirement: 运行时大版本升级流程
 

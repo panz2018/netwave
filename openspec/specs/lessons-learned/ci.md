@@ -108,14 +108,14 @@
   全红 `ENOENT ... _netwave.pyi`。本地全绿只因工作树残留各 job 的历史产物
   （违 LL-004：本地模拟未清干净）
 - 规则：跨端一致性检查归**本就已构建各端产物的集成步骤**（node job 末尾
-  `check:cross` 已 `maturin develop`+build napi+wasm，三端产物天然齐备），
+  `test:cross` 已 `maturin develop`+build napi+wasm，三端产物天然齐备），
   勿下沉进单端测试段再为喂它单开跨语言步骤——首版误把该检查放 `test:native`
   并在 node 测试段单开 `stub_gen` 步骤，node 章节凭空依赖 python 构建（职责
   错位，被人工质疑）。终态：检查改纯标准库脚本 `scripts/check_vocab_types.py`
-  （同 `check_vocab.py` 族）折进 `check:cross` 末尾（跨端闸门单一入口），
+  （同 `check_vocab.py` 族）折进 `test:cross` 末尾（跨端闸门单一入口），
   CI 步骤内 `maturin develop` 后先跑 `stub_gen` 生成 `.pyi`（跑法见 ci.yml
   `stub_gen` 步骤：先导出 uv sysconfig LIBDIR 再 `cargo run`），
-  再 `pnpm check:cross`（其前置契约=三端产物齐备）。
+  再 `pnpm test:cross`（其前置契约=三端产物齐备）。
   本地模拟 CI 某 job 前先删该 job 不该有的产物，别信脏工作树
 - 复发检测：review 读 `readFileSync`/`fs` 生成产物的测试/脚本时，核对其所在
   job 步骤是否生成了被测的每一类产物，且跨端检查是否落在构建各端的集成步骤
@@ -352,3 +352,17 @@
 - 复发检测：升级 rustc 后跑 native+python 覆盖率，新增缺行逐行贴源码与计数作证据；
   review 时凡"升级后覆盖率掉了"先问"每行能不能构造输入触发"，能触发却不补测试=打回，
   不能触发却硬塞测试或放宽 floor=打回
+
+### LL-111 正确性闸门复用上游覆盖率步骤的插桩产物，运行即写 profraw 污染下一入口
+
+- 犯过：`pnpm test` 聚合链 `test:rs→py→ts→cross` 里，`test_ts.sh` 的
+  `build:native:debug` 在 `cargo llvm-cov show-env` 环境下产出**插桩** `.node`，
+  紧随的 `test:cross` 用 `node dump.mjs` 跑该 `.node` 即在仓库根写出
+  `default_*.profraw`；下一轮 `test:rs` 的 LL-103 前置清扫把它判"采集链断"红
+  （CI 里 check:cross 原是 node job 末步，残留从不被后续检查，并入聚合才暴露）
+- 规则：跑**可能为插桩产物**的正确性闸门（dump/阅卷类，不产覆盖率）MUST 先
+  `export LLVM_PROFILE_FILE=/dev/null` 抑制 profraw 写出——正确性闸门不是覆盖率
+  采集者，其运行产生的 profraw 无报告消费者，只会污染下一入口的 LL-103 清扫；
+  抑制写出优于事后清扫（清扫会把真断链信号一并抹掉）
+- 复发检测：`pnpm test` 全链 exit 0 且 LL-103 的 profraw 扫描（剪枝 target 等）
+  为空；新增跑插桩产物的非覆盖率入口时 review 核对是否已抑制 profraw 写出

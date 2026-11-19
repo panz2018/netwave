@@ -26,10 +26,11 @@ The `check_*.py` gates are not run individually — they are wired into the
 aggregate commands defined in [`package.json`](../package.json):
 `pnpm check:md` (markdown links/anchors + code-span detection),
 `pnpm check:meta` (CI completeness, license, vocab, comment hygiene, proposal
-sections, version consistency, Python hygiene), and `pnpm check:cross`
-(cross-binding dump + compare). `pnpm check` chains them all.
+sections, version consistency, Python hygiene). Cross-binding dump + compare
+runs via `pnpm test:cross` (a test gate: it executes all four ends).
+`pnpm check` chains the static gates.
 
-The cross-binding pipeline (`pnpm check:cross`) and the grading contract
+The cross-binding pipeline (`pnpm test:cross`) and the grading contract
 live in [CONTRIBUTING.md](../CONTRIBUTING.md) and
 [oracle/README.md](../oracle/README.md); tolerance tiers are defined in the
 [governance spec](../openspec/specs/project-governance/spec.md).

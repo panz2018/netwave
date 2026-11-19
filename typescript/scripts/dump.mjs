@@ -9,7 +9,7 @@ import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
 // Samples resolve relative to this script, not cwd, so the dump runs the
-// same from the repo root (check:cross) and from typescript/ (cross-dump).
+// same from the repo root (test:cross) and from typescript/ (cross-dump).
 const samplesDir = resolve(import.meta.dirname, "../../oracle/samples");
 
 const out = process.argv[2];

@@ -19,7 +19,7 @@
   `include` 显式打包 `netwave.pyi`；`[lib]` 段 `name = "netwave"` 即
   import 名；`crate-type = ["cdylib"]` 避 E0464 rlib 同名冲突
 - 复发检测：`test_from_data_s_view_is_zero_copy` 断言 `owndata is False`；
-  `pnpm check:cross`
+  `pnpm test:cross`
 
 ### LL-023 改 core 后先 maturin develop
 

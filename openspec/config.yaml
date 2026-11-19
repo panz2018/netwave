@@ -28,6 +28,9 @@ rules:
     - 涉及 RF 术语时，以权威术语表（knowledge/RF 下 S-Parameters 书 / Touchstone 规范）
       为编写依据，定义直接写入 spec 正文（自包含），禁止"见某书某章"式引用，不得自造定义
   tasks:
+    - tasks.md 的验证命令 MUST 引用根聚合入口（`pnpm check` / `pnpm test` /
+      `pnpm test:cross` 等），禁止手抄 CI 步骤的内联参数（参数唯一承载在
+      scripts/run/test_*.sh，手抄即口径漂移源）
     - 每个数值实现任务前必须先有一条会失败的测试（red 先于 green）
     - 跨端改动必须包含 cross-binding 跨绑定对拍任务
     - 数值实现任务的验收标准须包含"docs 达到教学式标准（宪法元规则）"
@@ -65,6 +68,8 @@ operations:
         "更新/新增/退役"三态时效结论（哪些 spec 需改而未改、需新增、
         可退役），留痕于本 change 的 tasks.md 完成记录；结构一致性由
         check_md.py SPECS ROUTER 门禁兜底（锚点 `三态时效`）
+      - apply 全部任务完成后、三轴 review 之前 MUST `pnpm test` 全绿
+        （全量测试含四端对拍，先于 review 排除实现断裂）
       - apply 收尾（check:outdated 之前）MUST 按 governance spec
         「元规则 review 三轴」对照本 change 工件（proposal/specs/design/
         tasks）审实现 diff，diff 文件集逐文件对上 tasks.md，对不上即越权、

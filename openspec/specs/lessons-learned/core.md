@@ -9,14 +9,14 @@
   `#[repr(C)]` 与 numpy complex128 逐字节同；`fill_pattern`
   `re=f*100+p*10+q, im=-re` 使错位/拷贝/字节序错误破坏模式；数值测试
   期望值用同一闭式独立计算，不复用被测输出
-- 复发检测：`cargo test -p netwave` + `pnpm check:cross`
+- 复发检测：`cargo test -p netwave` + `pnpm test:cross`
 
 ### LL-019 触碰 core 后重建全部绑定
 
 - 犯过：未重建即对拍，比到陈旧产物
 - 规则：改 core 后先 `maturin develop` + `pnpm -C typescript build:native`
   - `build:wasm`，再跑任何 cross-binding 比较
-- 复发检测：`pnpm check:cross` 前置于对拍；review 核对重建步骤
+- 复发检测：`pnpm test:cross` 前置于对拍；review 核对重建步骤
 
 ### LL-020 `#[coverage(off)]` 是 nightly-only
 

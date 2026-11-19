@@ -806,7 +806,7 @@ change 的 Prior art，不入宪法正文。
   并按该条目的复发检测方法复验。
 
 任一轴命中违规即打回，不得以"其余轴通过"抵销。跨绑定改动另跑
-`pnpm check:cross`；CI 全绿是合并前置条件。三轴的执行者是 agent，
+`pnpm test:cross`；CI 全绿是合并前置条件。三轴的执行者是 agent，
 人只看结论表。
 
 #### Scenario: 命中账本即打回
