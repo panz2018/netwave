@@ -109,3 +109,9 @@ rust 半（`test:rs` → `scripts/run/test_rs.sh`）与 python 半（`test:py` �
 - `归档体检一次性跳过`：本 change 归档流程中的 archive 态只读体检跳过
   （仅本次一次性，config.yaml archive guidance 与 health-check spec 规则本体
   不变；人工裁决 2026-11-18）。
+- `native report 排除 python`：`test_ts.sh` 的 native 覆盖率 report 的
+  `--ignore-filename-regex` 同时排除 `core` 与 `python` 路径——`cargo llvm-cov report`
+  扫描 `target/` 下所有对象的 covmap section，本地共享 `target/` 若被上一轮
+  `maturin develop` 插桩会把 `python/src/lib.rs` 以 0% 纳入 native 报告；CI node job
+  全新 checkout 不产 python 对象，该排除在 CI 端为 no-op，仅修本地污染并使脚本对
+  步骤顺序鲁棒（native 报告语义 = native 胶水，python 行归 `coverage-python.json`）。
