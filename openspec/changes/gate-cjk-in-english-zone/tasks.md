@@ -56,3 +56,5 @@
 ## Workflow follow-up
 
 - sync delta 入主 spec（project-governance 新增 Requirement）后归档本 change。
+- 归档时跳过 archive 态 health-check 只读体检（`体检跳过` 一次性裁决，见
+  proposal.md 已定裁决；archive guidance 默认项本次经人工点名豁免）。

@@ -93,3 +93,6 @@
   补形状豁免，不用豁免保留真违规。
 - `自测同轮`：CJK 规则同轮补 `scripts/tests/test_check_comments.py` 自测，
   含无标记中文行红、形状豁免绿、假路径引用红、半截形状红、白名单不报。
+- `体检跳过`：本 change 一次性跳过归档态 health-check 只读体检（archive
+  guidance 默认必做项，人工点名仅本次归档适用，不改后续 change 默认；apply
+  态全文体检 4.3 照常执行）。
