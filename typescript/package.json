@@ -33,9 +33,9 @@
     "build:wasm": "pnpm gen:constants && cross-env CARGO_TARGET_DIR=../target-wasm wasm-pack build wasm --target web --out-dir ../dist/wasm-web",
     "test": "pnpm test:native && pnpm test:wasm && pnpm test:browser",
     "typecheck": "tsc --noEmit",
-    "test:native": "vitest run --config vitest.native.config.ts",
-    "test:wasm": "vitest run --config vitest.wasm.config.ts",
-    "test:browser": "vitest run --config vitest.browser.config.ts",
+    "test:native": "vitest run --config vitest.native.config.ts --coverage",
+    "test:wasm": "vitest run --config vitest.wasm.config.ts --coverage",
+    "test:browser": "vitest run --config vitest.browser.config.ts --coverage",
     "cross-dump": "node scripts/dump.mjs ../oracle/tmp"
   },
   "devDependencies": {

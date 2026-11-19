@@ -141,13 +141,13 @@ jobs:
           # Diagnostics: vitest resolves ../dist/wasm-web/netwave_wasm.js;
           # list it so a missing-artifact failure names what build:wasm left.
           ls -la typescript/dist/wasm-web
-          pnpm -C typescript test:wasm --coverage
+          pnpm -C typescript test:wasm
       - name: install Chromium (headless shell only)
         # The main thread must never touch wasm, which is only provable in a
         # real browser; the suite runs headless, so the headless shell suffices.
         run: pnpm -C typescript exec playwright install --only-shell chromium
       - name: vitest (real browser, coverage 100)
-        run: pnpm -C typescript test:browser --coverage
+        run: pnpm -C typescript test:browser
 
   # Python matrix: ubuntu runs the floor (3.10) + latest (3.15);
   # windows/macos/linux-arm64 run latest only — the point there is the
@@ -239,77 +239,26 @@ jobs:
           rustup target add wasm32-unknown-unknown
           bash scripts/install_wasm_pack.sh
           bash scripts/install_binaryen.sh
-      - name: wasm-pack build
-        # Before build:native: build:native ends with tsdown, whose dts
-        # pass resolves BOTH generated glues (napi + wasm-web). Building
-        # wasm first keeps the browser shell's dts fully typed (a missing
-        # wasm glue makes tsdown emit `any` for the re-exported verbs).
-        run: pnpm -C typescript build:wasm
       - name: install cargo-llvm-cov (latest official binary)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/install_cargo_llvm_cov.sh
-      - name: drain stray profraw (pre-test)
-        run: python3 scripts/run/clean_stray_profraw.py
-      - name: napi build + vitest native (+ rust glue coverage)
-        # One step: show-env, clean, instrumented build, vitest and report
-        # MUST share it — the instrumentation env does not cross steps.
-        # debug build (not release): instrumented release is slow and
-        # optimization shifts line mappings off the source; the .node exports
-        # the same symbols and zero-copy protocol.
-        # `--no-cfg-coverage` keeps the napi glue compiled in (show-env
-        # would otherwise set cfg(coverage) and strip it). vitest runs on
-        # the threads pool with execArgv cleared and gc via NODE_OPTIONS:
-        # worker threads reject --expose-gc (ERR_WORKER_INVALID_EXEC_ARGV)
-        # and do not run libc atexit, so the threads pool's normal main-
-        # process exit is what flushes profraw; --no-file-parallelism
-        # serializes files because every worker shares one .node's Rust
-        # static live_count (memory-lifecycle counts would race). v8 TS
-        # coverage still hits its 100% threshold under the threads pool.
-        # report needs --target: napi --platform builds objects under
-        # target/<triple>/, which report does not search by default.
-        # Floor 100: the #[napi] attribute lines (rustc#79651) are
-        # exempted by pattern in the gate.
+      - name: typescript test entry (wasm build + native glue coverage + typecheck
+          + dts any + wasm suite + profraw drain)
+        # Command details live once in scripts/run/test_ts.sh — the same file
+        # local `pnpm test:ts` calls (build:wasm, show-env/clean/build:native:debug/
+        # test:native/report/gate floor 100, typecheck, dts any check, test:wasm,
+        # pre/post stray-profraw drain). show-env/clean/build/test/report share the
+        # script's single process, so the instrumentation env never crosses a step
+        # boundary. The --coverage flag is baked into typescript/package.json's
+        # test:native/test:wasm, not repeated here.
         shell: bash
-        run: |
-          mkdir -p coverage
-          eval "$(cargo llvm-cov show-env --sh --no-cfg-coverage)"
-          export NODE_OPTIONS=--expose-gc
-          cargo llvm-cov clean --workspace
-          pnpm -C typescript build:native:debug
-          pnpm -C typescript test:native --coverage \
-            --pool=threads --execArgv="" --no-file-parallelism
-          cargo llvm-cov report --target "$(rustc -vV | sed -n 's/^host: //p')" \
-            --codecov --output-path coverage/coverage-native.json \
-            --ignore-filename-regex '[\\/]core[\\/]'
-          python3 scripts/coverage_gate.py coverage/coverage-native.json 100
-      - name: drain stray profraw (post-test)
-        # MUST stay after report and coverage_gate: a cleanup step between the
-        # tests and the report would degrade a broken chain into "empty report"
-        # instead of "chain broken".
-        run: python3 scripts/run/clean_stray_profraw.py
+        run: bash scripts/run/test_ts.sh
       - name: upload native glue coverage report
         uses: actions/upload-artifact@v7
         with:
           name: coverage-native-${{ matrix.os }}-${{ matrix.node-version }}
           path: coverage/coverage-native.json
-      - name: tsc type gate (after both glues exist)
-        # Lives here, not in the lint job: the shells import the generated
-        # bindings from dist/, so the type gate needs napi + wasm glue
-        # present. Runs once per OS matrix cell on the newest Node.
-        if: matrix.node-version == '26'
-        run: pnpm -C typescript typecheck
-      - name: dts glue typing check
-        # tsdown silently emits `any` when a generated glue is missing at
-        # dts time; fail fast instead of shipping degraded types.
-        shell: bash
-        run: |
-          if grep -q ": any" typescript/dist/index.browser.d.mts typescript/dist/index.node.d.mts; then
-            echo "::error::shell dts has any-typed exports - glues were not built before tsdown"
-            exit 1
-          fi
-      - name: vitest (wasm, coverage 100)
-        run: pnpm -C typescript test:wasm --coverage
       - name: cross-binding compare + cross-end vocabulary types
         # bash: the `(cd python && ...)` subshells isolate the directory
         # change. PowerShell's `( )` is a subexpression, not a subshell, so
