@@ -80,4 +80,5 @@ node wasm 套件、playwright 安装、浏览器套件四步内联在 ci.yml 里
 - `test-wasm-in-aggregate`：根 `test:wasm` 加入 `pnpm test` 聚合链（本地全量入口）。
 - `keep-node-axis-wasm`：`test_ts.sh` 保留 build:wasm + test:wasm，node 版本轴 wasm 验证不删。
 - `build-wasm-idempotent`：`test_wasm.sh` 与 `test_ts.sh` 各自 build:wasm，幂等互不依赖。
+- `skip-archive-health-check`：本 change 归档态的 health-check 体检一次性跳过（仅归档态，apply 态体检照常做）。
 - `ci-wasm-job-one-line`：ci.yml wasm job 测试步骤收成一行 `bash scripts/run/test_wasm.sh`，前置 install 步保留。
