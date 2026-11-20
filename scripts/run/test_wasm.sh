@@ -17,6 +17,10 @@ if ! command -v wasm-opt >/dev/null 2>&1; then
   echo "wasm-opt (binaryen) not found — install it with: bash scripts/install_binaryen.sh" >&2
   exit 1
 fi
+# rustup target list follows the rust-toolchain.toml override, so this probe
+# checks the ACTIVE (pinned) toolchain — not @stable. It assumes CI added the
+# target to that toolchain (the wasm job's "target for the pinned toolchain"
+# step runs a bare `rustup target add`, which acts on the active toolchain).
 if ! rustup target list --installed 2>/dev/null | grep -q '^wasm32-unknown-unknown$'; then
   echo "wasm32-unknown-unknown target not installed — add it with: rustup target add wasm32-unknown-unknown" >&2
   exit 1

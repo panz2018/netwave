@@ -118,6 +118,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           target: wasm32-unknown-unknown
+      - name: target for the pinned toolchain
+        # rust-toolchain.toml pins the ACTIVE toolchain; the setup above adds
+        # the target to @stable, not to the pinned one (rustup auto-installs
+        # the pinned toolchain bare). Add it to whichever toolchain is active
+        # so build:wasm and test_wasm.sh's target probe resolve. Mirrors the
+        # lint job's "components for the pinned toolchain" step.
+        run: rustup target add wasm32-unknown-unknown
       - name: install binaryen (wasm-opt, latest)
         # Always latest: wasm-pack's built-in download is stuck on binaryen
         # 117, and pinning a version here would rot.
