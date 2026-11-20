@@ -17,18 +17,26 @@
   命令原样模拟；已知陷阱见 LL-011..LL-013
 - 复发检测：review 时核对 CI 改动 commit 前是否有本地模拟记录
 
-### LL-041 钉版 toolchain 后组件要补装到激活工具链
+### LL-041 钉版 toolchain 后组件与目标要补装到激活工具链
 
 - 犯过：`rust-toolchain.toml` 钉 1.98.1 后，lint job 里
   `dtolnay/rust-toolchain@stable` + `components: rustfmt, clippy` 只装到
   @stable，rustup 裸装激活的 1.98.1 不含组件，CI 报
   `'cargo-fmt' is not installed for the toolchain '1.98.1'`（本地无此坑，
-  因为本地激活工具链早已带组件）
-- 规则：钉版后凡用 `@stable`/`@1.x` 形式 setup 的 job，后续必须补一步
-  `rustup component add <组件>`（作于当前激活工具链）；改 toolchain 钉版
-  属 LL-004 范畴，push 前逐 step 核对组件/目标解析到哪个工具链
+  因为本地激活工具链早已带组件）。同机制复发于 target：wasm job 的
+  `dtolnay/rust-toolchain@stable` + `target: wasm32-unknown-unknown` 只把
+  target 装进 @stable，钉版工具链不含，`test_wasm.sh` 的
+  `rustup target list --installed` 探测跟随 override 查的是激活（钉版）
+  工具链，报 target 未装而退出（本地无此坑，因两个工具链都装了 target）
+- 规则：钉版后凡用 `@stable`/`@1.x` 形式 setup 的 job，后续必须补一步裸
+  `rustup component add <组件>` / `rustup target add <目标>`（裸命令作于当前
+  激活工具链，dtolnay 的 `components:`/`target:` 输入只作用 @stable）；
+  凡在钉版仓库用 `rustup ... list`（target/component）做就绪探测，MUST 知
+  道它跟随 rust-toolchain.toml override 查激活工具链，不查 @stable；改
+  toolchain 钉版属 LL-004 范畴，push 前逐 step 核对组件/目标解析到哪个工具链
 - 复发检测：review ci.yml 中 `dtolnay/rust-toolchain` 与
-  `rust-toolchain.toml` 共存且无 `rustup component add` 即打回
+  `rust-toolchain.toml` 共存，且该 job 需要某组件/目标却无对应裸
+  `rustup component add`/`rustup target add` 即打回
 
 ### LL-040 合并只走 PR，禁直推 main；PR 用 credential helper 建
 
