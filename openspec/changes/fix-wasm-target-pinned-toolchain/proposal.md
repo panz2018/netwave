@@ -66,8 +66,7 @@ ci-matrix spec 不动，已在已定裁决中拍板。skip_specs: true。）
 
 ## 已定裁决
 
-- `CI补装target`：wasm job dtolnay 步骤后新增裸 `rustup target add
-  wasm32-unknown-unknown`，作用于激活工具链（grilling Q1=A）。
+- `CI补装target`：wasm job dtolnay 步骤后新增裸命令 `rustup target add wasm32-unknown-unknown`，作用于激活工具链（grilling Q1=A）。
 - `保留dtolnay输入`：dtolnay 的 `target:` 输入保留，裸命令单独成步并加注释，
   镜像 lint job 写法（grilling Q4=A）。
 - `探测注释`：`test_wasm.sh` 保留 target 探测，补注释点明查询目标为激活工具链
