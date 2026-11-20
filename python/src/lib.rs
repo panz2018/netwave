@@ -68,7 +68,7 @@ fn arg_bytes(obj: &Bound<'_, PyAny>) -> PyResult<Vec<u8>> {
 /// Read a frequency/wavelength argument that may be an array OR a scalar
 /// (a scalar is a single point). Tries the 1-D array first, falls back to
 /// a scalar f64. The union lives here in the binding (ironclad rule 11:
-/// the shell never computes, the搬运 is in the rust binding段).
+/// the shell never computes, the data movement is in the rust binding layer).
 fn arg_f64_vec(obj: &Bound<'_, PyAny>) -> PyResult<Vec<f64>> {
     if let Ok(arr) = obj.extract::<PyReadonlyArray1<f64>>() {
         return Ok(arr.as_slice()?.to_vec());

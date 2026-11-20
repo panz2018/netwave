@@ -125,8 +125,9 @@ def ci_python_cells(root: Path) -> set[str]:
 def runtime_pins(root: Path) -> dict[str, str]:
     """Runtime and tool pins as combo peers keyed by ecosystem-prefixed
     names (`pypi:python`, `cargo:rustc`, `github:<repo>`) — merged with
-    `locked_versions` so records naming runtimes can hit (spec「版本限制
-    记录数据文件」). Python pins normalise to the minor line (the
+    `locked_versions` so records naming runtimes can hit
+    (「版本限制记录数据文件」(specs/dependency-upgrade/spec.md)). Python pins
+    normalise to the minor line (the
     granularity the freshness report compares at); rustc and action pins
     keep their pinned value verbatim."""
     pins: dict[str, str] = {}

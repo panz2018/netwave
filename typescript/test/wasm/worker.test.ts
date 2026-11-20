@@ -107,7 +107,7 @@ describe("resident worker contract", () => {
     expect(await ask(999_999, "circuit", "fromData")).toContain("unknown namespace");
   });
 
-  it("加动词零改动: the worker source names no verb (fixed template)", () => {
+  it("adding a verb needs zero changes: the worker source names no verb (fixed template)", () => {
     // Generic dispatch invariant: the worker is ONE forwarding template;
     // verb names must never appear in its source. Adding a method touches
     // only the core module's `match`.

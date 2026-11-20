@@ -20,14 +20,16 @@ Four segments, per the dependency-upgrade spec:
   4. CI actions: `uses:` tags in .github/workflows vs latest release tag.
 
 Every segment filters its latest through the bad-combo judgement before
-reporting (spec「过期体检命令」): a latest that forms a recorded combo with
-the current peers reports the highest free target plus `SKIP <reason>`.
+reporting
+(「过期体检命令」(specs/dependency-upgrade/spec.md)): a latest that forms a
+recorded combo with the current peers reports the highest free target plus
+`SKIP <reason>`.
 
 Exit codes: the command is a gate — it exits non-zero while any LAG remains
 (SUMMARY > 0), so "digest the LAGs" is enforced rather than conventional. An
 unreachable source retries once, then SKIPs — the line names the source, and
 SKIP never counts toward SUMMARY, so network luck cannot fail the run
-(spec「断网不算失败」). FAILED (also non-zero) stays reserved for real
+(「断网不算失败」(specs/dependency-upgrade/spec.md)). FAILED (also non-zero) stays reserved for real
 errors: a local probe command that cannot run, or restrictions.json breaking
 its contract (the judgement baseline would be misleading, so the report
 aborts with FAILED instead).
@@ -93,7 +95,8 @@ PROBE_NAMES = {
 
 
 def _retry(call):
-    """Networked probe with one immediate retry (spec: 断网重试一次); the
+    """Networked probe with one immediate retry (see
+    「断网不算失败」(specs/dependency-upgrade/spec.md)); the
     second failure propagates and the caller reports SKIP."""
     try:
         return call()
@@ -106,7 +109,8 @@ def target_line(
 ) -> str:
     """Tail of a comparison line: the plain OK/LAG/? mark when the latest is
     unrestricted or the probe has no registrable name; otherwise the highest
-    free target plus `SKIP <reason>` (spec「过期体检命令」, all segments).
+    free target plus `SKIP <reason>` (all segments,
+    「过期体检命令」(specs/dependency-upgrade/spec.md)).
     Published candidates come from the registry; when unavailable the latest
     alone is judged (single candidate)."""
     rname = PROBE_NAMES.get(name)
@@ -132,7 +136,8 @@ def target_line(
 def restricted_lines(restrictions: list, peers: dict[str, str], failures: list[str]) -> None:
     """One target line per package pinned here and named by a restriction
     record: the highest published version that avoids every recorded combo
-    with the current peers (spec「版本限制记录与坏版本降级」). Only this
+    with the current peers
+    (「版本限制记录与坏版本降级」(specs/dependency-upgrade/spec.md)). Only this
     package's target is adjusted; peer rows are untouched."""
     names = sorted({pkg for r in restrictions for combo in r["combos"] for pkg in combo})
     for name in names:

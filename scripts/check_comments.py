@@ -24,6 +24,16 @@ a new change is covered without editing this script. Names that are also
 live spec capability names (e.g. `frequency-unit`) are excluded: they are
 ordinary vocabulary in code, not archaeology.
 
+A second, independent check enforces the language-zone rule: every line (not
+only comments) of the scanned files MUST be free of CJK ideographs, since code,
+config, and CI step bodies are English-zone. A line is exempt when it carries a
+verified spec-title reference shape -- `「title」(specs/<capability>/spec.md)`
+whose spec file exists under openspec/ and really contains that title -- or when
+the file is the gate's own source (scripts/check_*.py) or self-test
+(scripts/tests/), whose Chinese is functional (banned-word patterns, error
+strings, probe fixtures), or when it lives in a Chinese-zone directory
+(openspec/, Plan/). Fullwidth punctuation is out of scope.
+
 Scanned: comments in .rs/.py/.ts sources and .yml/.yaml/.toml configs.
 Markdown is covered by scripts/check_md.py, the developer-documentation gate.
 File-level exemptions (whitelist, nothing else is exempt): pnpm-lock.yaml
@@ -68,6 +78,13 @@ DATE_ATTRIBUTION = re.compile(
 DECISION_CODENAME = re.compile(r"design decision [0-9]+|design D[0-9]+", re.IGNORECASE)
 
 COMMENT_PREFIXES = ("//", "///", "//!", "#", "/*", "*/", "* ", "--")
+
+# CJK gate: every line (not only comments) of the scanned suffixes is checked
+# for CJK ideographs. Fullwidth punctuation is out of scope. A line is exempt
+# when it carries a verified spec-title reference shape, or when the file is
+# the gate's own source/self-test, or lives in a Chinese-zone directory.
+CJK = re.compile(r"[\u4e00-\u9fff]")
+SPEC_REF = re.compile(r"「([^」]+)」\(specs/([^)]+\.md)\)")
 
 EXEMPT_DIRS = (
     "node_modules",
@@ -150,6 +167,40 @@ def iter_scanned_files(root: str):
             yield path, rel
 
 
+def is_cjk_whitelist(rel: str) -> bool:
+    """The gate's own sources (scripts/check_*.py at the top level) and its
+    self-tests (scripts/tests/) carry functional Chinese -- banned-word
+    patterns, error strings, and probe fixtures -- so the CJK gate skips them
+    entirely. scripts/versions/check_*.py is NOT whitelisted: its Chinese is
+    spec-title references that must carry the verified reference shape."""
+    parts = rel.split("/")
+    if rel.startswith("scripts/tests/"):
+        return True
+    return len(parts) == 2 and parts[0] == "scripts" and parts[1].startswith("check_")
+
+
+def is_chinese_zone(rel: str) -> bool:
+    """openspec/ and Plan/ are Chinese-zone directories: prose there is the
+    contract language, so the CJK gate does not scan them."""
+    return rel.startswith("openspec/") or rel.startswith("Plan/")
+
+
+def spec_ref_valid(root: str, line: str) -> bool:
+    """True when the line carries a `「title」(specs/<cap>/spec.md)` shape whose
+    spec file exists under openspec/ and actually contains that title. A
+    half-shape (title without path, or path without title) never matches and
+    so never exempts."""
+    for title, rel_spec in SPEC_REF.findall(line):
+        path = os.path.join(root, "openspec", "specs", rel_spec)
+        try:
+            with open(path, encoding="utf-8") as f:
+                if title in f.read():
+                    return True
+        except OSError:
+            continue
+    return False
+
+
 def main() -> int:
     root = sys.argv[1] if len(sys.argv) > 1 else "."
     names = change_names(root)
@@ -175,8 +226,25 @@ def main() -> int:
                         bad += 1
                         break
 
-    if bad:
-        print(f"check_comments: {bad} stale reference(s) found")
+    cjk_bad = 0
+    for path, rel in iter_scanned_files(root):
+        if is_cjk_whitelist(rel) or is_chinese_zone(rel):
+            continue
+        with open(path, encoding="utf-8") as f:
+            for i, line in enumerate(f, 1):
+                m = CJK.search(line)
+                if not m:
+                    continue
+                if spec_ref_valid(root, line):
+                    continue
+                print(f"CJK            {m.group(0)} {path}:{i}")
+                cjk_bad += 1
+
+    if bad or cjk_bad:
+        if bad:
+            print(f"check_comments: {bad} stale reference(s) found")
+        if cjk_bad:
+            print(f"check_comments: {cjk_bad} CJK character(s) in English-zone file(s)")
         return 1
     print("check_comments: OK")
     return 0

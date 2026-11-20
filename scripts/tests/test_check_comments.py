@@ -174,11 +174,15 @@ class TestNoFalsePositives:
         rule-lifecycle criterion -- both are current contract statements, so
         the mechanical gate must not flag them; the semantic layer (AI review)
         keeps them."""
+        # Fixtures live under the gate's own whitelist path so the CJK gate
+        # (which scans every line of English-zone files) stays silent while the
+        # stale-reference layer -- which does not skip the whitelist -- is still
+        # exercised on these Chinese wordings.
         for line in (
             "// encoding=ISO-8859-1 时 BOM 不剥，首行不再是合法选项行",
             "# 契约废止须附三类判据之一（覆盖对照 / 违规样例红 / 废止声明）",
         ):
-            _write(tmp_path, "core/src/lib.rs", line, "fn main() {}")
+            _write(tmp_path, "scripts/check_probe.py", line, "x = 1")
             assert _scan(tmp_path) == 0
         assert "OK" in capsys.readouterr().out
 
@@ -225,3 +229,72 @@ class TestMainGuard:
         with pytest.raises(SystemExit) as excinfo:
             runpy.run_path(script, run_name="__main__")
         assert excinfo.value.code == 1
+
+
+class TestCjkGate:
+    """The CJK gate scans every line (not only comments) of the six suffixes
+    for CJK ideographs and reports each hit with the offending character and
+    file:line. Two exemptions: a verified spec-title reference shape and the
+    gate's own whitelist. Fixtures write real files under a temp root."""
+
+    def _spec(self, root, cap: str, title: str) -> None:
+        d = os.path.join(str(root), "openspec/specs", cap)
+        os.makedirs(d, exist_ok=True)
+        with open(os.path.join(d, "spec.md"), "w", encoding="utf-8") as fh:
+            fh.write(f"### Scenario: {title}\n")
+
+    def test_cjk_in_run_step_body_is_red(self, tmp_path, capsys):
+        # Non-comment line (a ci.yml run: step body) carrying an ideograph.
+        _write(tmp_path, ".github/workflows/ci.yml", "  run: echo 搬运", "key: value")
+        assert _scan(tmp_path) == 1
+        out = capsys.readouterr().out
+        assert ".github/workflows/ci.yml:1" in out
+        assert "搬" in out
+
+    def test_valid_spec_title_reference_is_green(self, tmp_path, capsys):
+        self._spec(tmp_path, "dependency-upgrade", "过期体检命令")
+        line = 'V = "见「过期体检命令」(specs/dependency-upgrade/spec.md) 一节"'
+        _write(tmp_path, "scripts/versions/check_outdated.py", line)
+        assert _scan(tmp_path) == 0
+        assert "OK" in capsys.readouterr().out
+
+    def test_fake_spec_title_is_red(self, tmp_path, capsys):
+        self._spec(tmp_path, "dependency-upgrade", "过期体检命令")
+        line = 'V = "见「不存在标题」(specs/dependency-upgrade/spec.md)"'
+        _write(tmp_path, "core/src/lib.rs", line)
+        assert _scan(tmp_path) == 1
+        assert "core/src/lib.rs:1" in capsys.readouterr().out
+
+    def test_missing_spec_file_is_red(self, tmp_path, capsys):
+        line = 'V = "见「过期体检命令」(specs/no-such-cap/spec.md)"'
+        _write(tmp_path, "core/src/lib.rs", line)
+        assert _scan(tmp_path) == 1
+        assert "core/src/lib.rs:1" in capsys.readouterr().out
+
+    def test_half_shape_title_only_is_red(self, tmp_path, capsys):
+        # A bare 「标题」 with no path is not a valid exemption.
+        _write(tmp_path, "core/src/lib.rs", 'V = "见「过期体检命令」"')
+        assert _scan(tmp_path) == 1
+
+    def test_half_shape_path_only_is_red(self, tmp_path, capsys):
+        # A bare (specs/.../spec.md) with no 「」 title is not a valid exemption.
+        _write(tmp_path, "core/src/lib.rs", 'V = "见 (specs/dependency-upgrade/spec.md)"')
+        assert _scan(tmp_path) == 1
+
+    def test_gate_whitelist_files_are_green(self, tmp_path, capsys):
+        # The gate's own sources and self-tests carry functional Chinese.
+        _write(tmp_path, "scripts/check_vocab.py", 'STAGE = "阶段"')
+        _write(tmp_path, "scripts/tests/test_gate.py", 'PROBE = "铁律七 诱饵"')
+        assert _scan(tmp_path) == 0
+        assert "OK" in capsys.readouterr().out
+
+    def test_chinese_zone_dirs_are_green(self, tmp_path, capsys):
+        _write(tmp_path, "openspec/specs/demo/spec.md", "本文件用中文书写")
+        _write(tmp_path, "Plan/notes.md", "规划文档用中文")
+        assert _scan(tmp_path) == 0
+        assert "OK" in capsys.readouterr().out
+
+    def test_fullwidth_punctuation_alone_is_green(self, tmp_path, capsys):
+        # Fullwidth punctuation without an ideograph is not flagged.
+        _write(tmp_path, "core/src/lib.rs", 'V = "ok，（）「」"')
+        assert _scan(tmp_path) == 0
