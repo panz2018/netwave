@@ -4,7 +4,7 @@
  * Expected values are independent literals / closed-form (ironclad rule 2);
  * MA→rect is transcendental so those legs compare within core_tol
  * (ironclad rule 3). */
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import { installResidentWorkerHarness } from "./harness.ts";
 
 beforeAll(async () => {
@@ -74,6 +74,37 @@ describe("browser touchstone factories", () => {
     // The harness worker forwards to core; a fetch to an unreachable host
     // must reject verbatim (no swallow, no retry).
     await expect(m.Touchstone.fromUrl("http://127.0.0.1:1/none.s1p")).rejects.toThrow();
+  });
+
+  it("fromUrl resolves and parses a fetched body", async () => {
+    const m = await import("../../src/index.browser.ts");
+    // core's web_sys::fetch path resolves js_sys::global() (which prefers
+    // `self`, the harness's fake worker scope), casts it to Window/
+    // WorkerGlobalScope via `instanceof`, then calls `.fetch` on it. Install
+    // scope constructors that accept the global and attach a fetch stub to
+    // the worker scope — driving the success callback without a real server.
+    function FakeScope(): void {}
+    Object.defineProperty(FakeScope, Symbol.hasInstance, { value: () => true });
+    const fetchMock = vi.fn().mockResolvedValue(new Response(S1P, { status: 200 }));
+    const scope = globalThis.self as unknown as { fetch?: unknown };
+    const hadFetch = "fetch" in scope;
+    const prevFetch = scope.fetch;
+    vi.stubGlobal("Window", FakeScope);
+    vi.stubGlobal("WorkerGlobalScope", FakeScope);
+    scope.fetch = fetchMock;
+    try {
+      const ts = await m.Touchstone.fromUrl("http://example.test/filter.s1p");
+      expect(fetchMock).toHaveBeenCalledWith("http://example.test/filter.s1p");
+      expect(await ts.name()).toBe("filter");
+      expect(await ts.nports()).toBe(1);
+      expect(Array.from(await ts.f)).toEqual([1e9, 2e9]);
+      expect(Array.from(await ts.s)).toEqual([1.0, 0.1, 0.9, -0.2]);
+      await ts.drop();
+    } finally {
+      vi.unstubAllGlobals();
+      if (hadFetch) scope.fetch = prevFetch;
+      else delete scope.fetch;
+    }
   });
 });
 

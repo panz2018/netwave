@@ -15,10 +15,11 @@
     "fix:py": "uv run ruff check --fix python/ scripts/ && uv run ruff format python/ scripts/",
     "check:meta": "python3 scripts/check_license.py && python3 scripts/check_ci.py && python3 scripts/check_vocab.py && python3 scripts/check_comments.py && python3 scripts/check_proposal.py && uv run python scripts/versions/check_versions.py && python3 scripts/check_py.py",
     "check:outdated": "uv run python scripts/versions/check_outdated.py",
-    "test": "pnpm test:rs && pnpm test:py && pnpm test:ts && pnpm test:cross",
+    "test": "pnpm test:rs && pnpm test:py && pnpm test:ts && pnpm test:wasm && pnpm test:cross",
     "test:rs": "bash scripts/run/test_rs.sh",
     "test:py": "bash scripts/run/test_py.sh",
     "test:ts": "bash scripts/run/test_ts.sh",
+    "test:wasm": "bash scripts/run/test_wasm.sh",
     "test:cross": "bash scripts/run/test_cross.sh"
   },
   "devDependencies": {

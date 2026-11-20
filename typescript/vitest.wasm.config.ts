@@ -9,7 +9,7 @@ export default defineConfig({
     coverage: {
       provider: "v8",
       include: ["src/index.browser.ts", "src/netwave.worker.ts"],
-      thresholds: { lines: 100, branches: 100 },
+      thresholds: { lines: 100, branches: 100, functions: 100 },
     },
   },
 });

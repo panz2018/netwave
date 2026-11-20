@@ -72,7 +72,7 @@ node wasm 套件、playwright 安装、浏览器套件四步内联在 ci.yml 里
 
 ## 已定裁决
 
-- `stub-global-fetch`：`fromUrl` 成功回调用 `vi.stubGlobal('fetch', ...)` mock 覆盖，不起 HTTP server。
+- `stub-global-fetch`：`fromUrl` 成功回调 mock 覆盖，不起 HTTP server。实证修正：`js_sys::global()` 优先取 `self`（harness 的 fake worker scope），故 fetch stub 须挂在 `self` 上、并令 `instanceof Window`/`WorkerGlobalScope` 成立（`Symbol.hasInstance`），单纯 `vi.stubGlobal('fetch')` 拦不到。
 - `wasm-functions-threshold`：`vitest.wasm.config.ts` 补 `functions: 100`。
 - `verify-functions`：改完当场跑 `pnpm -C typescript test:wasm` 验证 functions 翻满、阈值过。
 - `root-test-wasm-entry`：根 `test:wasm` = 全项目 wasm 测试总入口（build:wasm + node wasm 套件 + 真浏览器套件）。
