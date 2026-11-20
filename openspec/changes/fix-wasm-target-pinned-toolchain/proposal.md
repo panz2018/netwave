@@ -75,3 +75,6 @@ ci-matrix spec 不动，已在已定裁决中拍板。skip_specs: true。）
 - `LL-041泛化`：LL-041 正文与复发检测从 component 泛化到 target+component，
   INDEX.md 同步（grilling Q3=A）。
 - `spec不动`：ci-matrix spec 不补 scenario，本 change skip_specs（grilling Q6=A）。
+- `体检一次性跳过`：本次归档完成后的 archive 态全项目存量体检一次性跳过
+  （health-check spec archive 态），apply 态被触碰文件体检照常执行，
+  不豁免后续 change（人工点名 2026-11-20）。

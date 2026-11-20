@@ -40,8 +40,10 @@
       对照本 change 工件审实现 diff，逐文件对上 tasks.md，硬伤清零（锚点 `三轴`）
 - [ ] 5.5 被触碰文件全文只读体检（health-check apply 态：语义考古维+四维），
       发现附文件+行号+证据落 Plan/ 等点名（锚点 `体检`）
-- [ ] 5.6 迟到追加核对：本 change 工件与实现 diff 无未捕获的拍板/追加决定，
+- [ ] 5.6 archive 阶段跳过 archive 态全项目存量体检——人工点名一次性，
+      不豁免后续 change（载体：`体检一次性跳过`）
+- [ ] 5.7 迟到追加核对：本 change 工件与实现 diff 无未捕获的拍板/追加决定，
       已定裁决逐条对上载体任务（锚点 `迟到追加`）
-- [ ] 5.7 跑 `pnpm check:outdated` 并按 dependency-upgrade spec「apply 末尾体检
+- [ ] 5.8 跑 `pnpm check:outdated` 并按 dependency-upgrade spec「apply 末尾体检
       与升级预授权」消化所报 LAG（升级+全闸门+四端对拍），复跑至退出码 0
       SUMMARY 归零（锚点 `check:outdated`）
