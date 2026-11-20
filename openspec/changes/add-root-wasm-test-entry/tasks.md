@@ -39,13 +39,13 @@
 
 ## 4. 集成验证与收尾
 
-- [ ] 4.1 跑 `pnpm check` exit 0（含 `check:md`、`check_ci.py` 等元闸门）。
-- [ ] 4.2 跑 `pnpm test` exit 0（全量含 `test:wasm` 浏览器套件与 `test:cross` 四端对拍）。
-- [ ] 4.3 收尾删除 `Plan/` 中本 change 已完成章节（锚点 `Plan/`），删后跑 `pnpm check:md`。
-- [ ] 4.4 扫 `openspec/specs/` 全目录做更新/新增/退役三态时效检查并留痕（锚点 `三态时效`）。
-- [ ] 4.5 按 governance spec「元规则 review 三轴」审实现 diff，diff 文件集逐文件对上 tasks.md，硬伤清零（锚点 `三轴`）。
-- [ ] 4.6 对触碰文件全文只读体检（health-check spec apply 态），发现附文件+行号落 `Plan/` 等点名（锚点 `体检`）。
-- [ ] 4.7 复查 apply 中途拍板决定已追加进 proposal.md `## 已定裁决` 并补任务行（锚点 `迟到追加`），每个关键词载体任务已打勾。
-- [ ] 4.8 跑 `pnpm check:outdated` 并按 dependency-upgrade spec 消化所报 LAG，复跑至
+- [x] 4.1 跑 `pnpm check` exit 0（含 `check:md`、`check_ci.py` 等元闸门）。
+- [x] 4.2 跑 `pnpm test` exit 0（全量含 `test:wasm` 浏览器套件与 `test:cross` 四端对拍）。
+- [x] 4.3 收尾删除 `Plan/` 中本 change 已完成章节（锚点 `Plan/`），删后跑 `pnpm check:md`。
+- [x] 4.4 扫 `openspec/specs/` 全目录做更新/新增/退役三态时效检查并留痕（锚点 `三态时效`）。
+- [x] 4.5 按 governance spec「元规则 review 三轴」审实现 diff，diff 文件集逐文件对上 tasks.md，硬伤清零（锚点 `三轴`）。
+- [x] 4.6 对触碰文件全文只读体检（health-check spec apply 态），发现附文件+行号落 `Plan/` 等点名（锚点 `体检`）。
+- [x] 4.7 复查 apply 中途拍板决定已追加进 proposal.md `## 已定裁决` 并补任务行（锚点 `迟到追加`），每个关键词载体任务已打勾。
+- [x] 4.8 跑 `pnpm check:outdated` 并按 dependency-upgrade spec 消化所报 LAG，复跑至
       退出码 0（SUMMARY 归零）（锚点 `check:outdated`）。
 - [x] 4.9 归档态 health-check 体检一次性跳过（裁决 `skip-archive-health-check`，仅归档态；apply 态体检见 4.6 照常做）——跳过 2026-11-19。

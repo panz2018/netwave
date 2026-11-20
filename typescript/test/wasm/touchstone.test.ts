@@ -76,36 +76,42 @@ describe("browser touchstone factories", () => {
     await expect(m.Touchstone.fromUrl("http://127.0.0.1:1/none.s1p")).rejects.toThrow();
   });
 
-  it("fromUrl resolves and parses a fetched body", async () => {
-    const m = await import("../../src/index.browser.ts");
-    // core's web_sys::fetch path resolves js_sys::global() (which prefers
-    // `self`, the harness's fake worker scope), casts it to Window/
-    // WorkerGlobalScope via `instanceof`, then calls `.fetch` on it. Install
-    // scope constructors that accept the global and attach a fetch stub to
-    // the worker scope — driving the success callback without a real server.
-    function FakeScope(): void {}
-    Object.defineProperty(FakeScope, Symbol.hasInstance, { value: () => true });
-    const fetchMock = vi.fn().mockResolvedValue(new Response(S1P, { status: 200 }));
-    const scope = globalThis.self as unknown as { fetch?: unknown };
-    const hadFetch = "fetch" in scope;
-    const prevFetch = scope.fetch;
-    vi.stubGlobal("Window", FakeScope);
-    vi.stubGlobal("WorkerGlobalScope", FakeScope);
-    scope.fetch = fetchMock;
-    try {
-      const ts = await m.Touchstone.fromUrl("http://example.test/filter.s1p");
-      expect(fetchMock).toHaveBeenCalledWith("http://example.test/filter.s1p");
-      expect(await ts.name()).toBe("filter");
-      expect(await ts.nports()).toBe(1);
-      expect(Array.from(await ts.f)).toEqual([1e9, 2e9]);
-      expect(Array.from(await ts.s)).toEqual([1.0, 0.1, 0.9, -0.2]);
-      await ts.drop();
-    } finally {
-      vi.unstubAllGlobals();
-      if (hadFetch) scope.fetch = prevFetch;
-      else delete scope.fetch;
-    }
-  });
+  // Node-only: the mock drives the success callback under the fake worker
+  // scope. In a real browser the same path is covered by
+  // test/browser/browser-fromurl.test.ts (a same-origin fixture), so skip here.
+  it.skipIf(typeof (globalThis as { window?: unknown }).window !== "undefined")(
+    "fromUrl resolves and parses a fetched body",
+    async () => {
+      const m = await import("../../src/index.browser.ts");
+      // core's web_sys::fetch path resolves js_sys::global() (which prefers
+      // `self`, the harness's fake worker scope), casts it to Window/
+      // WorkerGlobalScope via `instanceof`, then calls `.fetch` on it. Install
+      // scope constructors that accept the global and attach a fetch stub to
+      // the worker scope — driving the success callback without a real server.
+      function FakeScope(): void {}
+      Object.defineProperty(FakeScope, Symbol.hasInstance, { value: () => true });
+      const fetchMock = vi.fn().mockResolvedValue(new Response(S1P, { status: 200 }));
+      const scope = globalThis.self as unknown as { fetch?: unknown };
+      const hadFetch = "fetch" in scope;
+      const prevFetch = scope.fetch;
+      vi.stubGlobal("Window", FakeScope);
+      vi.stubGlobal("WorkerGlobalScope", FakeScope);
+      scope.fetch = fetchMock;
+      try {
+        const ts = await m.Touchstone.fromUrl("http://example.test/filter.s1p");
+        expect(fetchMock).toHaveBeenCalledWith("http://example.test/filter.s1p");
+        expect(await ts.name()).toBe("filter");
+        expect(await ts.nports()).toBe(1);
+        expect(Array.from(await ts.f)).toEqual([1e9, 2e9]);
+        expect(Array.from(await ts.s)).toEqual([1.0, 0.1, 0.9, -0.2]);
+        await ts.drop();
+      } finally {
+        vi.unstubAllGlobals();
+        if (hadFetch) scope.fetch = prevFetch;
+        else delete scope.fetch;
+      }
+    },
+  );
 });
 
 describe("browser touchstone data plane", () => {
