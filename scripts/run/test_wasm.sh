@@ -71,6 +71,12 @@ if ! command -v wasm-bindgen >/dev/null 2>&1; then
   exit 1
 fi
 
+# Pre-run: drain stray profraw left by a previous broken chain, so the post-run
+# drain below can only ever flag THIS round's leaks (spec: chain runs it before
+# and after). The instrumented dir is SKIP_DIRS-whitelisted so its own profraw
+# survives.
+python3 scripts/run/clean_stray_profraw.py
+
 pnpm -C typescript build:wasm
 # Node-driven wasm suite (unit-test nature): the same test/wasm code the browser
 # job runs, here proving the wasm artifact loads and passes on this node version.

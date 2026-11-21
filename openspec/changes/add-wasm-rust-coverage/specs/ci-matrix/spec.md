@@ -36,26 +36,27 @@ core 报告、胶水行归胶水报告，互不重复计分；绑定 crate 由 s
 
 typescript/wasm crate 的 rust 行覆盖率 MUST 以 minicov runtime +
 `RUSTC_BOOTSTRAP=1` 解锁 `-Zno-profiler-runtime` 在钉死 stable 上编插桩 wasm，
-由 node 驱动 vitest 套件采集：minicov 的 wasm32 C runtime MUST 由能编 wasm32 的
-clang（wasi-sdk 自带，`CC` 指向 `scripts/install_wasi_sdk.sh` 装到 `~/.local` 的 clang）
-编译（gcc 无 wasm32 后端），插桩构建走独立 target dir（不覆盖生产
-`build:wasm` 产物），dump 导出 MUST 以 `#[cfg(feature = "coverage")]` 门控
-（生产产物零污染），profraw MUST 由 worker 上下文内的钩子调 dump 倒出
-（globalSetup 主进程读不到 worker wasm 内存），profraw 文件名 MUST 带 minicov
-module_signature 防多 worker 覆盖，合并 profraw MUST 用 `llvm-profdata merge`
-加 `-sparse`，合并后以 `llc` 把 `.ll`（由 `--emit=llvm-ir` 产出）编成宿主对象文件，
-再调 `llvm-cov export --format=lcov`（llvm-cov 读不了 wasm 符号，故须先 `llc`
-编宿主 `.o`；llvm-cov 无 `--codecov` flag，那是 cargo-llvm-cov 的，散装 `.o` 无
-独立 codecov 入口）。报告 MUST 度量 core browser-gated 代码，
-以 `--ignore-filename-regex` 剔除 `.cargo/registry` 第三方后独立阅卷，落
-`coverage/coverage-wasm.lcov` 并以 `scripts/coverage_gate.py ... 100` 阅卷
-（该脚本 MUST 支持 lcov tracefile 输入，把每条 `DA:<行>,<命中>` 视作 OR 合并后的
-行级命中）。
-wasm rust 覆盖率链前后 MUST 各执行 `clean_stray_profraw.py` 与
-`cargo llvm-cov clean --workspace`。wasm rust 覆盖率 MUST 在全部 node matrix
-格采集（不以 step 级 `if` 限定单格）。wasm 端 TS 层 vitest 100% 门槛不变。
-浏览器侧（chromium Worker）rust 覆盖率 MUST NOT 采集（worker 内 profraw 倒出
-未验证），维持 TS-only v8 覆盖率。
+由真浏览器 job（chromium Worker）采集——core 的 fetch 后端仅在真实浏览器
+global scope 上解析，node harness 的 fakeSelf 恒落「无 fetch 能力 scope」臂，
+故这些行 MUST NOT 由 node 驱动 vitest 采集（采不到即漏分母）：minicov 的
+wasm32 C runtime MUST 由能编 wasm32 的 clang（wasi-sdk 自带，`CC` 指向
+`scripts/install_wasi_sdk.sh` 装到 `~/.local` 的 clang）编译（gcc 无 wasm32
+后端），插桩构建走独立 target dir（不覆盖生产 `build:wasm` 产物），dump 导出
+MUST 以 `#[cfg(feature = "coverage")]` 门控（生产产物零污染），profraw MUST
+由浏览器测试末尾经 worker 控制消息调 dump 倒出、以 base64 经 vitest browser
+command 回传 node 落盘（Uint8Array 直传经序列化降级成 Object，故须 base64），
+profraw 文件名 MUST 带 minicov module_signature 防多 worker 覆盖，合并 profraw
+MUST 用 `llvm-profdata merge` 加 `-sparse`，合并后以 `llc` 把 `.ll`（由
+`--emit=llvm-ir` 产出）编成宿主对象文件，再调 `llvm-cov export --format=lcov`
+（llvm-cov 读不了 wasm 符号，故须先 `llc` 编宿主 `.o`；llvm-cov 无 `--codecov`
+flag，那是 cargo-llvm-cov 的，散装 `.o` 无独立 codecov 入口）。报告 MUST 度量
+core browser-gated 代码，以 `--ignore-filename-regex` 剔除 `.cargo/registry`
+第三方后独立阅卷，落 `coverage/coverage-wasm.lcov` 并以
+`scripts/coverage_gate.py ... 100` 阅卷（该脚本 MUST 支持 lcov tracefile 输入，
+把每条 `DA:<行>,<命中>` 视作 OR 合并后的行级命中）。
+wasm rust 覆盖率链前后 MUST 各执行 `clean_stray_profraw.py`。wasm rust 覆盖率
+MUST 仅在真浏览器 job 单采（node matrix 格的 wasm 套件维持 TS-only v8，不产
+wasm lcov）。wasm 端 TS 层 vitest 100% 门槛不变。
 
 #### Scenario: 空 crate 即 100%
 
@@ -85,7 +86,7 @@ wasm rust 覆盖率链前后 MUST 各执行 `clean_stray_profraw.py` 与
 #### Scenario: wasm browser-gated 代码未测即红
 
 - **WHEN** `core/src/` 中 `#[cfg(feature = "browser")]` 门控的
-  `#[wasm_bindgen]` 代码新增一行未被 node 驱动 wasm 套件任何用例执行
+  `#[wasm_bindgen]` 代码新增一行未被真浏览器 wasm 套件任何用例执行
 - **THEN** `coverage_gate.py` 对 `coverage/coverage-wasm.lcov` 阅卷失败
   （exit ≠ 0），PR 不可合并
 
@@ -118,21 +119,21 @@ wasm32 C runtime MUST 由 wasi-sdk 自带的标准 clang 编译（`scripts/insta
 纳入 `scripts/versions/check_outdated.py` 的直装工具组，同 binaryen/wasm-pack）；
 阅卷期 `llc`/`llvm-profdata`/`llvm-cov` MUST 取自钉版 rust 工具链自带的
 `llvm-tools` 组件（写进 `rust-toolchain.toml` 的 `components`，rustup 激活工具链
-时自动装），该组件随钉版走 MUST NOT 纳入 check:outdated。`scripts/run/test_ts.sh`
+时自动装），该组件随钉版走 MUST NOT 纳入 check:outdated。`scripts/run/test_wasm.sh`
 MUST 从 `$(rustc --print sysroot)` 下的 llvm-tools bin 目录取阅卷三件套，
 MUST 探测 wasi-sdk clang、缺失时提示跑 `scripts/install_wasi_sdk.sh` 并以非零退出。
 
 #### Scenario: 缺 wasi-sdk clang 时本地测试入口可行动报错
 
-- **WHEN** 本机未装 wasi-sdk clang 时运行 `pnpm test:ts`
-- **THEN** `test_ts.sh` 探测段打印跑 `scripts/install_wasi_sdk.sh` 的指引并以非零退出，
+- **WHEN** 本机未装 wasi-sdk clang 时运行 `pnpm test:wasm`
+- **THEN** `test_wasm.sh` 探测段打印跑 `scripts/install_wasi_sdk.sh` 的指引并以非零退出，
   不发起自动安装
 
 #### Scenario: llvm-tools 组件随工具链自动就位
 
 - **WHEN** rustup 激活 `rust-toolchain.toml` 钉定的工具链（本地或 CI）
 - **THEN** `llvm-tools` 组件随之安装，`$(rustc --print sysroot)` 下 llvm-tools
-  bin 目录含 `llc`/`llvm-profdata`/`llvm-cov`，`test_ts.sh` 无需外部安装步即可阅卷
+  bin 目录含 `llc`/`llvm-profdata`/`llvm-cov`，`test_wasm.sh` 无需外部安装步即可阅卷
 
 #### Scenario: check:outdated 报 wasi-sdk LAG
 

@@ -95,3 +95,16 @@
   平台无对应包时回退 `cargo install wasm-bindgen-cli --version <对齐 crate>`。
 - `插桩target加白名单`（2026-11-21 定案）：插桩构建走独立 target dir，其名字 MUST
   加进 `clean_stray_profraw.py` 的 SKIP_DIRS（否则其 profraw 被误判漏网删除）。
+- `浏览器job采集`（2026-11-21 定案，推翻 `仅node侧`）：wasm rust 覆盖率改由真浏览器
+  job（`test:browser`，playwright chromium）采集——fetch 等浏览器专属分支只有真
+  浏览器 global scope 才命中；node harness 的 `global()` 是 fakeSelf，只走
+  「no fetch-capable scope」臂。spike 已实证 profraw 经 vitest `browser.commands`
+  以 base64 字符串回传 node 落盘逐字节一致（Uint8Array 直传会被序列化降级成
+  Object，故必须 base64）。`仅node侧` 与 Non-goal「不做浏览器侧 rust 覆盖率」作废。
+- `控制消息dump出口`（2026-11-21 定案）：浏览器里 profraw MUST 由 worker 自己 dump
+  （主线程 afterAll 读不到 worker realm）。worker 加一条与业务 dispatch 平行的
+  控制消息（`{control: "dumpCoverage"}`），不进 core `call` 的 match、不算业务
+  动词——「worker 固定模板不含动词名」不变式（worker.test.ts）照常绿。
+- `浏览器单采`（2026-11-21 定案）：rust 覆盖率只由浏览器 job 产
+  `coverage/coverage-wasm.lcov`；node 侧 test_ts.sh 的 wasm 插桩覆盖率链删除，
+  node `test:wasm` 退回纯 TS v8 覆盖率。不双采（CI 时间与插桩构建翻倍不值）。

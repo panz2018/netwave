@@ -47,3 +47,33 @@
 - [ ] 7.5 对触碰文件全文只读体检（health-check spec apply 态：语义考古维 + 四维，发现附文件+行号+证据落 Plan/ 等点名，不阻塞；全豁免记「已查，无适用文件」）（锚点 `体检`）。注：archive 态体检一次性跳过（2026-11-20，裁决 `archive体检跳过`），apply 态本项照常执行
 - [ ] 7.6 apply 中途拍板的决定当场追加进 proposal.md `## 已定裁决` 段并补对应任务行，收尾复查每关键词载体任务已打勾（锚点 `迟到追加`）
 - [ ] 7.7 跑 `pnpm check:outdated` 并按 dependency-upgrade spec「apply 末尾体检与升级预授权」消化所报 LAG（wasi-sdk LAG 由 agent 重跑 `scripts/install_wasi_sdk.sh` 消化，无 sudo；llvm-tools 随 `rust-toolchain.toml` 钉版走不单独报 LAG），复跑至退出码 0（SUMMARY 归零）才算完成（锚点 `check:outdated`）
+
+## 8. 浏览器 job 采集迁移（裁决 `浏览器job采集` + `控制消息dump出口` + `浏览器单采`）
+
+- [x] 8.1 `typescript/src/netwave.worker.ts` 加控制消息出口：收到 control 为
+      dumpCoverage 的控制消息时调实例 `__cov_dump`/`__cov_ptr`/`__cov_len`、把
+      profraw 字节 base64 后 postMessage 回主线程（验证 `控制消息dump出口`：
+      worker.test.ts「固定模板不含动词名」仍绿——控制消息不进 core call 的 match、
+      不算业务动词；dump 仅在插桩实例上非空）
+- [x] 8.2 `typescript/vitest.browser.config.ts` 加 browser.commands.writeProfraw
+      （node 端 base64 解码落 profraw，按 module_signature 命名）与插桩 wasm 加载：
+      浏览器模式下 worker MUST 加载 `dist/wasm-cov` 插桩产物（验证 `浏览器job采集`：
+      spike 已证 base64 经 commands 回传逐字节一致；Uint8Array 直传降级成 Object 已排除）
+- [x] 8.3 浏览器测试末尾注册 dump：afterAll 经 worker 控制消息取 profraw，再经
+      commands.writeProfraw 落盘（验证 `浏览器job采集`：跑 test:browser 后插桩 target
+      dir 出现非空 profraw）
+- [x] 8.4 `scripts/run/test_wasm.sh` 新增浏览器 rust 覆盖率链：插桩 cargo build 加
+      wasm-bindgen 生成 web 胶水，env 驱动 test:browser，llvm-profdata merge 加 llc
+      加 llvm-cov export lcov，`coverage_gate.py coverage/coverage-wasm.lcov 100`
+      （验证 `浏览器job采集`：fetch Window/WorkerGlobalScope 臂命中 > 0，LL-093）
+- [x] 8.5 `scripts/run/test_ts.sh` 删除 node 侧 wasm 插桩覆盖率链（验证 `浏览器单采`：
+      test_ts.sh 不再含 wasm 插桩 build/dump/lcov，node test:wasm 退回纯 TS v8；native
+      链与 python 链不动）
+- [x] 8.6 `openspec/specs/ci-matrix/spec.md` 同步：wasm rust 覆盖率采集方从「node
+      驱动 vitest」改为「真浏览器 job」，仅 node 侧旧 Scenario 改写（验证
+      `spec同步改` + LL-034：主 spec 与本 change delta 口径一致，`pnpm check:md` 绿）
+- [x] 8.7 `.github/workflows/ci.yml`：wasm job 产 coverage-wasm.lcov 并上传；node
+      job 不再产 wasm lcov（验证 `浏览器单采`：上传路径与产出 job 一致）
+- [ ] 8.8 跑真浏览器覆盖率后生成缺行清单，逐条标注文件+行号+理由交人工确认（验证
+      `地板100先列清单`：确认前不豁免，未确认者补单测至 100；write_file 等 wasm 端
+      将来专门改的命令单列，不私自豁免）

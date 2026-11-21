@@ -1,23 +1,25 @@
-"""Wiring smoke test for the typescript test entry's wasm rust coverage chain.
+"""Wiring smoke test for the wasm rust coverage chain (browser-driven).
 
-The chain is a long shell sequence in scripts/run/test_ts.sh that CI's node job
-and local `pnpm test:ts` share, so a silent edit that drops a step (the
+The chain is a long shell sequence in scripts/run/test_wasm.sh that CI's wasm
+job and local `pnpm test:wasm` share, so a silent edit that drops a step (the
 instrumented build, the glue regeneration, the profraw merge, the lcov export,
 or the gate) would quietly stop measuring core's browser-gated code. These
 assertions pin that every link is present, that the toolchain probes head the
-script before any build, and that ci.yml uploads the lcov artifact the chain
-actually produces (not a codecov.json llvm-cov cannot emit)."""
+script before any build, that the dump run drives the REAL browser (the fetch
+backends resolve only against a real global scope), and that ci.yml uploads the
+lcov artifact the chain actually produces (not a codecov.json llvm-cov cannot
+emit)."""
 
 import re
 
 from lib.repository import ROOT
 
 CI = ROOT / ".github" / "workflows" / "ci.yml"
-TEST_TS = ROOT / "scripts" / "run" / "test_ts.sh"
+TEST_WASM = ROOT / "scripts" / "run" / "test_wasm.sh"
 
 
 def _script() -> str:
-    return TEST_TS.read_text(encoding="utf-8")
+    return TEST_WASM.read_text(encoding="utf-8")
 
 
 def test_ci_uploads_wasm_lcov_not_json() -> None:
@@ -35,14 +37,15 @@ def test_chain_builds_instrumented_wasm_with_coverage_feature() -> None:
     assert "-Cinstrument-coverage -Zno-profiler-runtime --emit=llvm-ir" in s
 
 
-def test_chain_regenerates_glue_and_drives_test_wasm() -> None:
+def test_chain_regenerates_glue_and_drives_real_browser() -> None:
     s = _script()
     assert "wasm-bindgen --target web" in s
     # the dump run points the worker at the instrumented glue and a profraw dir.
     assert "NETWAVE_WASM_DIR=" in s
     assert "NETWAVE_COV_OUT=" in s
-    # v8 coverage is off for the dump run; the plain test:wasm enforces it.
-    assert "test:wasm --coverage.enabled=false" in s
+    # the dump run drives the REAL browser (fetch arms need a real global scope);
+    # v8 coverage is off for it, the plain production test:browser enforces that.
+    assert "test:browser --coverage.enabled=false" in s
 
 
 def test_chain_grades_lcov_via_gate() -> None:
@@ -70,8 +73,10 @@ def test_probes_head_the_script_before_any_build() -> None:
     assert max(probe_llvm, probe_wasi, probe_bindgen) < build
 
 
-def test_post_block_drains_before_clean() -> None:
+def test_post_block_drains_stray_profraw() -> None:
+    # a broken chain this round must be detected by the stray drain, never
+    # pushed past the gate by a later-appended command.
     lines = _script().splitlines()
     drain = [i for i, ln in enumerate(lines) if "clean_stray_profraw.py" in ln]
-    clean = [i for i, ln in enumerate(lines) if "cargo llvm-cov clean" in ln]
-    assert drain and clean and max(drain) < max(clean)
+    gate = [i for i, ln in enumerate(lines) if "coverage_gate.py" in ln]
+    assert drain and gate and max(drain) > max(gate)

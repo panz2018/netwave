@@ -28,11 +28,6 @@ if ! rustup target list --installed 2>/dev/null | grep -q '^wasm32-unknown-unkno
   exit 1
 fi
 
-# Wasm rust coverage moved to the browser job (scripts/run/test_wasm.sh): the
-# fetch backends resolve only against a real browser global scope, so the node
-# harness (fakeSelf) can never reach those arms. This entry keeps the native
-# coverage chain + type gates + the node-driven wasm suite (TS-only v8).
-
 python3 scripts/run/clean_stray_profraw.py
 
 # build:wasm first: build:native ends with tsdown, whose dts pass resolves BOTH

@@ -123,12 +123,9 @@ CI node job 同口径通过；CI MUST NOT 为 node job 保留独立的 profraw d
   `cargo llvm-cov clean --workspace`、build:wasm、native 覆盖率链（show-env、
   `NODE_OPTIONS=--expose-gc`、build:native:debug、test:native、report 带 host
   triple、`coverage_gate.py` 地板阅卷，且 show-env/clean/build/test/report 共享
-  脚本单进程）、wasm rust 覆盖率链（cargo build 插桩 debug 独立 target、
-  wasm-bindgen 生成 web 胶水、env 驱动 test:wasm 倒 profraw、
-  `llvm-profdata merge -sparse`、`llc --march=<短宿主架构>` 编 `.ll`→`.o`、
-  `llvm-cov export --format=lcov`、`coverage_gate.py coverage/coverage-wasm.lcov 100`）、
-  typecheck、dts 防 `any` 检查、test:wasm、profraw 后置清扫、再次
-  `clean --workspace`，native 与 wasm 报告均产出并经地板阅卷，脚本 exit 0
+  脚本单进程）、typecheck、dts 防 `any` 检查、test:wasm（纯 TS v8，不产
+  wasm lcov）、再次 `clean --workspace`，native 报告产出并经地板阅卷，
+  脚本 exit 0
 
 #### Scenario: typescript 入口缺工具报错可行动
 
@@ -139,13 +136,12 @@ CI node job 同口径通过；CI MUST NOT 为 node job 保留独立的 profraw d
   `scripts/install_binaryen.sh` / `rustup target add wasm32-unknown-unknown`），
   不发起网络安装
 
-#### Scenario: typescript 入口缺 wasm 覆盖率工具报错可行动
+#### Scenario: typescript 入口不含 wasm 覆盖率工具探测
 
-- **WHEN** 本地缺 llvm-tools 三件套（`llc`/`llvm-profdata`/`llvm-cov`）、
-  wasi-sdk clang 或 `wasm-bindgen` 之一时运行 `pnpm test:ts`
-- **THEN** 脚本在插桩构建前以非零码退出，stderr 打印对应安装指引
-  （`rustup component add llvm-tools` / `scripts/install_wasi_sdk.sh` /
-  `scripts/install_wasm_bindgen_cli.sh`），不发起自动安装
+- **WHEN** 检查 `scripts/run/test_ts.sh`
+- **THEN** 不含 llvm-tools 三件套（`llc`/`llvm-profdata`/`llvm-cov`）、wasi-sdk
+  clang、`wasm-bindgen` 的探测——插桩 wasm 只由 `scripts/run/test_wasm.sh`
+  （浏览器 job）编译，node 入口不编插桩 wasm
 
 #### Scenario: typescript 入口注入残留即红
 
@@ -182,9 +178,9 @@ MUST 各自内置 `--coverage`，使任一调用方（本地裸跑、tasks.md、
 
 根 `package.json` MUST 提供 `test:wasm` 入口，薄调用 `scripts/run/test_wasm.sh`，
 使本地单命令复现全项目 wasm 测试面（`build:wasm`、node 驱动 wasm 套件、真浏览器
-套件），且 MUST `set -euo pipefail` 并纳入 `pnpm test` 聚合链。脚本对工具与浏览器
-MUST 只探测存在性、缺失即非零退出并打印安装命令，MUST NOT 发起网络安装。
-`ci.yml` 的 wasm job 测试步骤 MUST 缩成一行调该脚本，前置安装步保留。
+套件、wasm rust 覆盖率链），且 MUST `set -euo pipefail` 并纳入 `pnpm test` 聚合链。
+脚本对工具与浏览器 MUST 只探测存在性、缺失即非零退出并打印安装命令，MUST NOT
+发起网络安装。`ci.yml` 的 wasm job 测试步骤 MUST 缩成一行调该脚本，前置安装步保留。
 
 容差：存在性与退出码闸门，无数值阈值；wasm 壳覆盖率阈值数值以
 `typescript/vitest.wasm.config.ts` 的 `thresholds` 为唯一定义处，本条不复制数值。
@@ -192,8 +188,19 @@ MUST 只探测存在性、缺失即非零退出并打印安装命令，MUST NOT 
 #### Scenario: wasm 入口本地全链绿
 
 - **WHEN** 开发者在仓库根运行 `pnpm test:wasm` 且工具与 chromium 齐备
-- **THEN** 脚本依次执行工具链探测、`build:wasm`、node 驱动 wasm 套件、真浏览器套件，
-  两套件均按各自 vitest 配置阈值阅卷通过，脚本 exit 0
+- **THEN** 脚本依次执行工具链探测（含 llvm-tools/wasi-sdk/wasm-bindgen）、
+  `build:wasm`、node 驱动 wasm 套件、插桩构建 + wasm-bindgen 胶水 + env 驱动
+  `test:browser`（关 v8）倒 profraw + merge/llc/export +
+  `coverage_gate.py coverage/coverage-wasm.lcov 100`、生产真浏览器套件，
+  两套件均按各自 vitest 配置阈值阅卷通过、rust lcov 经地板阅卷，脚本 exit 0
+
+#### Scenario: wasm 入口缺覆盖率工具报错可行动
+
+- **WHEN** 本地缺 llvm-tools 三件套（`llc`/`llvm-profdata`/`llvm-cov`）、
+  wasi-sdk clang 或 `wasm-bindgen` 之一时运行 `pnpm test:wasm`
+- **THEN** 脚本在插桩构建前以非零码退出，stderr 打印对应安装指引
+  （`rustup component add llvm-tools` / `scripts/install_wasi_sdk.sh` /
+  `scripts/install_wasm_bindgen_cli.sh`），不发起自动安装
 
 #### Scenario: wasm 入口缺工具或缺浏览器报错可行动
 
@@ -379,17 +386,21 @@ python 的 maturin 不带 `--target`，对象落 host `target/debug`，report �
 core 报告、胶水行归胶水报告，互不重复计分；绑定 crate 由 show-env/report
 外部驱动采集度量。typescript/wasm crate 的 rust 行覆盖率 MUST 以 minicov runtime +
 `RUSTC_BOOTSTRAP=1` 解锁 `-Zno-profiler-runtime` 在钉死 stable 上编插桩 wasm，
-由 node 驱动 vitest 套件采集：minicov 的 wasm32 C runtime MUST 由能编 wasm32 的
-clang（wasi-sdk 自带，`CC` 指向 `scripts/install_wasi_sdk.sh` 装到 `~/.local` 的 clang）
-编译，插桩构建走独立 target dir（不覆盖生产 `build:wasm` 产物），dump 导出 MUST
-以 `#[cfg(feature = "coverage")]` 门控（生产产物零污染），profraw MUST 由 worker
-上下文内的钩子调 dump 倒出并带 minicov module_signature 防多 worker 覆盖，合并用
+由真浏览器 job（chromium Worker）采集——core 的 fetch 后端仅在真实浏览器
+global scope 上解析，node harness 的 fakeSelf 恒落「无 fetch 能力 scope」臂，
+故这些行 MUST NOT 由 node 驱动 vitest 采集（采不到即漏分母）：minicov 的
+wasm32 C runtime MUST 由能编 wasm32 的 clang（wasi-sdk 自带，`CC` 指向
+`scripts/install_wasi_sdk.sh` 装到 `~/.local` 的 clang）编译，插桩构建走独立
+target dir（不覆盖生产 `build:wasm` 产物），dump 导出 MUST 以
+`#[cfg(feature = "coverage")]` 门控（生产产物零污染），profraw MUST 由浏览器
+测试末尾经 worker 控制消息调 dump 倒出、以 base64 经 vitest browser command
+回传 node 落盘并带 minicov module_signature 防多 worker 覆盖，合并用
 `llvm-profdata merge -sparse`，再以 `llc` 把 `.ll`（`--emit=llvm-ir` 产出）编成宿主
 对象文件后调 `llvm-cov export --format=lcov`（llvm-cov 无 `--codecov` flag，散装 `.o`
 无独立 codecov 入口），以 `--ignore-filename-regex` 剔除 `.cargo/registry` 第三方后
 落 `coverage/coverage-wasm.lcov` 并以 `scripts/coverage_gate.py ... 100` 阅卷（该脚本
-MUST 支持 lcov tracefile 输入）。wasm rust 覆盖率 MUST 在全部 node matrix 格采集；
-浏览器侧（chromium Worker）rust 覆盖率 MUST NOT 采集，维持 TS-only v8 覆盖率；
+MUST 支持 lcov tracefile 输入）。wasm rust 覆盖率 MUST 仅在真浏览器 job 单采；
+node matrix 格的 wasm 套件维持 TS-only v8 覆盖率（不产 wasm lcov）；
 wasm 端 TS 层 vitest 100% 门槛不变。
 
 #### Scenario: 空 crate 即 100%
@@ -420,7 +431,7 @@ wasm 端 TS 层 vitest 100% 门槛不变。
 #### Scenario: wasm browser-gated 代码未测即红
 
 - **WHEN** `core/src/` 中 `#[cfg(feature = "browser")]` 门控的
-  `#[wasm_bindgen]` 代码新增一行未被 node 驱动 wasm 套件任何用例执行
+  `#[wasm_bindgen]` 代码新增一行未被真浏览器 wasm 套件任何用例执行
 - **THEN** `coverage_gate.py` 对 `coverage/coverage-wasm.lcov` 阅卷失败
   （exit ≠ 0），PR 不可合并
 

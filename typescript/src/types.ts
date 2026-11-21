@@ -41,11 +41,30 @@ export interface WorkerRequest {
   args: unknown[];
 }
 
+/** @internal Coverage-chain control message (not a business verb): asks the
+ * worker to dump its instrumented instance's profraw and reply base64. The
+ * fixed-template invariant (no verb names in the worker source) is untouched
+ * — this channel never reaches core's dispatch table. */
+export interface ControlRequest {
+  control: "dumpCoverage";
+}
+
+/** Coverage-chain reply payload: the raw profraw bytes (structuredClone
+ * carries them across the worker boundary; the base64 encoding is only for
+ * the vitest browser-command transport, done test-side) plus the minicov
+ * module signature used to name the profraw file. */
+export interface CoverageDump {
+  profraw: Uint8Array;
+  signature: string;
+}
+
 /** Worker reply envelope (worker -> main thread). `result.shape` and
  * `result.frequency` ride the same message (metadata piggyback). `string[]`
- * carries the vocabulary list (`frequencyUnits`). */
+ * carries the vocabulary list (`frequencyUnits`). `coverage` answers a
+ * control dump (null when the instance is not instrumented). */
 export interface WorkerResponse {
   id: number;
   result?: NetwaveBuffer | number | Handle | string[];
   error?: string;
+  coverage?: CoverageDump | null;
 }

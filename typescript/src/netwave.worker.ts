@@ -10,7 +10,8 @@
 // This template is verb-count-independent: adding a method — or a whole
 // resource type — changes nothing here.
 
-import type { WorkerRequest, WorkerResponse } from "./types.ts";
+import { dumpCoverage } from "./coverage-dump.ts";
+import type { ControlRequest, WorkerRequest, WorkerResponse } from "./types.ts";
 
 // The wasm glue + bytes live in dist/wasm-web by default. Under Node the rust
 // coverage chain points them at an instrumented build via NETWAVE_WASM_DIR;
@@ -80,16 +81,28 @@ const workerScope = self as unknown as WorkerScope;
 // The fixed template: await wasm ready, forward `{handle, method, args}`
 // verbatim to core `call`, relay the result or the error. No tables, no
 // maps, no counters — core's handle table is the single data authority.
-workerScope.onmessage = async ({ data }: MessageEvent<WorkerRequest>) => {
+// The one exception is the coverage-chain control channel: a
+// `{control: "dumpCoverage"}` message asks THIS context to drain the
+// instrumented instance's profraw (only the worker realm can read its
+// memory). It never reaches core dispatch — it is not a business verb, so
+// the fixed-template invariant (no verb names here) holds.
+workerScope.onmessage = async ({ data }: MessageEvent<WorkerRequest | Partial<ControlRequest>>) => {
   const call = await ready;
+  if (data && "control" in data && data.control === "dumpCoverage") {
+    // Raw bytes ride structuredClone back to the caller (the base64 encoding
+    // is only needed for the vitest browser-command transport, done there).
+    workerScope.postMessage({ id: 0, coverage: dumpCoverage(wasmInstanceSlot.current) });
+    return;
+  }
+  const request = data as WorkerRequest;
   try {
     // `await` is structural: core `call` returns a plain value for every
     // sync verb, and a JS Promise for async ones (`fromUrl` — fetch runs
     // inside the worker, ironclad rule 8). Awaiting a non-Promise is a
     // no-op, so the template stays verb-count-independent.
-    const result = await call(data.handle, data.method, data.args);
-    workerScope.postMessage({ id: data.id, result });
+    const result = await call(request.handle, request.method, request.args);
+    workerScope.postMessage({ id: request.id, result });
   } catch (err) {
-    workerScope.postMessage({ id: data.id, error: String(err) });
+    workerScope.postMessage({ id: request.id, error: String(err) });
   }
 };

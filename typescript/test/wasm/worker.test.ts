@@ -106,7 +106,29 @@ describe("resident worker contract", () => {
     // Unknown namespace (string half).
     expect(await ask(999_999, "circuit", "fromData")).toContain("unknown namespace");
   });
-
+  it("coverage control message: production instance replies null (no dump exports)", async () => {
+    await shell();
+    await makeTs(); // ensure the worker is up
+    const w = h.singleton();
+    if (!w) throw new Error("shell did not register the singleton worker");
+    const coverage = await new Promise<unknown>((resolve) => {
+      const stop = h.onReply((res) => {
+        if (res.id === 0 && "coverage" in res) {
+          stop();
+          resolve(res.coverage);
+        }
+      });
+      w.postMessage({ control: "dumpCoverage" } as never);
+    });
+    // The reply shape depends on the loaded instance: the node suite loads the
+    // PRODUCTION wasm (no `coverage` feature) → no dump exports → null; the
+    // instrumented browser chain loads a coverage build → {profraw, signature}.
+    // Both are valid; the test exercises the worker's control-message branch.
+    if (coverage !== null) {
+      expect(coverage).toMatchObject({ signature: expect.any(String) });
+      expect((coverage as { profraw: Uint8Array }).profraw).toBeInstanceOf(Uint8Array);
+    }
+  });
   it("adding a verb needs zero changes: the worker source names no verb (fixed template)", () => {
     // Generic dispatch invariant: the worker is ONE forwarding template;
     // verb names must never appear in its source. Adding a method touches

@@ -276,7 +276,7 @@ jobs:
         # test:wasm). show-env/clean/build/test/report share the script's single
         # process, so the instrumentation env never crosses a step boundary. The
         # --coverage flag is baked into typescript/package.json's test:native/
-        # test:wasm, not repeated here. Wasm rust coverage moved to the wasm job.
+        # test:wasm, not repeated here.
         shell: bash
         run: bash scripts/run/test_ts.sh
       - name: upload native glue coverage report
