@@ -10,24 +10,64 @@
 // This template is verb-count-independent: adding a method — or a whole
 // resource type — changes nothing here.
 
-import wasmInit, { call as _wasmCall } from "../dist/wasm-web/netwave_wasm.js";
 import type { WorkerRequest, WorkerResponse } from "./types.ts";
 
-// wasm init: the web-target glue fetches the .wasm relative to its own
-// URL in browsers; under Node (vitest) fetch has no file: support, so read
-// the bytes with node:fs. The node: import is dynamic and browser-invisible.
+// The wasm glue + bytes live in dist/wasm-web by default. Under Node the rust
+// coverage chain points them at an instrumented build via NETWAVE_WASM_DIR;
+// unset (production + every browser path) keeps the default. The default
+// specifiers MUST stay literal string constants: publish_shell.mjs rewrites
+// the "../dist/" prefix to "./" for the published browser worker, and vite
+// (browser mode) resolves them statically. The instrumented branch is a
+// template literal (unresolvable at build time) so it carries @vite-ignore,
+// and it only ever runs under the Node coverage chain — never in a browser.
 /* v8 ignore next 1 -- environment probe; Node-only in this test suite */
 const isNode = typeof process !== "undefined" && !!process.versions.node;
-const wasmSource = async (): Promise<Uint8Array | undefined> => {
-  /* v8 ignore start -- browser-only path; exercised in real-browser tests */
-  if (!isNode) return undefined; // glue default: fetch relative to its own URL
+/* v8 ignore next 1 -- coverage-chain probe; unset in production and browser */
+const covDir = isNode ? process.env.NETWAVE_WASM_DIR : undefined;
+
+// The live wasm instance, exposed on globalThis so the coverage hook
+// (registered in the same worker context via vitest setupFiles) can read
+// profraw out of linear memory after calling the dump entry points. Unset
+// outside the coverage chain; nothing else reads it.
+const wasmInstanceSlot: { current?: Record<string, unknown> } = {};
+(
+  globalThis as unknown as { __netwaveWasmInstance?: typeof wasmInstanceSlot }
+).__netwaveWasmInstance = wasmInstanceSlot;
+
+// core `call` is typed `any` in the glue; pin it to the worker's result
+// envelope field so postMessage stays type-checked (was implicit via the
+// glue's any-typed named import before the dynamic-import refactor).
+type WasmCall = (
+  handle: number | string,
+  method: string,
+  args: unknown,
+) => WorkerResponse["result"];
+
+const initWasm = async (): Promise<WasmCall> => {
+  /* v8 ignore start -- coverage-chain dispatch: the instrumented branch runs
+     only under the rust coverage chain (NETWAVE_WASM_DIR set); production and
+     browser always take the default specifier. */
+  const glue = covDir
+    ? await import(/* @vite-ignore */ `${covDir}/netwave_wasm.js`)
+    : await import("../dist/wasm-web/netwave_wasm.js");
   /* v8 ignore stop */
+  /* v8 ignore next 1 -- browser path: glue fetches relative to its own URL; exercised in real-browser tests */
+  const bytes = isNode ? await readWasmBytes() : undefined;
+  const instance = await glue.default({ module_or_path: bytes });
+  wasmInstanceSlot.current = instance as unknown as Record<string, unknown>;
+  return glue.call as WasmCall;
+};
+
+const readWasmBytes = async (): Promise<Uint8Array> => {
   const { readFile } = await import("node:fs/promises");
+  /* v8 ignore start -- instrumented path; only the coverage chain sets covDir */
+  if (covDir) return readFile(`${covDir}/netwave_wasm_bg.wasm`);
+  /* v8 ignore stop */
   const { fileURLToPath } = await import("node:url");
   return readFile(fileURLToPath(new URL("../dist/wasm-web/netwave_wasm_bg.wasm", import.meta.url)));
 };
 
-const ready = (async () => wasmInit({ module_or_path: await wasmSource() }))();
+const ready = initWasm();
 
 // The DOM lib types `self` as `Window` (postMessage requires targetOrigin);
 // this module only ever runs inside a Worker, so pin the scope type.
@@ -41,13 +81,13 @@ const workerScope = self as unknown as WorkerScope;
 // verbatim to core `call`, relay the result or the error. No tables, no
 // maps, no counters — core's handle table is the single data authority.
 workerScope.onmessage = async ({ data }: MessageEvent<WorkerRequest>) => {
-  await ready;
+  const call = await ready;
   try {
     // `await` is structural: core `call` returns a plain value for every
     // sync verb, and a JS Promise for async ones (`fromUrl` — fetch runs
     // inside the worker, ironclad rule 8). Awaiting a non-Promise is a
     // no-op, so the template stays verb-count-independent.
-    const result = await _wasmCall(data.handle, data.method, data.args);
+    const result = await call(data.handle, data.method, data.args);
     workerScope.postMessage({ id: data.id, result });
   } catch (err) {
     workerScope.postMessage({ id: data.id, error: String(err) });

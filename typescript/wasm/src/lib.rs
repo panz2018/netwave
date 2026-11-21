@@ -49,4 +49,12 @@ mod __cov {
     pub fn __cov_len() -> usize {
         unsafe { (*BUF.0.get()).len() }
     }
+
+    /// The minicov module signature — a value unique to this load module, so
+    /// the harness names each worker's profraw file with it and concurrent
+    /// workers never overwrite one another before `llvm-profdata merge`.
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    pub fn __cov_signature() -> u64 {
+        minicov::module_signature()
+    }
 }

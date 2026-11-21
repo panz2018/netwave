@@ -13,7 +13,19 @@ from pathlib import Path
 # declared floor interpreter (3.10), where tomllib is not yet stdlib.
 
 ROOT = Path(__file__).resolve().parent.parent.parent.parent
-SKIP_DIRS = ("target", "target-wasm", "node_modules", ".venv", ".git", "dist", "coverage")
+# target-wasm-cov: the instrumented wasm coverage build's cargo target dir (the
+# rust coverage chain writes its profraw under it); whitelisted so the stray
+# drain never deletes a legitimate report input.
+SKIP_DIRS = (
+    "target",
+    "target-wasm",
+    "target-wasm-cov",
+    "node_modules",
+    ".venv",
+    ".git",
+    "dist",
+    "coverage",
+)
 
 
 def _skip(root: Path, path: Path) -> bool:

@@ -8,14 +8,14 @@
 
 - [x] 2.1 `typescript/wasm/Cargo.toml` 加 minicov 依赖与默认关闭的 `coverage` feature（验证：`cargo metadata` 含该 feature，生产构建不含 minicov）
 - [x] 2.2 `typescript/wasm/src/lib.rs` 加 `#[cfg(feature = "coverage")]` 门控的 `__cov_dump`/`__cov_ptr`/`__cov_len` 导出（验证 `独立target加feature门控`：不带 feature 的 `pnpm -C typescript build:wasm` 产物无这三个导出，带 feature 的插桩构建有）
-- [ ] 2.3 `typescript/src/netwave.worker.ts` 的 wasm 加载目录改为可被环境变量覆盖（未设=生产 `dist/wasm-web` 路径零变化），并把 init 返回的实例内存暴露给测试钩子读（验证 `worker环境变量切加载`：未设 env 时 worker 行为与现状一致）
+- [x] 2.3 `typescript/src/netwave.worker.ts` 的 wasm 加载目录改为可被环境变量覆盖（未设=生产 `dist/wasm-web` 路径零变化），并把 init 返回的实例内存暴露给测试钩子读（验证 `worker环境变量切加载`：未设 env 时 worker 行为与现状一致）
 - [ ] 2.4 先写一条失败测试：node 经 worker（env 指向插桩 wasm）跑 browser-gated 函数、调 dump 得非空 profraw（red 先于 green，验证 `RUSTC_BOOTSTRAP放行`：stable + `RUSTC_BOOTSTRAP=1 -Zno-profiler-runtime` 编出的 wasm 可倒 profraw）
 
 ## 3. vitest dump 钩子（node 侧）
 
-- [ ] 3.1 新增 setup 文件，注册 worker 内 `afterAll`：调 `__cov_dump()`、读暴露的 wasm 内存、按 minicov module_signature 命名写 profraw（验证 `dump放setupFiles` + `profraw带签名合并`：跑测试后插桩 target dir 下出现 profraw）
-- [ ] 3.2 `typescript/vitest.wasm.config.ts` 加 `setupFiles`，插桩构建走独立 target dir（验证：生产 `build:wasm` 的 target-wasm 不受影响）
-- [ ] 3.3 `scripts/versions/lib/repository.py` 的 SKIP_DIRS 加插桩 target dir 名（验证 `插桩target加白名单`：插桩链产 profraw 不被 `clean_stray_profraw.py` 误判漏网删除）
+- [x] 3.1 新增 setup 文件，注册 worker 内 `afterAll`：调 `__cov_dump()`、读暴露的 wasm 内存、按 minicov module_signature 命名写 profraw（验证 `dump放setupFiles` + `profraw带签名合并`：跑测试后插桩 target dir 下出现 profraw）
+- [x] 3.2 `typescript/vitest.wasm.config.ts` 加 `setupFiles`，插桩构建走独立 target dir（验证：生产 `build:wasm` 的 target-wasm 不受影响）
+- [x] 3.3 `scripts/versions/lib/repository.py` 的 SKIP_DIRS 加插桩 target dir 名（验证 `插桩target加白名单`：插桩链产 profraw 不被 `clean_stray_profraw.py` 误判漏网删除）
 
 ## 4. test_ts.sh 覆盖率链
 
@@ -29,7 +29,7 @@
 
 - [ ] 5.1 `rust-toolchain.toml` 的 `components` 加 `llvm-tools`（验证 `llvm-tools组件取工具`：rustup 激活钉版工具链后 `$(rustc --print sysroot)` 下 llvm-tools bin 目录含 `llc`/`llvm-profdata`/`llvm-cov`，本地与 CI 一致）
 - [ ] 5.2 新增 `scripts/install_wasi_sdk.sh`（仿 install_binaryen.sh：查 wasi-sdk 最新 release、下 arm64/x86_64 tarball 解压到 `~/.local/opt/wasi-sdk`、无 sudo）（验证 `wasi-sdk编C` + `编译阅卷工具分离`：脚本跑通后 `<dir>/bin/clang --target=wasm32-unknown-unknown` 可编 freestanding C）
-- [ ] 5.2b 新增 `scripts/install_wasm_bindgen_cli.sh`（仿 install_binaryen.sh：优先下 GitHub release 预编译 tarball 解压到 `~/.local`，平台无包时回退 `cargo install wasm-bindgen-cli --version <对齐 crate>`、无 sudo）（验证 `wasm-bindgen-cli生成胶水` + `wasm-bindgen-cli预编译优先`：脚本跑通后 `wasm-bindgen --version` 与 wasm-bindgen crate 对齐，可对插桩 `.wasm` 生成 `--target web` 胶水）
+- [x] 5.2b 新增 `scripts/install_wasm_bindgen_cli.sh`（仿 install_binaryen.sh：优先下 GitHub release 预编译 tarball 解压到 `~/.local`，平台无包时回退 `cargo install wasm-bindgen-cli --version <对齐 crate>`、无 sudo）（验证 `wasm-bindgen-cli生成胶水` + `wasm-bindgen-cli预编译优先`：脚本跑通后 `wasm-bindgen --version` 与 wasm-bindgen crate 对齐，可对插桩 `.wasm` 生成 `--target web` 胶水）
 - [ ] 5.3 `.github/workflows/ci.yml` node job 加 `scripts/install_wasi_sdk.sh` 与 `scripts/install_wasm_bindgen_cli.sh` 安装步（验证 `全矩阵采集` + `wasi-sdk编C`：5 格均装 wasi-sdk clang、均产 coverage-wasm.json）
 - [ ] 5.4 `scripts/versions/check_outdated.py` section 3 加 wasi-sdk 与 wasm-bindgen-cli 探测，追最新判 LAG（验证 `wasi-sdk编C` + `wasm-bindgen-cli预编译优先`：`pnpm check:outdated` 对落后两者报 LAG）
 
