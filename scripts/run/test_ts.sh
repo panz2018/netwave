@@ -28,28 +28,10 @@ if ! rustup target list --installed 2>/dev/null | grep -q '^wasm32-unknown-unkno
   exit 1
 fi
 
-# Wasm rust coverage toolchain: llc/llvm-profdata/llvm-cov come from the
-# llvm-tools rustup component (pinned in rust-toolchain.toml), resolved under
-# the active sysroot so local and CI share one path. wasi-sdk clang compiles
-# the wasm32 C runtime minicov needs; wasm-bindgen-cli regenerates web glue
-# from the instrumented cdylib (wasm-pack cannot build instrumented output).
-# All three are probed, never auto-installed — CI has its own install steps.
-LLVM_BIN="$(rustc --print sysroot)/lib/rustlib/$(rustc -vV | sed -n 's/^host: //p')/bin"
-for tool in llc llvm-profdata llvm-cov; do
-  if [ ! -x "$LLVM_BIN/$tool" ]; then
-    echo "$tool not found under $LLVM_BIN — add it with: rustup component add llvm-tools" >&2
-    exit 1
-  fi
-done
-WASI_SDK_CLANG="$HOME/.local/opt/wasi-sdk/bin/clang"
-if [ ! -x "$WASI_SDK_CLANG" ]; then
-  echo "wasi-sdk clang not found at $WASI_SDK_CLANG — install it with: bash scripts/install_wasi_sdk.sh" >&2
-  exit 1
-fi
-if ! command -v wasm-bindgen >/dev/null 2>&1; then
-  echo "wasm-bindgen not found — install it with: bash scripts/install_wasm_bindgen_cli.sh" >&2
-  exit 1
-fi
+# Wasm rust coverage moved to the browser job (scripts/run/test_wasm.sh): the
+# fetch backends resolve only against a real browser global scope, so the node
+# harness (fakeSelf) can never reach those arms. This entry keeps the native
+# coverage chain + type gates + the node-driven wasm suite (TS-only v8).
 
 python3 scripts/run/clean_stray_profraw.py
 
@@ -91,50 +73,6 @@ cargo llvm-cov report --target "$(rustc -vV | sed -n 's/^host: //p')" \
   --codecov --output-path coverage/coverage-native.json \
   --ignore-filename-regex '[\\/](core|python)[\\/]'
 python3 scripts/coverage_gate.py coverage/coverage-native.json 100
-
-# Wasm rust coverage chain: measures core's browser-gated code under the wasm
-# target. wasm-pack cannot build instrumented output (release+LTO collides with
-# the __covrec_* symbols), so this uses cargo build (debug) + wasm-bindgen-cli
-# to regenerate the web glue the worker loads. The instrumented build, glue,
-# profraw dump, merged profdata and llc host objects all live under
-# typescript/target-wasm-cov (gitignored, SKIP_DIRS-whitelisted) so the stray
-# drain never deletes them and they are never committed. The grading signal is
-# the lcov report (LL-093: a broken chain shows 0 hits, not a missing profraw).
-# Floor 100: unmet lines are listed for human triage (task 6.2), never silently
-# exempted. The ignore regex drops third-party crates so the denominator is
-# netwave's own core/src only.
-WASM_COV_DIR="$PWD/typescript/target-wasm-cov"
-mkdir -p "$WASM_COV_DIR/profraw" coverage
-CC="$WASI_SDK_CLANG" RUSTC_BOOTSTRAP=1 \
-  CFLAGS_wasm32_unknown_unknown="--target=wasm32-unknown-unknown --sysroot=" \
-  RUSTFLAGS="-Cinstrument-coverage -Zno-profiler-runtime --emit=llvm-ir" \
-  CARGO_TARGET_DIR="$WASM_COV_DIR" \
-  cargo build --manifest-path typescript/wasm/Cargo.toml \
-    --target wasm32-unknown-unknown --features coverage
-wasm-bindgen --target web --out-dir "$PWD/typescript/dist/wasm-cov" \
-  "$WASM_COV_DIR/wasm32-unknown-unknown/debug/netwave_wasm.wasm"
-# v8 coverage is disabled here: the instrumented dispatch branch skips the
-# production default-import line, so v8's 100% threshold is enforced by the
-# plain test:wasm below instead. This run only drives the wasm to dump profraw.
-NETWAVE_WASM_DIR="$PWD/typescript/dist/wasm-cov" \
-  NETWAVE_COV_OUT="$WASM_COV_DIR/profraw" \
-  pnpm -C typescript test:wasm --coverage.enabled=false
-"$LLVM_BIN/llvm-profdata" merge -sparse "$WASM_COV_DIR"/profraw/*.profraw \
-  -o "$WASM_COV_DIR/merged.profdata"
-# llc needs the short host arch (aarch64/x86_64), not the full triple. The
-# instrumented core CGU .ll is found by its source mapping, not its hash name.
-HOST_ARCH="$(rustc -vV | sed -n 's/^host: //p' | cut -d- -f1)"
-i=0
-while IFS= read -r ll; do
-  "$LLVM_BIN/llc" --march="$HOST_ARCH" --filetype=obj \
-    -o "$WASM_COV_DIR/cgu$i.o" "$ll"
-  i=$((i + 1))
-done < <(grep -rlE '"core/src/(frequency|resources|touchstone)\.rs"' \
-  "$WASM_COV_DIR" --include='*.ll')
-"$LLVM_BIN/llvm-cov" export --format=lcov "$WASM_COV_DIR"/cgu*.o \
-  -instr-profile="$WASM_COV_DIR/merged.profdata" \
-  --ignore-filename-regex='\.cargo/registry' > coverage/coverage-wasm.lcov
-python3 scripts/coverage_gate.py coverage/coverage-wasm.lcov 100
 
 # Type gates after both glues exist: the shells import the generated bindings from
 # dist/, so tsc needs napi + wasm glue present. Runs unconditionally (no node
