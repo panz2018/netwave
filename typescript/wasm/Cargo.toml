@@ -16,3 +16,13 @@ crate-type = ["cdylib"]
 netwave = { path = "../../core", features = ["browser", "browser-http"] }
 js-sys = { version = "0.3", features = ["std"] }
 wasm-bindgen = "0.2"
+# LLVM profiling runtime for the wasm coverage chain (no_std, self-contained).
+# Pulled in only by the `coverage` feature, so production builds exclude it.
+minicov = { version = "0.3", optional = true }
+
+[features]
+default = []
+# Instrumented build for the wasm rust coverage chain: links minicov and
+# exports the dump entry points. Off by default — production `build:wasm`
+# never compiles it.
+coverage = ["dep:minicov"]

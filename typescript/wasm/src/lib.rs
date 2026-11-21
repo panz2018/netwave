@@ -11,3 +11,42 @@
 // surface, and an unreferenced crate is not linked into the cdylib. This
 // single line is the glue crate's whole job.
 extern crate netwave;
+
+// Coverage dump entry points for the wasm rust coverage chain, compiled only
+// under the `coverage` feature so production `build:wasm` exports none of
+// them. minicov keeps the counters in this instance's linear memory and has
+// no atexit, so the test harness calls `__cov_dump` from the worker context,
+// then reads the captured profraw back out via `__cov_ptr`/`__cov_len`.
+#[cfg(feature = "coverage")]
+mod __cov {
+    use std::cell::UnsafeCell;
+
+    struct Buf(UnsafeCell<Vec<u8>>);
+    // Single-threaded wasm instance: the buffer is only ever touched from one
+    // worker, so sharing it across threads is sound here.
+    unsafe impl Sync for Buf {}
+    static BUF: Buf = Buf(UnsafeCell::new(Vec::new()));
+
+    /// Capture the current coverage counters into the static buffer.
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    pub fn __cov_dump() {
+        unsafe {
+            let b = &mut *BUF.0.get();
+            b.clear();
+            minicov::capture_coverage(b).unwrap();
+        }
+    }
+
+    /// Pointer to the captured profraw bytes in linear memory (valid after
+    /// `__cov_dump`).
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    pub fn __cov_ptr() -> *const u8 {
+        unsafe { (*BUF.0.get()).as_ptr() }
+    }
+
+    /// Length in bytes of the captured profraw (valid after `__cov_dump`).
+    #[wasm_bindgen::prelude::wasm_bindgen]
+    pub fn __cov_len() -> usize {
+        unsafe { (*BUF.0.get()).len() }
+    }
+}
