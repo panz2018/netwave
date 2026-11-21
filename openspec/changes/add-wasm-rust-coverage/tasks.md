@@ -25,8 +25,10 @@
 
 ## 5. CI 与工具链
 
-- [ ] 5.1 `.github/workflows/ci.yml` node job 加 `KyleMayes/install-llvm-action@v2` 安装步（验证 `install-llvm-action` + `全矩阵采集`：5 格均装 clang、均产 coverage-wasm.json；assets.json 缺版本则用 force-url）
+- [ ] 5.1 `.github/workflows/ci.yml` node job 加 `KyleMayes/install-llvm-action` 安装步（验证 `install-llvm-action` + `全矩阵采集`：5 格均装 clang、均产 coverage-wasm.json；assets.json 缺版本则用 force-url）
 - [ ] 5.2 `scripts/versions/check_outdated.py` section 3 加 clang 探测，追最新判 LAG（验证 `clang追最新`：`pnpm check:outdated` 对落后 clang 报 LAG）
+- [ ] 5.3 确认 ci.yml 新增的 `install-llvm-action` 引用被 check:outdated section 4 自动纳入过期检测（验证 `CI工具版本纳入体检`：实证 `lib/repository.py` `action_refs` 扫 ci.yml `uses:`，无需新增代码；`pnpm check:outdated` section 4 列出该 action）
+- [ ] 5.4 clang 本地安装/升级走 apt（用户 sudo）：agent 报 LAG 时告知用户并给出确切 apt 命令，MUST NOT 下 tarball、MUST NOT 跑 sudo（验证 `clang本地apt升级`）
 
 ## 6. spec 同步与豁免清单
 
@@ -39,6 +41,6 @@
 - [ ] 7.2 删除 `Plan/覆盖率统一-2026-11-12.md` 中本 change 已定案的 S5 章节，只留未执行项，删后跑 `pnpm check:md`（锚点 `Plan/`）
 - [ ] 7.3 扫 `openspec/specs/` 全目录产出更新/新增/退役三态时效结论留痕本文件（锚点 `三态时效`）
 - [ ] 7.4 按 governance spec「元规则 review 三轴」（Standards/Spec/Lessons）对照本 change 工件审实现 diff，diff 逐文件对上 tasks.md，硬伤清零（锚点 `三轴`）
-- [ ] 7.5 对触碰文件全文只读体检（health-check spec apply 态：语义考古维 + 四维，发现附文件+行号+证据落 Plan/ 等点名，不阻塞；全豁免记「已查，无适用文件」）（锚点 `体检`）
+- [ ] 7.5 对触碰文件全文只读体检（health-check spec apply 态：语义考古维 + 四维，发现附文件+行号+证据落 Plan/ 等点名，不阻塞；全豁免记「已查，无适用文件」）（锚点 `体检`）。注：archive 态体检一次性跳过（2026-11-20，裁决 `archive体检跳过`），apply 态本项照常执行
 - [ ] 7.6 apply 中途拍板的决定当场追加进 proposal.md `## 已定裁决` 段并补对应任务行，收尾复查每关键词载体任务已打勾（锚点 `迟到追加`）
-- [ ] 7.7 跑 `pnpm check:outdated` 并按 dependency-upgrade spec「apply 末尾体检与升级预授权」消化所报 LAG（含 clang 等全局 CLI/直装工具的机器级升级），复跑至退出码 0（SUMMARY 归零）才算完成（锚点 `check:outdated`）
+- [ ] 7.7 跑 `pnpm check:outdated` 并按 dependency-upgrade spec「apply 末尾体检与升级预授权」消化所报 LAG（clang 例外：本地 clang LAG 由用户 apt 升级，agent 只报命令不下 tarball；其余全局 CLI/直装工具按预授权机器级升级），复跑至退出码 0（SUMMARY 归零）才算完成（锚点 `check:outdated`）

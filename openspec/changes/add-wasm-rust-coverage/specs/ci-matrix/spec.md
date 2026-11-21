@@ -40,9 +40,10 @@ typescript/wasm crate 的 rust 行覆盖率 MUST 以 minicov runtime +
 `build:wasm` 产物），dump 导出 MUST 以 `#[cfg(feature = "coverage")]` 门控
 （生产产物零污染），profraw MUST 由 worker 上下文内的钩子调 dump 倒出
 （globalSetup 主进程读不到 worker wasm 内存），profraw 文件名 MUST 带 minicov
-module_signature 防多 worker 覆盖，`llvm-profdata merge -sparse *.profraw` 合并后
-以 clang 把 `--emit=llvm-ir` 产出的 `.ll` 编成宿主对象文件再 `llvm-cov report
---codecov`（llvm-cov 读不了 wasm 符号）。报告 MUST 度量 core browser-gated 代码，
+module_signature 防多 worker 覆盖，合并 profraw MUST 用 `llvm-profdata merge`
+加 `-sparse`，合并后以 clang 把 `.ll`（由 `--emit=llvm-ir` 产出）编成宿主对象文件，
+再调 `llvm-cov report` 加 `--codecov`（llvm-cov 读不了 wasm 符号）。报告 MUST
+度量 core browser-gated 代码，
 以 `--ignore-filename-regex` 剔除 python/native 路径后独立阅卷，落
 `coverage/coverage-wasm.json` 并以 `scripts/coverage_gate.py ... 100` 阅卷。
 wasm rust 覆盖率链前后 MUST 各执行 `clean_stray_profraw.py` 与
@@ -106,7 +107,7 @@ wasm rust 覆盖率链前后 MUST 各执行 `clean_stray_profraw.py` 与
 
 ### Requirement: clang 工具随 node job 安装并纳入新鲜度检查
 
-wasm rust 覆盖率链所需的 clang MUST 由 `KyleMayes/install-llvm-action@v2`
+wasm rust 覆盖率链所需的 clang MUST 由 `KyleMayes/install-llvm-action`
 在 CI node job 安装（追最新不缓存，覆盖四平台）。`scripts/run/test_ts.sh`
 MUST 探测 `command -v clang`，缺失时打印安装指引并以非零退出，MUST NOT
 自动安装。clang MUST 纳入 `scripts/versions/check_outdated.py` 的 global-

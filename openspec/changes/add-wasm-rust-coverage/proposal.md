@@ -8,7 +8,7 @@
 
 - 新增 wasm rust 行覆盖率链：minicov runtime + `RUSTC_BOOTSTRAP=1` 解锁 `-Zno-profiler-runtime`，在钉死 stable 上编插桩 wasm，vitest node 驱动跑测试后由 worker 内 `afterAll` 钩子调 `__cov_dump()` 倒 profraw，`llvm-profdata merge` + clang 把 `.ll` 编成宿主 `.o` + `llvm-cov report --codecov` 出报告。
 - 度量对象为 core browser-gated 代码，独立出 `coverage/coverage-wasm.json` + 地板 100（结构性不可达须先列清单人工确认才可豁免，否则补单测）。
-- 新增工具 clang（`KyleMayes/install-llvm-action@v2`，追最新），纳入 CI 安装、`test_ts.sh` 探测、`check:outdated` section 3。
+- 新增工具 clang（`KyleMayes/install-llvm-action`，追最新），纳入 CI 安装、`test_ts.sh` 探测、`check:outdated` section 3。
 - ci-matrix spec「暂不采集」那句改为「已采集」并补对应 Scenario。
 - 浏览器侧维持 TS-only v8 覆盖率不变；`typescript/wasm` 生产产物零污染（dump 导出 feature 门控、插桩走独立 target dir）。
 
@@ -41,11 +41,11 @@
 
 ## Prior art
 
-- wasm-bindgen 官方覆盖率方案（minicov + `-Zno-profiler-runtime` + profraw 倒出）：https://wasm-bindgen.github.io/wasm-bindgen/wasm-bindgen-test/coverage.html
-- NEAR/Hacken wasmcov（宿主侧调 `capture_coverage` 倒 profraw + `.ll`→`.o` 阅卷）：https://github.com/hknio/wasmcov
-- minicov（no_std LLVM profiling runtime）：https://github.com/Amanieu/minicov
+- wasm-bindgen 官方覆盖率方案（minicov + `-Zno-profiler-runtime` + profraw 倒出）：<https://wasm-bindgen.github.io/wasm-bindgen/wasm-bindgen-test/coverage.html>
+- NEAR/Hacken wasmcov（宿主侧调 `capture_coverage` 倒 profraw + `.ll`→`.o` 阅卷）：<https://github.com/hknio/wasmcov>
+- minicov（no_std LLVM profiling runtime）：<https://github.com/Amanieu/minicov>
 - 仓库内 native glue 外部驱动覆盖率链（show-env + vitest + report）：`scripts/run/test_ts.sh`、账本 LL-092
-- clang 跨平台安装 action：https://github.com/KyleMayes/install-llvm-action
+- clang 跨平台安装 action：<https://github.com/KyleMayes/install-llvm-action>
 
 ## 专家增补
 
@@ -58,7 +58,7 @@
 - `RUSTC_BOOTSTRAP放行`：用 `RUSTC_BOOTSTRAP=1` 解锁 nightly-only 编译 flag `-Zno-profiler-runtime`，判定不违反 LL-020（LL-020 禁的是源码 nightly-only 属性，本处解锁编译 flag、不写 nightly feature）。
 - `全矩阵采集`：全部 5 个 node matrix cell 都跑 wasm rust 覆盖率，不分平台门控。
 - `仅node侧`：只做 node 驱动 wasm 套件的 rust 覆盖率，浏览器侧维持 TS-only。
-- `install-llvm-action`：clang 用 `KyleMayes/install-llvm-action@v2` 一 step 跨四平台安装，追最新不缓存；assets.json 缺版本则用 `force-url`。
+- `install-llvm-action`：clang 用 `KyleMayes/install-llvm-action` 一 step 跨四平台安装，追最新不缓存；assets.json 缺版本则用 `force-url`。
 - `手动llvm链`：报告走手动 `llvm-profdata merge` + clang `.ll`→`.o` + `llvm-cov report --codecov`，不用 cargo-llvm-cov 包 wasm。
 - `度量core-browser`：wasm 报告度量 core browser-gated 代码，`--ignore-filename-regex` 剔 python/native。
 - `clang追最新`：clang 纳入 `check:outdated` section 3，追最新判 LAG（同 binaryen/wasm-pack），不钉 major。
@@ -68,3 +68,11 @@
 - `独立target加feature门控`：插桩走独立 target dir，`__cov_dump` 用 `#[cfg(feature = "coverage")]` 门控，生产产物零污染。
 - `profraw带签名合并`：profraw 按 minicov module_signature 命名防覆盖，`llvm-profdata merge -sparse *.profraw` 合并。
 - `前后双清理`：wasm 覆盖率链前后各加 `clean_stray_profraw.py` + `cargo llvm-cov clean --workspace`。
+- `CI工具版本纳入体检`：ci.yml 新增的 `KyleMayes/install-llvm-action` 安装步由
+  `check_outdated.py` section 4（自动扫 ci.yml 全部 `uses:` 引用）纳入过期检测，
+  action 引用落后即报 LAG——零额外代码（实证 `lib/repository.py` `action_refs`）。
+- `clang本地apt升级`：本地 clang 安装/升级走 apt（用户有 sudo），agent MUST NOT
+  下载近 2GB tarball、MUST NOT 跑 sudo；check:outdated 报 clang LAG 时 agent 告知
+  用户并给出确切 apt 命令，由用户升级。
+- `archive体检跳过`：本 change 归档阶段（archive 态）的 health-check 只读体检
+  一次性跳过（2026-11-20），apply 态体检照常执行。

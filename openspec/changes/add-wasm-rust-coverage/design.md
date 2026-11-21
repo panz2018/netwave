@@ -15,10 +15,12 @@ nightly-only；`test_ts.sh` 是平台无关单一真相源，5 个 node matrix c
 ## Goals / Non-Goals
 
 **Goals:**
+
 - 在 stable + vitest node 驱动下采集 core browser-gated rust 行覆盖率，独立地板 100。
 - 生产 wasm 产物零污染；与 native 链同处 `test_ts.sh` 一条进程内（环境变量不跨进程）。
 
 **Non-Goals:**
+
 - 浏览器 Worker 侧 rust 覆盖率（另立 spike）。
 - 不引入 nightly 工具链或源码 nightly feature。
 
@@ -51,18 +53,30 @@ setupFiles 注册的 `afterAll`（worker 上下文）。备选：globalSetup（�
 ### D4：手动 llvm 链，不用 cargo-llvm-cov 包 wasm
 
 cargo-llvm-cov 不处理 wasm 符号问题（实证：其 README 仅指向 wasm-bindgen guide，
-object_files 收集器不认 `.wasm`、不编 `.ll`）。故手动：`llvm-profdata merge
--sparse *.profraw` → clang 把 `--emit=llvm-ir` 的 `.ll` 编成宿主 `.o` →
-`llvm-cov report --codecov`。spike 已跑通此链。备选：cargo-llvm-cov show-env/report
-包一层（核心步骤仍须手动喂 `.o`，无收益，否）。
+object_files 收集器不认 `.wasm`、不编 `.ll`）。故手动三步：先
+`llvm-profdata merge -sparse` 合并 profraw，再用 clang 把 `.ll`（由
+`--emit=llvm-ir` 产出）编成宿主 `.o`，最后 `llvm-cov report --codecov`。spike
+已跑通此链。备选：cargo-llvm-cov show-env/report 包一层（核心步骤仍须手动喂
+`.o`，无收益，否）。
 
-### D5：clang 用 install-llvm-action 追最新，纳入 check:outdated section 3
+### D5：clang CI 用 install-llvm-action、本地用 apt，版本纳入 check:outdated
 
-runner 自带 clang 全 < 23（ubuntu=18/macos=Apple17/windows=20），须显式装。
-`KyleMayes/install-llvm-action@v2` 一 step 跨四平台，追最新不缓存（action README
-称缓存通常比直下慢）。纳入 `check_outdated.py` section 3（同 binaryen/wasm-pack
-的非钉版工具组），追最新判 LAG。备选：自写 install_clang.sh（action 已覆盖，
-冗余，否）；钉 major（过度设计，新版 clang 向后兼容旧 IR，追最新更安全，否）。
+CI：runner 自带 clang 全 < 23（ubuntu=18/macos=Apple17/windows=20），须显式装。
+`KyleMayes/install-llvm-action` 一 step 跨四平台，追最新不缓存（action README
+称缓存通常比直下慢）。
+
+版本过期检测两处，均零额外代码：本地 clang 二进制版本进 `check_outdated.py`
+section 3（同 binaryen/wasm-pack 的非钉版工具组，探 `clang --version` vs 上游
+最新）；ci.yml 里新增的 `install-llvm-action` 引用进 section 4（实证
+`lib/repository.py` `action_refs` 自动扫 ci.yml 全部 `uses:`，落后即报 LAG）。
+check:outdated 本身 MUST NOT 进 CI（dependency-upgrade spec：结果随上游每日变
+且需联网）。
+
+本地安装/升级：用户有 sudo，走 apt 装最新 clang（如 `apt install llvm`），
+agent MUST NOT 下载近 2GB LLVM tarball、MUST NOT 跑 sudo。check:outdated 报
+clang LAG 时 agent 告知用户并给出确切 apt 命令，由用户执行升级。备选：agent
+自动重下 tarball 升级（spike 手动做法，但近 2GB 且本机 apt 可用，否）；钉
+major（过度设计，新版 clang 向后兼容旧 IR，追最新更安全，否）。
 
 ### D6：profraw 带 module_signature 命名 + merge
 
