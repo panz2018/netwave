@@ -8,7 +8,8 @@
 
 - 新增 wasm rust 行覆盖率链：minicov runtime + `RUSTC_BOOTSTRAP=1` 解锁 `-Zno-profiler-runtime`，在钉死 stable 上编插桩 wasm，vitest node 驱动跑测试后由 worker 内 `afterAll` 钩子调 `__cov_dump()` 倒 profraw，`llvm-profdata merge` + `llc` 把 `.ll` 编成宿主 `.o` + `llvm-cov report --codecov` 出报告。
 - 度量对象为 core browser-gated 代码，独立出 `coverage/coverage-wasm.json` + 地板 100（结构性不可达须先列清单人工确认才可豁免，否则补单测）。
-- 阅卷三件套（`llc`/`llvm-profdata`/`llvm-cov`）取自钉版 rust 工具链自带的 `llvm-tools` 组件（写进 `rust-toolchain.toml` 的 `components`，rustup 本地与 CI 激活工具链时自动装），零新增外部工具、零 sudo、版本天然与 rustc 的 LLVM 一致。
+- 编译期 C 编译器：minicov `build.rs` 硬编码用 clang 编其 wasm32 C runtime（gcc 无 wasm32 后端），故需一个能编 wasm32 的 clang——用 **wasi-sdk**（自带标准 clang，192MB tarball 解压到 `~/.local`，零 sudo），新增 `scripts/install_clang.sh`（仿 install_binaryen.sh）。
+- 阅卷三件套（`llc`/`llvm-profdata`/`llvm-cov`）取自钉版 rust 工具链自带的 `llvm-tools` 组件（写进 `rust-toolchain.toml` 的 `components`，rustup 本地与 CI 激活工具链时自动装），零额外下载、零 sudo、版本天然与 rustc 的 LLVM 一致。
 - ci-matrix spec「暂不采集」那句改为「已采集」并补对应 Scenario。
 - 浏览器侧维持 TS-only v8 覆盖率不变；`typescript/wasm` 生产产物零污染（dump 导出 feature 门控、插桩走独立 target dir）。
 
@@ -20,14 +21,16 @@
 
 ### Modified Capabilities
 
-- `ci-matrix`: 覆盖率条款中「typescript/wasm crate 的 rust 行覆盖率暂不采集」改为以 minicov + `RUSTC_BOOTSTRAP` 外部驱动采集，新增 wasm rust 覆盖率链、阅卷工具取自 llvm-tools 组件、独立地板与豁免清单的 Requirement 与 Scenario。
+- `ci-matrix`: 覆盖率条款中「typescript/wasm crate 的 rust 行覆盖率暂不采集」改为以 minicov + `RUSTC_BOOTSTRAP` 外部驱动采集，新增 wasm rust 覆盖率链、编译期 clang 取自 wasi-sdk、阅卷工具取自 llvm-tools 组件、独立地板与豁免清单的 Requirement 与 Scenario。
 
 ## Impact
 
 - 代码：`typescript/wasm/Cargo.toml`（minicov 依赖 + `coverage` feature）、`typescript/wasm/src/lib.rs`（`#[cfg(feature = "coverage")]` 门控的 `__cov_dump`/`__cov_ptr`/`__cov_len` 导出）。
-- 测试脚本：`scripts/run/test_ts.sh`（新增 wasm 插桩构建 + dump + merge + report + gate 段，阅卷工具从 `rustc --print sysroot` 下的 llvm-tools bin 目录取，前后各加 `clean_stray_profraw.py` 与 `cargo llvm-cov clean --workspace`）。
+- 测试脚本：`scripts/run/test_ts.sh`（新增 wasm 插桩构建 + dump + merge + report + gate 段，编译期 CC 指向 wasi-sdk clang、阅卷工具从 `rustc --print sysroot` 下的 llvm-tools bin 目录取，前后各加 `clean_stray_profraw.py` 与 `cargo llvm-cov clean --workspace`）。
 - vitest：`typescript/vitest.wasm.config.ts`（加 `setupFiles`）、新增 setup 文件注册 worker 内 `afterAll` dump。
-- 工具链：`rust-toolchain.toml` 的 `components` 加 `llvm-tools`（rustup 自动装，本地与 CI 一致）。
+- 工具链：`rust-toolchain.toml` 的 `components` 加 `llvm-tools`（rustup 自动装，本地与 CI 一致）；新增 `scripts/install_clang.sh`（下 wasi-sdk 到 `~/.local/opt/wasi-sdk`，仿 install_binaryen.sh）。
+- CI：node job 加 `scripts/install_clang.sh` 安装步（wasi-sdk clang）。
+- 新鲜度：`scripts/versions/check_outdated.py` section 3 加 wasi-sdk clang 探测（同 binaryen/wasm-pack）。
 - spec：`openspec/specs/ci-matrix/spec.md`。
 - 受影响铁律：LL-092（外部驱动胶水覆盖率三坑）、LL-093（胶水报告须验命中）、LL-020（nightly-only 禁用——本 change 经裁决认定解锁编译 flag 不属此列）、LL-034（波及面同步）。
 
@@ -45,12 +48,15 @@
 - minicov（no_std LLVM profiling runtime）：<https://github.com/Amanieu/minicov>
 - 仓库内 native glue 外部驱动覆盖率链（show-env + vitest + report）：`scripts/run/test_ts.sh`、账本 LL-092
 - cargo-llvm-cov 阅卷即用 rustup `llvm-tools` 组件的 `llvm-cov`/`llvm-profdata`（非独立 clang），本 change 沿用同一取工具方式
+- wasi-sdk（自带标准 clang + wasm sysroot，解压即用无 sudo）：<https://github.com/WebAssembly/wasi-sdk>
+- 仓库内同款 tarball 直装脚本先例：`scripts/install_binaryen.sh`、`install_wasm_pack.sh`、`install_cargo_llvm_cov.sh`
 
 ## 专家增补
 
-- 前置验证：正式落地前先在 /tmp 用真 `typescript/wasm`（wasm-bindgen 胶水 + minicov `coverage` feature）+ vitest worker 跑最小 spike，确认 `__cov_dump` 导出与 wasm-bindgen 胶水共存可加载、worker 内 dump 成立——spike 用的是手写 toy crate，未覆盖此点。
+- 前置验证（2026-11-20 已跑通）：在 /tmp 用真 `typescript/wasm`（wasm-bindgen 胶水 + core browser-gated + minicov `coverage` feature）以 wasi-sdk clang 编插桩 wasm、node 加载调 dump 倒出 187KB profraw、merge+llc+llvm-cov 出含 `core/src/{frequency,resources,touchstone}.rs` 的报告——编译/加载/dump/阅卷四段均通。
 - profraw 命名带 minicov `module_signature`（`minicov::module_signature()`）防多 worker 覆盖，落 `scripts/run/test_ts.sh`。
-- 阅卷工具版本零风险：`llc`/`llvm-cov`/`llvm-profdata` 与插桩用的 rustc 同属钉版工具链的同一份 LLVM，profraw/IR 格式天然匹配，无外部 clang 与 rustc major 错配之虞。
+- 编译期 clang 与 rustc LLVM major 对齐：wasi-sdk 34 自带 clang 23.1，与钉版 rustc（LLVM 23）同 major；插桩 IR/profraw 由 rustc 产、阅卷由 llvm-tools（同份 LLVM）做，wasi-sdk clang 仅编 minicov 的 freestanding C runtime（`-nostdlibinc`），不参与 IR/profraw 格式，错配风险低。
+- `zig cc` 实测不可用：zig 内置 clang 但给 wasm32 对象打非标准 ELF machine（`e_machine` 0xb7≠`EM_WASM` 247），`rust-lld` 无视其对象致符号未定义，故排除零下载的 zig 路线。
 
 ## 已定裁决
 
@@ -59,7 +65,8 @@
 - `仅node侧`：只做 node 驱动 wasm 套件的 rust 覆盖率，浏览器侧维持 TS-only。
 - `手动llvm链`：报告走手动 `llvm-profdata merge` + `llc` `.ll`→`.o` + `llvm-cov report --codecov`，不用 cargo-llvm-cov 包 wasm。
 - `度量core-browser`：wasm 报告度量 core browser-gated 代码，`--ignore-filename-regex` 剔 python/native。
-- `llvm-tools组件取工具`：阅卷三件套取自钉版 rust 工具链的 `llvm-tools` 组件（写进 `rust-toolchain.toml` 的 `components`，rustup 自动装），不引入 clang、不需 sudo、不进 check:outdated（版本随 `rust-toolchain.toml` 钉版走，已被工具链新鲜度覆盖）。
+- `llvm-tools组件取工具`：阅卷三件套取自钉版 rust 工具链的 `llvm-tools` 组件（写进 `rust-toolchain.toml` 的 `components`，rustup 自动装），阅卷不需 sudo、不进 check:outdated（版本随 `rust-toolchain.toml` 钉版走，已被工具链新鲜度覆盖）。
+- `wasi-sdk编C`：编译期 minicov 的 wasm32 C runtime 用 wasi-sdk 自带的标准 clang（`scripts/install_clang.sh` 下 192MB tarball 到 `~/.local/opt/wasi-sdk`，无 sudo），纳入 check:outdated section 3（同 binaryen/wasm-pack）；gcc 无 wasm32 后端、zig cc 对象 ELF machine 非标准均实测排除。
 - `地板100先列清单`：wasm rust 覆盖率地板 100，豁免前必须先列「真不可达」清单人工确认，否则补单元测试。
 - `spec同步改`：ci-matrix spec「暂不采集」那句必须改为已采集并补 Scenario（LL-034）。
 - `dump放setupFiles`：dump 钩子放 vitest `setupFiles` 的 worker 内 `afterAll`，不放 globalSetup（主进程读不到 worker wasm 内存）。
@@ -68,8 +75,9 @@
 - `前后双清理`：wasm 覆盖率链前后各加 `clean_stray_profraw.py` + `cargo llvm-cov clean --workspace`。
 - `archive体检跳过`：本 change 归档阶段（archive 态）的 health-check 只读体检
   一次性跳过（2026-11-20），apply 态体检照常执行。
-- `弃clang改llvm-tools`（2026-11-20 复核推翻 clang 方案）：实证 `install-llvm-action`
-  源码仅解压 tarball 不用 sudo、且 rustup `llvm-tools` 组件已含 `llc`/`llvm-cov`/
-  `llvm-profdata`（本机实测 `.ll`→宿主 `.o` 通过），故弃 clang/apt/install-llvm-action/
-  check:outdated clang 探针整条线，改用工具链自带 llvm-tools——无 sudo、无人工升级、
-  不新增 check:outdated 探针，dependency-upgrade spec 无需改动。
+- `编译阅卷工具分离`（2026-11-20 实测定案）：编译期需 wasm32-capable clang（minicov
+  build.rs 硬编码 `cfg.compiler("clang")`，gcc 无 wasm32 后端）→ wasi-sdk（192MB
+  tarball、无 sudo、标准 clang）；阅卷期用 llvm-tools 组件（rustup、零下载、与 rustc
+  LLVM 精确匹配）。两者均无 sudo，dependency-upgrade spec 无需改动（wasi-sdk 作直装
+  工具入 check:outdated section 3，llvm-tools 随钉版走）。旧「纯 llvm-tools 无 clang」
+  结论错在漏了 minicov build.rs 编 C runtime 这步，已推翻。
