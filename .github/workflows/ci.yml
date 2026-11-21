@@ -242,12 +242,26 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           rustup target add wasm32-unknown-unknown
+          # llvm-tools (llc/llvm-profdata/llvm-cov) for the wasm rust coverage
+          # chain's grading step. rust-toolchain.toml lists it, but dtolnay
+          # pre-installed @stable so the pinned toolchain is auto-installed bare
+          # (mirrors the lint job's "components for the pinned toolchain" step).
+          rustup component add llvm-tools
           bash scripts/install_wasm_pack.sh
           bash scripts/install_binaryen.sh
       - name: install cargo-llvm-cov (latest official binary)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/install_cargo_llvm_cov.sh
+      - name: install wasm rust coverage toolchain (wasi-sdk clang + wasm-bindgen)
+        # wasi-sdk clang compiles minicov's wasm32 C runtime; wasm-bindgen-cli
+        # turns the instrumented cdylib into the web glue the worker loads
+        # (wasm-pack cannot build instrumented output). Both no sudo.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash scripts/install_wasi_sdk.sh
+          bash scripts/install_wasm_bindgen_cli.sh
       - name: typescript test entry (wasm build + native glue coverage + typecheck
           + dts any + wasm suite + profraw drain)
         # Command details live once in scripts/run/test_ts.sh — the same file
@@ -264,6 +278,11 @@ jobs:
         with:
           name: coverage-native-${{ matrix.os }}-${{ matrix.node-version }}
           path: coverage/coverage-native.json
+      - name: upload wasm rust coverage report
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-wasm-${{ matrix.os }}-${{ matrix.node-version }}
+          path: coverage/coverage-wasm.json
       - name: cross-binding test entry (python glue build + stub_gen +
           four-end dump + grading + cross-end vocabulary gates)
         # Command details live once in scripts/run/test_cross.sh — the same file

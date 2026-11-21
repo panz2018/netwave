@@ -27,11 +27,11 @@
 
 ## 5. 工具链与 CI
 
-- [ ] 5.1 `rust-toolchain.toml` 的 `components` 加 `llvm-tools`（验证 `llvm-tools组件取工具`：rustup 激活钉版工具链后 `$(rustc --print sysroot)` 下 llvm-tools bin 目录含 `llc`/`llvm-profdata`/`llvm-cov`，本地与 CI 一致）
-- [ ] 5.2 新增 `scripts/install_wasi_sdk.sh`（仿 install_binaryen.sh：查 wasi-sdk 最新 release、下 arm64/x86_64 tarball 解压到 `~/.local/opt/wasi-sdk`、无 sudo）（验证 `wasi-sdk编C` + `编译阅卷工具分离`：脚本跑通后 `<dir>/bin/clang --target=wasm32-unknown-unknown` 可编 freestanding C）
+- [x] 5.1 `rust-toolchain.toml` 的 `components` 加 `llvm-tools`（验证 `llvm-tools组件取工具`：rustup 激活钉版工具链后 `$(rustc --print sysroot)` 下 llvm-tools bin 目录含 `llc`/`llvm-profdata`/`llvm-cov`，本地与 CI 一致）
+- [x] 5.2 新增 `scripts/install_wasi_sdk.sh`（仿 install_binaryen.sh：查 wasi-sdk 最新 release、下 arm64/x86_64 tarball 解压到 `~/.local/opt/wasi-sdk`、无 sudo）（验证 `wasi-sdk编C` + `编译阅卷工具分离`：脚本跑通后 `<dir>/bin/clang --target=wasm32-unknown-unknown` 可编 freestanding C）
 - [x] 5.2b 新增 `scripts/install_wasm_bindgen_cli.sh`（仿 install_binaryen.sh：优先下 GitHub release 预编译 tarball 解压到 `~/.local`，平台无包时回退 `cargo install wasm-bindgen-cli --version <对齐 crate>`、无 sudo）（验证 `wasm-bindgen-cli生成胶水` + `wasm-bindgen-cli预编译优先`：脚本跑通后 `wasm-bindgen --version` 与 wasm-bindgen crate 对齐，可对插桩 `.wasm` 生成 `--target web` 胶水）
-- [ ] 5.3 `.github/workflows/ci.yml` node job 加 `scripts/install_wasi_sdk.sh` 与 `scripts/install_wasm_bindgen_cli.sh` 安装步（验证 `全矩阵采集` + `wasi-sdk编C`：5 格均装 wasi-sdk clang、均产 coverage-wasm.json）
-- [ ] 5.4 `scripts/versions/check_outdated.py` section 3 加 wasi-sdk 与 wasm-bindgen-cli 探测，追最新判 LAG（验证 `wasi-sdk编C` + `wasm-bindgen-cli预编译优先`：`pnpm check:outdated` 对落后两者报 LAG）
+- [x] 5.3 `.github/workflows/ci.yml` node job 加 `scripts/install_wasi_sdk.sh` 与 `scripts/install_wasm_bindgen_cli.sh` 安装步（验证 `全矩阵采集` + `wasi-sdk编C`：5 格均装 wasi-sdk clang、均产 coverage-wasm.json）
+- [x] 5.4 `scripts/versions/check_outdated.py` section 3 加 wasi-sdk 与 wasm-bindgen-cli 探测，追最新判 LAG（验证 `wasi-sdk编C` + `wasm-bindgen-cli预编译优先`：`pnpm check:outdated` 对落后两者报 LAG）
 
 ## 6. spec 同步与豁免清单
 

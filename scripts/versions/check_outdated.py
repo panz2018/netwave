@@ -297,6 +297,15 @@ def main() -> int:
         ("wasm-pack", "wasm-pack --version", "wasm-bindgen/wasm-pack"),
         ("binaryen (wasm-opt)", "wasm-opt --version", "WebAssembly/binaryen"),
         ("cargo-llvm-cov", "cargo llvm-cov --version", "taiki-e/cargo-llvm-cov"),
+        # wasi-sdk: the SDK version (VERSION file) vs the release tag; clang's
+        # own version tracks LLVM, not the SDK number, so read the marker file.
+        (
+            "wasi-sdk",
+            "cat ~/.local/opt/wasi-sdk/VERSION 2>/dev/null | head -1",
+            "WebAssembly/wasi-sdk",
+        ),
+        # wasm-bindgen-cli: must match the crate; latest is the release tag.
+        ("wasm-bindgen-cli", "wasm-bindgen --version", "rustwasm/wasm-bindgen"),
     ):
         rc, installed = run_cmd(probe)
         installed = first_line(installed)

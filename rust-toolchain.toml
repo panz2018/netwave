@@ -1,4 +1,8 @@
 [toolchain]
 channel = "1.100"
+components = ["llvm-tools"]
 # Pinned stable toolchain version (a ceiling, not an MSRV floor); bumped to the
 # newest stable by the freshness check (pnpm check:outdated), upgraded directly.
+# llvm-tools ships llc/llvm-profdata/llvm-cov used by the wasm rust coverage
+# chain's grading step; rustup installs them with the pinned toolchain (no
+# separate download, version matches rustc's LLVM exactly).
