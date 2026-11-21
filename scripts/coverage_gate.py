@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Gate on cargo-llvm-cov's codecov.json (OR-merged line coverage).
+"""Gate on line coverage from codecov.json or an llvm-cov lcov tracefile.
 
 Why not `--fail-under-lines`: it evaluates the `llvm-cov report` numbers,
 which count every unexecuted inlined copy of a function in each integration
@@ -11,7 +11,9 @@ covered (the standard line-coverage OR every other language tool uses).
 This gate reads codecov.json so the 100% floor measures real line coverage
 without distorting the hot path or excluding files.
 
-Usage: coverage_gate.py [codecov.json] [floor_percent]
+Usage: coverage_gate.py [codecov.json|lcov.info] [floor_percent]
+Accepts a cargo-llvm-cov codecov.json or an llvm-cov lcov tracefile; both
+normalize to the same per-line shape so grading below is format-agnostic.
 Exit 0 if line coverage >= floor, else 1 (missed lines printed).
 
 Macro-attribute exemption (pattern-driven, no line-number whitelist): an
@@ -153,11 +155,37 @@ def _read_source(fname: str) -> list[str] | None:
         return None
 
 
+def _load_coverage(path: str) -> dict:
+    """Load a coverage file into the codecov shape `{"coverage": {file:
+    {line: "covered/count"}}}`. A `.json` file is read as-is (cargo-llvm-cov
+    codecov export); any other extension is parsed as an llvm-cov lcov
+    tracefile, where each `DA:<line>,<hits>` record is already the OR-merged
+    per-line hit count, so it maps to `"<hits>/1"`. Grading below is then
+    format-agnostic."""
+    if path.endswith(".json"):
+        with open(path, encoding="utf-8") as fh:
+            return json.load(fh)
+    coverage: dict[str, dict[str, str]] = {}
+    current: str | None = None
+    with open(path, encoding="utf-8") as fh:
+        for raw in fh:
+            line = raw.strip()
+            if line.startswith("SF:"):
+                current = line[3:]
+                coverage.setdefault(current, {})
+            elif line.startswith("DA:") and current is not None:
+                lineno, _, rest = line[3:].partition(",")
+                if not lineno.isdigit():
+                    continue
+                hits = rest.partition(",")[0]
+                coverage[current][lineno] = f"{int(hits)}/1"
+    return {"coverage": coverage}
+
+
 def main() -> int:
     path = sys.argv[1] if len(sys.argv) > 1 else "codecov.json"
     floor = float(sys.argv[2]) if len(sys.argv) > 2 else 100.0
-    with open(path, encoding="utf-8") as fh:
-        data = json.load(fh)
+    data = _load_coverage(path)
     covered = 0
     total = 0
     missed: dict[str, list[int]] = {}
