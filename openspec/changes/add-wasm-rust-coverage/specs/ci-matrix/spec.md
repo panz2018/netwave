@@ -44,10 +44,13 @@ clang（wasi-sdk 自带，`CC` 指向 `scripts/install_wasi_sdk.sh` 装到 `~/.l
 （globalSetup 主进程读不到 worker wasm 内存），profraw 文件名 MUST 带 minicov
 module_signature 防多 worker 覆盖，合并 profraw MUST 用 `llvm-profdata merge`
 加 `-sparse`，合并后以 `llc` 把 `.ll`（由 `--emit=llvm-ir` 产出）编成宿主对象文件，
-再调 `llvm-cov report` 加 `--codecov`（llvm-cov 读不了 wasm 符号）。报告 MUST
-度量 core browser-gated 代码，
-以 `--ignore-filename-regex` 剔除 python/native 路径后独立阅卷，落
-`coverage/coverage-wasm.json` 并以 `scripts/coverage_gate.py ... 100` 阅卷。
+再调 `llvm-cov export --format=lcov`（llvm-cov 读不了 wasm 符号，故须先 `llc`
+编宿主 `.o`；llvm-cov 无 `--codecov` flag，那是 cargo-llvm-cov 的，散装 `.o` 无
+独立 codecov 入口）。报告 MUST 度量 core browser-gated 代码，
+以 `--ignore-filename-regex` 剔除 `.cargo/registry` 第三方后独立阅卷，落
+`coverage/coverage-wasm.lcov` 并以 `scripts/coverage_gate.py ... 100` 阅卷
+（该脚本 MUST 支持 lcov tracefile 输入，把每条 `DA:<行>,<命中>` 视作 OR 合并后的
+行级命中）。
 wasm rust 覆盖率链前后 MUST 各执行 `clean_stray_profraw.py` 与
 `cargo llvm-cov clean --workspace`。wasm rust 覆盖率 MUST 在全部 node matrix
 格采集（不以 step 级 `if` 限定单格）。wasm 端 TS 层 vitest 100% 门槛不变。
@@ -83,18 +86,18 @@ wasm rust 覆盖率链前后 MUST 各执行 `clean_stray_profraw.py` 与
 
 - **WHEN** `core/src/` 中 `#[cfg(feature = "browser")]` 门控的
   `#[wasm_bindgen]` 代码新增一行未被 node 驱动 wasm 套件任何用例执行
-- **THEN** `coverage_gate.py` 对 `coverage/coverage-wasm.json` 阅卷失败
+- **THEN** `coverage_gate.py` 对 `coverage/coverage-wasm.lcov` 阅卷失败
   （exit ≠ 0），PR 不可合并
 
 #### Scenario: wasm 覆盖率报告须含 core browser 路径且命中大于零
 
-- **WHEN** 生成 `coverage/coverage-wasm.json`
+- **WHEN** 生成 `coverage/coverage-wasm.lcov`
 - **THEN** 报告 MUST 含 `core/src/` 路径行且命中数 > 0（仅命令 exit 0
   不算通，LL-093）；缺目标路径行或全零命中即判链未生效、阅卷失败
 
 #### Scenario: wasm 豁免须先经人工确认清单
 
-- **WHEN** `coverage/coverage-wasm.json` 出现未达 100% 的行
+- **WHEN** `coverage/coverage-wasm.lcov` 出现未达 100% 的行
 - **THEN** MUST NOT 直接豁免；先列「真不可达」候选清单（逐条附文件+行号+
   不可达理由）交人工确认，确认后方可按 stable 通道标注豁免；未确认者
   MUST 补单元测试至 100%

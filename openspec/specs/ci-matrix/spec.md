@@ -123,8 +123,12 @@ CI node job 同口径通过；CI MUST NOT 为 node job 保留独立的 profraw d
   `cargo llvm-cov clean --workspace`、build:wasm、native 覆盖率链（show-env、
   `NODE_OPTIONS=--expose-gc`、build:native:debug、test:native、report 带 host
   triple、`coverage_gate.py` 地板阅卷，且 show-env/clean/build/test/report 共享
-  脚本单进程）、typecheck、dts 防 `any` 检查、test:wasm、profraw 后置清扫、再次
-  `clean --workspace`，native 报告产出并经地板阅卷，脚本 exit 0
+  脚本单进程）、wasm rust 覆盖率链（cargo build 插桩 debug 独立 target、
+  wasm-bindgen 生成 web 胶水、env 驱动 test:wasm 倒 profraw、
+  `llvm-profdata merge -sparse`、`llc --march=<短宿主架构>` 编 `.ll`→`.o`、
+  `llvm-cov export --format=lcov`、`coverage_gate.py coverage/coverage-wasm.lcov 100`）、
+  typecheck、dts 防 `any` 检查、test:wasm、profraw 后置清扫、再次
+  `clean --workspace`，native 与 wasm 报告均产出并经地板阅卷，脚本 exit 0
 
 #### Scenario: typescript 入口缺工具报错可行动
 
@@ -134,6 +138,14 @@ CI node job 同口径通过；CI MUST NOT 为 node job 保留独立的 profraw d
   （`scripts/install_cargo_llvm_cov.sh` / `scripts/install_wasm_pack.sh` /
   `scripts/install_binaryen.sh` / `rustup target add wasm32-unknown-unknown`），
   不发起网络安装
+
+#### Scenario: typescript 入口缺 wasm 覆盖率工具报错可行动
+
+- **WHEN** 本地缺 llvm-tools 三件套（`llc`/`llvm-profdata`/`llvm-cov`）、
+  wasi-sdk clang 或 `wasm-bindgen` 之一时运行 `pnpm test:ts`
+- **THEN** 脚本在插桩构建前以非零码退出，stderr 打印对应安装指引
+  （`rustup component add llvm-tools` / `scripts/install_wasi_sdk.sh` /
+  `scripts/install_wasm_bindgen_cli.sh`），不发起自动安装
 
 #### Scenario: typescript 入口注入残留即红
 
@@ -365,8 +377,20 @@ typescript/native 的 report MUST 带 `--target <triple>`——napi `--platform`
 python 的 maturin 不带 `--target`，对象落 host `target/debug`，report 无需 `--target`），
 报告以 `--ignore-filename-regex` 剔除 core 路径后独立阅卷——core 行归
 core 报告、胶水行归胶水报告，互不重复计分；绑定 crate 由 show-env/report
-外部驱动采集度量。typescript/wasm crate 的 rust 行覆盖率暂不采集
-（vitest 驱动下插桩计数倒出未验证），wasm 端 TS 层 vitest 100% 门槛不变。
+外部驱动采集度量。typescript/wasm crate 的 rust 行覆盖率 MUST 以 minicov runtime +
+`RUSTC_BOOTSTRAP=1` 解锁 `-Zno-profiler-runtime` 在钉死 stable 上编插桩 wasm，
+由 node 驱动 vitest 套件采集：minicov 的 wasm32 C runtime MUST 由能编 wasm32 的
+clang（wasi-sdk 自带，`CC` 指向 `scripts/install_wasi_sdk.sh` 装到 `~/.local` 的 clang）
+编译，插桩构建走独立 target dir（不覆盖生产 `build:wasm` 产物），dump 导出 MUST
+以 `#[cfg(feature = "coverage")]` 门控（生产产物零污染），profraw MUST 由 worker
+上下文内的钩子调 dump 倒出并带 minicov module_signature 防多 worker 覆盖，合并用
+`llvm-profdata merge -sparse`，再以 `llc` 把 `.ll`（`--emit=llvm-ir` 产出）编成宿主
+对象文件后调 `llvm-cov export --format=lcov`（llvm-cov 无 `--codecov` flag，散装 `.o`
+无独立 codecov 入口），以 `--ignore-filename-regex` 剔除 `.cargo/registry` 第三方后
+落 `coverage/coverage-wasm.lcov` 并以 `scripts/coverage_gate.py ... 100` 阅卷（该脚本
+MUST 支持 lcov tracefile 输入）。wasm rust 覆盖率 MUST 在全部 node matrix 格采集；
+浏览器侧（chromium Worker）rust 覆盖率 MUST NOT 采集，维持 TS-only v8 覆盖率；
+wasm 端 TS 层 vitest 100% 门槛不变。
 
 #### Scenario: 空 crate 即 100%
 
@@ -393,6 +417,32 @@ core 报告、胶水行归胶水报告，互不重复计分；绑定 crate 由 s
 - **THEN** 阅卷脚本按三重条件豁免该行并打印理由，阅卷不因此判红；
   缺行源码读不到时不豁免、照常报红
 
+#### Scenario: wasm browser-gated 代码未测即红
+
+- **WHEN** `core/src/` 中 `#[cfg(feature = "browser")]` 门控的
+  `#[wasm_bindgen]` 代码新增一行未被 node 驱动 wasm 套件任何用例执行
+- **THEN** `coverage_gate.py` 对 `coverage/coverage-wasm.lcov` 阅卷失败
+  （exit ≠ 0），PR 不可合并
+
+#### Scenario: wasm 覆盖率报告须含 core browser 路径且命中大于零
+
+- **WHEN** 生成 `coverage/coverage-wasm.lcov`
+- **THEN** 报告 MUST 含 `core/src/` 路径行且命中数 > 0（仅命令 exit 0
+  不算通，LL-093）；缺目标路径行或全零命中即判链未生效、阅卷失败
+
+#### Scenario: wasm 豁免须先经人工确认清单
+
+- **WHEN** `coverage/coverage-wasm.lcov` 出现未达 100% 的行
+- **THEN** MUST NOT 直接豁免；先列「真不可达」候选清单（逐条附文件+行号+
+  不可达理由）交人工确认，确认后方可按 stable 通道标注豁免；未确认者
+  MUST 补单元测试至 100%
+
+#### Scenario: 生产 wasm 产物不含覆盖率导出
+
+- **WHEN** 运行 `pnpm -C typescript build:wasm`（不带 coverage feature）
+- **THEN** 产出的 wasm 不含 `__cov_dump`/`__cov_ptr`/`__cov_len` 导出
+  （feature 门控），发布产物零污染
+
 ### Requirement: core 覆盖率全平台产出
 
 core 覆盖率 MUST 在 native 四格（linux-x64、linux-arm64、windows-x64、
@@ -410,13 +460,16 @@ darwin-arm64）全部产出并各自阅卷，MUST NOT 以 step 级 `if` 限定�
 覆盖率报告 MUST 统一落 `coverage/` 目录（已被根 `.gitignore` 覆盖，
 不入库），命名 `coverage-<被测对象>.json`（`coverage-core`、
 `coverage-python`、`coverage-native`），MUST NOT 使用工具格式名或黑话
-命名。每格产出的报告 MUST 以 upload-artifact 留存供人工核对。
+命名。例外：wasm rust 报告落 `coverage/coverage-wasm.lcov`——llvm-cov 对散装
+宿主 `.o` 无 codecov 导出入口（`--codecov` 是 cargo-llvm-cov 的 flag），只能出
+lcov，故按实际格式诚实命名，不伪装成 `.json`。每格产出的报告 MUST 以
+upload-artifact 留存供人工核对。
 
 #### Scenario: 报告可追溯
 
 - **WHEN** CI 运行完成
-- **THEN** 每格产物含对应 `coverage-<对象>.json`，文件名直接表明被测
-  对象，人工可下载核对数字与缺行清单
+- **THEN** 每格产物含对应 `coverage-<对象>` 报告（json 或 wasm 的 lcov），
+  文件名直接表明被测对象，人工可下载核对数字与缺行清单
 
 ### Requirement: 主 CI 零 Python 运行时依赖
 
