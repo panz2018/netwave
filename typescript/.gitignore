@@ -6,6 +6,10 @@ dist/
 coverage/
 target/
 target-wasm/
+# instrumented wasm coverage build: cargo target dir for the rust coverage
+# chain (holds the instrumented cdylib, dumped profraw, merged profdata and
+# the host .o objects llc produces). All intermediates — never commit.
+target-wasm-cov/
 # vitest browser mode writes failure screenshots here on test failure.
 .vitest/
 # napi build copies the crate's license-file (../../LICENSE-MIT) into the
