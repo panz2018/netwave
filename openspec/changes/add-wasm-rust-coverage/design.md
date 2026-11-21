@@ -93,6 +93,18 @@ threads 池多 worker 各产一份 profraw，用 `minicov::module_signature()`�
 命名防覆盖，`llvm-profdata merge -sparse *.profraw` 合并。spike 已验单份 merge；
 多份是 llvm-profdata 标准用法。
 
+### D7：wasm 断链信号在阅卷（LL-093），不在漏网 profraw 扫描
+
+native 链的断链检测靠 `clean_stray_profraw.py`：show-env 把 profraw 钉进 target/，
+故 target/ 外出现 profraw = 有插桩二进制脱离环境变量运行 = 本轮数字不可信。wasm
+不走 show-env，profraw 由钩子主动写到指定目录，断链的典型表现是「钩子没跑、一个
+profraw 都没写出」——无文件可扫，扫描器直接通过。故 wasm 断链 MUST NOT 依赖漏网
+profraw 扫描，而由阅卷兜底（LL-093）：钩子没跑 → merge 拿空文件失败；倒出空数据或
+未真正跑到 core → `coverage-wasm.json` 的 core/src 行命中 = 0 → `coverage_gate.py`
+判红。链前后仍跑 `clean_stray_profraw.py`（task 4.3）只作跨链卫生——拦 native/python
+插桩残留串进本轮，不充当 wasm 自身断链检测；插桩 target dir 加 SKIP_DIRS（task 3.3）
+是防合法 wasm profraw 被误判漏网删除（制造假断链）。
+
 ## Risks / Trade-offs
 
 - [wasm-bindgen 胶水 + minicov dump 共存] → 已验（2026-11-20）：真 `typescript/wasm` 以 wasi-sdk clang 编插桩 wasm、node 加载调 dump 倒出 187KB profraw。
