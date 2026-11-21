@@ -344,6 +344,76 @@ class TestReportParsingBranches:
         assert f"missed {src}: [3]" in capsys.readouterr().out
 
 
+class TestLcovInput:
+    """The gate also grades an llvm-cov lcov tracefile (the wasm chain has no
+    codecov export: `llvm-cov --codecov` does not exist, so the chain exports
+    `-format=lcov` and feeds it here). Each `DA:<line>,<hits>` record is
+    already llvm-cov's OR-merged per-line hit count, so it must map to the
+    same `"<hits>/1"` shape the codecov path produces — grading below then
+    runs unchanged. These cases pin the parse contract and its edge branches."""
+
+    def _lcov(self, tmp_path, text: str) -> str:
+        p = tmp_path / "coverage-wasm.info"
+        p.write_text(text, encoding="utf-8")
+        return str(p)
+
+    def test_lcov_full_file_passes_floor_100(self, tmp_path, capsys):
+        path = self._lcov(
+            tmp_path,
+            "SF:no/such/wasm.rs\nDA:10,5\nDA:11,0\nLF:2\nLH:1\nend_of_record\n",
+        )
+        # line 11 shows 0 and its source is unreadable, so it stays missed
+        # (never exempted): the parse must feed real per-line counts.
+        assert coverage_gate.main([path, "100"]) == 1
+        out = capsys.readouterr().out
+        assert "1/2 = 50.00%" in out
+        assert "missed no/such/wasm.rs: [11]" in out
+
+    def test_lcov_hit_line_counts_as_covered(self, tmp_path, capsys):
+        path = self._lcov(tmp_path, "SF:core/src/lib.rs\nDA:10,7\nend_of_record\n")
+        assert coverage_gate.main([path, "100"]) == 0
+        assert "1/1 = 100.00%" in capsys.readouterr().out
+
+    def test_lcov_multi_field_da_uses_first_field(self, tmp_path, capsys):
+        # llvm-cov emits `DA:line,hits,checksum`; only the hits field counts.
+        path = self._lcov(tmp_path, "SF:f.rs\nDA:3,4,abc99\nend_of_record\n")
+        assert coverage_gate.main([path, "100"]) == 0
+        assert "1/1 = 100.00%" in capsys.readouterr().out
+
+    def test_lcov_da_before_sf_is_ignored(self, tmp_path, capsys):
+        # A DA record with no preceding SF has no file to attribute: skipped.
+        # If it were wrongly counted the total would be 2/2, so 1/1 proves it
+        # was dropped and only the SF-attributed line counted.
+        path = self._lcov(tmp_path, "DA:1,5\nSF:f.rs\nDA:2,3\nend_of_record\n")
+        assert coverage_gate.main([path, "100"]) == 0
+        assert "1/1 = 100.00%" in capsys.readouterr().out
+
+    def test_lcov_non_digit_line_number_is_skipped(self, tmp_path, capsys):
+        path = self._lcov(tmp_path, "SF:f.rs\nDA:notanumber,5\nDA:2,1\nend_of_record\n")
+        assert coverage_gate.main([path, "100"]) == 0
+        assert "1/1 = 100.00%" in capsys.readouterr().out
+
+    def test_lcov_multiple_files_are_all_counted(self, tmp_path, capsys):
+        path = self._lcov(
+            tmp_path,
+            "SF:a.rs\nDA:1,2\nend_of_record\nSF:b.rs\nDA:1,0\nend_of_record\n",
+        )
+        assert coverage_gate.main([path, "100"]) == 1
+        out = capsys.readouterr().out
+        assert "1/2 = 50.00%" in out
+        assert "missed b.rs: [1]" in out
+
+    def test_lcov_exemption_applies_like_json(self, tmp_path, capsys):
+        # The macro-attribute exemption must fire on lcov-fed data too: the
+        # grading layer is format-agnostic.
+        src = _src(tmp_path, "glue.rs", ["#[pymethods]", "impl Frequency {", "}"])
+        path = self._lcov(tmp_path, f"SF:{src}\nDA:1,0\nDA:2,4\nend_of_record\n")
+        assert coverage_gate.main([path, "100"]) == 0
+        out = capsys.readouterr().out
+        assert "2/2 = 100.00%" in out
+        assert f"exempted {src}: [1]" in out
+
+
 class TestMainGuard:
     """The process exit code is what CI consumes; pin it through runpy so
     the `sys.exit(main())` line is covered and a regression that drops the
