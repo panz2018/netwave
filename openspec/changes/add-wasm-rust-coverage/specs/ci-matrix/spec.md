@@ -41,7 +41,7 @@ typescript/wasm crate 的 rust 行覆盖率 MUST 以 minicov runtime +
 （生产产物零污染），profraw MUST 由 worker 上下文内的钩子调 dump 倒出
 （globalSetup 主进程读不到 worker wasm 内存），profraw 文件名 MUST 带 minicov
 module_signature 防多 worker 覆盖，合并 profraw MUST 用 `llvm-profdata merge`
-加 `-sparse`，合并后以 clang 把 `.ll`（由 `--emit=llvm-ir` 产出）编成宿主对象文件，
+加 `-sparse`，合并后以 `llc` 把 `.ll`（由 `--emit=llvm-ir` 产出）编成宿主对象文件，
 再调 `llvm-cov report` 加 `--codecov`（llvm-cov 读不了 wasm 符号）。报告 MUST
 度量 core browser-gated 代码，
 以 `--ignore-filename-regex` 剔除 python/native 路径后独立阅卷，落
@@ -105,19 +105,21 @@ wasm rust 覆盖率链前后 MUST 各执行 `clean_stray_profraw.py` 与
 
 ## ADDED Requirements
 
-### Requirement: clang 工具随 node job 安装并纳入新鲜度检查
+### Requirement: wasm 覆盖率阅卷工具取自 rustup llvm-tools 组件
 
-wasm rust 覆盖率链所需的 clang MUST 由 `KyleMayes/install-llvm-action`
-在 CI node job 安装（追最新不缓存，覆盖四平台）。`scripts/run/test_ts.sh`
-MUST 探测 `command -v clang`，缺失时打印安装指引并以非零退出，MUST NOT
-自动安装。clang MUST 纳入 `scripts/versions/check_outdated.py` 的 global-
-CLI/tarball 探测组，按追最新判 LAG（同 binaryen/wasm-pack），MUST NOT 预先
-钉 major。
+wasm rust 覆盖率链所需的 `llc`/`llvm-profdata`/`llvm-cov` MUST 取自钉版 rust
+工具链自带的 `llvm-tools` 组件（写进 `rust-toolchain.toml` 的 `components`，
+rustup 激活工具链时自动装），MUST NOT 引入外部 clang、MUST NOT 依赖 sudo。
+该组件版本随 `rust-toolchain.toml` 钉版走，MUST NOT 纳入
+`scripts/versions/check_outdated.py` 作为独立追最新工具（已被工具链新鲜度
+覆盖）。`scripts/run/test_ts.sh` MUST 从 `$(rustc --print sysroot)` 下的
+llvm-tools bin 目录取这三个二进制。
 
-#### Scenario: 缺 clang 时本地测试入口可行动报错
+#### Scenario: llvm-tools 组件随工具链自动就位
 
-- **WHEN** 本机无 clang 时运行 `pnpm test:ts`
-- **THEN** `test_ts.sh` 探测段打印 clang 安装指引并以非零退出，不发起自动安装
+- **WHEN** rustup 激活 `rust-toolchain.toml` 钉定的工具链（本地或 CI）
+- **THEN** `llvm-tools` 组件随之安装，`$(rustc --print sysroot)` 下 llvm-tools
+  bin 目录含 `llc`/`llvm-profdata`/`llvm-cov`，`test_ts.sh` 无需外部安装步即可阅卷
 
 #### Scenario: check:outdated 报 clang LAG
 

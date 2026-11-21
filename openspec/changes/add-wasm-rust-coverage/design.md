@@ -6,7 +6,9 @@
 `#[wasm_bindgen]` 代码，native/python 覆盖率链跑 host target 测不到。/tmp spike
 已端到端验证：stable 1.100（LLVM 23）+ `RUSTC_BOOTSTRAP=1` + `-Zno-profiler-runtime`
 编插桩 wasm，minicov runtime 自包含（wasm 无外部 import），Node 侧调 dump 拷出
-profraw，`llvm-profdata merge` + clang `.ll`→`.o` + `llvm-cov report` 出真实行覆盖。
+profraw，`llvm-profdata merge` + `.ll`→`.o` + `llvm-cov report` 出真实行覆盖。
+阅卷三件套（`llc`/`llvm-profdata`/`llvm-cov`）取自钉版 rust 工具链自带的
+`llvm-tools` 组件（本机实测该组件已装且 `llc` 能把 `.ll` 编成宿主 `.o`）。
 
 约束：仓库钉 stable（`rust-toolchain.toml` channel 1.100），LL-020 禁源码级
 nightly-only；`test_ts.sh` 是平台无关单一真相源，5 个 node matrix cell 都跑它；
@@ -54,29 +56,28 @@ setupFiles 注册的 `afterAll`（worker 上下文）。备选：globalSetup（�
 
 cargo-llvm-cov 不处理 wasm 符号问题（实证：其 README 仅指向 wasm-bindgen guide，
 object_files 收集器不认 `.wasm`、不编 `.ll`）。故手动三步：先
-`llvm-profdata merge -sparse` 合并 profraw，再用 clang 把 `.ll`（由
+`llvm-profdata merge -sparse` 合并 profraw，再用 `llc` 把 `.ll`（由
 `--emit=llvm-ir` 产出）编成宿主 `.o`，最后 `llvm-cov report --codecov`。spike
 已跑通此链。备选：cargo-llvm-cov show-env/report 包一层（核心步骤仍须手动喂
 `.o`，无收益，否）。
 
-### D5：clang CI 用 install-llvm-action、本地用 apt，版本纳入 check:outdated
+### D5：阅卷工具取自 rustup llvm-tools 组件，不引入 clang
 
-CI：runner 自带 clang 全 < 23（ubuntu=18/macos=Apple17/windows=20），须显式装。
-`KyleMayes/install-llvm-action` 一 step 跨四平台，追最新不缓存（action README
-称缓存通常比直下慢）。
+`llc`/`llvm-profdata`/`llvm-cov` 是 rustup `llvm-tools` 组件自带的二进制，装在
+`$(rustc --print sysroot)/lib/rustlib/<host>/bin/`（用户目录，零 sudo）。把
+`llvm-tools` 写进 `rust-toolchain.toml` 的 `components`，rustup 在本地与 CI 激活
+钉版工具链时自动装（同 rustfmt/clippy，dependency-upgrade spec「工具链升版后
+补装」场景已覆盖），无需 CI 安装步、无需 `test_ts.sh` 探测外部工具。
 
-版本过期检测两处，均零额外代码：本地 clang 二进制版本进 `check_outdated.py`
-section 3（同 binaryen/wasm-pack 的非钉版工具组，探 `clang --version` vs 上游
-最新）；ci.yml 里新增的 `install-llvm-action` 引用进 section 4（实证
-`lib/repository.py` `action_refs` 自动扫 ci.yml 全部 `uses:`，落后即报 LAG）。
-check:outdated 本身 MUST NOT 进 CI（dependency-upgrade spec：结果随上游每日变
-且需联网）。
+版本天然一致：llvm-tools 与插桩用的 rustc 同属钉版工具链的同一份 LLVM，
+profraw/IR 格式不可能错配。因此**不进 check:outdated**——它随 `rust-toolchain.toml`
+钉版走，已被工具链新鲜度检查覆盖，不是独立追最新工具。
 
-本地安装/升级：用户有 sudo，走 apt 装最新 clang（如 `apt install llvm`），
-agent MUST NOT 下载近 2GB LLVM tarball、MUST NOT 跑 sudo。check:outdated 报
-clang LAG 时 agent 告知用户并给出确切 apt 命令，由用户执行升级。备选：agent
-自动重下 tarball 升级（spike 手动做法，但近 2GB 且本机 apt 可用，否）；钉
-major（过度设计，新版 clang 向后兼容旧 IR，追最新更安全，否）。
+实证推翻旧 clang 方案：`install-llvm-action` 源码仅 `tar` 解压到目录不用 sudo
+（“需 sudo”只是 apt 路线的毛病）；且本机 `llvm-tools` 已装、`llc` 实测能把
+`.ll` 编成合法宿主 `.o`（elf64-littleaarch64）。备选：clang + apt（需 sudo、
+人工升级破坏升级机制，否）；clang + install-llvm-action（多一个外部工具与
+版本错配风险，且 llvm-tools 已够用，否）。
 
 ### D6：profraw 带 module_signature 命名 + merge
 
@@ -88,12 +89,12 @@ threads 池多 worker 各产一份 profraw，用 `minicov::module_signature()`�
 
 - [spike 用 toy crate，未验 wasm-bindgen 胶水 + minicov dump 在 vitest worker 共存] → 落地前先在 /tmp 用真 `typescript/wasm` + vitest 跑最小 spike，过了再改仓库。
 - [core browser-gated 代码能否达 100% 未知] → 地板 100，未达行先列「真不可达」清单人工确认才可豁免，否则补单测（裁决 `地板100先列清单`）。
-- [install-llvm-action assets.json 可能缺 LLVM 23] → 用其 `force-url` 输入指向 LLVM 官方对应平台 tarball。
-- [追最新 clang 与 rustc LLVM major 不兼容致 `.ll`→`.o` 失败] → 按 install_binaryen.sh 哲学「latest by default, roll back only on a real bug」回退，不预先钉版。
+- [llvm-tools 组件未装致 `llc`/`llvm-cov` 缺失] → 写进 `rust-toolchain.toml` 的 `components`，rustup 激活工具链时自动装；本地/CI 一致。
+- [wasm `.ll` 带 `target triple = "wasm32"`，`llc` 默认想编 wasm 对象] → 加 `--march=<宿主架构>` 强制出宿主 `.o`（tasks 1.1 spike 验证）。
 - [RUSTC_BOOTSTRAP 被误用于日常构建] → 仅在 `test_ts.sh` 覆盖率段局部 export，作用域限该脚本进程；生产 build:wasm 不设。
 
 ## Migration Plan
 
 纯新增覆盖率链，无数据/接口迁移。回滚：移除 `test_ts.sh` 的 wasm 覆盖率段、
-ci.yml 的 install-llvm-action 步、check_outdated.py 的 clang 行即恢复原状；
+`rust-toolchain.toml` 的 `llvm-tools` component 即恢复原状；
 `typescript/wasm` 的 `coverage` feature 默认关，不影响生产构建。

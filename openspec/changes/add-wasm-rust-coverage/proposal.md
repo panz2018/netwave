@@ -6,9 +6,9 @@
 
 ## What Changes
 
-- 新增 wasm rust 行覆盖率链：minicov runtime + `RUSTC_BOOTSTRAP=1` 解锁 `-Zno-profiler-runtime`，在钉死 stable 上编插桩 wasm，vitest node 驱动跑测试后由 worker 内 `afterAll` 钩子调 `__cov_dump()` 倒 profraw，`llvm-profdata merge` + clang 把 `.ll` 编成宿主 `.o` + `llvm-cov report --codecov` 出报告。
+- 新增 wasm rust 行覆盖率链：minicov runtime + `RUSTC_BOOTSTRAP=1` 解锁 `-Zno-profiler-runtime`，在钉死 stable 上编插桩 wasm，vitest node 驱动跑测试后由 worker 内 `afterAll` 钩子调 `__cov_dump()` 倒 profraw，`llvm-profdata merge` + `llc` 把 `.ll` 编成宿主 `.o` + `llvm-cov report --codecov` 出报告。
 - 度量对象为 core browser-gated 代码，独立出 `coverage/coverage-wasm.json` + 地板 100（结构性不可达须先列清单人工确认才可豁免，否则补单测）。
-- 新增工具 clang（`KyleMayes/install-llvm-action`，追最新），纳入 CI 安装、`test_ts.sh` 探测、`check:outdated` section 3。
+- 阅卷三件套（`llc`/`llvm-profdata`/`llvm-cov`）取自钉版 rust 工具链自带的 `llvm-tools` 组件（写进 `rust-toolchain.toml` 的 `components`，rustup 本地与 CI 激活工具链时自动装），零新增外部工具、零 sudo、版本天然与 rustc 的 LLVM 一致。
 - ci-matrix spec「暂不采集」那句改为「已采集」并补对应 Scenario。
 - 浏览器侧维持 TS-only v8 覆盖率不变；`typescript/wasm` 生产产物零污染（dump 导出 feature 门控、插桩走独立 target dir）。
 
@@ -20,15 +20,14 @@
 
 ### Modified Capabilities
 
-- `ci-matrix`: 覆盖率条款中「typescript/wasm crate 的 rust 行覆盖率暂不采集」改为以 minicov + `RUSTC_BOOTSTRAP` 外部驱动采集，新增 wasm rust 覆盖率链、clang 工具安装/探测/新鲜度、独立地板与豁免清单的 Requirement 与 Scenario。
+- `ci-matrix`: 覆盖率条款中「typescript/wasm crate 的 rust 行覆盖率暂不采集」改为以 minicov + `RUSTC_BOOTSTRAP` 外部驱动采集，新增 wasm rust 覆盖率链、阅卷工具取自 llvm-tools 组件、独立地板与豁免清单的 Requirement 与 Scenario。
 
 ## Impact
 
 - 代码：`typescript/wasm/Cargo.toml`（minicov 依赖 + `coverage` feature）、`typescript/wasm/src/lib.rs`（`#[cfg(feature = "coverage")]` 门控的 `__cov_dump`/`__cov_ptr`/`__cov_len` 导出）。
-- 测试脚本：`scripts/run/test_ts.sh`（新增 wasm 插桩构建 + dump + merge + report + gate 段，前后各加 `clean_stray_profraw.py` 与 `cargo llvm-cov clean --workspace`）。
+- 测试脚本：`scripts/run/test_ts.sh`（新增 wasm 插桩构建 + dump + merge + report + gate 段，阅卷工具从 `rustc --print sysroot` 下的 llvm-tools bin 目录取，前后各加 `clean_stray_profraw.py` 与 `cargo llvm-cov clean --workspace`）。
 - vitest：`typescript/vitest.wasm.config.ts`（加 `setupFiles`）、新增 setup 文件注册 worker 内 `afterAll` dump。
-- CI：`.github/workflows/ci.yml` node job 加 `install-llvm-action` 安装步。
-- 工具链：`scripts/versions/check_outdated.py` section 3 加 clang 探测。
+- 工具链：`rust-toolchain.toml` 的 `components` 加 `llvm-tools`（rustup 自动装，本地与 CI 一致）。
 - spec：`openspec/specs/ci-matrix/spec.md`。
 - 受影响铁律：LL-092（外部驱动胶水覆盖率三坑）、LL-093（胶水报告须验命中）、LL-020（nightly-only 禁用——本 change 经裁决认定解锁编译 flag 不属此列）、LL-034（波及面同步）。
 
@@ -45,34 +44,32 @@
 - NEAR/Hacken wasmcov（宿主侧调 `capture_coverage` 倒 profraw + `.ll`→`.o` 阅卷）：<https://github.com/hknio/wasmcov>
 - minicov（no_std LLVM profiling runtime）：<https://github.com/Amanieu/minicov>
 - 仓库内 native glue 外部驱动覆盖率链（show-env + vitest + report）：`scripts/run/test_ts.sh`、账本 LL-092
-- clang 跨平台安装 action：<https://github.com/KyleMayes/install-llvm-action>
+- cargo-llvm-cov 阅卷即用 rustup `llvm-tools` 组件的 `llvm-cov`/`llvm-profdata`（非独立 clang），本 change 沿用同一取工具方式
 
 ## 专家增补
 
 - 前置验证：正式落地前先在 /tmp 用真 `typescript/wasm`（wasm-bindgen 胶水 + minicov `coverage` feature）+ vitest worker 跑最小 spike，确认 `__cov_dump` 导出与 wasm-bindgen 胶水共存可加载、worker 内 dump 成立——spike 用的是手写 toy crate，未覆盖此点。
 - profraw 命名带 minicov `module_signature`（`minicov::module_signature()`）防多 worker 覆盖，落 `scripts/run/test_ts.sh`。
-- clang 版本兼容登记：若追最新的 clang 与 rustc LLVM major 不兼容致 `.ll`→`.o` 失败，按 `install_binaryen.sh` 既有哲学「latest by default, roll back only on a real bug」处理，不预先钉版。
+- 阅卷工具版本零风险：`llc`/`llvm-cov`/`llvm-profdata` 与插桩用的 rustc 同属钉版工具链的同一份 LLVM，profraw/IR 格式天然匹配，无外部 clang 与 rustc major 错配之虞。
 
 ## 已定裁决
 
 - `RUSTC_BOOTSTRAP放行`：用 `RUSTC_BOOTSTRAP=1` 解锁 nightly-only 编译 flag `-Zno-profiler-runtime`，判定不违反 LL-020（LL-020 禁的是源码 nightly-only 属性，本处解锁编译 flag、不写 nightly feature）。
 - `全矩阵采集`：全部 5 个 node matrix cell 都跑 wasm rust 覆盖率，不分平台门控。
 - `仅node侧`：只做 node 驱动 wasm 套件的 rust 覆盖率，浏览器侧维持 TS-only。
-- `install-llvm-action`：clang 用 `KyleMayes/install-llvm-action` 一 step 跨四平台安装，追最新不缓存；assets.json 缺版本则用 `force-url`。
-- `手动llvm链`：报告走手动 `llvm-profdata merge` + clang `.ll`→`.o` + `llvm-cov report --codecov`，不用 cargo-llvm-cov 包 wasm。
+- `手动llvm链`：报告走手动 `llvm-profdata merge` + `llc` `.ll`→`.o` + `llvm-cov report --codecov`，不用 cargo-llvm-cov 包 wasm。
 - `度量core-browser`：wasm 报告度量 core browser-gated 代码，`--ignore-filename-regex` 剔 python/native。
-- `clang追最新`：clang 纳入 `check:outdated` section 3，追最新判 LAG（同 binaryen/wasm-pack），不钉 major。
+- `llvm-tools组件取工具`：阅卷三件套取自钉版 rust 工具链的 `llvm-tools` 组件（写进 `rust-toolchain.toml` 的 `components`，rustup 自动装），不引入 clang、不需 sudo、不进 check:outdated（版本随 `rust-toolchain.toml` 钉版走，已被工具链新鲜度覆盖）。
 - `地板100先列清单`：wasm rust 覆盖率地板 100，豁免前必须先列「真不可达」清单人工确认，否则补单元测试。
 - `spec同步改`：ci-matrix spec「暂不采集」那句必须改为已采集并补 Scenario（LL-034）。
 - `dump放setupFiles`：dump 钩子放 vitest `setupFiles` 的 worker 内 `afterAll`，不放 globalSetup（主进程读不到 worker wasm 内存）。
 - `独立target加feature门控`：插桩走独立 target dir，`__cov_dump` 用 `#[cfg(feature = "coverage")]` 门控，生产产物零污染。
 - `profraw带签名合并`：profraw 按 minicov module_signature 命名防覆盖，`llvm-profdata merge -sparse *.profraw` 合并。
 - `前后双清理`：wasm 覆盖率链前后各加 `clean_stray_profraw.py` + `cargo llvm-cov clean --workspace`。
-- `CI工具版本纳入体检`：ci.yml 新增的 `KyleMayes/install-llvm-action` 安装步由
-  `check_outdated.py` section 4（自动扫 ci.yml 全部 `uses:` 引用）纳入过期检测，
-  action 引用落后即报 LAG——零额外代码（实证 `lib/repository.py` `action_refs`）。
-- `clang本地apt升级`：本地 clang 安装/升级走 apt（用户有 sudo），agent MUST NOT
-  下载近 2GB tarball、MUST NOT 跑 sudo；check:outdated 报 clang LAG 时 agent 告知
-  用户并给出确切 apt 命令，由用户升级。
 - `archive体检跳过`：本 change 归档阶段（archive 态）的 health-check 只读体检
   一次性跳过（2026-11-20），apply 态体检照常执行。
+- `弃clang改llvm-tools`（2026-11-20 复核推翻 clang 方案）：实证 `install-llvm-action`
+  源码仅解压 tarball 不用 sudo、且 rustup `llvm-tools` 组件已含 `llc`/`llvm-cov`/
+  `llvm-profdata`（本机实测 `.ll`→宿主 `.o` 通过），故弃 clang/apt/install-llvm-action/
+  check:outdated clang 探针整条线，改用工具链自带 llvm-tools——无 sudo、无人工升级、
+  不新增 check:outdated 探针，dependency-upgrade spec 无需改动。
