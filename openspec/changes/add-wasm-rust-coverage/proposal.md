@@ -81,3 +81,17 @@
   LLVM 精确匹配）。两者均无 sudo，dependency-upgrade spec 无需改动（wasi-sdk 作直装
   工具入 check:outdated section 3，llvm-tools 随钉版走）。旧「纯 llvm-tools 无 clang」
   结论错在漏了 minicov build.rs 编 C runtime 这步，已推翻。
+- `worker环境变量切加载`（2026-11-21 定案）：worker 跑插桩 wasm 走环境变量切加载路径
+  （`netwave.worker.ts` 的 wasm 目录可被 env 覆盖，未设=生产路径零变化），并把实例
+  内存暴露给 setupFiles 钩子读 profraw。备选「测试脚本 Proxy 桩自加载」保真度低否。
+- `wasm-bindgen-cli生成胶水`（2026-11-21 实测定案）：插桩 wasm 的 JS 胶水 MUST 用
+  `wasm-bindgen-cli` 生成——实测 wasm-pack 编不出插桩产物：它只编 release（仓库
+  `Cargo.toml` `[profile.release] lto = true`），LTO 与插桩符号冲突报
+  `data symbols must live in a data section: __covrec_*`；且 `--dev`/`--profiling`
+  透传给 cargo build 是坏的（cargo 不认）。故新增 `scripts/install_wasm_bindgen_cli.sh`
+  - CI 安装步 + check:outdated 探测（版本对齐 wasm-bindgen crate）。
+- `wasm-bindgen-cli预编译优先`（2026-11-21 定案）：安装脚本 MUST 优先下 GitHub release
+  预编译 tarball（实测 0.2.130 有 aarch64/x86_64 linux-gnu/musl、macos、windows），
+  平台无对应包时回退 `cargo install wasm-bindgen-cli --version <对齐 crate>`。
+- `插桩target加白名单`（2026-11-21 定案）：插桩构建走独立 target dir，其名字 MUST
+  加进 `clean_stray_profraw.py` 的 SKIP_DIRS（否则其 profraw 被误判漏网删除）。
