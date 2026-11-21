@@ -17,7 +17,7 @@
 
 ## 4. test_ts.sh 覆盖率链
 
-- [ ] 4.1 `scripts/run/test_ts.sh` 探测段：从 `$(rustc --print sysroot)` 下 llvm-tools bin 目录解析 `llc`/`llvm-profdata`/`llvm-cov`，并探测 wasi-sdk clang（缺失时提示跑 `scripts/install_clang.sh` 并以非零退出，不自动装）（验证 `llvm-tools组件取工具` + `wasi-sdk编C`：任一缺失均报错指向对应安装位，不发起外部安装）
+- [ ] 4.1 `scripts/run/test_ts.sh` 探测段：从 `$(rustc --print sysroot)` 下 llvm-tools bin 目录解析 `llc`/`llvm-profdata`/`llvm-cov`，并探测 wasi-sdk clang（缺失时提示跑 `scripts/install_wasi_sdk.sh` 并以非零退出，不自动装）（验证 `llvm-tools组件取工具` + `wasi-sdk编C`：任一缺失均报错指向对应安装位，不发起外部安装）
 - [ ] 4.2 在 native 链后新增 wasm rust 覆盖率段：`CC=<wasi-sdk>/bin/clang` + `RUSTC_BOOTSTRAP=1` + `-Cinstrument-coverage -Zno-profiler-runtime --emit=llvm-ir` 插桩构建（独立 target dir）→ `pnpm -C typescript test:wasm` → `llvm-profdata merge -sparse *.profraw` → `llc --march=<宿主架构>` 把 `.ll`→`.o` → `llvm-cov report --codecov --ignore-filename-regex` 剔 python/native（验证 `手动llvm链` + `度量core-browser`：出 `coverage/coverage-wasm.json` 且含 core/src 路径行命中 > 0，LL-093）
 - [ ] 4.3 wasm 覆盖率链前后各加 `clean_stray_profraw.py` + `cargo llvm-cov clean --workspace`（验证 `前后双清理`：链外无残留 profraw）
 - [ ] 4.4 `scripts/coverage_gate.py coverage/coverage-wasm.json 100` 阅卷（验证 `地板100先列清单`：未达行不直接豁免，先列「真不可达」候选清单交人工确认）
@@ -26,8 +26,8 @@
 ## 5. 工具链与 CI
 
 - [ ] 5.1 `rust-toolchain.toml` 的 `components` 加 `llvm-tools`（验证 `llvm-tools组件取工具`：rustup 激活钉版工具链后 `$(rustc --print sysroot)` 下 llvm-tools bin 目录含 `llc`/`llvm-profdata`/`llvm-cov`，本地与 CI 一致）
-- [ ] 5.2 新增 `scripts/install_clang.sh`（仿 install_binaryen.sh：查 wasi-sdk 最新 release、下 arm64/x86_64 tarball 解压到 `~/.local/opt/wasi-sdk`、无 sudo）（验证 `wasi-sdk编C` + `编译阅卷工具分离`：脚本跑通后 `<dir>/bin/clang --target=wasm32-unknown-unknown` 可编 freestanding C）
-- [ ] 5.3 `.github/workflows/ci.yml` node job 加 `scripts/install_clang.sh` 安装步（验证 `全矩阵采集` + `wasi-sdk编C`：5 格均装 wasi-sdk clang、均产 coverage-wasm.json）
+- [ ] 5.2 新增 `scripts/install_wasi_sdk.sh`（仿 install_binaryen.sh：查 wasi-sdk 最新 release、下 arm64/x86_64 tarball 解压到 `~/.local/opt/wasi-sdk`、无 sudo）（验证 `wasi-sdk编C` + `编译阅卷工具分离`：脚本跑通后 `<dir>/bin/clang --target=wasm32-unknown-unknown` 可编 freestanding C）
+- [ ] 5.3 `.github/workflows/ci.yml` node job 加 `scripts/install_wasi_sdk.sh` 安装步（验证 `全矩阵采集` + `wasi-sdk编C`：5 格均装 wasi-sdk clang、均产 coverage-wasm.json）
 - [ ] 5.4 `scripts/versions/check_outdated.py` section 3 加 wasi-sdk 探测，追最新判 LAG（验证 `wasi-sdk编C`：`pnpm check:outdated` 对落后 wasi-sdk 报 LAG）
 
 ## 6. spec 同步与豁免清单
@@ -43,4 +43,4 @@
 - [ ] 7.4 按 governance spec「元规则 review 三轴」（Standards/Spec/Lessons）对照本 change 工件审实现 diff，diff 逐文件对上 tasks.md，硬伤清零（锚点 `三轴`）
 - [ ] 7.5 对触碰文件全文只读体检（health-check spec apply 态：语义考古维 + 四维，发现附文件+行号+证据落 Plan/ 等点名，不阻塞；全豁免记「已查，无适用文件」）（锚点 `体检`）。注：archive 态体检一次性跳过（2026-11-20，裁决 `archive体检跳过`），apply 态本项照常执行
 - [ ] 7.6 apply 中途拍板的决定当场追加进 proposal.md `## 已定裁决` 段并补对应任务行，收尾复查每关键词载体任务已打勾（锚点 `迟到追加`）
-- [ ] 7.7 跑 `pnpm check:outdated` 并按 dependency-upgrade spec「apply 末尾体检与升级预授权」消化所报 LAG（wasi-sdk LAG 由 agent 重跑 `scripts/install_clang.sh` 消化，无 sudo；llvm-tools 随 `rust-toolchain.toml` 钉版走不单独报 LAG），复跑至退出码 0（SUMMARY 归零）才算完成（锚点 `check:outdated`）
+- [ ] 7.7 跑 `pnpm check:outdated` 并按 dependency-upgrade spec「apply 末尾体检与升级预授权」消化所报 LAG（wasi-sdk LAG 由 agent 重跑 `scripts/install_wasi_sdk.sh` 消化，无 sudo；llvm-tools 随 `rust-toolchain.toml` 钉版走不单独报 LAG），复跑至退出码 0（SUMMARY 归零）才算完成（锚点 `check:outdated`）

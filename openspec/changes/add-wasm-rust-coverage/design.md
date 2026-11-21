@@ -71,7 +71,7 @@ show-env/report 包一层（核心步骤仍须手动喂 `.o`，无收益，否�
 编译期：minicov `build.rs` 第 6 行硬编码 `cfg.compiler("clang")`，以 freestanding
 （`-nostdlibinc`）编 10 个 wasm32 C 文件。gcc 无 wasm32 后端（实测报
 `failed to find tool "clang"`），故必须一个能编 wasm32 的 clang。用 **wasi-sdk**
-自带的标准 clang：`scripts/install_clang.sh` 下 192MB tarball 解压到
+自带的标准 clang：`scripts/install_wasi_sdk.sh` 下 192MB tarball 解压到
 `~/.local/opt/wasi-sdk`（仿 install_binaryen.sh，零 sudo），`test_ts.sh` 插桩构建段
 设 `CC=<wasi-sdk>/bin/clang`。wasi-sdk 作直装工具纳入 check:outdated section 3
 （同 binaryen/wasm-pack）。
@@ -98,7 +98,7 @@ threads 池多 worker 各产一份 profraw，用 `minicov::module_signature()`�
 - [wasm-bindgen 胶水 + minicov dump 共存] → 已验（2026-11-20）：真 `typescript/wasm` 以 wasi-sdk clang 编插桩 wasm、node 加载调 dump 倒出 187KB profraw。
 - [core browser-gated 代码能否达 100% 未知] → 地板 100，未达行先列「真不可达」清单人工确认才可豁免，否则补单测（裁决 `地板100先列清单`）。
 - [llvm-tools 组件未装致 `llc`/`llvm-cov` 缺失] → 写进 `rust-toolchain.toml` 的 `components`，rustup 激活工具链时自动装；本地/CI 一致。
-- [wasi-sdk clang 未装致插桩构建失败] → `test_ts.sh` 探测 wasi-sdk clang，缺失时提示跑 `scripts/install_clang.sh` 并以非零退出；CI node job 加安装步。
+- [wasi-sdk clang 未装致插桩构建失败] → `test_ts.sh` 探测 wasi-sdk clang，缺失时提示跑 `scripts/install_wasi_sdk.sh` 并以非零退出；CI node job 加安装步。
 - [wasm `.ll` 带 `target triple = "wasm32"`，`llc` 默认想编 wasm 对象] → 加 `--march=<宿主架构>` 强制出宿主 `.o`（spike 已验）。
 - [wasi-sdk clang major 与 rustc LLVM major 错配] → wasi-sdk 34=clang 23.1、钉版 rustc=LLVM 23，同 major；且 clang 仅编 minicov freestanding C runtime，不碰 IR/profraw 格式（那由 rustc/llvm-tools 同份 LLVM 负责），错配面极窄。
 - [RUSTC_BOOTSTRAP 被误用于日常构建] → 仅在 `test_ts.sh` 覆盖率段局部 export，作用域限该脚本进程；生产 build:wasm 不设。
@@ -106,6 +106,6 @@ threads 池多 worker 各产一份 profraw，用 `minicov::module_signature()`�
 ## Migration Plan
 
 纯新增覆盖率链，无数据/接口迁移。回滚：移除 `test_ts.sh` 的 wasm 覆盖率段、
-`rust-toolchain.toml` 的 `llvm-tools` component、`scripts/install_clang.sh` 与
+`rust-toolchain.toml` 的 `llvm-tools` component、`scripts/install_wasi_sdk.sh` 与
 ci.yml 的 clang 安装步即恢复原状；`typescript/wasm` 的 `coverage` feature
 默认关，不影响生产构建。

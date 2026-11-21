@@ -37,7 +37,7 @@ core 报告、胶水行归胶水报告，互不重复计分；绑定 crate 由 s
 typescript/wasm crate 的 rust 行覆盖率 MUST 以 minicov runtime +
 `RUSTC_BOOTSTRAP=1` 解锁 `-Zno-profiler-runtime` 在钉死 stable 上编插桩 wasm，
 由 node 驱动 vitest 套件采集：minicov 的 wasm32 C runtime MUST 由能编 wasm32 的
-clang（wasi-sdk 自带，`CC` 指向 `scripts/install_clang.sh` 装到 `~/.local` 的 clang）
+clang（wasi-sdk 自带，`CC` 指向 `scripts/install_wasi_sdk.sh` 装到 `~/.local` 的 clang）
 编译（gcc 无 wasm32 后端），插桩构建走独立 target dir（不覆盖生产
 `build:wasm` 产物），dump 导出 MUST 以 `#[cfg(feature = "coverage")]` 门控
 （生产产物零污染），profraw MUST 由 worker 上下文内的钩子调 dump 倒出
@@ -110,19 +110,19 @@ wasm rust 覆盖率链前后 MUST 各执行 `clean_stray_profraw.py` 与
 ### Requirement: wasm 覆盖率链的编译与阅卷工具均无需 sudo
 
 wasm rust 覆盖率链分两段取工具，均 MUST NOT 依赖 sudo：编译期 minicov 的
-wasm32 C runtime MUST 由 wasi-sdk 自带的标准 clang 编译（`scripts/install_clang.sh`
+wasm32 C runtime MUST 由 wasi-sdk 自带的标准 clang 编译（`scripts/install_wasi_sdk.sh`
 下 tarball 解压到 `~/.local/opt/wasi-sdk`，仿 install_binaryen.sh；wasi-sdk MUST
 纳入 `scripts/versions/check_outdated.py` 的直装工具组，同 binaryen/wasm-pack）；
 阅卷期 `llc`/`llvm-profdata`/`llvm-cov` MUST 取自钉版 rust 工具链自带的
 `llvm-tools` 组件（写进 `rust-toolchain.toml` 的 `components`，rustup 激活工具链
 时自动装），该组件随钉版走 MUST NOT 纳入 check:outdated。`scripts/run/test_ts.sh`
 MUST 从 `$(rustc --print sysroot)` 下的 llvm-tools bin 目录取阅卷三件套，
-MUST 探测 wasi-sdk clang、缺失时提示跑 `scripts/install_clang.sh` 并以非零退出。
+MUST 探测 wasi-sdk clang、缺失时提示跑 `scripts/install_wasi_sdk.sh` 并以非零退出。
 
 #### Scenario: 缺 wasi-sdk clang 时本地测试入口可行动报错
 
 - **WHEN** 本机未装 wasi-sdk clang 时运行 `pnpm test:ts`
-- **THEN** `test_ts.sh` 探测段打印跑 `scripts/install_clang.sh` 的指引并以非零退出，
+- **THEN** `test_ts.sh` 探测段打印跑 `scripts/install_wasi_sdk.sh` 的指引并以非零退出，
   不发起自动安装
 
 #### Scenario: llvm-tools 组件随工具链自动就位
@@ -135,7 +135,7 @@ MUST 探测 wasi-sdk clang、缺失时提示跑 `scripts/install_clang.sh` 并�
 
 - **WHEN** 本机 wasi-sdk 版本落后其 GitHub 最新 release
 - **THEN** `pnpm check:outdated` 在直装工具组对 wasi-sdk 报 LAG，重跑
-  `scripts/install_clang.sh` 消化
+  `scripts/install_wasi_sdk.sh` 消化
 
 #### Scenario: wasi-sdk clang 与 rustc LLVM 不兼容时可行动回退
 
