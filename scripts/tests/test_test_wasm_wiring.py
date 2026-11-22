@@ -62,6 +62,33 @@ def test_chain_grades_lcov_via_gate() -> None:
     assert "coverage_gate.py coverage/coverage-wasm.lcov 99" in s
 
 
+def test_ignore_regex_excludes_third_party_on_both_hosts() -> None:
+    # Behavioural check (not just a static substring): extract the real
+    # --ignore-filename-regex value the script passes to llvm-cov and run it
+    # against the exact path strings each host reports. This is what failed on
+    # the fourth round — a bare-slash regex matched zero Windows paths, so
+    # third-party lines leaked into the denominator (LL-096). The pattern uses
+    # POSIX ERE semantics; for this char-class-plus-quantifier form Python's re
+    # matches identically.
+    m = re.search(r"--ignore-filename-regex='([^']+)'", _script())
+    assert m, "the chain must pass --ignore-filename-regex to llvm-cov"
+    pattern = m.group(1)
+    # Windows: llvm-cov reports the cargo home with backslashes (CI log verbatim).
+    windows = (
+        r"C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f"
+        r"\js-sys-0.3.107\src\futures\jspi.rs"
+    )
+    # Linux: forward slashes.
+    linux = "/home/runner/.cargo/registry/src/index.crates.io/js-sys-0.3.107/jspi.rs"
+    # netwave's own source must stay in the denominator on both hosts.
+    own_windows = r"D:\a\netwave\netwave\core\src\touchstone.rs"
+    own_linux = "/home/runner/netwave/core/src/touchstone.rs"
+    assert re.search(pattern, windows), "must exclude third-party on Windows"
+    assert re.search(pattern, linux), "must exclude third-party on Linux"
+    assert not re.search(pattern, own_windows), "must keep netwave core (Windows)"
+    assert not re.search(pattern, own_linux), "must keep netwave core (Linux)"
+
+
 def test_probes_head_the_script_before_any_build() -> None:
     lines = _script().splitlines()
 
