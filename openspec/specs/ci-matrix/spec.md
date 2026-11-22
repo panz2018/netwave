@@ -390,20 +390,25 @@ core 报告、胶水行归胶水报告，互不重复计分；绑定 crate 由 s
 global scope 上解析，node harness 的 fakeSelf 恒落「无 fetch 能力 scope」臂，
 故这些行 MUST NOT 由 node 驱动 vitest 采集（采不到即漏分母）：minicov 的
 wasm32 C runtime MUST 由能编 wasm32 的 clang（wasi-sdk 自带，`CC` 指向
-`scripts/install_wasi_sdk.sh` 装到 `~/.local` 的 clang）编译，插桩构建走独立
-target dir（不覆盖生产 `build:wasm` 产物），dump 导出 MUST 以
-`#[cfg(feature = "coverage")]` 门控（生产产物零污染），profraw MUST 由浏览器
-测试末尾经 worker 控制消息调 dump 倒出、以 base64 经 vitest browser command
-回传 node 落盘并带 minicov module_signature 防多 worker 覆盖，合并用
-`llvm-profdata merge -sparse`，再以 `llc` 把 `.ll`（`--emit=llvm-ir` 产出）编成宿主
-对象文件后调 `llvm-cov export --format=lcov`（llvm-cov 无 `--codecov` flag，散装 `.o`
-无独立 codecov 入口），以 `--ignore-filename-regex` 剔除 `.cargo/registry` 第三方后
-落 `coverage/coverage-wasm.lcov` 并以 `scripts/coverage_gate.py ... 99` 阅卷（该脚本
-MUST 支持 lcov tracefile 输入；wasm rust 地板为 99 而非 100——fetch「无
-fetch-capable scope」臂读 `js_sys::global()` 真实全局、无参数注入点，任何测试或
-mock 均不可达，补完所有可驱动单测后仍剩此臂）。wasm rust 覆盖率 MUST 仅在真浏览器 job 单采；
-node matrix 格的 wasm 套件维持 TS-only v8 覆盖率（不产 wasm lcov）；
-wasm 端 TS 层 vitest 100% 门槛不变。
+`scripts/install_wasi_sdk.sh` 装到 `~/.local` 的 clang）编译（gcc 无 wasm32
+后端），插桩构建走独立 target dir（不覆盖生产 `build:wasm` 产物），dump 导出
+MUST 以 `#[cfg(feature = "coverage")]` 门控（生产产物零污染），profraw MUST
+由浏览器测试末尾经 worker 控制消息调 dump 倒出、以 base64 经 vitest browser
+command 回传 node 落盘（Uint8Array 直传经序列化降级成 Object，故须 base64），
+profraw 文件名 MUST 带 minicov module_signature 防多 worker 覆盖，合并 profraw
+MUST 用 `llvm-profdata merge` 加 `-sparse`，合并后以 `llc` 把 `.ll`（由
+`--emit=llvm-ir` 产出）编成宿主对象文件，再调 `llvm-cov export --format=lcov`
+（llvm-cov 读不了 wasm 符号，故须先 `llc` 编宿主 `.o`；llvm-cov 无 `--codecov`
+flag，那是 cargo-llvm-cov 的，散装 `.o` 无独立 codecov 入口）。报告 MUST 度量
+core browser-gated 代码，以 `--ignore-filename-regex` 剔除 `.cargo/registry`
+第三方后独立阅卷，落 `coverage/coverage-wasm.lcov` 并以
+`scripts/coverage_gate.py ... 99` 阅卷（该脚本 MUST 支持 lcov tracefile 输入，
+把每条 `DA:<行>,<命中>` 视作 OR 合并后的行级命中；wasm rust 地板为 99 而非
+100——fetch「无 fetch-capable scope」臂读 `js_sys::global()` 真实全局、无参数
+注入点，任何测试或 mock 均不可达）。
+wasm rust 覆盖率链前后 MUST 各执行 `clean_stray_profraw.py`。wasm rust 覆盖率
+MUST 仅在真浏览器 job 单采（node matrix 格的 wasm 套件维持 TS-only v8，不产
+wasm lcov）。wasm 端 TS 层 vitest 100% 门槛不变。
 
 #### Scenario: 空 crate 即 100%
 
@@ -456,6 +461,29 @@ wasm 端 TS 层 vitest 100% 门槛不变。
 - **WHEN** 运行 `pnpm -C typescript build:wasm`（不带 coverage feature）
 - **THEN** 产出的 wasm 不含 `__cov_dump`/`__cov_ptr`/`__cov_len` 导出
   （feature 门控），发布产物零污染
+
+### Requirement: wasm 覆盖率链的编译与阅卷工具均无需 sudo
+
+wasm rust 覆盖率链分两段取工具，均 MUST NOT 依赖 sudo：编译期 minicov 的
+wasm32 C runtime MUST 由 wasi-sdk 自带的标准 clang 编译（`scripts/install_wasi_sdk.sh`
+下 tarball 解压到 `~/.local/opt/wasi-sdk`，仿 install_binaryen.sh）；阅卷期
+`llc`/`llvm-profdata`/`llvm-cov` MUST 取自钉版 rust 工具链自带的 `llvm-tools`
+组件（写进 `rust-toolchain.toml` 的 `components`，rustup 激活工具链时自动装）。
+`scripts/run/test_wasm.sh` MUST 从 `$(rustc --print sysroot)` 下的 llvm-tools bin
+目录取阅卷三件套，MUST 探测 wasi-sdk clang、缺失时提示跑
+`scripts/install_wasi_sdk.sh` 并以非零退出。
+
+#### Scenario: 缺 wasi-sdk clang 时本地测试入口可行动报错
+
+- **WHEN** 本机未装 wasi-sdk clang 时运行 `pnpm test:wasm`
+- **THEN** `test_wasm.sh` 探测段打印跑 `scripts/install_wasi_sdk.sh` 的指引并以非零退出，
+  不发起自动安装
+
+#### Scenario: llvm-tools 组件随工具链自动就位
+
+- **WHEN** rustup 激活 `rust-toolchain.toml` 钉定的工具链（本地或 CI）
+- **THEN** `llvm-tools` 组件随之安装，`$(rustc --print sysroot)` 下 llvm-tools
+  bin 目录含 `llc`/`llvm-profdata`/`llvm-cov`，`test_wasm.sh` 无需外部安装步即可阅卷
 
 ### Requirement: core 覆盖率全平台产出
 

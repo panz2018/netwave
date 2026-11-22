@@ -118,13 +118,12 @@ wasm lcov）。wasm 端 TS 层 vitest 100% 门槛不变。
 
 wasm rust 覆盖率链分两段取工具，均 MUST NOT 依赖 sudo：编译期 minicov 的
 wasm32 C runtime MUST 由 wasi-sdk 自带的标准 clang 编译（`scripts/install_wasi_sdk.sh`
-下 tarball 解压到 `~/.local/opt/wasi-sdk`，仿 install_binaryen.sh；wasi-sdk MUST
-纳入 `scripts/versions/check_outdated.py` 的直装工具组，同 binaryen/wasm-pack）；
-阅卷期 `llc`/`llvm-profdata`/`llvm-cov` MUST 取自钉版 rust 工具链自带的
-`llvm-tools` 组件（写进 `rust-toolchain.toml` 的 `components`，rustup 激活工具链
-时自动装），该组件随钉版走 MUST NOT 纳入 check:outdated。`scripts/run/test_wasm.sh`
-MUST 从 `$(rustc --print sysroot)` 下的 llvm-tools bin 目录取阅卷三件套，
-MUST 探测 wasi-sdk clang、缺失时提示跑 `scripts/install_wasi_sdk.sh` 并以非零退出。
+下 tarball 解压到 `~/.local/opt/wasi-sdk`，仿 install_binaryen.sh）；阅卷期
+`llc`/`llvm-profdata`/`llvm-cov` MUST 取自钉版 rust 工具链自带的 `llvm-tools`
+组件（写进 `rust-toolchain.toml` 的 `components`，rustup 激活工具链时自动装）。
+`scripts/run/test_wasm.sh` MUST 从 `$(rustc --print sysroot)` 下的 llvm-tools bin
+目录取阅卷三件套，MUST 探测 wasi-sdk clang、缺失时提示跑
+`scripts/install_wasi_sdk.sh` 并以非零退出。
 
 #### Scenario: 缺 wasi-sdk clang 时本地测试入口可行动报错
 
@@ -137,16 +136,3 @@ MUST 探测 wasi-sdk clang、缺失时提示跑 `scripts/install_wasi_sdk.sh` �
 - **WHEN** rustup 激活 `rust-toolchain.toml` 钉定的工具链（本地或 CI）
 - **THEN** `llvm-tools` 组件随之安装，`$(rustc --print sysroot)` 下 llvm-tools
   bin 目录含 `llc`/`llvm-profdata`/`llvm-cov`，`test_wasm.sh` 无需外部安装步即可阅卷
-
-#### Scenario: check:outdated 报 wasi-sdk LAG
-
-- **WHEN** 本机 wasi-sdk 版本落后其 GitHub 最新 release
-- **THEN** `pnpm check:outdated` 在直装工具组对 wasi-sdk 报 LAG，重跑
-  `scripts/install_wasi_sdk.sh` 消化
-
-#### Scenario: wasi-sdk clang 与 rustc LLVM 不兼容时可行动回退
-
-- **WHEN** 追最新的 wasi-sdk clang 与钉版 rustc LLVM major 不兼容致插桩构建
-  或 `.ll`→`.o` 失败
-- **THEN** 按「latest by default, roll back only on a real bug」回退 wasi-sdk
-  到匹配 major 的版本，不阻塞
