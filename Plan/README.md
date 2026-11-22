@@ -13,3 +13,4 @@
 | [发布许可打包.md](发布许可打包.md)                   | 发布流水线立项时执行：双许可全文随附各发布物                                                |
 | [覆盖率统一-2026-11-12.md](覆盖率统一-2026-11-12.md) | S5 wasm 已随 change `add-wasm-rust-coverage` 落地删除；留 S6 vitest 阈值补齐延后项          |
 | [绑定放置重构.md](绑定放置重构.md)                   | 待研究讨论：wasm dispatch 从 core 搬回 wasm crate（对齐 python/node），附依赖注入治单例锁死 |
+| [biome警告升级为错误.md](biome警告升级为错误.md)     | 待执行：把 biome warning 升为 error（`--error-on-warnings`/severity），当场清零存量非空断言 |
