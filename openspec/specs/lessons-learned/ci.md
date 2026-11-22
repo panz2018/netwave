@@ -245,8 +245,14 @@
   `[\\/]` 同时兼容两种分隔符，禁写裸 `/`；spec 写 regex 同理；
   平台特有形态（路径分隔符、换行、ABI）不得假设跨端一致，本地模拟
   声明"每格已验"时须注明哪些面只有 CI 真跑才能覆盖
-- 复发检测：review 时 grep ci.yml/spec 中路径 regex 是否含裸 `/xxx/`
-  模式；标定轮对比同报告跨平台数字，离群格先查路径形态再查代码
+- 复发（2026-11-22）：`test_wasm.sh` 定位插桩 `.ll` 的 grep -rlE 模式
+  "core/src/...\.rs" 用裸 `/`，Windows `.ll` 调试信息源路径为反斜杠
+  core\src\...，匹配不到 → llc 循环零次 → 无 `.o` → llvm-cov no such file；
+  ubuntu（正斜杠）过、windows 挂，单 OS 复现不了。未遵守原因：
+  写新 grep 时只想着本机 Linux 路径，没回扫本条
+- 复发检测：review 时 grep ci.yml/spec **与 scripts/**（含 test_*.sh）中
+  路径 regex/glob 是否含裸 `/xxx/` 或 `"dir/file"` 形态；标定轮对比同报告
+  跨平台数字，离群格先查路径形态再查代码
 
 ### LL-100 宏属性行计数不并回——行级豁免落 gate 模式驱动
 
