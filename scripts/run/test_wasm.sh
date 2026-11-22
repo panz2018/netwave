@@ -128,13 +128,26 @@ NETWAVE_WASM_DIR="$PWD/typescript/dist/wasm-cov" \
 # never runs the x86 cell cannot catch this (LL-096).
 HOST_ARCH="$(rustc -vV | sed -n 's/^host: //p' | cut -d- -f1)"
 case "$HOST_ARCH" in x86_64) HOST_ARCH="x86-64" ;; esac
+# Locate the instrumented core CGU .ll by its source mapping, not its hash name.
+# The path separator inside the .ll debug info differs per host: Linux writes a
+# single forward slash (core/src/...), Windows escapes backslashes in the LLVM
+# string literal so the file bytes are core\\src\\... (double backslash). Match
+# ONE-OR-MORE separators ([\\/]+) so every form works without guessing which the
+# host emits — a single-separator class silently matches zero files on Windows,
+# yielding no .o and a cryptic llvm-cov "no such file" (LL-096, three-round fix).
+COV_LL="$(grep -rlE 'core[\\/]+src[\\/]+(frequency|resources|touchstone)\.rs' \
+  "$WASM_COV_DIR" --include='*.ll')"
+if [ -z "$COV_LL" ]; then
+  echo "no instrumented core .ll matched under $WASM_COV_DIR — coverage chain broken" >&2
+  echo "(expected core/src/{frequency,resources,touchstone}.rs source mappings in .ll)" >&2
+  exit 1
+fi
 i=0
 while IFS= read -r ll; do
   "$LLVM_BIN/llc" --march="$HOST_ARCH" --filetype=obj \
     -o "$WASM_COV_DIR/cgu$i.o" "$ll"
   i=$((i + 1))
-done < <(grep -rlE 'core[\\/]src[\\/](frequency|resources|touchstone)\.rs' \
-  "$WASM_COV_DIR" --include='*.ll')
+done <<< "$COV_LL"
 "$LLVM_BIN/llvm-cov" export --format=lcov "$WASM_COV_DIR"/cgu*.o \
   -instr-profile="$WASM_COV_DIR/merged.profdata" \
   --ignore-filename-regex='\.cargo/registry' > coverage/coverage-wasm.lcov
