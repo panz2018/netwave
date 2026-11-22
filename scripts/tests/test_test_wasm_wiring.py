@@ -56,7 +56,7 @@ def test_chain_grades_lcov_via_gate() -> None:
     assert "llvm-cov" in s and "--format=lcov" in s
     # third-party crates must stay out of the denominator.
     assert "--ignore-filename-regex" in s and ".cargo/registry" in s
-    assert "coverage_gate.py coverage/coverage-wasm.lcov 100" in s
+    assert "coverage_gate.py coverage/coverage-wasm.lcov 99" in s
 
 
 def test_probes_head_the_script_before_any_build() -> None:

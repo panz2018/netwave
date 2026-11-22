@@ -52,8 +52,10 @@ MUST 用 `llvm-profdata merge` 加 `-sparse`，合并后以 `llc` 把 `.ll`（�
 flag，那是 cargo-llvm-cov 的，散装 `.o` 无独立 codecov 入口）。报告 MUST 度量
 core browser-gated 代码，以 `--ignore-filename-regex` 剔除 `.cargo/registry`
 第三方后独立阅卷，落 `coverage/coverage-wasm.lcov` 并以
-`scripts/coverage_gate.py ... 100` 阅卷（该脚本 MUST 支持 lcov tracefile 输入，
-把每条 `DA:<行>,<命中>` 视作 OR 合并后的行级命中）。
+`scripts/coverage_gate.py ... 99` 阅卷（该脚本 MUST 支持 lcov tracefile 输入，
+把每条 `DA:<行>,<命中>` 视作 OR 合并后的行级命中；wasm rust 地板为 99 而非
+100——fetch「无 fetch-capable scope」臂读 `js_sys::global()` 真实全局、无参数
+注入点，任何测试或 mock 均不可达）。
 wasm rust 覆盖率链前后 MUST 各执行 `clean_stray_profraw.py`。wasm rust 覆盖率
 MUST 仅在真浏览器 job 单采（node matrix 格的 wasm 套件维持 TS-only v8，不产
 wasm lcov）。wasm 端 TS 层 vitest 100% 门槛不变。
@@ -98,10 +100,11 @@ wasm lcov）。wasm 端 TS 层 vitest 100% 门槛不变。
 
 #### Scenario: wasm 豁免须先经人工确认清单
 
-- **WHEN** `coverage/coverage-wasm.lcov` 出现未达 100% 的行
+- **WHEN** `coverage/coverage-wasm.lcov` 出现未达 99% 地板的行
 - **THEN** MUST NOT 直接豁免；先列「真不可达」候选清单（逐条附文件+行号+
-  不可达理由）交人工确认，确认后方可按 stable 通道标注豁免；未确认者
-  MUST 补单元测试至 100%
+  不可达理由）交人工确认，确认后方可按 stable 通道标注豁免或计入 99 地板
+  容差；未确认者 MUST 补单元测试至达标（fetch「无 fetch-capable scope」臂
+  经人工确认属真不可达，是 99 地板的由来）
 
 #### Scenario: 生产 wasm 产物不含覆盖率导出
 

@@ -134,7 +134,10 @@ done < <(grep -rlE '"core/src/(frequency|resources|touchstone)\.rs"' \
 "$LLVM_BIN/llvm-cov" export --format=lcov "$WASM_COV_DIR"/cgu*.o \
   -instr-profile="$WASM_COV_DIR/merged.profdata" \
   --ignore-filename-regex='\.cargo/registry' > coverage/coverage-wasm.lcov
-python3 scripts/coverage_gate.py coverage/coverage-wasm.lcov 100
+# Floor 99 (not 100): the fetch "no fetch-capable scope" arm reads
+# js_sys::global() with no injection point, so it is unreachable by any test or
+# mock (decision wasm地板99). All other chains keep a 100 floor.
+python3 scripts/coverage_gate.py coverage/coverage-wasm.lcov 99
 
 # Production browser suite (TS-only v8 coverage, 100% threshold): the chain run
 # above disables v8 (the instrumented dispatch branch skips the production
