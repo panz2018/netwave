@@ -930,6 +930,10 @@ impl Touchstone {
     /// (zero-copy: the JS view points at this very buffer). Not a
     /// user-facing surface (users read/write through `s`); the `Arc` type
     /// never crosses an FFI boundary, so it cannot surface by construction.
+    /// Native-only: the browser worker returns a structured-clone copy, never
+    /// an `Arc`, so this is excluded from the browser build (and its coverage
+    /// denominator).
+    #[cfg(not(feature = "browser"))]
     pub fn s_arc(&self) -> Arc<Vec<f64>> {
         Arc::clone(&self.s)
     }
@@ -940,7 +944,10 @@ impl Touchstone {
     /// consistent with the axis and z0 by construction, no runtime check.
     /// Errors while a zero-copy view is shared out (`Arc` strong count > 1):
     /// during that window the data is written through the borrowed view
-    /// (`s()`), not through here.
+    /// (`s()`), not through here. Native-only: it backs the node zero-copy
+    /// write path, so it is excluded from the browser build (and its coverage
+    /// denominator).
+    #[cfg(not(feature = "browser"))]
     pub fn s_mut(&mut self) -> Result<&mut [f64], TouchstoneError> {
         Arc::get_mut(&mut self.s)
             .map(Vec::as_mut_slice)
@@ -1400,7 +1407,10 @@ impl Touchstone {
         }
     }
 
-    /// Native file write: `write_path` + `std::fs::write` (cfg native).
+    /// Native file write: `write_path` + `std::fs::write`. Native-only — the
+    /// browser writes through a DOM blob download, never `std::fs`, so this is
+    /// excluded from the browser build (and its coverage denominator).
+    #[cfg(not(feature = "browser"))]
     pub fn write_file(
         &self,
         path: &str,
