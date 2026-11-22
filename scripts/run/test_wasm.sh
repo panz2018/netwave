@@ -121,9 +121,13 @@ NETWAVE_WASM_DIR="$PWD/typescript/dist/wasm-cov" \
   pnpm -C typescript test:browser --coverage.enabled=false
 "$LLVM_BIN/llvm-profdata" merge -sparse "$WASM_COV_DIR"/profraw/*.profraw \
   -o "$WASM_COV_DIR/merged.profdata"
-# llc needs the short host arch (aarch64/x86_64), not the full triple. The
-# instrumented core CGU .ll is found by its source mapping, not its hash name.
+# llc needs the short host arch, not the full triple. The instrumented core CGU
+# .ll is found by its source mapping, not its hash name. llc spells the x86-64
+# backend "x86-64" (hyphen) while rustc's host triple uses "x86_64" (underscore);
+# aarch64 matches on both sides, so only x86_64 needs remapping — a host that
+# never runs the x86 cell cannot catch this (LL-096).
 HOST_ARCH="$(rustc -vV | sed -n 's/^host: //p' | cut -d- -f1)"
+case "$HOST_ARCH" in x86_64) HOST_ARCH="x86-64" ;; esac
 i=0
 while IFS= read -r ll; do
   "$LLVM_BIN/llc" --march="$HOST_ARCH" --filetype=obj \

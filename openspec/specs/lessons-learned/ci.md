@@ -374,3 +374,17 @@
   抑制写出优于事后清扫（清扫会把真断链信号一并抹掉）
 - 复发检测：`pnpm test` 全链 exit 0 且 LL-103 的 profraw 扫描（剪枝 target 等）
   为空；新增跑插桩产物的非覆盖率入口时 review 核对是否已抑制 profraw 写出
+
+### LL-112 llc target 名须映射 rustc host arch：x86_64→x86-64
+
+- 犯过：`test_wasm.sh` 把 rustc host triple 第一段（`x86_64`，下划线）直接喂
+  `llc --march`，CI ubuntu/windows（x86_64 host）报 llc invalid target
+  x86_64；本机 aarch64 两边同名（aarch64==aarch64）本地全绿，单 OS 模拟复现
+  不了（同族 LL-096）
+- 规则：喂 `llc --march`/`--target` 的架构名 MUST 用 llc 后端拼写，不是 rustc
+  host triple 段——x86-64 后端 llc 拼 `x86-64`（连字符），rustc host 是
+  `x86_64`（下划线）；aarch64 两边一致故只有 x86_64 需 `case` 重映射。凡把
+  rustc/工具链的架构标识转喂另一工具（llc/clang/llvm-*）处，先 `--version`
+  列其 Registered Targets 实证拼写再映射
+- 复发检测：CI x86_64 格 wasm rust 覆盖率链 exit 0；review 见 `--march=`/
+  `--target=` 取 rustc host 段者核对是否已映射 x86_64→x86-64

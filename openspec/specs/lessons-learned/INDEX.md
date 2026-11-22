@@ -88,3 +88,4 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-109 | ci         | 升级 rustc 后覆盖率新增缺行须逐行判可达性：可达补测试，构造性不可达落 gate 模式豁免，禁笼统归因版本 bug |
 | LL-110 | workflow   | 拍板的决定不写进在途 change 已定裁决段+任务行 = apply 看不见 = 永不落笔（门禁 check_proposal）          |
 | LL-111 | ci         | 正确性闸门复用上游覆盖率步骤的插桩产物，运行即写 profraw 污染下一入口：先 LLVM_PROFILE_FILE=/dev/null   |
+| LL-112 | ci         | llc target 名须映射 rustc host arch：x86_64→x86-64（连字符），单 OS 复现不了                            |
