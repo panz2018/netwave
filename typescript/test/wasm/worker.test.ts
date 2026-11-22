@@ -153,6 +153,24 @@ describe("resident worker contract", () => {
       scope.fetch = origFetch;
     }
   });
+  it("driveCoverage control message: production instance acks (no __cov_drive)", async () => {
+    await shell();
+    await makeTs(); // ensure the worker is up
+    const w = h.singleton();
+    if (!w) throw new Error("shell did not register the singleton worker");
+    // The driver is a no-op on the production instance (no __cov_drive export);
+    // the worker still acks. The instrumented browser chain runs the real drive.
+    const ack = await new Promise<unknown>((resolve) => {
+      const stop = h.onReply((res) => {
+        if (res.id === 0 && "drove" in res) {
+          stop();
+          resolve(res.drove);
+        }
+      });
+      w.postMessage({ control: "driveCoverage" } as never);
+    });
+    expect(ack).toBe(true);
+  });
   it("adding a verb needs zero changes: the worker source names no verb (fixed template)", () => {
     // Generic dispatch invariant: the worker is ONE forwarding template;
     // verb names must never appear in its source. Adding a method touches

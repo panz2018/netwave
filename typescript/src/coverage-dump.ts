@@ -11,7 +11,18 @@ export interface CoverageInstance {
   __cov_ptr: () => number;
   __cov_len: () => number;
   __cov_signature: () => bigint;
+  __cov_drive?: () => void;
   memory: WebAssembly.Memory;
+}
+
+/** @internal Run the instrumented binary's defensive-arm driver once. It
+ * exercises core's dropped guards and dispatch error arms directly (JS dispatch
+ * cannot reach them), so their counters are live when `dumpCoverage` runs.
+ * No-op on a production instance (no `__cov_drive`). */
+export function driveCoverage(instance: Record<string, unknown> | undefined): void {
+  if (!instance) return;
+  const wasm = instance as unknown as CoverageInstance;
+  if (typeof wasm.__cov_drive === "function") wasm.__cov_drive();
 }
 
 /** Drain the instrumented instance's coverage counters. Returns null when

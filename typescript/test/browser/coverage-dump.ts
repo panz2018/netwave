@@ -30,6 +30,21 @@ afterAll(async () => {
   const worker = (globalThis as unknown as { __netwaveWorker?: Worker }).__netwaveWorker;
   if (!worker) return; // no worker was ever constructed: nothing to drain
 
+  // Drive core's defensive arms (dropped guards, dispatch error arms) in the
+  // worker realm first — JS dispatch never reaches them, so without this their
+  // counters stay zero and they show as gaps. No-op on a production instance.
+  await new Promise<void>((resolve) => {
+    const onDrive = (ev: MessageEvent) => {
+      const data = ev.data as { id: number; drove?: boolean };
+      if (data.id === 0 && "drove" in data) {
+        worker.removeEventListener("message", onDrive);
+        resolve();
+      }
+    };
+    worker.addEventListener("message", onDrive);
+    worker.postMessage({ control: "driveCoverage" });
+  });
+
   const dump = await new Promise<{ profraw: Uint8Array; signature: string } | null>((resolve) => {
     const onMessage = (ev: MessageEvent) => {
       const data = ev.data as { id: number; coverage?: typeof dump };

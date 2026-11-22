@@ -10,7 +10,7 @@
 // This template is verb-count-independent: adding a method — or a whole
 // resource type — changes nothing here.
 
-import { dumpCoverage, installFetchStub } from "./coverage-dump.ts";
+import { driveCoverage, dumpCoverage, installFetchStub } from "./coverage-dump.ts";
 import type { ControlRequest, WorkerRequest, WorkerResponse } from "./types.ts";
 
 // The wasm glue + bytes live in dist/wasm-web by default. Under Node the rust
@@ -92,6 +92,13 @@ workerScope.onmessage = async ({ data }: MessageEvent<WorkerRequest | ControlReq
     // Raw bytes ride structuredClone back to the caller (the base64 encoding
     // is only needed for the vitest browser-command transport, done there).
     workerScope.postMessage({ id: 0, coverage: dumpCoverage(wasmInstanceSlot.current) });
+    return;
+  }
+  if (data && "control" in data && data.control === "driveCoverage") {
+    // Run the instrumented binary's defensive-arm driver in THIS realm before
+    // a dump; no-op on a production instance. Never reaches core dispatch.
+    driveCoverage(wasmInstanceSlot.current);
+    workerScope.postMessage({ id: 0, drove: true });
     return;
   }
   if (data && "control" in data && data.control === "stubFetch") {

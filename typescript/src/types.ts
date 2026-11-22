@@ -49,6 +49,7 @@ export interface WorkerRequest {
  * source) is untouched — this channel never reaches core's dispatch table. */
 export type ControlRequest =
   | { control: "dumpCoverage" }
+  | { control: "driveCoverage" }
   | { control: "stubFetch"; mode: FetchStubMode };
 
 /** @internal Which fetch failure a `stubFetch` control message installs:
@@ -78,4 +79,6 @@ export interface WorkerResponse {
   coverage?: CoverageDump | null;
   /** Acknowledges a `stubFetch` control message (the stub is now installed). */
   stubbed?: boolean;
+  /** Acknowledges a `driveCoverage` control message (defensive arms driven). */
+  drove?: boolean;
 }
