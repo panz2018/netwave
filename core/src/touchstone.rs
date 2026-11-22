@@ -1524,6 +1524,18 @@ impl Touchstone {
     }
 }
 
+/// Coverage-chain driver: reach the private `convert_to_s`/`s_to_domain`
+/// dispatch-violation arms. No public API can pass `S` to those helpers (the
+/// accessors answer S from storage first), so the wasm coverage binary — which
+/// cannot run core's crate-internal `#[cfg(test)]` tests — calls them directly
+/// here to count the arms. Compiled only under `cov-drive`; production builds
+/// exclude it. Mirrors the native `*_rejects_s_as_dispatch_violation` tests.
+#[cfg(feature = "cov-drive")]
+pub fn drive_dispatch_violations() {
+    let _ = Touchstone::convert_to_s(&[0.0; 8], TouchstoneParameter::S, 2, &[50.0, 50.0]);
+    let _ = Touchstone::s_to_domain(&[0.0, 0.0], TouchstoneParameter::S, 1, &[50.0]);
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

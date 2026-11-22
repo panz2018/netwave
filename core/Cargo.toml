@@ -46,6 +46,11 @@ test-http = ["native-http"]
 # Stub annotations ride the same items as the pyclass/pyfunction attributes,
 # so enabling stub generation implies the python binding attributes.
 pyo3-stub-gen = ["python", "dep:pyo3-stub-gen"]
+# Coverage-chain driver entry (wasm rust coverage only): compiles a pub fn
+# that reaches the private convert_to_s/s_to_domain dispatch-violation arms,
+# which no public API can trigger. Enabled transitively by the wasm glue's
+# `coverage` feature; production builds exclude it.
+cov-drive = []
 
 [lints.rust]
 # cargo-llvm-cov auto-sets cfg(coverage); the binding attributes gate on

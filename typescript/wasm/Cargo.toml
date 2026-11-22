@@ -22,7 +22,8 @@ minicov = { version = "0.3", optional = true }
 
 [features]
 default = []
-# Instrumented build for the wasm rust coverage chain: links minicov and
-# exports the dump entry points. Off by default — production `build:wasm`
+# Instrumented build for the wasm rust coverage chain: links minicov, exports
+# the dump entry points, and enables core's cov-drive entry so the defensive
+# dispatch-violation arms count. Off by default — production `build:wasm`
 # never compiles it.
-coverage = ["dep:minicov"]
+coverage = ["dep:minicov", "netwave/cov-drive"]
