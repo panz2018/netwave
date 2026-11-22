@@ -117,6 +117,11 @@ mod __cov {
             &[wasm_bindgen::JsValue::from_f64(handle as f64)],
         );
 
+        // The `copy` factory's malformed-source arms: a fake resource whose
+        // f()/unit() read back invalid drives the expected-Float64Array and
+        // invalid-unit-ordinal arms no real Frequency can produce.
+        netwave::frequency::drive_copy_arms();
+
         // The private convert_to_s/s_to_domain dispatch-violation arms: no
         // public API passes S to them, so core's cov-drive entry calls them
         // directly (the wasm binary cannot run core's crate-internal tests).

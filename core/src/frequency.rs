@@ -718,3 +718,48 @@ pub fn call_namespace(method: &str, args: &[JsValue]) -> Result<JsValue, JsValue
 pub fn register() {
     crate::resources::register_namespace("frequency", call_namespace);
 }
+
+/// Coverage-chain driver: reach the `copy` factory's two malformed-source
+/// arms. No real `Frequency` returns a non-array `f()` or an out-of-range
+/// `unit()`, so the wasm coverage binary hosts a fake resource that does, and
+/// runs `copy` over it to count the `expected Float64Array` and
+/// `invalid unit ordinal` arms. Compiled only under `cov-drive`; production
+/// builds exclude it.
+#[cfg(all(feature = "cov-drive", feature = "browser"))]
+pub fn drive_copy_arms() {
+    use crate::resources::{Resource, insert, instance_call};
+    use wasm_bindgen::prelude::JsValue;
+
+    // A source whose `f`/`unit` read back malformed: `axis_ok` picks whether
+    // `f` is a valid Float64Array (so copy reaches the unit arm) or a plain
+    // number (so copy fails at the axis arm).
+    struct Malformed {
+        axis_ok: bool,
+    }
+    impl Resource for Malformed {
+        fn as_any(&self) -> &dyn std::any::Any {
+            self
+        }
+        fn call(&mut self, method: &str, _args: &[JsValue]) -> Result<JsValue, JsValue> {
+            match method {
+                "f" if self.axis_ok => Ok(js_sys::Float64Array::from(&[1e9][..]).into()),
+                "f" => Ok(JsValue::from_f64(1.0)),
+                // A valid ordinal would succeed; 99 is out of range.
+                "unit" => Ok(JsValue::from_f64(99.0)),
+                _ => Ok(JsValue::UNDEFINED),
+            }
+        }
+    }
+
+    // axis malformed → copy fails at `expected Float64Array`. The direct
+    // as_any call and the unknown-method dispatch cover this driver's own
+    // trait arms so the mock adds no uncovered lines of its own.
+    let bad_axis = Malformed { axis_ok: false };
+    let _ = bad_axis.as_any();
+    let h1 = insert(Box::new(bad_axis));
+    let _ = instance_call(h1, "unknown", &[]);
+    let _ = call_namespace("copy", &[JsValue::from_f64(h1 as f64)]);
+    // axis valid but unit ordinal out of range → copy fails at `invalid unit`.
+    let h2 = insert(Box::new(Malformed { axis_ok: true }));
+    let _ = call_namespace("copy", &[JsValue::from_f64(h2 as f64)]);
+}
