@@ -931,9 +931,9 @@ impl Touchstone {
     /// user-facing surface (users read/write through `s`); the `Arc` type
     /// never crosses an FFI boundary, so it cannot surface by construction.
     /// Native-only: the browser worker returns a structured-clone copy, never
-    /// an `Arc`, so this is excluded from the browser build (and its coverage
+    /// an `Arc`, so this is excluded from the wasm artifact (and its coverage
     /// denominator).
-    #[cfg(not(feature = "browser"))]
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn s_arc(&self) -> Arc<Vec<f64>> {
         Arc::clone(&self.s)
     }
@@ -945,9 +945,9 @@ impl Touchstone {
     /// Errors while a zero-copy view is shared out (`Arc` strong count > 1):
     /// during that window the data is written through the borrowed view
     /// (`s()`), not through here. Native-only: it backs the node zero-copy
-    /// write path, so it is excluded from the browser build (and its coverage
+    /// write path, so it is excluded from the wasm artifact (and its coverage
     /// denominator).
-    #[cfg(not(feature = "browser"))]
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn s_mut(&mut self) -> Result<&mut [f64], TouchstoneError> {
         Arc::get_mut(&mut self.s)
             .map(Vec::as_mut_slice)
@@ -1296,6 +1296,14 @@ impl Touchstone {
     /// - dir+name+extension → grammar-strip, rebuild the correct extension
     ///   (domain letter = real written parameter, n = real nports — a wrong
     ///   extension is mechanically impossible).
+    // Compiled only where a caller exists: native `write_file` (any non-wasm
+    // target) or the browser dispatch `writeFile` arm. A wasm coverage build
+    // compiles neither caller, so this helper is excluded with them (a private
+    // fn with no caller in the active cfg set would otherwise trip dead-code).
+    #[cfg(any(
+        not(target_arch = "wasm32"),
+        all(feature = "browser", not(feature = "node"), not(coverage))
+    ))]
     fn write_path(&self, path: Option<&str>, parameter: TouchstoneParameter) -> String {
         // Lowercase extension (`.z2p`): the closed grammar `\.[ghsyz]\d+p`
         // in its canonical written form, matching the spec scenarios.
@@ -1409,8 +1417,8 @@ impl Touchstone {
 
     /// Native file write: `write_path` + `std::fs::write`. Native-only — the
     /// browser writes through a DOM blob download, never `std::fs`, so this is
-    /// excluded from the browser build (and its coverage denominator).
-    #[cfg(not(feature = "browser"))]
+    /// excluded from the wasm artifact (and its coverage denominator).
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn write_file(
         &self,
         path: &str,
