@@ -10,7 +10,7 @@
 // This template is verb-count-independent: adding a method — or a whole
 // resource type — changes nothing here.
 
-import { dumpCoverage } from "./coverage-dump.ts";
+import { dumpCoverage, installFetchStub } from "./coverage-dump.ts";
 import type { ControlRequest, WorkerRequest, WorkerResponse } from "./types.ts";
 
 // The wasm glue + bytes live in dist/wasm-web by default. Under Node the rust
@@ -86,12 +86,19 @@ const workerScope = self as unknown as WorkerScope;
 // instrumented instance's profraw (only the worker realm can read its
 // memory). It never reaches core dispatch — it is not a business verb, so
 // the fixed-template invariant (no verb names here) holds.
-workerScope.onmessage = async ({ data }: MessageEvent<WorkerRequest | Partial<ControlRequest>>) => {
+workerScope.onmessage = async ({ data }: MessageEvent<WorkerRequest | ControlRequest>) => {
   const call = await ready;
   if (data && "control" in data && data.control === "dumpCoverage") {
     // Raw bytes ride structuredClone back to the caller (the base64 encoding
     // is only needed for the vitest browser-command transport, done there).
     workerScope.postMessage({ id: 0, coverage: dumpCoverage(wasmInstanceSlot.current) });
+    return;
+  }
+  if (data && "control" in data && data.control === "stubFetch") {
+    // Install a fetch stub in THIS realm so a later `fromUrl` drives core's
+    // fetch error arms (only the worker global is where wasm reads `fetch`).
+    installFetchStub(data.mode);
+    workerScope.postMessage({ id: 0, stubbed: true });
     return;
   }
   const request = data as WorkerRequest;

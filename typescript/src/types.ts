@@ -42,12 +42,21 @@ export interface WorkerRequest {
 }
 
 /** @internal Coverage-chain control message (not a business verb): asks the
- * worker to dump its instrumented instance's profraw and reply base64. The
- * fixed-template invariant (no verb names in the worker source) is untouched
- * — this channel never reaches core's dispatch table. */
-export interface ControlRequest {
-  control: "dumpCoverage";
-}
+ * worker to dump its instrumented instance's profraw and reply base64, or to
+ * install a fetch stub in its own realm so a later `fromUrl` drives core's
+ * fetch error arms (only the worker realm can be stubbed — `fetch` runs on
+ * its global scope). The fixed-template invariant (no verb names in the worker
+ * source) is untouched — this channel never reaches core's dispatch table. */
+export type ControlRequest =
+  | { control: "dumpCoverage" }
+  | { control: "stubFetch"; mode: FetchStubMode };
+
+/** @internal Which fetch failure a `stubFetch` control message installs:
+ * `textthrow` makes `Response.text()` throw synchronously (drives the
+ * `resp.text().map_err` arm); `reject` makes it return a rejected Promise
+ * (drives the await error arm); `nonstring` resolves it to a non-string
+ * (drives the non-utf8 arm). */
+export type FetchStubMode = "textthrow" | "reject" | "nonstring";
 
 /** Coverage-chain reply payload: the raw profraw bytes (structuredClone
  * carries them across the worker boundary; the base64 encoding is only for
@@ -67,4 +76,6 @@ export interface WorkerResponse {
   result?: NetwaveBuffer | number | Handle | string[];
   error?: string;
   coverage?: CoverageDump | null;
+  /** Acknowledges a `stubFetch` control message (the stub is now installed). */
+  stubbed?: boolean;
 }

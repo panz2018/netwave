@@ -129,6 +129,30 @@ describe("resident worker contract", () => {
       expect((coverage as { profraw: Uint8Array }).profraw).toBeInstanceOf(Uint8Array);
     }
   });
+  it("stubFetch control message: worker installs the stub and acks", async () => {
+    await shell();
+    await makeTs(); // ensure the worker is up
+    const w = h.singleton();
+    if (!w) throw new Error("shell did not register the singleton worker");
+    // The stub replaces the realm's global fetch; restore it so sibling tests
+    // (and the real fromUrl rejection test) keep the genuine fetch.
+    const scope = globalThis as unknown as { fetch: typeof fetch };
+    const origFetch = scope.fetch;
+    try {
+      const ack = await new Promise<unknown>((resolve) => {
+        const stop = h.onReply((res) => {
+          if (res.id === 0 && "stubbed" in res) {
+            stop();
+            resolve(res.stubbed);
+          }
+        });
+        w.postMessage({ control: "stubFetch", mode: "reject" } as never);
+      });
+      expect(ack).toBe(true);
+    } finally {
+      scope.fetch = origFetch;
+    }
+  });
   it("adding a verb needs zero changes: the worker source names no verb (fixed template)", () => {
     // Generic dispatch invariant: the worker is ONE forwarding template;
     // verb names must never appear in its source. Adding a method touches

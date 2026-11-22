@@ -31,3 +31,22 @@ export function dumpCoverage(
   const bytes = new Uint8Array(wasm.memory.buffer, wasm.__cov_ptr(), wasm.__cov_len());
   return { profraw: bytes.slice(), signature };
 }
+
+/** @internal Install a fetch stub on the worker's own global so a later
+ * `fromUrl` drives core's fetch error arms. web_sys looks up `fetch` on the
+ * global at call time (`arg0.fetch(...)` in the glue), so replacing it here is
+ * observed by wasm. `reject` makes `Response.text()` reject (the text-await
+ * error arm); `nonstring` resolves it to a number (the non-utf8 arm — Rust's
+ * `as_string()` yields None). Coverage-chain only: production never calls it. */
+export function installFetchStub(mode: "textthrow" | "reject" | "nonstring"): void {
+  const scope = globalThis as unknown as { fetch: typeof fetch };
+  // web_sys maps a synchronous throw from `text()` to Rust `Err` (the
+  // `resp.text().map_err` arm); a rejected Promise maps to the await error
+  // arm; a non-string resolve makes Rust `as_string()` yield None (non-utf8).
+  const text = () => {
+    if (mode === "textthrow") throw new Error("stub text throw");
+    if (mode === "reject") return Promise.reject(new Error("stub text reject"));
+    return Promise.resolve(12345);
+  };
+  scope.fetch = (() => Promise.resolve({ ok: true, status: 200, text })) as unknown as typeof fetch;
+}
