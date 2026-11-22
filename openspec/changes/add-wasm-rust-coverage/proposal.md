@@ -108,3 +108,10 @@
 - `浏览器单采`（2026-11-21 定案）：rust 覆盖率只由浏览器 job 产
   `coverage/coverage-wasm.lcov`；node 侧 test_ts.sh 的 wasm 插桩覆盖率链删除，
   node `test:wasm` 退回纯 TS v8 覆盖率。不双采（CI 时间与插桩构建翻倍不值）。
+- `wasm地板99`（2026-11-22 定案，修订 `地板100先列清单` 的 wasm 数值）：wasm rust
+  覆盖率地板由 100 降为 99。实证：补完所有可驱动单测后（dropped guard、
+  dispatch-violation、copy malformed-source 经 cov-drive 假资源驱动）仍剩
+  `touchstone.rs` 的 fetch「无 fetch-capable scope」臂——它读 `js_sys::global()`
+  真实全局，无参数注入点，mock/测试均不可达（重构 crate 放置也不解决，属依赖
+  注入问题，见 `Plan/绑定放置重构.md`）。逐条豁免与降地板二选一，人工选降地板至
+  99。其余链（core/native/python/TS v8）地板仍 100，不受影响。
