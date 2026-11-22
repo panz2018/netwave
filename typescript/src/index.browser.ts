@@ -36,16 +36,17 @@ declare global {
   var __netwaveWorker: Worker | undefined;
 }
 
-/** Lazily construct the ONE resident worker; return the existing one if a
- * shell (this module or a duplicate copy of it) already created it. */
+// The worker specifier is a `.ts` path: legal under noEmit and resolvable by
+// vite in browser tests; publish_shell.mjs rewrites it to
+// "./netwave.worker.js" in the dist output. The `new URL(...)` MUST stay the
+// direct argument of `new Worker(...)` with nothing between them — vite's
+// worker plugin only rewrites that exact adjacency into its `?worker_file`
+// form, and a comment or variable in between makes the worker load as a plain
+// module (its dynamic glue import then hangs).
 const getWorker = (): Worker =>
-  (globalThis.__netwaveWorker ??= new Worker(
-    // `.ts` specifier is legal under noEmit and resolvable by vite in
-    // browser tests; publish_shell.mjs rewrites it to
-    // "./netwave.worker.js" in the dist output.
-    new URL("./netwave.worker.ts", import.meta.url),
-    { type: "module" },
-  ));
+  (globalThis.__netwaveWorker ??= new Worker(new URL("./netwave.worker.ts", import.meta.url), {
+    type: "module",
+  }));
 
 let seq = 0;
 const pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>();

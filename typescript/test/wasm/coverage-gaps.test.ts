@@ -204,17 +204,35 @@ describe("write_path shapes", () => {
   function stubDom(): { clicks: string[]; restore: () => void } {
     const g = globalThis as unknown as Record<string, unknown>;
     const clicks: string[] = [];
-    const origDoc = g.document;
-    const fakeDoc = {
-      createElement: () => ({
-        set href(_v: string) {},
-        set download(v: string) {
-          clicks.push(String(v));
-        },
-        click() {},
-      }),
-    };
-    Object.defineProperty(g, "document", { value: fakeDoc, configurable: true });
+    const fakeAnchor = () => ({
+      set href(_v: string) {},
+      set download(v: string) {
+        clicks.push(String(v));
+      },
+      click() {},
+    });
+    // Patch the individual members writeFile touches, never the `document` /
+    // `URL` globals themselves: under a real browser those are non-configurable,
+    // so redefining them throws. `document.createElement` and the two URL
+    // methods are writable in both realms; under Node `document` is absent, so
+    // install a minimal one there.
+    const doc = g.document as { createElement: typeof document.createElement } | undefined;
+    let restoreDoc: () => void = () => {};
+    if (doc) {
+      const origCreateElement = doc.createElement;
+      doc.createElement = (() => fakeAnchor()) as unknown as typeof document.createElement;
+      restoreDoc = () => {
+        doc.createElement = origCreateElement;
+      };
+    } else {
+      Object.defineProperty(g, "document", {
+        value: { createElement: () => fakeAnchor() },
+        configurable: true,
+      });
+      restoreDoc = () => {
+        delete g.document;
+      };
+    }
     if (!g.URL) Object.defineProperty(g, "URL", { value: {}, configurable: true });
     const origCreate = URL.createObjectURL as unknown;
     const origRevoke = URL.revokeObjectURL as unknown;
@@ -223,8 +241,7 @@ describe("write_path shapes", () => {
     return {
       clicks,
       restore: () => {
-        if (origDoc) g.document = origDoc;
-        else delete g.document;
+        restoreDoc();
         URL.createObjectURL = origCreate as typeof URL.createObjectURL;
         URL.revokeObjectURL = origRevoke as typeof URL.revokeObjectURL;
       },
@@ -576,19 +593,35 @@ describe("write_path and format_number edge shapes", () => {
   function stubDom(): { clicks: string[]; restore: () => void } {
     const g = globalThis as unknown as Record<string, unknown>;
     const clicks: string[] = [];
-    const origDoc = g.document;
-    Object.defineProperty(g, "document", {
-      value: {
-        createElement: () => ({
-          set href(_v: string) {},
-          set download(v: string) {
-            clicks.push(String(v));
-          },
-          click() {},
-        }),
+    const fakeAnchor = () => ({
+      set href(_v: string) {},
+      set download(v: string) {
+        clicks.push(String(v));
       },
-      configurable: true,
+      click() {},
     });
+    // Patch the individual members writeFile touches, never the `document` /
+    // `URL` globals themselves: under a real browser those are non-configurable,
+    // so redefining them throws. `document.createElement` and the two URL
+    // methods are writable in both realms; under Node `document` is absent, so
+    // install a minimal one there.
+    const doc = g.document as { createElement: typeof document.createElement } | undefined;
+    let restoreDoc: () => void = () => {};
+    if (doc) {
+      const origCreateElement = doc.createElement;
+      doc.createElement = (() => fakeAnchor()) as unknown as typeof document.createElement;
+      restoreDoc = () => {
+        doc.createElement = origCreateElement;
+      };
+    } else {
+      Object.defineProperty(g, "document", {
+        value: { createElement: () => fakeAnchor() },
+        configurable: true,
+      });
+      restoreDoc = () => {
+        delete g.document;
+      };
+    }
     const origCreate = URL.createObjectURL as unknown;
     const origRevoke = URL.revokeObjectURL as unknown;
     URL.createObjectURL = (() => "blob:stub") as unknown as typeof URL.createObjectURL;
@@ -596,8 +629,7 @@ describe("write_path and format_number edge shapes", () => {
     return {
       clicks,
       restore: () => {
-        if (origDoc) g.document = origDoc;
-        else delete g.document;
+        restoreDoc();
         URL.createObjectURL = origCreate as typeof URL.createObjectURL;
         URL.revokeObjectURL = origRevoke as typeof URL.revokeObjectURL;
       },
