@@ -148,9 +148,14 @@ while IFS= read -r ll; do
     -o "$WASM_COV_DIR/cgu$i.o" "$ll"
   i=$((i + 1))
 done <<< "$COV_LL"
+# The ignore regex must match both path forms: Linux reports .cargo/registry
+# (forward slash) while Windows reports C:\Users\runneradmin\.cargo\registry
+# (backslash), so the separator class is [\\/]+ — a bare / silently matches
+# zero files on Windows and third-party lines leak into the denominator
+# (LL-096).
 "$LLVM_BIN/llvm-cov" export --format=lcov "$WASM_COV_DIR"/cgu*.o \
   -instr-profile="$WASM_COV_DIR/merged.profdata" \
-  --ignore-filename-regex='\.cargo/registry' > coverage/coverage-wasm.lcov
+  --ignore-filename-regex='\.cargo[\\/]+registry' > coverage/coverage-wasm.lcov
 # Floor 99 (not 100): the fetch "no fetch-capable scope" arm reads
 # js_sys::global() with no injection point, so it is unreachable by any test or
 # mock (decision wasm地板99). All other chains keep a 100 floor.

@@ -54,8 +54,11 @@ def test_chain_grades_lcov_via_gate() -> None:
     # llc needs the short host arch, not the full triple.
     assert re.search(r'llc"?\s+--march=', s) or "--march=" in s
     assert "llvm-cov" in s and "--format=lcov" in s
-    # third-party crates must stay out of the denominator.
-    assert "--ignore-filename-regex" in s and ".cargo/registry" in s
+    # third-party crates must stay out of the denominator, on every host:
+    # Windows reports C:\...\cargo\registry (backslash), so the regex must use
+    # a [\\/]+ separator class, never a bare slash.
+    assert "--ignore-filename-regex" in s
+    assert re.search(r"\.cargo\[\\\\/\]\+registry", s)
     assert "coverage_gate.py coverage/coverage-wasm.lcov 99" in s
 
 
