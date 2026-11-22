@@ -19,8 +19,10 @@
 - [ ] 2.2 `skip-specs文档形态`：核对 `.openspec.yaml` 已设 `skip_specs: true`，
       `openspec validate fix-stale-doc-facts --strict` 通过；归档走
       doc-only 路径不建 specs delta
-- [ ] 2.3 `新开change-fix-stale-doc-facts`：proposal.md `## 已定裁决` 四条
+- [ ] 2.3 `新开change-fix-stale-doc-facts`：proposal.md `## 已定裁决` 五条
       与本文件载体任务行逐一对应，复查无遗漏
+- [ ] 2.4 `本次跳过archive态体检`：归档完成后跳过 health-check spec 的
+      archive 态只读体检（人工点名 2026-11-22；apply 态体检不受影响，见 3.4）
 
 ## 3. 收尾闸门
 

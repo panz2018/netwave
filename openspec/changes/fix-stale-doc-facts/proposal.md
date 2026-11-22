@@ -67,3 +67,5 @@ change `add-wasm-rust-coverage` 归档后的 archive 态体检（2026-11-22）�
   `Plan/体检发现-2026-11-22.md`，不等归档。
 - `skip-specs文档形态`：不建 specs delta，`.openspec.yaml` 设
   `skip_specs: true`，归档走 doc-only 路径。
+- `本次跳过archive态体检`：本 change 归档完成后跳过 health-check spec 的
+  archive 态只读体检（apply 态体检不受影响，仍按 tasks 3.4 执行）。
