@@ -69,6 +69,10 @@ pnpm -C typescript build:native   # napi .node addon
 pnpm -C typescript build:wasm     # wasm-bindgen artifacts
 uv sync --project python          # Python env (uv)
 (cd python && uv run maturin develop)  # required after touching core
+pnpm test:wasm                    # wasm tests: instrumented wasm build + node-driven
+                                    # wasm suite + real-browser (playwright chromium) suite
+                                    # (scripts/run/test_wasm.sh; needs wasm-pack + binaryen +
+                                    # wasm32 target + playwright chromium)
 pnpm test:cross                   # four-end dump + compare
                                     # (scripts/run/test_cross.sh; needs uv + maturin;
                                     # requires napi/wasm artifacts — run pnpm test:ts first)

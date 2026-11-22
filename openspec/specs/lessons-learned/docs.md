@@ -72,8 +72,7 @@
   **报错文案与 stderr 输出同样算代码**，不因"给人读"而豁免；中文只出现在
   `openspec/` 工件与 `Plan/` 规划文档。写含用户可见字符串的代码前先判该文件
   属哪个区
-- 复发检测：可门禁化——`check_comments.py` 已扫全仓源码与 `ci.yml`，加一条
-  "英文区文件出现 CJK 即红"即可机器强制（豁免 `check_*.py` 里作为被禁词
-  模式的中文字面量，如 `STAGE_WORDS` 的 `阶段`）；**待落门禁**，立项见
-  `Plan/覆盖率闸门加固-2026-11-15.md` 第 4 条；闸门落地前由 review
-  Standards 轴逐行核 diff 内新增字符串
+- 复发检测：已落闸门 `scripts/check_comments.py`（CJK 正则逐行扫全仓源码与
+  `ci.yml`，英文区文件出现 CJK 即红；豁免闸门自身源码 `scripts/check_*.py`
+  与自测 `scripts/tests/` 里作为被禁词模式的中文字面量，以及中文区
+  `openspec/`、`Plan/`），已接入 `pnpm check:meta`
