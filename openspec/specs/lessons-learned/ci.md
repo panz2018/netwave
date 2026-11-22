@@ -264,6 +264,13 @@
   路径 regex/glob 是否用单分隔符 `[\\/]`（应 `[\\/]+`）、是否含裸 `/xxx/`
   或前导引号锚；grep 定位关键产物后是否有空值守卫；离群格先取该 OS 上
   被匹配文件的真实字节再改，禁 push-and-pray
+- 复发（2026-11-22，CI run 45083995278）：同脚本 `llvm-cov export` 的
+  `--ignore-filename-regex='\.cargo/registry'` 含裸 `/`，Windows 报
+  `C:\Users\runneradmin\.cargo\registry\...`（反斜杠）匹配零 → 37 行
+  js-sys/wasm-bindgen 漏进分母，wasm 覆盖率 97.54%<地板 99（ubuntu 正斜杠
+  过、windows 挂，单 OS 复现不了）。未遵守原因：上一轮只修了同脚本 `.ll`
+  定位 grep 的分隔符，漏扫 llvm-cov 的 ignore regex——复发检测列的
+  「scripts/** 含裸 /xxx/」本应扫到它。改 `\.cargo[\\/]+registry`
 
 ### LL-100 宏属性行计数不并回——行级豁免落 gate 模式驱动
 
