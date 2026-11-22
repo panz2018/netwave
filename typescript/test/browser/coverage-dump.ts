@@ -10,8 +10,11 @@
 // The bytes cross the worker boundary as a raw Uint8Array (structuredClone),
 // but the vitest browser-command transport degrades Uint8Array to a plain
 // Object, so they are base64-encoded here for the command leg (spike-verified
-// byte-for-byte). Each worker load has a unique minicov module signature, so
-// per-file dumps never overwrite one another before merge.
+// byte-for-byte). The minicov module signature is a property of the binary, so
+// every test file loading the SAME instrumented wasm shares one signature — a
+// bare signature filename would let each file's afterAll overwrite the last.
+// A per-dump UUID suffix keeps every file's counters as its own profraw so
+// `llvm-profdata merge -sparse` unions them (a line hit in any file counts).
 import { afterAll } from "vitest";
 import { commands } from "vitest/browser";
 
@@ -45,5 +48,7 @@ afterAll(async () => {
   for (let i = 0; i < dump.profraw.length; i += chunk) {
     bin += String.fromCharCode(...dump.profraw.subarray(i, i + chunk));
   }
-  await writeProfraw(btoa(bin), dump.signature);
+  // Unique per dump so concurrent test files sharing one module signature never
+  // overwrite each other's profraw before merge.
+  await writeProfraw(btoa(bin), `${dump.signature}-${crypto.randomUUID()}`);
 });

@@ -26,4 +26,14 @@ describe("real browser: fromUrl resolves", () => {
     expect(Array.from(await ts.s)).toEqual([0.5, 0.1, 0.4, -0.2]);
     await ts.drop();
   });
+
+  it("a non-OK same-origin response surfaces the status verbatim", async () => {
+    const m = await import("../../src/index.browser.ts");
+    // A missing same-origin path returns 404 from the vite browser server, so
+    // core's fetch backend takes the `!ok` arm and quotes the status. This is
+    // the only way to drive that error branch: it needs a real fetch-capable
+    // global scope, which the node harness's fakeSelf never provides.
+    const url = new URL("/test/fixtures/does-not-exist.s1p", location.href).href;
+    await expect(m.Touchstone.fromUrl(url)).rejects.toThrow(/fetch failed/);
+  });
 });

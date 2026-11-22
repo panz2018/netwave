@@ -100,6 +100,10 @@ pnpm -C typescript test:wasm
 # core/src only.
 WASM_COV_DIR="$PWD/typescript/target-wasm-cov"
 mkdir -p "$WASM_COV_DIR/profraw" coverage
+# Start the dump dir empty: the merge below globs profraw/*.profraw, so a stale
+# profraw from an earlier chain (or a different driver) would silently union into
+# this round's report and mask real gaps.
+rm -f "$WASM_COV_DIR"/profraw/*.profraw
 CC="$WASI_SDK_CLANG" RUSTC_BOOTSTRAP=1 \
   CFLAGS_wasm32_unknown_unknown="--target=wasm32-unknown-unknown --sysroot=" \
   RUSTFLAGS="-Cinstrument-coverage -Zno-profiler-runtime --emit=llvm-ir" \

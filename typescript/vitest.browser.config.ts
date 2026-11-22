@@ -47,8 +47,9 @@ export default defineConfig({
       provider: playwright({ launchOptions: { args: ["--js-flags=--expose-gc"] } }),
       instances: [{ browser: "chromium" }],
       // Coverage-chain only: receive the base64 profraw from the browser and
-      // write it to node's disk for `llvm-profdata merge`. Named by the minicov
-      // module signature so concurrent worker loads never overwrite one another.
+      // write it to node's disk for `llvm-profdata merge`. The caller passes a
+      // signature + per-dump UUID name so concurrent test files sharing one
+      // module signature never overwrite one another before merge.
       ...(chainOn
         ? {
             commands: {
