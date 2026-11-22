@@ -133,7 +133,7 @@ while IFS= read -r ll; do
   "$LLVM_BIN/llc" --march="$HOST_ARCH" --filetype=obj \
     -o "$WASM_COV_DIR/cgu$i.o" "$ll"
   i=$((i + 1))
-done < <(grep -rlE '"core[\\/]src[\\/](frequency|resources|touchstone)\.rs"' \
+done < <(grep -rlE 'core[\\/]src[\\/](frequency|resources|touchstone)\.rs' \
   "$WASM_COV_DIR" --include='*.ll')
 "$LLVM_BIN/llvm-cov" export --format=lcov "$WASM_COV_DIR"/cgu*.o \
   -instr-profile="$WASM_COV_DIR/merged.profdata" \
