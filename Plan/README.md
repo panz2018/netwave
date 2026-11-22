@@ -15,3 +15,4 @@
 | [绑定放置重构.md](绑定放置重构.md)                   | 待研究讨论：wasm dispatch 从 core 搬回 wasm crate（对齐 python/node），附依赖注入治单例锁死 |
 | [biome警告升级为错误.md](biome警告升级为错误.md)     | 待执行：把 biome warning 升为 error（`--error-on-warnings`/severity），当场清零存量非空断言 |
 | [体检发现-2026-11-22.md](体检发现-2026-11-22.md)     | archive 态体检发现：LL-106 状态陈旧断链、scripts/README 缺录、CONTRIBUTING 漏 test:wasm     |
+| [体检提速-代码图谱工具.md](体检提速-代码图谱工具.md) | 待研究讨论：是否引入 graphify/AST 图谱给体检维度②（引用计数）提速，附逐维度判定             |
