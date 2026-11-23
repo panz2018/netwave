@@ -102,12 +102,12 @@ jobs:
           name: coverage-core-${{ matrix.target }}
           path: coverage/coverage-core.json
 
-  # wasm: browser is the primary target -> first-class job, zero
+  # browser: browser is the primary target -> first-class job, zero
   # conditionals, full OS matrix: wasm codegen differs per host toolchain,
   # so build + vitest run on every platform (installer scripts cover
   # linux/macOS/windows).
-  wasm:
-    name: wasm (${{ matrix.os }})
+  browser:
+    name: browser (${{ matrix.os }})
     strategy:
       fail-fast: false
       matrix:
@@ -160,18 +160,18 @@ jobs:
         run: |
           bash scripts/install_wasi_sdk.sh
           bash scripts/install_wasm_bindgen_cli.sh
-      - name: wasm test entry (build:wasm + node wasm suite + real browser)
+      - name: browser test entry (build:browser + node unit suite + real browser)
         # Command details live once in scripts/run/test_wasm.sh — the same file
-        # local `pnpm test:wasm` calls (toolchain probes, build:wasm, node-driven
-        # wasm suite, instrumented browser rust coverage chain, real-browser
-        # suite). The --coverage flag is baked into typescript/package.json's
-        # test:wasm/test:browser, not repeated here.
+        # local `pnpm test:browser` calls (toolchain probes, build:browser,
+        # node-driven unit suite, instrumented browser rust coverage chain,
+        # real-browser suite). The --coverage flag is baked into
+        # browser/package.json's test:unit/test:e2e, not repeated here.
         shell: bash
         run: bash scripts/run/test_wasm.sh
-      - name: upload wasm rust coverage report
+      - name: upload browser rust coverage report
         uses: actions/upload-artifact@v7
         with:
-          name: coverage-wasm-${{ matrix.os }}
+          name: coverage-browser-${{ matrix.os }}
           path: coverage/coverage-wasm.lcov
 
   # Python matrix: ubuntu runs the floor (3.10) + latest (3.15);

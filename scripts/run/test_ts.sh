@@ -30,12 +30,12 @@ fi
 
 python3 scripts/run/clean_stray_profraw.py
 
-# build:wasm first: build:native ends with tsdown, whose dts pass resolves BOTH
-# generated glues (napi + wasm-web). Building wasm first keeps the browser
+# build:browser first: build:native ends with tsdown, whose dts pass resolves BOTH
+# generated glues (napi + browser wasm). Building browser first keeps the browser
 # shell's dts fully typed (a missing wasm glue makes tsdown emit `any` for the
-# re-exported verbs). wasm-pack uses CARGO_TARGET_DIR=../target-wasm, so this
+# re-exported verbs). wasm-pack uses CARGO_TARGET_DIR=./target-wasm, so this
 # build is not instrumented and is unaffected by the show-env below.
-pnpm -C typescript build:wasm
+pnpm -C browser build:browser
 
 # show-env, clean, instrumented build, vitest and report MUST share one process —
 # the instrumentation env does not cross processes. debug build (not release):
@@ -75,9 +75,10 @@ python3 scripts/coverage_gate.py coverage/coverage-native.json 100
 pnpm -C typescript typecheck
 node typescript/scripts/check_dts_any.mjs
 
-# Node-driven wasm suite (unit-test nature): the same test/wasm code the browser
-# job runs, here proving the wasm artifact loads and passes on this node version.
-pnpm -C typescript test:wasm
+# Node-driven browser unit suite (unit-test nature): the same test/unit code the
+# browser job runs, here proving the wasm artifact loads and passes on this node
+# version.
+pnpm -C browser test:unit
 
 # Post-run: drain first so its "broken chain this round" detection is never
 # pushed to the end by a later-appended command; the stray scan (SKIP_DIRS

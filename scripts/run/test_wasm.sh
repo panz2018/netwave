@@ -77,12 +77,12 @@ fi
 # survives.
 python3 scripts/run/clean_stray_profraw.py
 
-pnpm -C typescript build:wasm
-# Node-driven wasm suite (unit-test nature): the same test/wasm code the browser
+pnpm -C browser build:browser
+# Node-driven wasm suite (unit-test nature): the same test/unit code the browser
 # job runs, here proving the wasm artifact loads and passes on this node version.
 # TS-only v8 coverage — rust coverage is measured by the browser job below (the
 # node harness's global() is a fakeSelf, so fetch arms never fire there).
-pnpm -C typescript test:wasm
+pnpm -C browser test:unit
 
 # Wasm rust coverage chain (browser-driven): measures core's browser-gated code
 # under the wasm target in a REAL browser. The fetch backends (web_sys::fetch on
@@ -98,7 +98,7 @@ pnpm -C typescript test:wasm
 # Floor 100: unmet lines are listed for human triage, never silently exempted.
 # The ignore regex drops third-party crates so the denominator is netwave's own
 # core/src only.
-WASM_COV_DIR="$PWD/typescript/target-wasm-cov"
+WASM_COV_DIR="$PWD/browser/target-wasm-cov"
 mkdir -p "$WASM_COV_DIR/profraw" coverage
 # Start the dump dir empty: the merge below globs profraw/*.profraw, so a stale
 # profraw from an earlier chain (or a different driver) would silently union into
@@ -108,17 +108,17 @@ CC="$WASI_SDK_CLANG" RUSTC_BOOTSTRAP=1 \
   CFLAGS_wasm32_unknown_unknown="--target=wasm32-unknown-unknown --sysroot=" \
   RUSTFLAGS="-Cinstrument-coverage -Zno-profiler-runtime --emit=llvm-ir" \
   CARGO_TARGET_DIR="$WASM_COV_DIR" \
-  cargo build --manifest-path typescript/wasm/Cargo.toml \
+  cargo build --manifest-path browser/Cargo.toml \
     --target wasm32-unknown-unknown --features coverage
-wasm-bindgen --target web --out-dir "$PWD/typescript/dist/wasm-cov" \
-  "$WASM_COV_DIR/wasm32-unknown-unknown/debug/netwave_wasm.wasm"
+wasm-bindgen --target web --out-dir "$PWD/browser/dist/wasm-cov" \
+  "$WASM_COV_DIR/wasm32-unknown-unknown/debug/netwave_browser.wasm"
 # v8 coverage is disabled here: the instrumented dispatch branch skips the
 # production default-import line, so v8's 100% threshold is enforced by the
 # plain test:browser run in CI's own step instead. This run only drives the wasm
 # to dump profraw (the worker drains it and ships it back via a browser command).
-NETWAVE_WASM_DIR="$PWD/typescript/dist/wasm-cov" \
+NETWAVE_WASM_DIR="$PWD/browser/dist/wasm-cov" \
   NETWAVE_COV_OUT="$WASM_COV_DIR/profraw" \
-  pnpm -C typescript test:browser --coverage.enabled=false
+  pnpm -C browser test:e2e --coverage.enabled=false
 "$LLVM_BIN/llvm-profdata" merge -sparse "$WASM_COV_DIR"/profraw/*.profraw \
   -o "$WASM_COV_DIR/merged.profdata"
 # llc needs the short host arch, not the full triple. The instrumented core CGU
@@ -165,7 +165,7 @@ python3 scripts/coverage_gate.py coverage/coverage-wasm.lcov 99
 # above disables v8 (the instrumented dispatch branch skips the production
 # default-import line), so the browser shell's v8 threshold is enforced here on
 # the PRODUCTION wasm (no chain env → no alias, no dump hook). Same test code.
-pnpm -C typescript test:browser
+pnpm -C browser test:e2e
 
 # Post-run: drain stray profraw so a broken chain this round is detected, never
 # pushed past the gate. The instrumented dir is SKIP_DIRS-whitelisted so its own

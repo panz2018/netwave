@@ -1,0 +1,14 @@
+# Build outputs and caches for this directory. Duplicated from root
+# .gitignore on purpose: if the root ignore or the layout ever changes,
+# this directory keeps its own protection against committing artifacts.
+node_modules/
+dist/
+coverage/
+# wasm-pack cargo target dir (the .wasm/object intermediates build:browser
+# produces). All intermediates — never commit.
+target-wasm/
+# instrumented wasm coverage build: cargo target dir for the rust coverage
+# chain (instrumented cdylib, dumped profraw, merged profdata, llc host .o).
+target-wasm-cov/
+# vitest browser mode writes failure screenshots here on test failure.
+.vitest/
