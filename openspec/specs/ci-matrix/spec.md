@@ -140,7 +140,7 @@ CI node job 同口径通过；CI MUST NOT 为 node job 保留独立的 profraw d
 
 - **WHEN** 检查 `scripts/run/test_ts.sh`
 - **THEN** 不含 llvm-tools 三件套（`llc`/`llvm-profdata`/`llvm-cov`）、wasi-sdk
-  clang、`wasm-bindgen` 的探测——插桩 wasm 只由 `scripts/run/test_wasm.sh`
+  clang、`wasm-bindgen` 的探测——插桩 wasm 只由 `scripts/run/test_browser.sh`
   （浏览器 job）编译，node 入口不编插桩 wasm
 
 #### Scenario: typescript 入口注入残留即红
@@ -176,7 +176,7 @@ MUST 各自内置 `--coverage`，使任一调用方（本地裸跑、tasks.md、
 
 ### Requirement: 全项目 wasm 测试根聚合入口
 
-根 `package.json` MUST 提供 `test:wasm` 入口，薄调用 `scripts/run/test_wasm.sh`，
+根 `package.json` MUST 提供 `test:wasm` 入口，薄调用 `scripts/run/test_browser.sh`，
 使本地单命令复现全项目 wasm 测试面（`build:wasm`、node 驱动 wasm 套件、真浏览器
 套件、wasm rust 覆盖率链），且 MUST `set -euo pipefail` 并纳入 `pnpm test` 聚合链。
 脚本对工具与浏览器 MUST 只探测存在性、缺失即非零退出并打印安装命令，MUST NOT
@@ -213,7 +213,7 @@ MUST 各自内置 `--coverage`，使任一调用方（本地裸跑、tasks.md、
 #### Scenario: ci.yml wasm job 不再内联测试命令
 
 - **WHEN** 检查 `ci.yml` 的 wasm job 测试步骤
-- **THEN** 测试步骤为单行 `bash scripts/run/test_wasm.sh`，无内联的 `build:wasm` /
+- **THEN** 测试步骤为单行 `bash scripts/run/test_browser.sh`，无内联的 `build:wasm` /
   `test:wasm` / `test:browser` 命令；前置工具安装步仍在调脚本之前
 
 #### Scenario: 根 test:wasm 纳入本地聚合
@@ -225,7 +225,7 @@ MUST 各自内置 `--coverage`，使任一调用方（本地裸跑、tasks.md、
 
 - **WHEN** 检查 `scripts/run/test_ts.sh`
 - **THEN** 仍含 `build:wasm` 与 node 驱动 wasm 套件，node 矩阵继续验 wasm 产物跨
-  node 版本可加载；`build:wasm` 在 `test_wasm.sh` 与 `test_ts.sh` 各自幂等执行、互不依赖
+  node 版本可加载；`build:wasm` 在 `test_browser.sh` 与 `test_ts.sh` 各自幂等执行、互不依赖
 
 ### Requirement: cross-binding 测试根聚合入口
 
@@ -469,21 +469,21 @@ wasm32 C runtime MUST 由 wasi-sdk 自带的标准 clang 编译（`scripts/insta
 下 tarball 解压到 `~/.local/opt/wasi-sdk`，仿 install_binaryen.sh）；阅卷期
 `llc`/`llvm-profdata`/`llvm-cov` MUST 取自钉版 rust 工具链自带的 `llvm-tools`
 组件（写进 `rust-toolchain.toml` 的 `components`，rustup 激活工具链时自动装）。
-`scripts/run/test_wasm.sh` MUST 从 `$(rustc --print sysroot)` 下的 llvm-tools bin
+`scripts/run/test_browser.sh` MUST 从 `$(rustc --print sysroot)` 下的 llvm-tools bin
 目录取阅卷三件套，MUST 探测 wasi-sdk clang、缺失时提示跑
 `scripts/install_wasi_sdk.sh` 并以非零退出。
 
 #### Scenario: 缺 wasi-sdk clang 时本地测试入口可行动报错
 
 - **WHEN** 本机未装 wasi-sdk clang 时运行 `pnpm test:wasm`
-- **THEN** `test_wasm.sh` 探测段打印跑 `scripts/install_wasi_sdk.sh` 的指引并以非零退出，
+- **THEN** `test_browser.sh` 探测段打印跑 `scripts/install_wasi_sdk.sh` 的指引并以非零退出，
   不发起自动安装
 
 #### Scenario: llvm-tools 组件随工具链自动就位
 
 - **WHEN** rustup 激活 `rust-toolchain.toml` 钉定的工具链（本地或 CI）
 - **THEN** `llvm-tools` 组件随之安装，`$(rustc --print sysroot)` 下 llvm-tools
-  bin 目录含 `llc`/`llvm-profdata`/`llvm-cov`，`test_wasm.sh` 无需外部安装步即可阅卷
+  bin 目录含 `llc`/`llvm-profdata`/`llvm-cov`，`test_browser.sh` 无需外部安装步即可阅卷
 
 ### Requirement: core 覆盖率全平台产出
 

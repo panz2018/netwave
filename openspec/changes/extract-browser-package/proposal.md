@@ -51,7 +51,7 @@ crate/目录/命令/CI job 仍叫 `wasm`（实现技术名）而非平台名 `br
   `typescript/test/{wasm,browser}/`、`typescript/vitest.{wasm,browser}.config.ts`、
   `typescript/package.json`、`typescript/tsdown.config.ts`。
 - 配置：根 `Cargo.toml` members、`pnpm-workspace.yaml`、根 `package.json`
-  scripts、`.github/workflows/ci.yml`、`scripts/run/test_wasm.sh`/`test_ts.sh`。
+  scripts、`.github/workflows/ci.yml`、`scripts/run/test_browser.sh`/`test_ts.sh`。
 - spec：`workspace-layout`、`ci-matrix`（delta）。
 - 受影响铁律：铁律八（wasm 只运行在 worker、主线程零 wasm）、铁律十一
   （壳不计算）——本变更只搬位置不改这两条语义。
@@ -62,8 +62,10 @@ crate/目录/命令/CI job 仍叫 `wasm`（实现技术名）而非平台名 `br
   搬出 core——browser 的 Rust glue crate 本轮仍是空 force-link 壳，dispatch
   搬迁留作后续独立 change。
 - 不把 native（node 的 napi crate）从 `typescript/native/` 独立出来。
-- 不改覆盖率链内部命名（`test_wasm.sh`、`coverage-wasm.lcov`、
-  `coverage_gate.py` 文件匹配）——只改对外名（crate/目录/命令/CI job）。
+- 不改覆盖率链**内部产物名**（`coverage-wasm.lcov`、`coverage_gate.py`
+  文件匹配）——只改对外名（crate/目录/命令/CI job）。根命令直接调的入口脚本
+  `test_wasm.sh`→`test_browser.sh` 属对外名，随根命令 `test:browser` 一起改
+  （check_ci 闸门要求命令名与脚本名一致）。
 - 不让 browser 独立发 npm（本轮 `private: true`，仅被 typescript 消费）。
 - 不新建 browser spec。
 

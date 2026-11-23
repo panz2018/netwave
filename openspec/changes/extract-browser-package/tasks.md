@@ -23,17 +23,18 @@
 
 ## 2. 命名统一（平台名 browser，技术名保留）
 
-- [ ] 2.1 crate/目录/产物改名 `netwave-wasm`→`netwave-browser`、
+- [x] 2.1 crate/目录/产物改名 `netwave-wasm`→`netwave-browser`、
       `netwave_wasm.js`→`netwave_browser.js`，落实 `browser命名`；全仓 grep
       `netwave_wasm` 逐处改（壳 import、worker、vitest alias、tsdown）
-- [ ] 2.2 typescript 包内命令改名 `test:wasm`→`test:unit`、
+- [x] 2.2 typescript 包内命令改名 `test:wasm`→`test:unit`、
       `test:browser`→`test:e2e`，内置 `--coverage` 不变
-- [ ] 2.3 根命令改名 `test:wasm`→`test:browser`、CI job `wasm`→`browser`、
+- [x] 2.3 根命令改名 `test:wasm`→`test:browser`、CI job `wasm`→`browser`、
       artifact `coverage-wasm-*`→`coverage-browser-*`，落实 `根命令与CI改名`；
       技术名 wasm32/wasm-pack/wasm-opt 一律保留
-- [ ] 2.4 覆盖率链内部命名（`test_wasm.sh`、`coverage-wasm.lcov`、
-      `coverage_gate.py` 匹配）本轮不动，落实 `覆盖率链内部命名不动`；
-      把后续改名项写入 `Plan/绑定放置重构.md`
+- [x] 2.4 覆盖率链**内部产物名**（`coverage-wasm.lcov`、`coverage_gate.py`
+      匹配）本轮不动，落实 `覆盖率链内部命名不动`；入口脚本 `test_wasm.sh`→
+      `test_browser.sh` 属对外名随根命令改（check_ci 要求命令名=脚本名）；
+      把后续内部改名项写入 `Plan/绑定放置重构.md`
 
 ## 3. typescript 回归 node + 薄封装
 

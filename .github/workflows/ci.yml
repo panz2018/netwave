@@ -161,13 +161,13 @@ jobs:
           bash scripts/install_wasi_sdk.sh
           bash scripts/install_wasm_bindgen_cli.sh
       - name: browser test entry (build:browser + node unit suite + real browser)
-        # Command details live once in scripts/run/test_wasm.sh — the same file
+        # Command details live once in scripts/run/test_browser.sh — the same file
         # local `pnpm test:browser` calls (toolchain probes, build:browser,
         # node-driven unit suite, instrumented browser rust coverage chain,
         # real-browser suite). The --coverage flag is baked into
         # browser/package.json's test:unit/test:e2e, not repeated here.
         shell: bash
-        run: bash scripts/run/test_wasm.sh
+        run: bash scripts/run/test_browser.sh
       - name: upload browser rust coverage report
         uses: actions/upload-artifact@v7
         with:

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Wasm test entry: build the wasm artifact, run the node-driven wasm suite and
-# the real-browser suite. Single source of truth for wasm test command details —
-# local `pnpm test:wasm` and the CI wasm job both call this file, so parameters
+# Browser test entry: build the wasm artifact, run the node-driven unit suite and
+# the real-browser suite. Single source of truth for browser test command details —
+# local `pnpm test:browser` and the CI browser job both call this file, so parameters
 # cannot drift apart.
 set -euo pipefail
 
