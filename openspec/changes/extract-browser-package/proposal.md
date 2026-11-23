@@ -24,8 +24,9 @@ crate/目录/命令/CI job 仍叫 `wasm`（实现技术名）而非平台名 `br
 - worker（`netwave.worker.ts`）、传输壳（`index.browser.ts`）、worker 协议
   类型（`types.ts`）及对应测试从 typescript 迁入 browser。
 - `gen:constants` 与 wasm 构建产物归 browser（落 `browser/dist/`）。
-- typescript 经 pnpm workspace 依赖消费 browser，`exports.browser` 条件改为
-  再导出 browser 包；typescript 只保留 node + 薄封装 + 集成测试。
+- typescript 经 pnpm workspace 依赖消费 browser，构建期合并：tsdown 直接
+  import browser 壳源码编译进 typescript/dist，typescript 工具从 browser/dist
+  发射 wasm 资产；发布物自包含。typescript 只保留 node + 薄封装 + 集成测试。
 - Cargo workspace members、`pnpm-workspace.yaml` 同步纳入 `browser/`。
 
 ## Capabilities
@@ -89,8 +90,8 @@ crate/目录/命令/CI job 仍叫 `wasm`（实现技术名）而非平台名 `br
 - `browser命名`：crate/目录/产物统一用平台名 browser，技术名 wasm32/wasm-pack/
   wasm-opt 保留。
 - `壳随worker进browser`：index.browser.ts、netwave.worker.ts、types.ts 及测试全进 browser。
-- `typescript承载node加薄封装`：只留 node + 薄封装 + 集成测试，exports.browser
-  再导出 browser 包。
+- `typescript承载node加薄封装`：只留 node + 薄封装 + 集成测试，构建期合并
+  browser 产物（壳直接导入、wasm 资产由 typescript 工具发射），发布物自包含。
 - `browser内测试改名`：test:wasm→test:unit、test:browser→test:e2e，目录同步。
 - `根命令与CI改名`：根 test:wasm→test:browser、CI job wasm→browser。
 - `覆盖率链内部命名不动`：本轮只改对外名，内部命名留后续。

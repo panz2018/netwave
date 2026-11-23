@@ -31,12 +31,25 @@ worker↔壳↔测试同处一个可独立理解/测试的边界；拆开等于�
 分两个项目。代价：browser 目录同时有 Cargo.toml 与 package.json，构建链
 （cargo→wasm-pack→vitest）较长，由包内 scripts 收口。
 
-### D2：typescript 经 pnpm workspace 依赖消费 browser，exports.browser 再导出
+### D2：构建期合并——壳直接导入 + typescript 工具发射 wasm 资产
 
-替代方案：继续相对路径 import `../dist/`。选 workspace 依赖——这才是
-"typescript import browser"的真实包边界，强制构建顺序 browser→typescript。
-`exports.browser` 条件指向 typescript 内对 browser 包的再导出，保持"用户只
-import netwave 一个包"。
+browser 私有不发 npm（见 proposal 已定裁决 `browser私有包`），故发布物必须自包含。机制分两类产物：
+
+- **TS 壳**（index.browser.ts、worker）：typescript 的 tsdown 直接 import
+  browser 包源码编译进 `typescript/dist`，不复制（tsdown 默认把 workspace
+  依赖当 external，需把 `netwave-browser` 标为可打包）。
+- **wasm 二进制 + glue.js + constants**：`.wasm` 无法被打包器塞进 JS，只能作
+  文件进 dist。由 typescript 构建的 asset 步骤从 `browser/dist/` 读、发射进
+  `typescript/dist`——方向是 typescript→browser，正确。
+
+替代方案与否决：(a) browser 直接把产物写进 typescript/dist——依赖方向反了
+（browser→typescript），破坏 browser 自包含，正是本次要消灭的耦合（现状
+`wasm-pack --out-dir ../dist/wasm-web` 即此反模式，本次改掉）；(b) browser
+也发 npm——撤 `browser私有包` 裁决，改动更大且违背"本轮不发 browser"。
+
+`./standalone`、`./worker` 子路径归 typescript 产出（发布壳职责），从 browser
+的 worker/壳源码编译。构建顺序：browser build → typescript build（workspace
+依赖强制）。
 
 ### D3：CI 维持两 job 各自自建 browser 产物，不加 `needs: browser`
 

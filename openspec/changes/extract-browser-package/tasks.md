@@ -14,7 +14,8 @@
       `typescript/test/browser/`→`browser/test/e2e/`，落实 `browser内测试改名`
 - [ ] 1.5 迁 vitest 配置：`vitest.wasm.config.ts`→`browser/vitest.unit.config.ts`、
       `vitest.browser.config.ts`→`browser/vitest.e2e.config.ts`，include 路径同步
-- [ ] 1.6 `gen:constants` 与 wasm 构建产物落 `browser/dist/`，落实
+- [ ] 1.6 `gen:constants` 与 wasm-pack 产物落 **`browser/dist/`**（browser
+      拥有、自包含；改掉现状 `--out-dir ../dist/wasm-web` 的反向耦合），落实
       `workspace依赖消费`（产物归 browser）
 
 ## 2. 命名统一（平台名 browser，技术名保留）
@@ -35,10 +36,14 @@
 
 - [ ] 3.1 typescript 删 worker/壳/types/test（已迁 browser），加
       `netwave-browser` workspace 依赖，落实 `typescript承载node加薄封装`
-- [ ] 3.2 typescript `exports.browser`/`default` 条件改为再导出 browser 包；
-      node 产物与薄封装入口保留，native 不动（`native本轮不动`）
-- [ ] 3.3 typescript 集成测试：exports 条件解析（node→napi、browser→再导出）、
-      双端同 API 面
+- [ ] 3.2 构建期合并（见 design「构建期合并」决策）：tsdown 直接 import browser 包壳源码编译进
+      `typescript/dist`（把 `netwave-browser` 标为可打包，不复制壳）；新增
+      asset 步骤从 `browser/dist/` 发射 `.wasm`+glue.js+constants 进
+      `typescript/dist`（方向 typescript→browser）；`./standalone`/`./worker`
+      子路径归 typescript 产出；node 产物与薄封装入口保留，native 不动
+      （`native本轮不动`）
+- [ ] 3.3 typescript 集成测试：exports 条件解析（node→napi、browser→合并产物）、
+      双端同 API 面；发布物自包含（不运行时依赖未发布的 netwave-browser）
 
 ## 4. workspace 与 CI 接线
 

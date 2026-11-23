@@ -36,7 +36,8 @@ wasm-bindgen crate。exports 条件分发，单包发布名 `netwave`。目录�
 
 - **WHEN** 读取 `typescript/package.json`（npm 发布名 `netwave`）
 - **THEN** 其 `exports` 条件映射：`"node"` 条件指向 napi 产物（`.node` +
-  ESM/CJS 双壳），`"browser"`/`"default"` 条件再导出 `browser/` 包产物 ESM；
+  ESM/CJS 双壳），`"browser"`/`"default"` 条件指向构建期从 `browser/` 包合并
+  进 typescript 产物的浏览器 ESM（发布物自包含，运行时不依赖未发布的 browser）；
   另含纯 HTML 零构建单文件入口（`./standalone` 子路径）与预置 `./worker`
   （浏览器 Worker 胶水，零数值逻辑）
 - **AND** 原生二进制按平台拆 `optionalDependencies`（`os`/`cpu` 标签），
