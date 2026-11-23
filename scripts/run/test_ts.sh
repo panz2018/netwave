@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# TypeScript test entry: wasm build + napi glue coverage chain + tsc type gate +
-# dts any check + node-driven wasm suite + stray-profraw drain. Single source of
+# TypeScript test entry: browser build + napi glue coverage chain + tsc type gate +
+# dts any check + node-driven browser unit suite + stray-profraw drain. Single source of
 # truth for typescript test command details — local `pnpm test:ts` and the CI
 # node job both call this file, so parameters cannot drift apart.
 set -euo pipefail

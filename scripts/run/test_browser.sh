@@ -92,7 +92,7 @@ pnpm -C browser test:unit
 # (release+LTO collides with the __covrec_* symbols), so this uses cargo build
 # (debug) + wasm-bindgen-cli to regenerate the web glue the worker loads. The
 # instrumented build, glue, profraw dump, merged profdata and llc host objects all
-# live under typescript/target-wasm-cov (gitignored, SKIP_DIRS-whitelisted) so the
+# live under browser/target-wasm-cov (gitignored, SKIP_DIRS-whitelisted) so the
 # stray drain never deletes them and they are never committed. The grading signal
 # is the lcov report (LL-093: a broken chain shows 0 hits, not a missing profraw).
 # Floor 100: unmet lines are listed for human triage, never silently exempted.

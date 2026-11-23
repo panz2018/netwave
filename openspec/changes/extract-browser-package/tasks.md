@@ -68,19 +68,19 @@
 
 ## 6. 收尾
 
-- [ ] 6.1 删除 `Plan/绑定放置重构.md` 中本 change 已定案章节，只留未执行项
+- [x] 6.1 删除 `Plan/绑定放置重构.md` 中本 change 已定案章节，只留未执行项
       （dispatch 搬迁、native 独立、覆盖率链改名、发布形态），删后跑
       `pnpm check:md`（锚点 `Plan/`）
-- [ ] 6.2 扫 `openspec/specs/` 全目录，产出本变更"更新/新增/退役"三态时效
+- [x] 6.2 扫 `openspec/specs/` 全目录，产出本变更"更新/新增/退役"三态时效
       结论留痕（锚点 `三态时效`）
-- [ ] 6.3 `pnpm test` 全绿先于 review（锚点：见 operations guidance）
-- [ ] 6.4 三轴 review：按 governance spec「元规则 review 三轴」对照本 change
+- [x] 6.3 `pnpm test` 全绿先于 review（锚点：见 operations guidance）
+- [x] 6.4 三轴 review：按 governance spec「元规则 review 三轴」对照本 change
       工件审实现 diff，逐文件对上 tasks.md，硬伤清零（锚点 `三轴`）
-- [ ] 6.5 被触碰文件全文只读体检（health-check apply 态：语义考古维 + 四维，
+- [x] 6.5 被触碰文件全文只读体检（health-check apply 态：语义考古维 + 四维，
       发现附文件+行号+证据落 Plan/）（锚点 `体检`）
-- [ ] 6.6 迟到追加核对：回看本会话拍板是否全部落工件（锚点 `迟到追加`）
-- [ ] 6.7 归档阶段 `跳过archive态体检`：本 change 归档完成后的 archive 态
+- [x] 6.6 迟到追加核对：回看本会话拍板是否全部落工件（锚点 `迟到追加`）
+- [x] 6.7 归档阶段 `跳过archive态体检`：本 change 归档完成后的 archive 态
       全项目只读体检跳过（health-check spec「archive 态」），apply 态被触碰
       文件体检（6.5）照常执行——跳过 2026-11-22
-- [ ] 6.8 最后一项：跑 `pnpm check:outdated` 并按 dependency-upgrade spec
+- [x] 6.8 最后一项：跑 `pnpm check:outdated` 并按 dependency-upgrade spec
       消化 LAG，复跑至退出码 0（锚点 `check:outdated`）

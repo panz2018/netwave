@@ -44,6 +44,12 @@ crate/目录/命令/CI job 仍叫 `wasm`（实现技术名）而非平台名 `br
   workspace 依赖消费 browser"；exports 条件与产物归属随之更新。
 - `ci-matrix`: 浏览器端 CI job 与覆盖率 artifact 由 `wasm` 更名为 `browser`，
   技术名保留；typescript job 维持自建 browser 产物（不引入跨 job 依赖）。
+- `license-compliance`: license 字段一致条款的元数据文件清单随 crate 搬迁更新
+  （`typescript/wasm/Cargo.toml` → `browser/Cargo.toml`，新增 `browser/package.json`）。
+
+三态时效（6.2）：**更新** = workspace-layout、ci-matrix、license-compliance
+（三个 delta，归档时并入主 spec）；**新增** = 无（落实 `不新建browser-spec`）；
+**退役** = 无。lessons-learned 账本与 archive/ 内旧事实为冻结历史，不改。
 
 ## Impact
 
