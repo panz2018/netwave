@@ -33,7 +33,7 @@ case "$(uname)" in
   MINGW* | MSYS* | CYGWIN*) pw_cache="${PLAYWRIGHT_BROWSERS_PATH:-${LOCALAPPDATA:-$HOME/AppData/Local}/ms-playwright}" ;;
 esac
 if ! find "$pw_cache" -maxdepth 1 -type d -name 'chromium*' 2>/dev/null | grep -q .; then
-  echo "chromium not installed — install it with: pnpm -C typescript exec playwright install --only-shell chromium" >&2
+  echo "chromium not installed — install it with: pnpm -C browser exec playwright install --only-shell chromium" >&2
   exit 1
 fi
 # Linux only: a present chromium binary can still fail to launch when its system

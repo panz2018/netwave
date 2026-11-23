@@ -146,9 +146,9 @@ jobs:
       - name: install Chromium (headless shell only)
         # The main thread must never touch wasm, which is only provable in a
         # real browser; the suite runs headless, so the headless shell suffices.
-        # Installed before the test entry: test_wasm.sh probes for chromium and
+        # Installed before the test entry: test_browser.sh probes for chromium and
         # exits if absent (the script never auto-installs).
-        run: pnpm -C typescript exec playwright install --only-shell chromium
+        run: pnpm -C browser exec playwright install --only-shell chromium
       - name: install wasm rust coverage toolchain (wasi-sdk clang + wasm-bindgen)
         # wasi-sdk clang compiles minicov's wasm32 C runtime; wasm-bindgen-cli
         # turns the instrumented cdylib into the web glue the worker loads
