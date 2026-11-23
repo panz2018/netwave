@@ -5,7 +5,7 @@
  * the vitest browser server makes the worker's `web_sys::fetch` resolve.
  * Cannot run under Node (no vite browser server). */
 import { beforeAll, describe, expect, it } from "vitest";
-import { installResidentWorkerHarness } from "../wasm/harness.ts";
+import { installResidentWorkerHarness } from "../unit/harness.ts";
 
 beforeAll(async () => {
   await installResidentWorkerHarness();

@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = ["core", "python", "typescript/native", "typescript/wasm"]
+members = ["core", "python", "browser", "typescript/native"]
 
 # Release profile: LTO for wasm binary size.
 [profile.release]

@@ -23,10 +23,11 @@ crate/目录/命令/CI job 仍叫 `wasm`（实现技术名）而非平台名 `br
   `wasm-opt`）一律保留。
 - worker（`netwave.worker.ts`）、传输壳（`index.browser.ts`）、worker 协议
   类型（`types.ts`）及对应测试从 typescript 迁入 browser。
-- `gen:constants` 与 wasm 构建产物归 browser（落 `browser/dist/`）。
-- typescript 经 pnpm workspace 依赖消费 browser，构建期合并：tsdown 直接
-  import browser 壳源码编译进 typescript/dist，typescript 工具从 browser/dist
-  发射 wasm 资产；发布物自包含。typescript 只保留 node + 薄封装 + 集成测试。
+- browser 自产全部浏览器产物（壳/`./standalone`/`./worker`/wasm/constants/dts）
+  落 `browser/dist/`，结构上可独立发布。
+- typescript 经 pnpm workspace 依赖消费 browser：browser build 产全部浏览器
+  dist，typescript build 合并进 typescript/dist（对外单包）；typescript 只保留
+  node + 薄封装 + 集成测试。
 - Cargo workspace members、`pnpm-workspace.yaml` 同步纳入 `browser/`。
 
 ## Capabilities
@@ -100,6 +101,8 @@ crate/目录/命令/CI job 仍叫 `wasm`（实现技术名）而非平台名 `br
 - `workspace依赖消费`：typescript 经 pnpm workspace 依赖 import browser，产物归 browser/dist。
 - `glue空壳`：browser Rust crate 本轮仍是空 force-link 壳，dispatch 留 core。
 - `browser私有包`：本轮 private，不独立发 npm。
+- `browser自包含可独立发布`：browser 自产全部浏览器产物（壳/standalone/
+  worker/wasm/constants/dts），未来砍 node 后 browser 一字不改即可单独发布。
 - `CI各自自建产物`：typescript job 维持自建 browser 产物，不加 needs:browser 跨 job 依赖。
 - `跳过archive态体检`：本 change 归档完成后的 archive 态全项目只读体检跳过
   （health-check spec「archive 态」），apply 态被触碰文件体检照常执行。

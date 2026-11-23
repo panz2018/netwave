@@ -1,4 +1,5 @@
 packages:
+  - browser
   - typescript
 allowBuilds:
   esbuild: true

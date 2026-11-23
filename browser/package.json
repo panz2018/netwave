@@ -1,0 +1,40 @@
+{
+  "name": "netwave-browser",
+  "version": "0.0.1",
+  "description": "netwave browser binding: wasm runs only inside the resident worker (private, consumed by the netwave shell)",
+  "type": "module",
+  "private": true,
+  "license": "MIT OR Apache-2.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "browser": "./dist/index.browser.mjs",
+      "default": "./dist/index.browser.mjs"
+    },
+    "./standalone": "./dist/standalone.js",
+    "./worker": "./dist/netwave.worker.js"
+  },
+  "scripts": {
+    "build:browser": "pnpm gen:constants && cross-env CARGO_TARGET_DIR=../target-wasm wasm-pack build --target web --out-dir dist/wasm && tsdown && node scripts/publish_shell.mjs",
+    "gen:constants": "node scripts/gen_constants.mjs",
+    "test": "pnpm test:unit && pnpm test:e2e",
+    "typecheck": "tsc --noEmit",
+    "test:unit": "vitest run --config vitest.unit.config.ts --coverage",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts --coverage"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@vitest/browser": "^5.1.1",
+    "@vitest/browser-playwright": "5.1.1",
+    "@vitest/coverage-v8": "^5.1.1",
+    "cross-env": "^10.1.0",
+    "playwright": "^1.65.1",
+    "playwright-core": "^1.65.1",
+    "tsdown": "^0.23.7",
+    "typescript": "^7.0.2",
+    "vitest": "^5.1.1"
+  }
+}

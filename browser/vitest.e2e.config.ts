@@ -32,13 +32,13 @@ export default defineConfig({
   resolve: chainOn
     ? {
         alias: {
-          "../dist/wasm-web/netwave_wasm.js": resolve(__dirname, covDir!, "netwave_wasm.js"),
+          "../dist/wasm/netwave_browser.js": resolve(__dirname, covDir!, "netwave_browser.js"),
         },
       }
     : undefined,
   test: {
-    include: ["test/wasm/**/*.test.ts", "test/browser/**/*.test.ts"],
-    ...(chainOn ? { setupFiles: ["./test/browser/coverage-dump.ts"] } : {}),
+    include: ["test/unit/**/*.test.ts", "test/e2e/**/*.test.ts"],
+    ...(chainOn ? { setupFiles: ["./test/e2e/coverage-dump.ts"] } : {}),
     browser: {
       enabled: true,
       headless: true,

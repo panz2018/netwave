@@ -7,7 +7,7 @@ describe("real browser: main thread has no wasm (LL-030)", () => {
   it("no wasm instance / glue namespace on the main thread", async () => {
     const g = globalThis as Record<string, unknown>;
     // The web-target glue namespace must not exist on the main thread.
-    expect(g.netwave_wasm).toBeUndefined();
+    expect(g.netwave_browser).toBeUndefined();
     expect(g.__netwaveWasmMemory).toBeUndefined();
     // The only wasm-adjacent global is the worker singleton handle.
     const m = await import("../../src/index.browser.ts");

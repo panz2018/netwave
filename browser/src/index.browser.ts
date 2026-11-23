@@ -25,8 +25,8 @@ import { SPEED_OF_LIGHT } from "../dist/constants.generated.mjs";
 import type {
   FrequencyUnit as FrequencyUnitType,
   WavelengthUnit as WavelengthUnitType,
-} from "../dist/wasm-web/netwave_wasm.js";
-import { FrequencyUnit, WavelengthUnit } from "../dist/wasm-web/netwave_wasm.js";
+} from "../dist/wasm/netwave_browser.js";
+import { FrequencyUnit, WavelengthUnit } from "../dist/wasm/netwave_browser.js";
 import type { Handle, WorkerRequest, WorkerResponse } from "./types.js";
 
 export { FrequencyUnit, SPEED_OF_LIGHT, WavelengthUnit };

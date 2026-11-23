@@ -13,7 +13,7 @@
 import { driveCoverage, dumpCoverage, installFetchStub } from "./coverage-dump.ts";
 import type { ControlRequest, WorkerRequest, WorkerResponse } from "./types.ts";
 
-// The wasm glue + bytes live in dist/wasm-web by default. Under Node the rust
+// The wasm glue + bytes live in dist/wasm by default. Under Node the rust
 // coverage chain points them at an instrumented build via NETWAVE_WASM_DIR;
 // unset (production + every browser path) keeps the default. The default
 // specifiers MUST stay literal string constants: publish_shell.mjs rewrites
@@ -49,8 +49,8 @@ const initWasm = async (): Promise<WasmCall> => {
      only under the rust coverage chain (NETWAVE_WASM_DIR set); production and
      browser always take the default specifier. */
   const glue = covDir
-    ? await import(/* @vite-ignore */ `${covDir}/netwave_wasm.js`)
-    : await import("../dist/wasm-web/netwave_wasm.js");
+    ? await import(/* @vite-ignore */ `${covDir}/netwave_browser.js`)
+    : await import("../dist/wasm/netwave_browser.js");
   /* v8 ignore stop */
   /* v8 ignore next 1 -- browser path: glue fetches relative to its own URL; exercised in real-browser tests */
   const bytes = isNode ? await readWasmBytes() : undefined;
@@ -62,10 +62,10 @@ const initWasm = async (): Promise<WasmCall> => {
 const readWasmBytes = async (): Promise<Uint8Array> => {
   const { readFile } = await import("node:fs/promises");
   /* v8 ignore start -- instrumented path; only the coverage chain sets covDir */
-  if (covDir) return readFile(`${covDir}/netwave_wasm_bg.wasm`);
+  if (covDir) return readFile(`${covDir}/netwave_browser_bg.wasm`);
   /* v8 ignore stop */
   const { fileURLToPath } = await import("node:url");
-  return readFile(fileURLToPath(new URL("../dist/wasm-web/netwave_wasm_bg.wasm", import.meta.url)));
+  return readFile(fileURLToPath(new URL("../dist/wasm/netwave_browser_bg.wasm", import.meta.url)));
 };
 
 const ready = initWasm();

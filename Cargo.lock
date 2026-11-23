@@ -1239,6 +1239,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "netwave-browser"
+version = "0.0.1"
+dependencies = [
+ "js-sys",
+ "minicov",
+ "netwave",
+ "wasm-bindgen",
+]
+
+[[package]]
 name = "netwave-native"
 version = "0.0.1"
 dependencies = [
@@ -1257,16 +1267,6 @@ dependencies = [
  "pyo3",
  "pyo3-stub-gen",
  "tokio",
-]
-
-[[package]]
-name = "netwave-wasm"
-version = "0.0.1"
-dependencies = [
- "js-sys",
- "minicov",
- "netwave",
- "wasm-bindgen",
 ]
 
 [[package]]

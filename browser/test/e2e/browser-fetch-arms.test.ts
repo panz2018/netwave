@@ -6,7 +6,7 @@
  * worker, then `fromUrl` drives the arm. Cannot run under Node (the node
  * harness's fakeSelf never reaches these web_sys arms). */
 import { beforeAll, describe, expect, it } from "vitest";
-import { installResidentWorkerHarness } from "../wasm/harness.ts";
+import { installResidentWorkerHarness } from "../unit/harness.ts";
 
 beforeAll(async () => {
   await installResidentWorkerHarness();

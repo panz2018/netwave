@@ -1,11 +1,11 @@
 [package]
-name = "netwave-wasm"
+name = "netwave-browser"
 version = "0.0.1"
 edition = "2024"
 rust-version = "1.99"
 publish = false
 license = "MIT OR Apache-2.0"
-license-file = "../../LICENSE-MIT"
+license-file = "../LICENSE-MIT"
 
 [lib]
 # cdylib only (wasm-pack needs cdylib; an rlib would leave orphan
@@ -13,17 +13,18 @@ license-file = "../../LICENSE-MIT"
 crate-type = ["cdylib"]
 
 [dependencies]
-netwave = { path = "../../core", features = ["browser", "browser-http"] }
+netwave = { path = "../core", features = ["browser", "browser-http"] }
 js-sys = { version = "0.3", features = ["std"] }
 wasm-bindgen = "0.2"
-# LLVM profiling runtime for the wasm coverage chain (no_std, self-contained).
-# Pulled in only by the `coverage` feature, so production builds exclude it.
+# LLVM profiling runtime for the browser rust coverage chain (no_std,
+# self-contained). Pulled in only by the `coverage` feature, so production
+# builds exclude it.
 minicov = { version = "0.3", optional = true }
 
 [features]
 default = []
-# Instrumented build for the wasm rust coverage chain: links minicov, exports
+# Instrumented build for the browser rust coverage chain: links minicov, exports
 # the dump entry points, and enables core's cov-drive entry so the defensive
-# dispatch-violation arms count. Off by default — production `build:wasm`
+# dispatch-violation arms count. Off by default — production `build:browser`
 # never compiles it.
 coverage = ["dep:minicov", "netwave/cov-drive"]
