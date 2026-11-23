@@ -1,0 +1,75 @@
+# Tasks
+
+## 1. browser 包骨架与搬迁
+
+- [ ] 1.1 建 `browser/` 目录：`Cargo.toml`（crate name `netwave-browser`，
+      cdylib，依赖 core features browser+browser-http）、`package.json`
+      （`private: true`，见 `browser私有包`），落实 `browser顶层包`
+- [ ] 1.2 把 glue crate（原 `typescript/wasm/src/lib.rs`，含 coverage dump
+      入口）迁入 `browser/src/`，保持空 force-link 壳语义（`glue空壳`）
+- [ ] 1.3 迁 `netwave.worker.ts`、`index.browser.ts`、`types.ts` 进
+      `browser/src/`，落实 `壳随worker进browser`；保持 worker 的
+      `new Worker(new URL(...))` vite 邻接约束
+- [ ] 1.4 迁浏览器端测试：`typescript/test/wasm/`→`browser/test/unit/`、
+      `typescript/test/browser/`→`browser/test/e2e/`，落实 `browser内测试改名`
+- [ ] 1.5 迁 vitest 配置：`vitest.wasm.config.ts`→`browser/vitest.unit.config.ts`、
+      `vitest.browser.config.ts`→`browser/vitest.e2e.config.ts`，include 路径同步
+- [ ] 1.6 `gen:constants` 与 wasm 构建产物落 `browser/dist/`，落实
+      `workspace依赖消费`（产物归 browser）
+
+## 2. 命名统一（平台名 browser，技术名保留）
+
+- [ ] 2.1 crate/目录/产物改名 `netwave-wasm`→`netwave-browser`、
+      `netwave_wasm.js`→`netwave_browser.js`，落实 `browser命名`；全仓 grep
+      `netwave_wasm` 逐处改（壳 import、worker、vitest alias、tsdown）
+- [ ] 2.2 typescript 包内命令改名 `test:wasm`→`test:unit`、
+      `test:browser`→`test:e2e`，内置 `--coverage` 不变
+- [ ] 2.3 根命令改名 `test:wasm`→`test:browser`、CI job `wasm`→`browser`、
+      artifact `coverage-wasm-*`→`coverage-browser-*`，落实 `根命令与CI改名`；
+      技术名 wasm32/wasm-pack/wasm-opt 一律保留
+- [ ] 2.4 覆盖率链内部命名（`test_wasm.sh`、`coverage-wasm.lcov`、
+      `coverage_gate.py` 匹配）本轮不动，落实 `覆盖率链内部命名不动`；
+      把后续改名项写入 `Plan/绑定放置重构.md`
+
+## 3. typescript 回归 node + 薄封装
+
+- [ ] 3.1 typescript 删 worker/壳/types/test（已迁 browser），加
+      `netwave-browser` workspace 依赖，落实 `typescript承载node加薄封装`
+- [ ] 3.2 typescript `exports.browser`/`default` 条件改为再导出 browser 包；
+      node 产物与薄封装入口保留，native 不动（`native本轮不动`）
+- [ ] 3.3 typescript 集成测试：exports 条件解析（node→napi、browser→再导出）、
+      双端同 API 面
+
+## 4. workspace 与 CI 接线
+
+- [ ] 4.1 根 `Cargo.toml` members 改 core/python/browser/typescript/native；
+      `pnpm-workspace.yaml` packages 改 browser、typescript
+- [ ] 4.2 `ci.yml`：browser job（原 wasm）测试步骤单行调脚本；typescript job
+      维持自建 browser 产物、不加 `needs: browser`，落实 `CI各自自建产物`
+- [ ] 4.3 spec 落点：边界写 `workspace-layout`、措辞改 `ci-matrix`、worker
+      分发留 `api-contract` 不动，落实 `不新建browser-spec`
+
+## 5. 验证（引用根聚合入口）
+
+- [ ] 5.1 `cargo metadata --no-deps` members 恰为 core/python/browser/
+      typescript/native（workspace-layout scenario）
+- [ ] 5.2 `pnpm test` 全绿（含 node/browser/python/rust/cross 全链）
+- [ ] 5.3 `pnpm test:browser` 全链 exit 0（node 单元 + 真浏览器 e2e + rust lcov 地板）
+- [ ] 5.4 `pnpm test:cross` 四端对拍绿（browser 产物改名后 cross dump 仍读到）
+- [ ] 5.5 `pnpm check` 全绿（含 check:md、check:ci、check_vocab/check_verbs）
+
+## 6. 收尾
+
+- [ ] 6.1 删除 `Plan/绑定放置重构.md` 中本 change 已定案章节，只留未执行项
+      （dispatch 搬迁、native 独立、覆盖率链改名、发布形态），删后跑
+      `pnpm check:md`（锚点 `Plan/`）
+- [ ] 6.2 扫 `openspec/specs/` 全目录，产出本变更"更新/新增/退役"三态时效
+      结论留痕（锚点 `三态时效`）
+- [ ] 6.3 `pnpm test` 全绿先于 review（锚点：见 operations guidance）
+- [ ] 6.4 三轴 review：按 governance spec「元规则 review 三轴」对照本 change
+      工件审实现 diff，逐文件对上 tasks.md，硬伤清零（锚点 `三轴`）
+- [ ] 6.5 被触碰文件全文只读体检（health-check apply 态：语义考古维 + 四维，
+      发现附文件+行号+证据落 Plan/）（锚点 `体检`）
+- [ ] 6.6 迟到追加核对：回看本会话拍板是否全部落工件（锚点 `迟到追加`）
+- [ ] 6.7 最后一项：跑 `pnpm check:outdated` 并按 dependency-upgrade spec
+      消化 LAG，复跑至退出码 0（锚点 `check:outdated`）
