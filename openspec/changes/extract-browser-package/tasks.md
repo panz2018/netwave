@@ -71,5 +71,8 @@
 - [ ] 6.5 被触碰文件全文只读体检（health-check apply 态：语义考古维 + 四维，
       发现附文件+行号+证据落 Plan/）（锚点 `体检`）
 - [ ] 6.6 迟到追加核对：回看本会话拍板是否全部落工件（锚点 `迟到追加`）
-- [ ] 6.7 最后一项：跑 `pnpm check:outdated` 并按 dependency-upgrade spec
+- [ ] 6.7 归档阶段 `跳过archive态体检`：本 change 归档完成后的 archive 态
+      全项目只读体检跳过（health-check spec「archive 态」），apply 态被触碰
+      文件体检（6.5）照常执行——跳过 2026-11-22
+- [ ] 6.8 最后一项：跑 `pnpm check:outdated` 并按 dependency-upgrade spec
       消化 LAG，复跑至退出码 0（锚点 `check:outdated`）

@@ -100,3 +100,14 @@ crate/目录/命令/CI job 仍叫 `wasm`（实现技术名）而非平台名 `br
 - `glue空壳`：browser Rust crate 本轮仍是空 force-link 壳，dispatch 留 core。
 - `browser私有包`：本轮 private，不独立发 npm。
 - `CI各自自建产物`：typescript job 维持自建 browser 产物，不加 needs:browser 跨 job 依赖。
+- `跳过archive态体检`：本 change 归档完成后的 archive 态全项目只读体检跳过
+  （health-check spec「archive 态」），apply 态被触碰文件体检照常执行。
+
+## 后续未完成项（本 change 不做，留待独立 change）
+
+- dispatch 搬迁：core 里的 `call_namespace`/`resources.rs`/start 钩子搬进
+  browser crate，使 glue 不再是空 force-link 壳（本 change Non-goals）。
+- native 独立：`typescript/native/` napi crate 拆成对等独立子项目。
+- 覆盖率链内部改名：`test_wasm.sh`、`coverage-wasm.lcov`、`coverage_gate.py`
+  文件匹配等内部命名由 wasm→browser（本 change 只改对外名）。
+- 发布形态：browser/native 是否独立发 npm、typescript 壳包发包策略（阶段 E）。
