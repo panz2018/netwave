@@ -4,11 +4,12 @@
 
 ### Requirement: typescript 覆盖率 flag 下沉至包级脚本
 
-`typescript/package.json` 的 `test:native`、`test:unit`、`test:e2e` 三条脚本
-MUST 各自内置 `--coverage`，使任一调用方（本地裸跑、tasks.md、CI、根聚合入口）
-单独执行时默认带覆盖率采集；`ci.yml` 与 `scripts/run/test_ts.sh` MUST NOT 再
-对这三条脚本追加 `--coverage` flag（重复追加即口径冗余）。覆盖率阈值数值仍由
-`vitest.*.config.ts` 的 `thresholds` 唯一定义，本条不新增数值。native 插桩链专属
+`typescript/package.json` 的 `test:native` 与 `browser/package.json` 的
+`test:unit`、`test:e2e` 三条脚本 MUST 各自内置 `--coverage`，使任一调用方
+（本地裸跑、tasks.md、CI、根聚合入口）单独执行时默认带覆盖率采集；`ci.yml`
+与 `scripts/run/test_ts.sh` MUST NOT 再对这三条脚本追加 `--coverage` flag
+（重复追加即口径冗余）。覆盖率阈值数值仍由 `vitest.*.config.ts` 的 `thresholds`
+唯一定义，本条不新增数值。native 插桩链专属
 的池参数（`--pool=threads`、`--execArgv=""`、`--no-file-parallelism`）MUST 留在
 `test_ts.sh` 调用处，MUST NOT 烤入包级脚本（裸跑无 llvm-cov 环境时烤入会使
 `gc()` 缺失而失败）。
@@ -17,7 +18,7 @@ MUST 各自内置 `--coverage`，使任一调用方（本地裸跑、tasks.md、
 
 #### Scenario: 单独执行也带覆盖率
 
-- **WHEN** 开发者直接运行 `pnpm -C typescript test:unit`（不带任何 flag）
+- **WHEN** 开发者直接运行 `pnpm -C browser test:unit`（不带任何 flag）
 - **THEN** vitest 以覆盖率模式执行并按对应 vitest 配置阈值阅卷，
   分支缺口即非零退出——裸跑假绿不可复现
 
@@ -26,7 +27,8 @@ MUST 各自内置 `--coverage`，使任一调用方（本地裸跑、tasks.md、
 - **WHEN** 检查 `ci.yml` 的 node job 与 browser job 测试步骤
 - **THEN** 无 `test:native --coverage` / `test:unit --coverage` /
   `test:e2e --coverage` 之类内联 `--coverage` 追加——覆盖率开关只在
-  `typescript/package.json` 定义一处
+  各包 `package.json`（typescript 的 test:native、browser 的 test:unit/test:e2e）
+  定义一处
 
 ### Requirement: 全项目 wasm 测试根聚合入口
 
