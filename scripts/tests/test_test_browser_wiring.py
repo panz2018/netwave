@@ -1,7 +1,7 @@
-"""Wiring smoke test for the wasm rust coverage chain (browser-driven).
+"""Wiring smoke test for the browser rust coverage chain (browser-driven).
 
-The chain is a long shell sequence in scripts/run/test_wasm.sh that CI's wasm
-job and local `pnpm test:wasm` share, so a silent edit that drops a step (the
+The chain is a long shell sequence in scripts/run/test_browser.sh that CI's
+browser job and local `pnpm test:browser` share, so a silent edit that drops a step (the
 instrumented build, the glue regeneration, the profraw merge, the lcov export,
 or the gate) would quietly stop measuring core's browser-gated code. These
 assertions pin that every link is present, that the toolchain probes head the
@@ -15,11 +15,11 @@ import re
 from lib.repository import ROOT
 
 CI = ROOT / ".github" / "workflows" / "ci.yml"
-TEST_WASM = ROOT / "scripts" / "run" / "test_wasm.sh"
+TEST_BROWSER = ROOT / "scripts" / "run" / "test_browser.sh"
 
 
 def _script() -> str:
-    return TEST_WASM.read_text(encoding="utf-8")
+    return TEST_BROWSER.read_text(encoding="utf-8")
 
 
 def test_ci_uploads_wasm_lcov_not_json() -> None:
@@ -33,7 +33,7 @@ def test_chain_builds_instrumented_wasm_with_coverage_feature() -> None:
     s = _script()
     assert "--features coverage" in s
     # wasm-pack cannot build instrumented output, so the chain uses cargo build.
-    assert "cargo build --manifest-path typescript/wasm/Cargo.toml" in s
+    assert "cargo build --manifest-path browser/Cargo.toml" in s
     assert "-Cinstrument-coverage -Zno-profiler-runtime --emit=llvm-ir" in s
 
 
@@ -44,8 +44,8 @@ def test_chain_regenerates_glue_and_drives_real_browser() -> None:
     assert "NETWAVE_WASM_DIR=" in s
     assert "NETWAVE_COV_OUT=" in s
     # the dump run drives the REAL browser (fetch arms need a real global scope);
-    # v8 coverage is off for it, the plain production test:browser enforces that.
-    assert "test:browser --coverage.enabled=false" in s
+    # v8 coverage is off for it, the plain production test:e2e enforces that.
+    assert "test:e2e --coverage.enabled=false" in s
 
 
 def test_chain_grades_lcov_via_gate() -> None:
@@ -97,7 +97,7 @@ def test_probes_head_the_script_before_any_build() -> None:
     probe_llvm = first(r"component add llvm-tools")
     probe_wasi = first(r"install_wasi_sdk\.sh")
     probe_bindgen = first(r"install_wasm_bindgen_cli\.sh")
-    build = first(r"cargo build --manifest-path typescript/wasm/Cargo\.toml")
+    build = first(r"cargo build --manifest-path browser/Cargo\.toml")
     # every coverage-tool probe must precede the instrumented build.
     assert max(probe_llvm, probe_wasi, probe_bindgen) < build
 

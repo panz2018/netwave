@@ -23,8 +23,8 @@ if ! ls typescript/dist/index.node.mjs typescript/dist/index.*.node >/dev/null 2
   echo "napi glue missing under typescript/dist/ — build it with: pnpm test:ts" >&2
   exit 1
 fi
-if [ ! -f typescript/dist/wasm-web/netwave_wasm_bg.wasm ]; then
-  echo "wasm glue missing under typescript/dist/wasm-web/ — build it with: pnpm test:ts" >&2
+if [ ! -f typescript/dist/wasm/netwave_browser_bg.wasm ]; then
+  echo "wasm glue missing under typescript/dist/wasm/ — build it with: pnpm test:ts" >&2
   exit 1
 fi
 

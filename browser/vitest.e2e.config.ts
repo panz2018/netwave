@@ -24,7 +24,7 @@ const chainOn = Boolean(covDir && covOut);
 
 export default defineConfig({
   // Point the worker's static glue import at the instrumented build. The
-  // worker imports "../dist/wasm-web/netwave_wasm.js" literally (vite
+  // worker imports "../dist/wasm/netwave_browser.js" literally (vite
   // resolves it statically); aliasing that specifier to the instrumented glue
   // makes the worker load instrumented wasm in the browser too. The glue
   // fetches its own .wasm relative to its URL, so the alias also redirects

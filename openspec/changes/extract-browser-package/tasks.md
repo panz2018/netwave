@@ -50,21 +50,21 @@
 
 ## 4. workspace 与 CI 接线
 
-- [ ] 4.1 根 `Cargo.toml` members 改 core/python/browser/typescript/native；
+- [x] 4.1 根 `Cargo.toml` members 改 core/python/browser/typescript/native；
       `pnpm-workspace.yaml` packages 改 browser、typescript
-- [ ] 4.2 `ci.yml`：browser job（原 wasm）测试步骤单行调脚本；typescript job
+- [x] 4.2 `ci.yml`：browser job（原 wasm）测试步骤单行调脚本；typescript job
       维持自建 browser 产物、不加 `needs: browser`，落实 `CI各自自建产物`
-- [ ] 4.3 spec 落点：边界写 `workspace-layout`、措辞改 `ci-matrix`、worker
+- [x] 4.3 spec 落点：边界写 `workspace-layout`、措辞改 `ci-matrix`、worker
       分发留 `api-contract` 不动，落实 `不新建browser-spec`
 
 ## 5. 验证（引用根聚合入口）
 
-- [ ] 5.1 `cargo metadata --no-deps` members 恰为 core/python/browser/
+- [x] 5.1 `cargo metadata --no-deps` members 恰为 core/python/browser/
       typescript/native（workspace-layout scenario）
-- [ ] 5.2 `pnpm test` 全绿（含 node/browser/python/rust/cross 全链）
-- [ ] 5.3 `pnpm test:browser` 全链 exit 0（node 单元 + 真浏览器 e2e + rust lcov 地板）
-- [ ] 5.4 `pnpm test:cross` 四端对拍绿（browser 产物改名后 cross dump 仍读到）
-- [ ] 5.5 `pnpm check` 全绿（含 check:md、check:ci、check_vocab/check_verbs）
+- [x] 5.2 `pnpm test` 全绿（含 node/browser/python/rust/cross 全链）
+- [x] 5.3 `pnpm test:browser` 全链 exit 0（node 单元 + 真浏览器 e2e + rust lcov 地板）
+- [x] 5.4 `pnpm test:cross` 四端对拍绿（browser 产物改名后 cross dump 仍读到）
+- [x] 5.5 `pnpm check` 全绿（含 check:md、check:ci、check_vocab/check_verbs）
 
 ## 6. 收尾
 

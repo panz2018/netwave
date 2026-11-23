@@ -36,7 +36,7 @@ CANONICAL = {
 # Generated type artifacts, relative to repo root.
 PYI = ROOT / "python" / "netwave" / "_netwave.pyi"
 NODE_DTS = ROOT / "typescript" / "dist" / "index.node.generated.d.mts"
-WASM_DTS = ROOT / "typescript" / "dist" / "wasm-web" / "netwave_wasm.d.ts"
+WASM_DTS = ROOT / "typescript" / "dist" / "wasm" / "netwave_browser.d.ts"
 
 
 def strip_comments(src: str) -> str:

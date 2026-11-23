@@ -95,7 +95,7 @@ BROWSER_DTS = ROOT / "typescript" / "dist" / "index.browser.d.mts"
 # wasm-bindgen exports the `start` fn by name regardless of Rust visibility),
 # and the wasm-pack generated init/default. Any per-verb `#[wasm_bindgen]`
 # export reappearing here is the relapse this pin detects.
-WASM_GLUE_DTS = ROOT / "typescript" / "dist" / "wasm-web" / "netwave_wasm.d.ts"
+WASM_GLUE_DTS = ROOT / "typescript" / "dist" / "wasm" / "netwave_browser.d.ts"
 WASM_GLUE_EXPORTS = {"call", "FrequencyUnit", "WavelengthUnit", "register_resources"}
 
 

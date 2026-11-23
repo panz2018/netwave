@@ -18,10 +18,10 @@ ROOT_LICENSE = "MIT OR Apache-2.0"
 CARGO_FILES = [
     "core/Cargo.toml",
     "python/Cargo.toml",
+    "browser/Cargo.toml",
     "typescript/native/Cargo.toml",
-    "typescript/wasm/Cargo.toml",
 ]
-JSON_FILES = ["typescript/package.json"]
+JSON_FILES = ["browser/package.json", "typescript/package.json"]
 TOML_FILES = ["python/pyproject.toml"]
 
 LICENSE_LINE = re.compile(r'^license\s*=\s*"([^"]+)"', re.MULTILINE)
