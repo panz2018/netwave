@@ -65,11 +65,10 @@ def test_chain_grades_lcov_via_gate() -> None:
 def test_ignore_regex_excludes_third_party_on_both_hosts() -> None:
     # Behavioural check (not just a static substring): extract the real
     # --ignore-filename-regex value the script passes to llvm-cov and run it
-    # against the exact path strings each host reports. This is what failed on
-    # the fourth round — a bare-slash regex matched zero Windows paths, so
-    # third-party lines leaked into the denominator (LL-096). The pattern uses
-    # POSIX ERE semantics; for this char-class-plus-quantifier form Python's re
-    # matches identically.
+    # against the exact path strings each host reports. A bare-slash regex
+    # matches zero Windows paths, letting third-party lines leak into the
+    # denominator. The pattern uses POSIX ERE semantics; for this
+    # char-class-plus-quantifier form Python's re matches identically.
     m = re.search(r"--ignore-filename-regex='([^']+)'", _script())
     assert m, "the chain must pass --ignore-filename-regex to llvm-cov"
     pattern = m.group(1)
