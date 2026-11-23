@@ -71,7 +71,6 @@ pnpm build:native:debug   # same pipeline without --release (fast local iteratio
 pnpm typecheck              # tsc --noEmit type gate; run AFTER build:native +
                             # browser build (the shells import dist/ glue, so the
                             # gate needs both bindings present)
-pnpm test                   # node suite with coverage (100% floor)
 pnpm test:native            # vitest native + coverage (src/ only, 100% required);
                             # HTML report in coverage/; exemptions need
                             # /* v8 ignore start/stop */ + reason comment
