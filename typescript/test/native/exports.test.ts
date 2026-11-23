@@ -62,7 +62,10 @@ describe("exports conditional dispatch", () => {
 });
 
 describe("tree-shaking: entries forbid export *", () => {
-  const entries = ["index.node.ts", "index.browser.ts", "netwave.worker.ts"];
+  // Only the node shell lives in this package now; the browser shell and
+  // worker are built by netwave-browser (its own tests cover them) and merged
+  // into dist/ as artifacts.
+  const entries = ["index.node.ts"];
   for (const name of entries) {
     it(`${name} has no export *`, () => {
       const src = readFileSync(new URL(`../../src/${name}`, import.meta.url), "utf8");

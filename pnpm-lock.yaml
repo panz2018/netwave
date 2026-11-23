@@ -226,24 +226,12 @@ importers:
       '@types/node':
         specifier: ^26.6.6
         version: 26.6.6
-      '@vitest/browser':
-        specifier: ^5.1.1
-        version: 5.1.1(vite@8.3.6(@types/node@26.6.6))(vitest@5.1.1)
-      '@vitest/browser-playwright':
-        specifier: 5.1.1
-        version: 5.1.1(playwright@1.65.1)(vite@8.3.6(@types/node@26.6.6))(vitest@5.1.1)
       '@vitest/coverage-v8':
         specifier: ^5.1.1
         version: 5.1.1(@vitest/browser@5.1.1)(vitest@5.1.1)
-      cross-env:
-        specifier: ^10.1.0
-        version: 10.1.0
-      playwright:
-        specifier: ^1.65.1
-        version: 1.65.1
-      playwright-core:
-        specifier: ^1.65.1
-        version: 1.65.1
+      netwave-browser:
+        specifier: workspace:*
+        version: link:../browser
       tsdown:
         specifier: ^0.23.7
         version: 0.23.7(typescript@7.0.2)

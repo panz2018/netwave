@@ -1,9 +1,11 @@
 # netwave typescript binding
 
-Single package, dual delivery: `node` resolves to the napi native addon,
-`browser` to the WASM build — dispatched by `exports` conditions in
-`package.json`. Both are thin transports over the Rust core (`../core`); they
-never recompute values (governance spec rule: bindings only move memory; see
+Single package, dual delivery: `node` resolves to the napi native addon built
+here, `browser` to the WASM build produced by the sibling `netwave-browser`
+package and merged into `dist/` at build time — dispatched by `exports`
+conditions in `package.json`. Both are thin transports over the Rust core
+(`../core`); they never recompute values (governance spec rule: bindings only
+move memory; see
 [`openspec/specs/project-governance/spec.md`](../openspec/specs/project-governance/spec.md)).
 
 Current stage: the `Touchstone` class is the data authority on both ends
@@ -35,43 +37,45 @@ wasm module's footprint to shrink after drops.
 ## Layout
 
 - `native/` — napi crate (`.node` addon), `build.rs` drives napi build
-- `wasm/` — wasm-bindgen crate (`cdylib` only)
-- `src/` — TypeScript shells (node/browser/worker) + `types.ts`
-  (`standalone.js` is the browser shell compiled to a second dist name)
-  (the single source of the public contract); tests run against `src/`
-  (coverage measured there)
-- `tsdown.config.ts` — bundles `src/*.ts` into `dist/` (ESM + CJS + dts);
-  the napi/wasm generated glue stays external (never bundled)
-- `dist/` — build output; the only published directory (`files: ["dist"]`)
-- `scripts/publish_shell.mjs` — post-tsdown step: rewrites `"../dist/` →
-  `"./` (and `.ts` specifiers → `.mjs`) inside the dist output so the
-  published package is self-contained, emits the `index.d.ts`/`index.d.mts`
-  hubs, and prints the dumped manifest for the cross-binding compare
-- `test/native/` + `test/wasm/` — vitest suites split by platform; the two
-  configs glob `test/native/**` / `test/wasm/**`, so new tests just drop in
-- `vitest.native.config.ts` / `vitest.wasm.config.ts` — two configs, both with
-  100% coverage thresholds
+- `src/` — the node TypeScript shell (the single source of the public contract
+  for the node end); tests run against `src/` (coverage measured there). The
+  browser shell, worker and standalone live in the `netwave-browser` package.
+- `tsdown.config.ts` — bundles `src/index.node.ts` into `dist/` (ESM + CJS +
+  dts); the napi generated glue stays external (never bundled)
+- `dist/` — build output; the only published directory (`files: ["dist"]`).
+  Holds this package's node artifacts plus the browser artifacts merged in from
+  `netwave-browser` (shell/standalone/worker/wasm/constants/dts)
+- `scripts/merge_browser.mjs` — post-tsdown step: copies the browser package's
+  already-built `browser/dist/` artifacts into `dist/` so the published package
+  is self-contained (copies only, never rebuilds)
+- `scripts/publish_shell.mjs` — post-merge step: rewrites `"../dist/` →
+  `"./` inside the node dist output so the published package is self-contained,
+  emits the `index.d.ts`/`index.d.mts` hubs, and prints the dumped manifest for
+  the cross-binding compare
+- `test/native/` — vitest suite (node end); the config globs `test/native/**`,
+  so new tests just drop in
+- `vitest.native.config.ts` — the node config, with 100% coverage thresholds
 
 ## Commands
 
-Run from this directory (or `pnpm -C typescript <script>` from the root).
+Run from this directory (or `pnpm -C typescript <script>` from the root). The
+browser artifacts come from the `netwave-browser` package — build it first with
+`pnpm -C browser build:browser`, then the merge step below copies them in.
 
 ```bash
 pnpm install                # workspace install (root package.json pins pnpm)
-pnpm build:shells         # tsdown (src/*.ts -> dist ESM+CJS+dts) + publish_shell.mjs
+pnpm build:shells         # tsdown (src/index.node.ts -> dist ESM+CJS+dts) +
+                          # merge_browser.mjs + publish_shell.mjs
 pnpm build:native         # release: napi esm + commonjs two passes + build:shells
 pnpm build:native:debug   # same pipeline without --release (fast local iteration)
-pnpm build:wasm             # web target (wasm-pack defaults to release), CARGO_TARGET_DIR=../target-wasm
-pnpm typecheck              # tsc --noEmit type gate; run AFTER build:wasm +
-                            # build:native (the shells import dist/ glue, so
-                            # the gate needs both bindings present)
-pnpm test                   # all 3 suites, each with coverage (100% floor)
-pnpm test:native            # vitest native + coverage (src/ only, 100% required)
-pnpm test:wasm              # vitest wasm  + coverage (src/ only, 100% required);
+pnpm typecheck              # tsc --noEmit type gate; run AFTER build:native +
+                            # browser build (the shells import dist/ glue, so the
+                            # gate needs both bindings present)
+pnpm test                   # node suite with coverage (100% floor)
+pnpm test:native            # vitest native + coverage (src/ only, 100% required);
                             # HTML report in coverage/; exemptions need
                             # /* v8 ignore start/stop */ + reason comment
-pnpm test:browser           # vitest real-browser (playwright chromium) + coverage
-                            # --coverage is baked into each test:* script so any
+                            # --coverage is baked into the test script so any
                             # caller gets coverage by default; for a coverage-free
                             # quick loop pass --coverage.enabled=false explicitly
 ```

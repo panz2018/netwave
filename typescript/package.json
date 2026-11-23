@@ -26,27 +26,19 @@
     "./worker": "./dist/netwave.worker.js"
   },
   "scripts": {
-    "build:shells": "tsdown && node scripts/publish_shell.mjs",
-    "gen:constants": "node scripts/gen_constants.mjs",
+    "build:shells": "tsdown && node scripts/merge_browser.mjs && node scripts/publish_shell.mjs",
     "build:native": "napi build --platform --release --no-const-enum --manifest-path native/Cargo.toml --js index.node.generated.mjs --dts index.node.generated.d.mts -o dist --format esm && napi build --platform --release --no-const-enum --manifest-path native/Cargo.toml --js index.node.generated.cjs --dts index.node.generated.d.cts -o dist --format commonjs && pnpm build:shells",
     "build:native:debug": "napi build --platform --no-const-enum --manifest-path native/Cargo.toml --js index.node.generated.mjs --dts index.node.generated.d.mts -o dist --format esm && napi build --platform --no-const-enum --manifest-path native/Cargo.toml --js index.node.generated.cjs --dts index.node.generated.d.cts -o dist --format commonjs && pnpm build:shells",
-    "build:wasm": "pnpm gen:constants && cross-env CARGO_TARGET_DIR=../target-wasm wasm-pack build wasm --target web --out-dir ../dist/wasm-web",
-    "test": "pnpm test:native && pnpm test:wasm && pnpm test:browser",
+    "test": "pnpm test:native",
     "typecheck": "tsc --noEmit",
     "test:native": "vitest run --config vitest.native.config.ts --coverage",
-    "test:wasm": "vitest run --config vitest.wasm.config.ts --coverage",
-    "test:browser": "vitest run --config vitest.browser.config.ts --coverage",
     "cross-dump": "node scripts/dump.mjs ../oracle/tmp"
   },
   "devDependencies": {
     "@napi-rs/cli": "3.10.12",
     "@types/node": "^26.6.6",
-    "@vitest/browser": "^5.1.1",
-    "@vitest/browser-playwright": "5.1.1",
     "@vitest/coverage-v8": "^5.1.1",
-    "cross-env": "^10.1.0",
-    "playwright": "^1.65.1",
-    "playwright-core": "^1.65.1",
+    "netwave-browser": "workspace:*",
     "tsdown": "^0.23.7",
     "typescript": "^7.0.2",
     "vitest": "^5.1.1"

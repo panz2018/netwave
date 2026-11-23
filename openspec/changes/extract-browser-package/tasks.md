@@ -38,14 +38,14 @@
 
 ## 3. typescript 回归 node + 薄封装
 
-- [ ] 3.1 typescript 删 worker/壳/types/test（已迁 browser），加
+- [x] 3.1 typescript 删 worker/壳/types/test（已迁 browser），加
       `netwave-browser` workspace 依赖，落实 `typescript承载node加薄封装`
-- [ ] 3.2 合并发布（见 design「构建期合并」决策）：typescript build 把
+- [x] 3.2 合并发布（见 design「构建期合并」决策）：typescript build 把
       browser 已产出的 `browser/dist/`（壳/standalone/worker/wasm/constants/dts）
       合并进 `typescript/dist`；typescript 自产 node 产物 + 薄封装入口，
       `exports.browser`/`./standalone`/`./worker` 指向合并进来的 browser 产物；
       native 不动（`native本轮不动`）
-- [ ] 3.3 typescript 集成测试：exports 条件解析（node→napi、browser→合并产物）、
+- [x] 3.3 typescript 集成测试：exports 条件解析（node→napi、browser→合并产物）、
       双端同 API 面；发布物自包含（不运行时依赖未发布的 netwave-browser）
 
 ## 4. workspace 与 CI 接线

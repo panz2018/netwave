@@ -7,12 +7,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-const outputs = [
-  "index.browser.mjs",
-  "standalone.js",
-  "netwave.worker.js",
-  "index.browser.d.mts",
-];
+const outputs = ["index.browser.mjs", "standalone.js", "netwave.worker.js", "index.browser.d.mts"];
 
 for (const name of outputs) {
   const p = join("dist", name);

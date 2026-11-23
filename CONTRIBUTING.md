@@ -61,16 +61,16 @@ pnpm test:py                      # Python binding tests + rust glue coverage
                                     # (scripts/run/test_py.sh; needs cargo-llvm-cov + uv;
                                     # first run compiles maturin — for a fast loop use
                                     # `(cd python && uv run pytest)`, run test:py before commit)
-pnpm test:ts                      # typescript tests: wasm build + native glue coverage
-                                    # + typecheck + dts any + wasm suite
+pnpm test:ts                      # typescript tests: browser build + native glue
+                                    # coverage + typecheck + dts any + node suite
                                     # (scripts/run/test_ts.sh; needs cargo-llvm-cov +
                                     # wasm-pack + binaryen + wasm32 target)
-pnpm -C typescript build:native   # napi .node addon
-pnpm -C typescript build:wasm     # wasm-bindgen artifacts
+pnpm -C typescript build:native   # napi .node addon (+ merge browser dist)
+pnpm -C browser build:browser     # wasm-bindgen artifacts (browser package)
 uv sync --project python          # Python env (uv)
 (cd python && uv run maturin develop)  # required after touching core
-pnpm test:wasm                    # wasm tests: instrumented wasm build + node-driven
-                                    # wasm suite + real-browser (playwright chromium) suite
+pnpm test:browser                 # browser tests: instrumented wasm build + node-driven
+                                    # unit suite + real-browser (playwright chromium) suite
                                     # (scripts/run/test_browser.sh; needs wasm-pack + binaryen +
                                     # wasm32 target + playwright chromium)
 pnpm test:cross                   # four-end dump + compare
