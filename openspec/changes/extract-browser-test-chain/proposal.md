@@ -112,3 +112,5 @@
 - `check_ci委托识别`：`scripts/check_ci.py` 识别 `pnpm -C <pkg> <cmd>` 委托形式。
 - `wiring测试随迁`：`scripts/tests/test_test_browser_wiring.py` 脚本路径常量改
   `browser/scripts/test.sh`，覆盖率产物名/地板断言本轮不动。
+- `跳过archive态体检`：本 change 归档完成后的 archive 态全项目只读体检跳过
+  （health-check spec「archive 态」），apply 态被触碰文件体检照常执行。

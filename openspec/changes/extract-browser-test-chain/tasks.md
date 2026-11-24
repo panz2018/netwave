@@ -67,3 +67,6 @@
       `wiring测试随迁` 载体任务全打勾）（锚点 `迟到追加`）
 - [ ] 5.7 最后一项：跑 `pnpm check:outdated` 并按 dependency-upgrade spec 消化 LAG，
       复跑至退出码 0（锚点 `check:outdated`）
+- [ ] 5.8 落实 `跳过archive态体检`：本 change 归档完成后的 archive 态全项目只读体检
+      跳过（health-check spec「archive 态」），apply 态被触碰文件体检（5.5）照常执行
+      ——跳过 2026-11-23
