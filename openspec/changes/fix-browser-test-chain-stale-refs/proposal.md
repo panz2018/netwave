@@ -61,8 +61,10 @@
   同一迁移遗留不拆两次。
 - `删指针留契约`：#1 不改为现存兄弟文件实名，直接删历史指针只留当前契约，
   实名会随下次迁移再烂掉。
-- `e2e注释改实glob`：#2 注释口径改为实际 include（test/unit/** + test/e2e/**）。
+- `e2e注释改实glob`：#2 注释口径改为实际 include（`test/unit/**`、`test/e2e/**`）。
 - `删孤儿文件`：#3 整删 `typescript/test/vite-env.d.ts`（typescript 下无 ?raw 使用者）。
 - `新开微小change`：结论进 `fix-browser-test-chain-stale-refs` 承载，不并入他处。
 - `Plan体检文件整删`：`Plan/体检发现-extract-browser-test-chain.md` 修完即整篇删除。
 - `grep清零验证`：收尾验证 = archive 外 `test/wasm` 引用 grep 清零。
+- `归档态体检跳过`：本 change 归档时跳过 health-check spec 的 archive 态只读体检
+  （人工拍板 2026-11-24）；apply 态体检（tasks 2.6）不受影响，照跑。
