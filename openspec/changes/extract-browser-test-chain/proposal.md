@@ -29,6 +29,9 @@
   字符串匹配）。
 - `browser/scripts/publish_shell.mjs` 末尾增加发布闸门：grep 发布产物
   `dist/netwave.worker.js`，命中覆盖率符号即非零退出（防回归）。
+- **BREAKING**（覆盖率产物名）：浏览器 rust 覆盖率报告 `coverage/coverage-wasm.lcov`
+  → `coverage/coverage-browser.lcov`（脚本产出、CI artifact path、gate 阅卷路径、
+  wiring/coverage_gate 测试断言随之改；地板仍 99，不动）。
 - **BREAKING**（spec 标签/事实）：ci-matrix spec 把陈旧 `wasm` 标签 browser 化——
   requirement「全项目 wasm 测试根聚合入口」改名「全项目浏览器测试根聚合入口」
   （RENAMED），正文历史指针随之删（scenario 标题受 openspec MODIFIED 约束保留
@@ -51,7 +54,9 @@
   根聚合入口」（RENAMED），脚本承载位置由 `scripts/run/test_browser.sh` 改为
   `browser/scripts/test.sh`，根入口调用形式由直接调脚本改为 `pnpm -C browser test`；
   CI browser job 测试步骤随之改。另修正「typescript 测试根聚合入口」「根 test
-  总聚合入口」里引用已不存在命令的死事实（`build:wasm`/`test:wasm`）。
+  总聚合入口」里引用已不存在命令的死事实（`build:wasm`/`test:wasm`）；
+  「覆盖率报告命名与留存」「覆盖率门槛生效（铁律七）」两条 requirement 的产物名
+  `coverage-wasm.lcov`→`coverage-browser.lcov`（地板 99 不动）。
 - `workspace-layout`: 「平铺 monorepo 结构」requirement 增补 scenario——`browser/`
   自包含须含其测试入口脚本（`browser/scripts/test.sh`）与覆盖率链辅助
   （`browser/test/coverage-dump.ts`），且**发布产物 `dist/netwave.worker.js` MUST
@@ -67,8 +72,12 @@
   根 `package.json`、`.github/workflows/ci.yml`。
 - 脚本：`scripts/run/test_browser.sh` → `browser/scripts/test.sh`、
   `browser/scripts/publish_shell.mjs`（发布闸门）、`scripts/check_ci.py`（委托识别）。
-- 测试：`scripts/tests/test_test_browser_wiring.py`（脚本路径常量随迁，
-  `coverage-wasm.lcov`/地板 99 断言本轮不动）。
+- 测试：`scripts/tests/test_test_browser_wiring.py`（脚本路径常量随迁 +
+  `coverage-wasm.lcov`→`coverage-browser.lcov`，地板 99 不动）、
+  `scripts/tests/test_coverage_gate.py`（fixture `coverage-wasm.info`→
+  `coverage-browser.info`）。
+- CI：`.github/workflows/ci.yml` browser job 上传 path `coverage/coverage-wasm.lcov`
+  → `coverage-browser.lcov`（artifact 名 `coverage-browser-*` 已就位，不动）。
 - spec：`ci-matrix`、`workspace-layout`（delta）。
 - 文档：`Plan/测试规划.md`（描述性标签「CI wasm job」→「CI browser job」）。
 - 受影响铁律：铁律八（wasm 只运行在 worker、主线程零 wasm）——本变更不改其语义，
@@ -80,8 +89,6 @@
 - 不改真技术名（`wasm32-unknown-unknown`/`wasm-pack`/`wasm-bindgen`/
   `#[wasm_bindgen]`/`wasm 线性内存`/`插桩 wasm`/`wasm 产物`）——它们指真实
   wasm 运行时/工具；lessons-learned 账本为冻结历史，不改。
-- 不改覆盖率链**内部产物名**（`coverage-wasm.lcov`、`coverage_gate.py` 文件匹配）
-  ——仍留后续独立 change。
 - 不动 wasm rust 覆盖率地板（仍 99，非 100）——依赖注入消解 fetch 臂是另一件事。
 - 不搬 core 内的浏览器 dispatch（`call_namespace`/`resources.rs`/start 钩子）——
   留 `Plan/绑定放置重构.md` 阶段 A。
@@ -125,7 +132,7 @@
 - `根命令走pnpm`：根 `test:browser` = `pnpm -C browser test`，CI browser job 同步。
 - `check_ci委托识别`：`scripts/check_ci.py` 识别 `pnpm -C <pkg> <cmd>` 委托形式。
 - `wiring测试随迁`：`scripts/tests/test_test_browser_wiring.py` 脚本路径常量改
-  `browser/scripts/test.sh`，覆盖率产物名/地板断言本轮不动。
+  `browser/scripts/test.sh`；产物名断言随 `产物名browser化` 改 browser，地板 99 不动。
 - `spec标签browser化`：ci-matrix spec 陈旧 wasm 标签 browser 化——requirement
   「全项目 wasm 测试根聚合入口」RENAMED 为「全项目浏览器测试根聚合入口」、正文
   历史指针删；scenario 标题受 openspec MODIFIED 约束（改名=删旧加新，archive 拒）
@@ -133,5 +140,9 @@
   的死事实 `build:wasm`→`pnpm -C browser build:browser`、`test:wasm`→`test:browser`；
   `Plan/测试规划.md`「CI wasm job」→「CI browser job」。真技术名与 lessons-learned
   账本不动。
+- `产物名browser化`：浏览器 rust 覆盖率报告 `coverage/coverage-wasm.lcov` →
+  `coverage/coverage-browser.lcov`（脚本产出、CI artifact path、gate 阅卷路径、
+  wiring/coverage_gate 测试断言、ci-matrix「覆盖率报告命名与留存」「覆盖率门槛
+  生效（铁律七）」两条 requirement 随之改；地板仍 99，不动）。
 - `跳过archive态体检`：本 change 归档完成后的 archive 态全项目只读体检跳过
   （health-check spec「archive 态」），apply 态被触碰文件体检照常执行。

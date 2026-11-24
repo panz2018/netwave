@@ -34,8 +34,14 @@
       根脚本维持原 `bash scripts/run/test_<seg>.sh` 匹配。先给 `scripts/tests/` 补一条
       check_ci 委托识别的单测（red），再实现转绿
 - [ ] 2.5 落实 `wiring测试随迁`：`scripts/tests/test_test_browser_wiring.py` 的
-      `TEST_BROWSER` 路径常量改 `browser/scripts/test.sh`；`coverage-wasm.lcov`/地板
-      99 断言本轮不动（Non-goals）
+      `TEST_BROWSER` 路径常量改 `browser/scripts/test.sh`；产物名断言随
+      `产物名browser化` 改 browser，地板 99 不动
+- [ ] 2.6 落实 `产物名browser化`：迁入后的 `browser/scripts/test.sh` 产出与 gate
+      阅卷路径 `coverage/coverage-wasm.lcov`→`coverage/coverage-browser.lcov`
+      （地板 99 不动）；`.github/workflows/ci.yml` browser job 上传 path 同步
+      （artifact 名 `coverage-browser-*` 已就位，不动）
+- [ ] 2.7 落实 `产物名browser化`：`scripts/tests/test_coverage_gate.py` fixture
+      `coverage-wasm.info`→`coverage-browser.info`；先改断言（red）再随 2.6 转绿
 
 ## 3. spec delta 与波及面同步
 
@@ -49,6 +55,9 @@
       `test:wasm`→`test:browser`；真技术名与 lessons-learned 账本不动
 - [ ] 3.4 落实 `spec标签browser化`：`Plan/测试规划.md`「CI wasm job」→
       「CI browser job」（描述性陈旧标签），改后跑 `pnpm check:md`
+- [ ] 3.5 落实 `产物名browser化`：ci-matrix delta 含「覆盖率报告命名与留存」
+      「覆盖率门槛生效（铁律七）」两条 MODIFIED，产物名 `coverage-wasm.lcov`→
+      `coverage-browser.lcov`（地板 99 不动，scenario 标题保留原名、整块复制）
 
 ## 4. 验证（引用根聚合入口）
 
@@ -71,7 +80,8 @@
 - [ ] 5.6 迟到追加核对：回看本会话拍板是否全部落工件（`coverage-dump归test`、
       `编译期标志剔除`、`标志名`、`标志三处填值`、`标志类型声明`、`发布闸门位置`、
       `脚本迁入改名`、`browser命令叫test`、`根命令走pnpm`、`check_ci委托识别`、
-      `wiring测试随迁`、`spec标签browser化` 载体任务全打勾）（锚点 `迟到追加`）
+      `wiring测试随迁`、`spec标签browser化`、`产物名browser化` 载体任务全打勾）
+      （锚点 `迟到追加`）
 - [ ] 5.7 最后一项：跑 `pnpm check:outdated` 并按 dependency-upgrade spec 消化 LAG，
       复跑至退出码 0（锚点 `check:outdated`）
 - [ ] 5.8 落实 `跳过archive态体检`：本 change 归档完成后的 archive 态全项目只读体检
