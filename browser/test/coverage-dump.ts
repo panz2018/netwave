@@ -1,8 +1,8 @@
 // Coverage-chain dump helper, imported by the resident worker. Lives in its
-// own module (outside the v8 coverage `include`) for the same reason as
-// test/wasm/coverage-dump.ts: the dump arms only ever execute against an
-// instrumented instance, which production v8 runs never load — keeping them
-// out of the TS coverage denominator keeps that threshold honest.
+// own module (outside the v8 coverage `include`): the dump arms only ever
+// execute against an instrumented instance, which production v8 runs never
+// load — keeping them out of the TS coverage denominator keeps that threshold
+// honest.
 
 /** The dump entry points the instrumented glue exports (absent on a
  * production instance). */

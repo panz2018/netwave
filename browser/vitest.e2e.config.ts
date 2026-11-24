@@ -1,7 +1,7 @@
 // Real-browser test line (vitest browser mode + playwright, Chromium only
 // — governance spec ironclad rule 8 scenario "no wasm on the main thread"
 // needs a REAL browser; node simulation cannot prove it). Same test code as the node
-// wasm suite: test/wasm/** runs unmodified here; the harness detects the
+// wasm suite: test/unit/** and test/e2e/** run here; the harness detects the
 // native Worker and wraps it instead of faking scopes.
 //
 // Under the rust coverage chain (NETWAVE_WASM_DIR + NETWAVE_COV_OUT set) this
