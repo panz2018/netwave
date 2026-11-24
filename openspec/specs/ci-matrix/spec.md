@@ -108,10 +108,10 @@ CI MUST NOT 为 python job 保留独立的 profraw drain 步骤（清扫已内�
 ### Requirement: typescript 测试根聚合入口
 
 根 `package.json` MUST 提供 `test:ts` 入口，薄调用 `scripts/run/test_ts.sh`，
-使本地单命令复现 CI node job 的单端测试面（build:wasm、native 覆盖率链、typecheck、
-dts 防 `any`、test:wasm），且 MUST `set -euo pipefail`。本地跑绿 MUST 等价于
-CI node job 同口径通过；CI MUST NOT 为 node job 保留独立的 profraw drain 步骤
-（清扫已内置于脚本）。
+使本地单命令复现 CI node job 的单端测试面（browser 产物构建、native 覆盖率链、
+typecheck、dts 防 `any`、node 驱动浏览器单元套件），且 MUST `set -euo pipefail`。
+本地跑绿 MUST 等价于 CI node job 同口径通过；CI MUST NOT 为 node job 保留独立的
+profraw drain 步骤（清扫已内置于脚本）。
 
 容差：存在性与退出码闸门，无数值阈值；native 胶水覆盖率地板数值沿用铁律七与
 `coverage_gate.py` 现有定义，本条不新增数值。
@@ -120,12 +120,13 @@ CI node job 同口径通过；CI MUST NOT 为 node job 保留独立的 profraw d
 
 - **WHEN** 开发者在仓库根运行 `pnpm test:ts` 且工具齐备
 - **THEN** 脚本依次执行工具链探测、profraw 前置清扫、
-  `cargo llvm-cov clean --workspace`、build:wasm、native 覆盖率链（show-env、
+  `cargo llvm-cov clean --workspace`、browser 产物构建（命令
+  `pnpm -C browser build:browser`）、native 覆盖率链（show-env、
   `NODE_OPTIONS=--expose-gc`、build:native:debug、test:native、report 带 host
   triple、`coverage_gate.py` 地板阅卷，且 show-env/clean/build/test/report 共享
-  脚本单进程）、typecheck、dts 防 `any` 检查、test:wasm（纯 TS v8，不产
-  wasm lcov）、再次 `clean --workspace`，native 报告产出并经地板阅卷，
-  脚本 exit 0
+  脚本单进程）、typecheck、dts 防 `any` 检查、node 驱动浏览器单元套件（命令
+  `pnpm -C browser test:unit`，纯 TS v8，不产 wasm lcov）、再次
+  `clean --workspace`，native 报告产出并经地板阅卷，脚本 exit 0
 
 #### Scenario: typescript 入口缺工具报错可行动
 
@@ -140,7 +141,7 @@ CI node job 同口径通过；CI MUST NOT 为 node job 保留独立的 profraw d
 
 - **WHEN** 检查 `scripts/run/test_ts.sh`
 - **THEN** 不含 llvm-tools 三件套（`llc`/`llvm-profdata`/`llvm-cov`）、wasi-sdk
-  clang、`wasm-bindgen` 的探测——插桩 wasm 只由 `scripts/run/test_browser.sh`
+  clang、`wasm-bindgen` 的探测——插桩 wasm 只由 `browser/scripts/test.sh`
   （浏览器 job）编译，node 入口不编插桩 wasm
 
 #### Scenario: typescript 入口注入残留即红
@@ -176,15 +177,17 @@ CI node job 同口径通过；CI MUST NOT 为 node job 保留独立的 profraw d
   各包 `package.json`（typescript 的 test:native、browser 的 test:unit/test:e2e）
   定义一处
 
-### Requirement: 全项目 wasm 测试根聚合入口
+### Requirement: 全项目浏览器测试根聚合入口
 
-根 `package.json` MUST 提供 `test:browser` 入口（原 `test:wasm`，随浏览器端
-独立成包更名），薄调用浏览器端测试脚本，使本地单命令复现全项目浏览器端测试面
-（browser 产物构建、node 驱动单元套件、真浏览器 e2e 套件、browser rust 覆盖率
-链），且 MUST `set -euo pipefail` 并纳入 `pnpm test` 聚合链。脚本对工具与浏览器
-MUST 只探测存在性、缺失即非零退出并打印安装命令，MUST NOT 发起网络安装。
-`ci.yml` 的 browser job（原 wasm job）测试步骤 MUST 缩成一行调该脚本，前置安装
-步保留。
+根 `package.json` MUST 提供 `test:browser` 入口，薄调用浏览器端测试脚本
+`browser/scripts/test.sh`（随浏览器端测试资产归位迁入 `browser/`），使本地单命令
+复现全项目浏览器端测试面（browser 产物构建、node 驱动单元套件、真浏览器 e2e 套件、
+browser rust 覆盖率链），且 MUST `set -euo pipefail` 并纳入 `pnpm test` 聚合链。
+根入口 MUST 以 `pnpm -C browser test` 委托形式调用（`browser/package.json` 的
+`test` 指向 `bash scripts/test.sh`），使本地与 CI 走同一命令、参数物理同源。脚本
+对工具与浏览器 MUST 只探测存在性、缺失即非零退出并打印安装命令，MUST NOT 发起
+网络安装。`ci.yml` 的 browser job 测试步骤 MUST 缩成一行调该委托命令，前置安装步
+保留。
 
 容差：存在性与退出码闸门，无数值阈值；browser 壳覆盖率阈值数值以对应 vitest
 配置的 `thresholds` 为唯一定义处，本条不复制数值。
@@ -218,8 +221,8 @@ MUST 只探测存在性、缺失即非零退出并打印安装命令，MUST NOT 
 #### Scenario: ci.yml wasm job 不再内联测试命令
 
 - **WHEN** 检查 `ci.yml` 的 browser job 测试步骤
-- **THEN** 测试步骤为单行调用浏览器端测试脚本，无内联的产物构建 /
-  `test:unit` / `test:e2e` 命令；前置工具安装步仍在调脚本之前
+- **THEN** 测试步骤为单行 `pnpm -C browser test`，无内联的产物构建 /
+  `test:unit` / `test:e2e` 命令；前置工具安装步仍在调该命令之前
 
 #### Scenario: 根 test:wasm 纳入本地聚合
 
@@ -265,9 +268,9 @@ MUST 只探测存在性、缺失即非零退出并打印安装命令，MUST NOT 
 ### Requirement: 根 test 总聚合入口
 
 根 `package.json` MUST 提供 `test` 入口，按 `test:rs` → `test:py` → `test:ts` →
-`test:wasm` → `test:cross` 顺序串联五个单端入口，使开发者一条命令跑全量本地测试。该入口 MUST
-为本地专用，CI MUST NOT 新增 `pnpm test` 步骤（CI 各 `test_*.sh` 分布在不同 job
-无法同场聚合，逐 job 调用保持不变）。
+`test:browser` → `test:cross` 顺序串联五个单端入口，使开发者一条命令跑全量本地
+测试。该入口 MUST 为本地专用，CI MUST NOT 新增 `pnpm test` 步骤（CI 各 `test_*.sh`
+分布在不同 job 无法同场聚合，逐 job 调用保持不变）。
 
 容差：存在性与退出码闸门，无数值阈值；各单端入口的阈值沿用各自 Requirement
 与 `coverage_gate.py` 现有定义，本条不新增数值。
@@ -275,8 +278,8 @@ MUST 只探测存在性、缺失即非零退出并打印安装命令，MUST NOT 
 #### Scenario: 一条命令跑全量
 
 - **WHEN** 开发者在仓库根运行 `pnpm test` 且工具与产物齐备
-- **THEN** 依次执行 `test:rs`、`test:py`、`test:ts`、`test:wasm`、`test:cross`，任一失败即
-  非零退出，全通过则 exit 0
+- **THEN** 依次执行 `test:rs`、`test:py`、`test:ts`、`test:browser`、`test:cross`，
+  任一失败即非零退出，全通过则 exit 0
 
 #### Scenario: CI 不聚合 pnpm test
 
@@ -397,7 +400,7 @@ global scope 上解析，node harness 的 fakeSelf 恒落「无 fetch 能力 sco
 故这些行 MUST NOT 由 node 驱动 vitest 采集（采不到即漏分母）：minicov 的
 wasm32 C runtime MUST 由能编 wasm32 的 clang（wasi-sdk 自带，`CC` 指向
 `scripts/install_wasi_sdk.sh` 装到 `~/.local` 的 clang）编译（gcc 无 wasm32
-后端），插桩构建走独立 target dir（不覆盖生产 `build:wasm` 产物），dump 导出
+后端），插桩构建走独立 target dir（不覆盖生产 `build:browser` 产物），dump 导出
 MUST 以 `#[cfg(feature = "coverage")]` 门控（生产产物零污染），profraw MUST
 由浏览器测试末尾经 worker 控制消息调 dump 倒出、以 base64 经 vitest browser
 command 回传 node 落盘（Uint8Array 直传经序列化降级成 Object，故须 base64），
@@ -407,14 +410,14 @@ MUST 用 `llvm-profdata merge` 加 `-sparse`，合并后以 `llc` 把 `.ll`（�
 （llvm-cov 读不了 wasm 符号，故须先 `llc` 编宿主 `.o`；llvm-cov 无 `--codecov`
 flag，那是 cargo-llvm-cov 的，散装 `.o` 无独立 codecov 入口）。报告 MUST 度量
 core browser-gated 代码，以 `--ignore-filename-regex` 剔除 `.cargo/registry`
-第三方后独立阅卷，落 `coverage/coverage-wasm.lcov` 并以
+第三方后独立阅卷，落 `coverage/coverage-browser.lcov` 并以
 `scripts/coverage_gate.py ... 99` 阅卷（该脚本 MUST 支持 lcov tracefile 输入，
-把每条 `DA:<行>,<命中>` 视作 OR 合并后的行级命中；wasm rust 地板为 99 而非
+把每条 `DA:<行>,<命中>` 视作 OR 合并后的行级命中；浏览器端 rust 地板为 99 而非
 100——fetch「无 fetch-capable scope」臂读 `js_sys::global()` 真实全局、无参数
 注入点，任何测试或 mock 均不可达）。
-wasm rust 覆盖率链前后 MUST 各执行 `clean_stray_profraw.py`。wasm rust 覆盖率
-MUST 仅在真浏览器 job 单采（node matrix 格的 wasm 套件维持 TS-only v8，不产
-wasm lcov）。wasm 端 TS 层 vitest 100% 门槛不变。
+浏览器端 rust 覆盖率链前后 MUST 各执行 `clean_stray_profraw.py`。浏览器端 rust
+覆盖率 MUST 仅在真浏览器 job 单采（node matrix 格的浏览器套件维持 TS-only v8，不产
+浏览器 lcov）。浏览器端 TS 层 vitest 100% 门槛不变。
 
 #### Scenario: 空 crate 即 100%
 
@@ -445,18 +448,18 @@ wasm lcov）。wasm 端 TS 层 vitest 100% 门槛不变。
 
 - **WHEN** `core/src/` 中 `#[cfg(feature = "browser")]` 门控的
   `#[wasm_bindgen]` 代码新增一行未被真浏览器 wasm 套件任何用例执行
-- **THEN** `coverage_gate.py` 对 `coverage/coverage-wasm.lcov` 阅卷失败
+- **THEN** `coverage_gate.py` 对 `coverage/coverage-browser.lcov` 阅卷失败
   （exit ≠ 0），PR 不可合并
 
 #### Scenario: wasm 覆盖率报告须含 core browser 路径且命中大于零
 
-- **WHEN** 生成 `coverage/coverage-wasm.lcov`
+- **WHEN** 生成 `coverage/coverage-browser.lcov`
 - **THEN** 报告 MUST 含 `core/src/` 路径行且命中数 > 0（仅命令 exit 0
   不算通，LL-093）；缺目标路径行或全零命中即判链未生效、阅卷失败
 
 #### Scenario: wasm 豁免须先经人工确认清单
 
-- **WHEN** `coverage/coverage-wasm.lcov` 出现未达 99% 地板的行
+- **WHEN** `coverage/coverage-browser.lcov` 出现未达 99% 地板的行
 - **THEN** MUST NOT 直接豁免；先列「真不可达」候选清单（逐条附文件+行号+
   不可达理由）交人工确认，确认后方可按 stable 通道标注豁免或计入 99 地板
   容差；未确认者 MUST 补单元测试至达标（fetch「无 fetch-capable scope」臂
@@ -464,7 +467,7 @@ wasm lcov）。wasm 端 TS 层 vitest 100% 门槛不变。
 
 #### Scenario: 生产 wasm 产物不含覆盖率导出
 
-- **WHEN** 运行 `pnpm -C typescript build:wasm`（不带 coverage feature）
+- **WHEN** 运行 `pnpm -C browser build:browser`（不带 coverage feature）
 - **THEN** 产出的 wasm 不含 `__cov_dump`/`__cov_ptr`/`__cov_len` 导出
   （feature 门控），发布产物零污染
 
@@ -508,15 +511,15 @@ darwin-arm64）全部产出并各自阅卷，MUST NOT 以 step 级 `if` 限定�
 覆盖率报告 MUST 统一落 `coverage/` 目录（已被根 `.gitignore` 覆盖，
 不入库），命名 `coverage-<被测对象>.json`（`coverage-core`、
 `coverage-python`、`coverage-native`），MUST NOT 使用工具格式名或黑话
-命名。例外：wasm rust 报告落 `coverage/coverage-wasm.lcov`——llvm-cov 对散装
-宿主 `.o` 无 codecov 导出入口（`--codecov` 是 cargo-llvm-cov 的 flag），只能出
+命名。例外：浏览器端 rust 覆盖率报告落 `coverage/coverage-browser.lcov`——llvm-cov
+对散装宿主 `.o` 无 codecov 导出入口（`--codecov` 是 cargo-llvm-cov 的 flag），只能出
 lcov，故按实际格式诚实命名，不伪装成 `.json`。每格产出的报告 MUST 以
 upload-artifact 留存供人工核对。
 
 #### Scenario: 报告可追溯
 
 - **WHEN** CI 运行完成
-- **THEN** 每格产物含对应 `coverage-<对象>` 报告（json 或 wasm 的 lcov），
+- **THEN** 每格产物含对应 `coverage-<对象>` 报告（json 或浏览器端的 lcov），
   文件名直接表明被测对象，人工可下载核对数字与缺行清单
 
 ### Requirement: 主 CI 零 Python 运行时依赖

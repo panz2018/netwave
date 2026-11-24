@@ -14,8 +14,11 @@
 typescript/native），以及 `pnpm-workspace.yaml`（packages = browser、typescript）。
 `oracle/` 为数值真值参照与阅卷子项目（契约、样本、阅卷脚本；不发布、不参与
 Cargo/pnpm workspace）。`browser/` 为浏览器端自包含子项目：内含 wasm-bindgen
-Rust glue crate、resident worker、主线程传输壳与浏览器端测试，依赖方向单向
-指向 core。TypeScript 侧承载 node（`typescript/native/` napi Rust crate）与
+Rust glue crate、resident worker、主线程传输壳、浏览器端测试、浏览器端测试入口
+脚本（`browser/scripts/test.sh`）与覆盖率链辅助模块（`browser/test/coverage-dump.ts`），
+依赖方向单向指向 core。`browser/` 的发布产物 `dist/netwave.worker.js` MUST NOT
+含任何覆盖率链/测试专用代码（worker 的覆盖率 control 分支与 `coverage-dump.ts`
+经编译期常量在发布构建中整体剔除）。TypeScript 侧承载 node（`typescript/native/` napi Rust crate）与
 node+browser 薄封装发布壳，经 pnpm workspace 依赖消费 `browser/`，不再持有
 wasm-bindgen crate。exports 条件分发，单包发布名 `netwave`。目录一律短名，
 发布名在各清单文件独立声明。数值真值内容（manifest、样本、LICENSE-NOTES）居
@@ -53,10 +56,21 @@ wasm-bindgen crate。exports 条件分发，单包发布名 `netwave`。目录�
 #### Scenario: browser 子项目自我完整
 
 - **WHEN** 检查 `browser/` 目录内容
-- **THEN** worker、主线程传输壳、worker 协议类型与浏览器端测试均在 `browser/`
-  内，wasm 构建产物落 `browser/dist/`
+- **THEN** worker、主线程传输壳、worker 协议类型、浏览器端测试、浏览器端测试
+  入口脚本（`browser/scripts/test.sh`）与覆盖率链辅助模块
+  （`browser/test/coverage-dump.ts`）均在 `browser/` 内，wasm 构建产物落
+  `browser/dist/`
 - **AND** `typescript/` 不再持有 worker、传输壳或 wasm-bindgen crate
 - **AND** `browser/` 仅依赖 core，不被 core 反向依赖
+
+#### Scenario: browser 发布产物不含测试代码
+
+- **WHEN** 构建 `browser/` 后检查发布产物 `browser/dist/netwave.worker.js`
+- **THEN** 该产物不含覆盖率链/测试专用符号（grep `dumpCoverage`、`__cov`、
+  `NETWAVE_WASM_DIR` 均零命中）——worker 的三条覆盖率 control 分支、
+  `globalThis.__netwaveWasmInstance` 赋值与 `coverage-dump.ts` 整模块经编译期
+  常量在发布构建中被剔除
+- **AND** 测试运行路径（vitest）仍保留这些代码，覆盖率链照常工作
 
 #### Scenario: 构建顺序 browser 先于 typescript
 
