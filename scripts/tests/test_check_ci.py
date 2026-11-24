@@ -71,6 +71,50 @@ def test_multi_segment_name_maps_by_first_segment(tmp_path: Path) -> None:
     assert check_ci.check(root) == []
 
 
+def test_delegated_pnpm_command_wired_passes(tmp_path: Path) -> None:
+    # A root `test:<seg>` whose value is a `pnpm -C <pkg> <cmd>` delegation has
+    # no scripts/run/test_<seg>.sh file; the gate must instead require that
+    # delegated command string to appear in ci.yml.
+    root = _root(
+        tmp_path,
+        {"test:browser": "pnpm -C browser test"},
+        "jobs:\n  browser:\n    steps:\n      - run: pnpm -C browser test\n",
+    )
+    assert check_ci.check(root) == []
+
+
+def test_delegated_pnpm_command_missing_is_reported(tmp_path: Path) -> None:
+    # The delegated command absent from ci.yml must be reported (the gate still
+    # proves the command runs, just via the delegated form).
+    root = _root(
+        tmp_path,
+        {"test:browser": "pnpm -C browser test"},
+        "jobs:\n  lint:\n    steps: []\n",
+    )
+    assert check_ci.check(root) == ["test:browser"]
+
+
+def test_delegated_form_only_triggers_on_pnpm_prefix(tmp_path: Path) -> None:
+    # Only a value starting with the `pnpm -C` prefix (then a space) takes the
+    # delegation branch; any other value keeps the bash run-script rule. A
+    # non-delegated value pointing at a script absent from ci.yml is reported.
+    root = _root(
+        tmp_path,
+        {"test:ts": "bash scripts/run/test_ts.sh"},
+        "jobs:\n  node:\n    steps:\n      - run: pnpm -C browser test\n",
+    )
+    assert check_ci.check(root) == ["test:ts"]
+
+
+def test_browser_delegation_wired_in_real_repo() -> None:
+    # The real repo's root test:browser delegates to `pnpm -C browser test`, and
+    # ci.yml's browser job runs that delegated command (not a run-script path).
+    pkg = json.loads((check_ci.ROOT / "package.json").read_text(encoding="utf-8"))
+    assert pkg["scripts"]["test:browser"] == "pnpm -C browser test"
+    ci = (check_ci.ROOT / ".github" / "workflows" / "ci.yml").read_text(encoding="utf-8")
+    assert "pnpm -C browser test" in ci
+
+
 def test_non_test_scripts_ignored(tmp_path: Path) -> None:
     root = _root(
         tmp_path,
@@ -89,6 +133,21 @@ def test_main_reports_missing_and_exits_1(tmp_path: Path, monkeypatch, capsys) -
     )
     assert check_ci.main() == 1
     assert "scripts/run/test_ts.sh" in capsys.readouterr().err
+
+
+def test_main_reports_missing_delegation_and_exits_1(tmp_path: Path, monkeypatch, capsys) -> None:
+    # main()'s delegation branch: a `pnpm -C` root script absent from ci.yml must
+    # print the delegated command (not a run-script path) and exit 1.
+    monkeypatch.setattr(check_ci, "ROOT", tmp_path)
+    _root(
+        tmp_path,
+        {"test:browser": "pnpm -C browser test"},
+        "jobs:\n  lint:\n    steps: []\n",
+    )
+    assert check_ci.main() == 1
+    err = capsys.readouterr().err
+    assert "pnpm -C browser test" in err
+    assert "scripts/run/test_browser.sh" not in err
 
 
 def test_main_all_wired_exits_0(tmp_path: Path, monkeypatch, capsys) -> None:

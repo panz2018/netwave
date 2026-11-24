@@ -353,7 +353,7 @@ class TestLcovInput:
     runs unchanged. These cases pin the parse contract and its edge branches."""
 
     def _lcov(self, tmp_path, text: str) -> str:
-        p = tmp_path / "coverage-wasm.info"
+        p = tmp_path / "coverage-browser.info"
         p.write_text(text, encoding="utf-8")
         return str(p)
 

@@ -23,6 +23,9 @@ const covOut = process.env.NETWAVE_COV_OUT;
 const chainOn = Boolean(covDir && covOut);
 
 export default defineConfig({
+  // Coverage-chain flag: fill `true` so the worker's guarded coverage code
+  // stays live under test (the published build fills `false` and strips it).
+  define: { __NETWAVE_COVERAGE__: "true" },
   // Point the worker's static glue import at the instrumented build. The
   // worker imports "../dist/wasm/netwave_browser.js" literally (vite
   // resolves it statically); aliasing that specifier to the instrumented glue

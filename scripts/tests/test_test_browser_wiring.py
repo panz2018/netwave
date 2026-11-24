@@ -1,6 +1,6 @@
 """Wiring smoke test for the browser rust coverage chain (browser-driven).
 
-The chain is a long shell sequence in scripts/run/test_browser.sh that CI's
+The chain is a long shell sequence in browser/scripts/test.sh that CI's
 browser job and local `pnpm test:browser` share, so a silent edit that drops a step (the
 instrumented build, the glue regeneration, the profraw merge, the lcov export,
 or the gate) would quietly stop measuring core's browser-gated code. These
@@ -12,21 +12,39 @@ emit)."""
 
 import re
 
+import pytest
 from lib.repository import ROOT
 
 CI = ROOT / ".github" / "workflows" / "ci.yml"
-TEST_BROWSER = ROOT / "scripts" / "run" / "test_browser.sh"
+TEST_BROWSER = ROOT / "browser" / "scripts" / "test.sh"
+WORKER_BUNDLE = ROOT / "browser" / "dist" / "netwave.worker.js"
 
 
 def _script() -> str:
     return TEST_BROWSER.read_text(encoding="utf-8")
 
 
-def test_ci_uploads_wasm_lcov_not_json() -> None:
+def test_published_worker_bundle_has_no_coverage_code() -> None:
+    # The published worker MUST NOT ship the coverage-chain scaffolding
+    # (dumpCoverage/driveCoverage/installFetchStub, the __cov_* dump exports,
+    # the NETWAVE_WASM_DIR probe). tsdown fills __NETWAVE_COVERAGE__=false and
+    # dce-only + tree-shaking strip the guarded blocks and the side-effect-free
+    # coverage-dump module. dist is a build artifact (gitignored); when present
+    # it MUST be clean — the publish gate in publish_shell.mjs enforces this at
+    # build time, this assertion re-checks the produced bundle.
+    if not WORKER_BUNDLE.exists():
+        pytest.skip("browser/dist is a build artifact; run `pnpm -C browser build:browser`")
+    hits = re.findall(
+        r"dumpCoverage|__cov|NETWAVE_WASM_DIR", WORKER_BUNDLE.read_text(encoding="utf-8")
+    )
+    assert not hits, f"published worker bundle leaks coverage code: {sorted(set(hits))}"
+
+
+def test_ci_uploads_browser_lcov_not_json() -> None:
     ci = CI.read_text(encoding="utf-8")
-    assert "path: coverage/coverage-wasm.lcov" in ci
+    assert "path: coverage/coverage-browser.lcov" in ci
     # the chain produces lcov; a stale .json upload path would fail CI.
-    assert "coverage/coverage-wasm.json" not in ci
+    assert "coverage/coverage-browser.json" not in ci
 
 
 def test_chain_builds_instrumented_wasm_with_coverage_feature() -> None:
@@ -59,7 +77,7 @@ def test_chain_grades_lcov_via_gate() -> None:
     # a [\\/]+ separator class, never a bare slash.
     assert "--ignore-filename-regex" in s
     assert re.search(r"\.cargo\[\\\\/\]\+registry", s)
-    assert "coverage_gate.py coverage/coverage-wasm.lcov 99" in s
+    assert "coverage_gate.py coverage/coverage-browser.lcov 99" in s
 
 
 def test_ignore_regex_excludes_third_party_on_both_hosts() -> None:

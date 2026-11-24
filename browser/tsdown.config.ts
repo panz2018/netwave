@@ -36,6 +36,12 @@ export default defineConfig([
     // No dts here: the public types ship as index.d.ts from the shell config;
     // a second dts pass would overwrite them.
     dts: false,
+    // Compile-time flag: fill `false` so dce-only + tree-shaking strip the
+    // coverage-chain scaffolding (control branches, the NETWAVE_WASM_DIR probe,
+    // the globalThis instance slot, and the side-effect-free coverage-dump
+    // module) from the published worker. tsdown does not share `define` across
+    // array config blocks, so it lives on this worker block.
+    define: { __NETWAVE_COVERAGE__: "false" },
     // index.browser stays a separate dist module (worker/standalone import
     // ./index.browser.mjs, zero duplication).
     deps: { neverBundle: (id: string) => glue(id) || id === "./index.browser.ts" },

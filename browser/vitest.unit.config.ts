@@ -1,6 +1,9 @@
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  // Coverage-chain flag: fill `true` so the worker's guarded coverage code
+  // stays live under test (the published build fills `false` and strips it).
+  define: { __NETWAVE_COVERAGE__: "true" },
   test: {
     include: ["test/unit/**/*.test.ts"],
     // Drains the worker's rust coverage counters in the same worker context

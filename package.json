@@ -19,7 +19,7 @@
     "test:rs": "bash scripts/run/test_rs.sh",
     "test:py": "bash scripts/run/test_py.sh",
     "test:ts": "bash scripts/run/test_ts.sh",
-    "test:browser": "bash scripts/run/test_browser.sh",
+    "test:browser": "pnpm -C browser test",
     "test:cross": "bash scripts/run/test_cross.sh"
   },
   "devDependencies": {

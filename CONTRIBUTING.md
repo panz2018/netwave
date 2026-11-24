@@ -71,7 +71,7 @@ uv sync --project python          # Python env (uv)
 (cd python && uv run maturin develop)  # required after touching core
 pnpm test:browser                 # browser tests: instrumented wasm build + node-driven
                                     # unit suite + real-browser (playwright chromium) suite
-                                    # (scripts/run/test_browser.sh; needs wasm-pack + binaryen +
+                                    # (browser/scripts/test.sh; needs wasm-pack + binaryen +
                                     # wasm32 target + playwright chromium)
 pnpm test:cross                   # four-end dump + compare
                                     # (scripts/run/test_cross.sh; needs uv + maturin;

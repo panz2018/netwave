@@ -21,6 +21,25 @@ for (const name of outputs) {
 // Public dts hub: the browser package's only public entry is the shell.
 writeFileSync(join("dist", "index.d.ts"), 'export * from "./index.browser.mjs";\n');
 
+// Publish gate: the published worker MUST NOT ship coverage-chain code. The
+// worker guards it behind __NETWAVE_COVERAGE__ (filled `false` by tsdown), so
+// dce-only + tree-shaking strips the control branches, the NETWAVE_WASM_DIR
+// probe, the globalThis instance slot, and the coverage-dump module. If a
+// future edit leaves any of those symbols in the bundle, fail the build here
+// rather than shipping a polluted artifact.
+const workerBundle = readFileSync(join("dist", "netwave.worker.js"), "utf8");
+const leaked = workerBundle.match(
+  /dumpCoverage|driveCoverage|installFetchStub|__cov|NETWAVE_WASM_DIR/g,
+);
+if (leaked) {
+  const unique = [...new Set(leaked)].sort().join(", ");
+  console.error(
+    `publish gate: dist/netwave.worker.js leaks coverage-chain code (${unique}). ` +
+      `Coverage code must stay behind the __NETWAVE_COVERAGE__ guard.`,
+  );
+  process.exit(1);
+}
+
 // Full paths, matching the per-end dump scripts' output format.
 for (const name of [...outputs, "index.d.ts"]) {
   console.log(`dumped ${resolve(join("dist", name))}`);
