@@ -110,3 +110,14 @@ build 命令，再叫 `build:browser` 即"在 browser 包里构建 browser"，�
   覆盖率地板不受影响（该文件从 `scripts/tests/` 移出后，根 coverage source 不再含它）。
 - `build:browser`→`build` 改名波及 spec/CI/注释，须同步改全并跑 `pnpm check:md`、
   `pnpm check`；账本死引用同步属 LL-034 波及面。
+
+## 8. 全仓 wasm 扫描兜底（最后一步，待拍板）
+
+前面各节按已知线索逐项清理，可能仍有遗漏。收尾前做一遍穷举扫描兜底：
+
+- 全仓搜 `wasm`（活文件，排除构建产物目录 `target*/`、`dist/`、`node_modules/`、
+  `.venv/` 与归档 `openspec/changes/archive/**`），逐条研究归属：属 browser 的
+  按本 Plan 判据归位，共享的留原处并注明，死引用同步为现名。
+- 例外：`core/` 内的 wasm 相关内容暂不处理——core 是平台无关核心，其 wasm
+  条件编译/目标适配属 core 自身职责，不属 browser 资产归位范围。
+- 扫描结果逐条记入本节（或 change 已定裁决段），确认无漏网之鱼后本 Plan 才算闭环。
