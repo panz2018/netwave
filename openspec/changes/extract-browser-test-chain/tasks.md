@@ -42,6 +42,13 @@
 - [ ] 3.1 核对 `specs/ci-matrix/spec.md` delta 与实现一致（脚本位置、委托调用形式）
 - [ ] 3.2 核对 `specs/workspace-layout/spec.md` delta「browser 发布产物不含测试代码」
       scenario 与实现一致（grep 零命中）
+- [ ] 3.3 落实 `spec标签browser化`：ci-matrix delta 含 RENAMED 头（「全项目 wasm
+      测试根聚合入口」→「全项目浏览器测试根聚合入口」）、删正文历史指针
+      （scenario 标题受 openspec MODIFIED 约束保留原名）；「typescript 测试根聚合
+      入口」「根 test 总聚合入口」死命令名 `build:wasm`→browser 包构建命令、
+      `test:wasm`→`test:browser`；真技术名与 lessons-learned 账本不动
+- [ ] 3.4 落实 `spec标签browser化`：`Plan/测试规划.md`「CI wasm job」→
+      「CI browser job」（描述性陈旧标签），改后跑 `pnpm check:md`
 
 ## 4. 验证（引用根聚合入口）
 
@@ -64,7 +71,7 @@
 - [ ] 5.6 迟到追加核对：回看本会话拍板是否全部落工件（`coverage-dump归test`、
       `编译期标志剔除`、`标志名`、`标志三处填值`、`标志类型声明`、`发布闸门位置`、
       `脚本迁入改名`、`browser命令叫test`、`根命令走pnpm`、`check_ci委托识别`、
-      `wiring测试随迁` 载体任务全打勾）（锚点 `迟到追加`）
+      `wiring测试随迁`、`spec标签browser化` 载体任务全打勾）（锚点 `迟到追加`）
 - [ ] 5.7 最后一项：跑 `pnpm check:outdated` 并按 dependency-upgrade spec 消化 LAG，
       复跑至退出码 0（锚点 `check:outdated`）
 - [ ] 5.8 落实 `跳过archive态体检`：本 change 归档完成后的 archive 态全项目只读体检
