@@ -75,7 +75,7 @@ wasm-bindgen crate。exports 条件分发，单包发布名 `netwave`。目录�
 #### Scenario: 构建顺序 browser 先于 typescript
 
 - **WHEN** 检查 typescript 的 node 构建链（`scripts/run/test_ts.sh`）
-- **THEN** `pnpm -C browser build:browser` 先于 `build:native`（tsdown dts pass
+- **THEN** `pnpm -C browser build` 先于 `build:native`（tsdown dts pass
   需 browser wasm glue 与 napi glue 双产物齐备，缺 browser glue 会使壳 dts
   对再导出动词退化为 `any`）
 - **AND** CI 的 browser job 与 typescript job 并行独立、无 `needs` 跨 job 依赖

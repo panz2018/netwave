@@ -121,7 +121,7 @@ profraw drain 步骤（清扫已内置于脚本）。
 - **WHEN** 开发者在仓库根运行 `pnpm test:ts` 且工具齐备
 - **THEN** 脚本依次执行工具链探测、profraw 前置清扫、
   `cargo llvm-cov clean --workspace`、browser 产物构建（命令
-  `pnpm -C browser build:browser`）、native 覆盖率链（show-env、
+  `pnpm -C browser build`）、native 覆盖率链（show-env、
   `NODE_OPTIONS=--expose-gc`、build:native:debug、test:native、report 带 host
   triple、`coverage_gate.py` 地板阅卷，且 show-env/clean/build/test/report 共享
   脚本单进程）、typecheck、dts 防 `any` 检查、node 驱动浏览器单元套件（命令
@@ -218,13 +218,13 @@ browser rust 覆盖率链），且 MUST `set -euo pipefail` 并纳入 `pnpm test
   `rustup target add wasm32-unknown-unknown`、playwright chromium 安装命令），
   不发起网络安装
 
-#### Scenario: ci.yml wasm job 不再内联测试命令
+#### Scenario: ci.yml browser job 不再内联测试命令
 
 - **WHEN** 检查 `ci.yml` 的 browser job 测试步骤
 - **THEN** 测试步骤为单行 `pnpm -C browser test`，无内联的产物构建 /
   `test:unit` / `test:e2e` 命令；前置工具安装步仍在调该命令之前
 
-#### Scenario: 根 test:wasm 纳入本地聚合
+#### Scenario: 根 test:browser 纳入本地聚合
 
 - **WHEN** 检查根 `package.json` 的 `test` 聚合脚本
 - **THEN** 聚合链含 `pnpm test:browser`，本地 `pnpm test` 覆盖到真浏览器套件
@@ -393,14 +393,14 @@ typescript/native 的 report MUST 带 `--target <triple>`——napi `--platform`
 python 的 maturin 不带 `--target`，对象落 host `target/debug`，report 无需 `--target`），
 报告以 `--ignore-filename-regex` 剔除 core 路径后独立阅卷——core 行归
 core 报告、胶水行归胶水报告，互不重复计分；绑定 crate 由 show-env/report
-外部驱动采集度量。typescript/wasm crate 的 rust 行覆盖率 MUST 以 minicov runtime +
+外部驱动采集度量。browser crate（netwave-browser）的 rust 行覆盖率 MUST 以 minicov runtime +
 `RUSTC_BOOTSTRAP=1` 解锁 `-Zno-profiler-runtime` 在钉死 stable 上编插桩 wasm，
 由真浏览器 job（chromium Worker）采集——core 的 fetch 后端仅在真实浏览器
 global scope 上解析，node harness 的 fakeSelf 恒落「无 fetch 能力 scope」臂，
 故这些行 MUST NOT 由 node 驱动 vitest 采集（采不到即漏分母）：minicov 的
 wasm32 C runtime MUST 由能编 wasm32 的 clang（wasi-sdk 自带，`CC` 指向
 `browser/scripts/install_wasi_sdk.sh` 装到 `~/.local` 的 clang）编译（gcc 无 wasm32
-后端），插桩构建走独立 target dir（不覆盖生产 `build:browser` 产物），dump 导出
+后端），插桩构建走独立 target dir（不覆盖生产 `build` 产物），dump 导出
 MUST 以 `#[cfg(feature = "coverage")]` 门控（生产产物零污染），profraw MUST
 由浏览器测试末尾经 worker 控制消息调 dump 倒出、以 base64 经 vitest browser
 command 回传 node 落盘（Uint8Array 直传经序列化降级成 Object，故须 base64），
@@ -467,7 +467,7 @@ core browser-gated 代码，以 `--ignore-filename-regex` 剔除 `.cargo/registr
 
 #### Scenario: 生产 wasm 产物不含覆盖率导出
 
-- **WHEN** 运行 `pnpm -C browser build:browser`（不带 coverage feature）
+- **WHEN** 运行 `pnpm -C browser build`（不带 coverage feature）
 - **THEN** 产出的 wasm 不含 `__cov_dump`/`__cov_ptr`/`__cov_len` 导出
   （feature 门控），发布产物零污染
 
@@ -478,21 +478,21 @@ wasm32 C runtime MUST 由 wasi-sdk 自带的标准 clang 编译（`browser/scrip
 下 tarball 解压到 `~/.local/opt/wasi-sdk`，仿 install_binaryen.sh）；阅卷期
 `llc`/`llvm-profdata`/`llvm-cov` MUST 取自钉版 rust 工具链自带的 `llvm-tools`
 组件（写进 `rust-toolchain.toml` 的 `components`，rustup 激活工具链时自动装）。
-`scripts/run/test_browser.sh` MUST 从 `$(rustc --print sysroot)` 下的 llvm-tools bin
+`browser/scripts/test.sh` MUST 从 `$(rustc --print sysroot)` 下的 llvm-tools bin
 目录取阅卷三件套，MUST 探测 wasi-sdk clang、缺失时提示跑
 `browser/scripts/install_wasi_sdk.sh` 并以非零退出。
 
 #### Scenario: 缺 wasi-sdk clang 时本地测试入口可行动报错
 
-- **WHEN** 本机未装 wasi-sdk clang 时运行 `pnpm test:wasm`
-- **THEN** `test_browser.sh` 探测段打印跑 `browser/scripts/install_wasi_sdk.sh` 的指引并以非零退出，
+- **WHEN** 本机未装 wasi-sdk clang 时运行 `pnpm test:browser`
+- **THEN** `browser/scripts/test.sh` 探测段打印跑 `browser/scripts/install_wasi_sdk.sh` 的指引并以非零退出，
   不发起自动安装
 
 #### Scenario: llvm-tools 组件随工具链自动就位
 
 - **WHEN** rustup 激活 `rust-toolchain.toml` 钉定的工具链（本地或 CI）
 - **THEN** `llvm-tools` 组件随之安装，`$(rustc --print sysroot)` 下 llvm-tools
-  bin 目录含 `llc`/`llvm-profdata`/`llvm-cov`，`test_browser.sh` 无需外部安装步即可阅卷
+  bin 目录含 `llc`/`llvm-profdata`/`llvm-cov`，`browser/scripts/test.sh` 无需外部安装步即可阅卷
 
 ### Requirement: core 覆盖率全平台产出
 
