@@ -6,81 +6,119 @@
 
 ## 1. build:browser→build 命令更名
 
-- [ ] 1.1 落实 `build改名`：`browser/package.json` scripts 定义 `build:browser`→`build`
+- [x] 1.1 落实 `build改名`：`browser/package.json` scripts 定义 `build:browser`→`build`
       （与现有 test/typecheck/gen:constants/test:unit/test:e2e 无脚本名冲突，已实测）。
-      验证：`pnpm -C browser build` exit 0。
-- [ ] 1.2 同步调用方命令名：`browser/scripts/test.sh`、`scripts/run/test_ts.sh`
+      验证：`pnpm -C browser build` exit 0（已实测，dist 产物正常产出）。
+- [x] 1.2 同步调用方命令名：`browser/scripts/test.sh`、`scripts/run/test_ts.sh`
       （注释+调用）、`typescript/scripts/merge_browser.mjs`（报错提示）、
-      `typescript/scripts/check_dts_any.mjs`（注释）。验证：`pnpm test:ts` exit 0。
-- [ ] 1.3 同步文档/CI 命令名：`.github/workflows/ci.yml`（步骤名+注释）、
+      `typescript/scripts/check_dts_any.mjs`（注释）。验证：`pnpm test:ts` exit 0（含于 `pnpm test`）。
+- [x] 1.3 同步文档/CI 命令名：`.github/workflows/ci.yml`（步骤名+注释）、
       `browser/README.md`、`typescript/README.md`、`CONTRIBUTING.md`、
       `browser/.gitignore`（注释）、`browser/Cargo.toml`（注释）。
-      验证：`pnpm check:md` exit 0。
+      验证：`pnpm check:md` exit 0（已实测绿）。
 
 ## 2. 死引用清理（命令名 build:wasm）
 
-- [ ] 2.1 落实 `死引用两类一起清`（命令名维）：活文件注释里的旧命令名 `build:wasm`
+- [x] 2.1 落实 `死引用两类一起清`（命令名维）：活文件注释里的旧命令名 `build:wasm`
       同步为现名——`browser/src/lib.rs`、`typescript/scripts/check_dts_any.mjs`。
-      验证：grep `build:wasm` 活文件零命中（排除 target*/dist/node_modules/.venv/archive）。
-- [ ] 2.2 落实 `死引用两类一起清`（账本维）：账本规则正文里的 `build:wasm` 同步为
+      验证：grep `build:wasm` 活文件零命中（已实测，见 6.1）。
+- [x] 2.2 落实 `死引用两类一起清`（账本维）：账本规则正文里的 `build:wasm` 同步为
       现名——`openspec/specs/lessons-learned/ci.md`、`core.md`、`INDEX.md`（LL-034）、
-      `typescript.md`。验证：`pnpm check:md` exit 0。
+      `typescript.md`。验证：`pnpm check:md` exit 0（已实测绿）。
 
 ## 3. 死引用清理（job 名 wasm job）
 
-- [ ] 3.1 落实 `死引用两类一起清`（job 名维）：散文里的旧 job 名 "wasm job" 同步为
+- [x] 3.1 落实 `死引用两类一起清`（job 名维）：散文里的旧 job 名 "wasm job" 同步为
       browser——`.github/workflows/ci.yml`（顺序注释 docs->rust->wasm、rust/browser/
       node job 交叉引用「see wasm job」「The wasm job owns」）、`browser/scripts/test.sh`
-      探测注释。验证：grep `wasm job` 活文件零命中（排除 archive）。
-- [ ] 3.2 落实 `scenario标题经agent-driven sync直改主spec`：openspec delta 无 scenario
+      探测注释、账本 ci.md:26（LL-041 规则正文）。验证：grep `wasm job` 活文件零命中（已实测）。
+- [x] 3.2 落实 `scenario标题经agent-driven sync直改主spec`：openspec delta 无 scenario
       改名机制（MODIFIED 删旧触发 scenario-loss ERROR、REMOVED+ADDED 同名被拒、
       RENAMED 只改 requirement 名，实证 openspec 2.2.0 validator.ts）。netwave 归档走
       agent-driven sync（直接编辑主 spec），故 scenario 标题「ci.yml wasm job 不再
       内联测试命令」→「ci.yml browser job 不再内联测试命令」在 apply 态 sync 时直接
       编辑主 spec `openspec/specs/ci-matrix/spec.md`，delta 不碰该 requirement。
-      验证：sync 后 grep 主 spec `wasm job` 零命中、`openspec validate --strict` exit 0。
+      验证：sync 后 grep 主 spec `wasm job` 零命中、`openspec validate --strict` exit 0（均已实测）。
 
 ## 4. 删冗余测试与已吸收 Plan
 
-- [ ] 4.1 落实 `删wiring测试不搬家`：删除 `scripts/tests/test_test_browser_wiring.py`
+- [x] 4.1 落实 `删wiring测试不搬家`：删除 `scripts/tests/test_test_browser_wiring.py`
       （镜像税 + dist 纯净断言在 lint job 永远 skip + gate 行由 coverage_gate.py
-      自身与 review 覆盖）。验证：`pnpm check:py` exit 0（根 pytest 收集不含该文件）。
-- [ ] 4.2 落实 `spec产物纯净scenario不动`：确认 `workspace-layout`「browser 发布产物
+      自身与 review 覆盖）。验证：`pnpm check:py` exit 0（已实测，340 passed）。
+- [x] 4.2 落实 `spec产物纯净scenario不动`：确认 `workspace-layout`「browser 发布产物
       不含测试代码」scenario 未被改动（由 publish_shell.mjs 构建时闸门满足）。
-      验证：`pnpm -C browser build` 后 grep dist worker 零命中覆盖率符号。
-- [ ] 4.3 落实 `根pytest地板不受影响`：实测删测试后根 pytest 覆盖率地板不变
-      （pyproject coverage source 不含测试文件）。验证：`pnpm check:py` exit 0。
-- [ ] 4.4 落实 `删已吸收Plan`：删除 `Plan/browser资产彻底归位.md`（全部裁决已被本
-      change 吸收）。验证：`pnpm check:md` exit 0。
+      验证：`pnpm -C browser build` 后 grep dist worker 零命中覆盖率符号（已实测 exit 1=纯净）。
+- [x] 4.3 落实 `根pytest地板不受影响`：实测删测试后根 pytest 覆盖率地板不变
+      （pyproject coverage source 不含测试文件）。验证：`pnpm check:py` exit 0（已实测 100%）。
+- [x] 4.4 落实 `删已吸收Plan`：删除 `Plan/browser资产彻底归位.md`（全部裁决已被本
+      change 吸收）。验证：`pnpm check:md` exit 0（已实测绿）。
 
 ## 5. C 类合法 wasm 引用确认
 
-- [ ] 5.1 落实 `C类wasm保留`：确认 core/oracle/check_verbs/check_vocab*/install 脚本/
+- [x] 5.1 落实 `C类wasm保留`：确认 core/oracle/check_verbs/check_vocab*/install 脚本/
       versions 域的 `wasm`（编译目标/绑定端术语）未被改动。验证：grep 这些文件
-      `wasm` 引用与改前一致（仅 build:browser→build 命令名相关行除外）。
+      `wasm` 引用与改前一致（已实测，见 6.1b 逐条结论）。
+
+## 5b. 改名家族漏网死引用清理（apply 中扩范围）
+
+- [x] 5b.1 落实 `改名家族漏网全清`（spec 维）：ci-matrix spec 当前事实错误同步——
+      scenario 标题「根 test:wasm 纳入本地聚合」→`test:browser`、:487 `pnpm test:wasm`
+      →`pnpm test:browser`、:396 `typescript/wasm crate`→`browser/`（netwave-browser）、
+      :481/:488/:495 `scripts/run/test_browser.sh`/`test_browser.sh`→`browser/scripts/test.sh`。
+      验证：grep ci-matrix spec `test:wasm`/`typescript/wasm`/`test_browser.sh` 零命中（已实测）。
+- [x] 5b.2 落实 `改名家族漏网全清`（账本/CI/README 维）：ci.md:28/:248/:404
+      `test_wasm.sh`→`browser/scripts/test.sh`、typescript.md:51
+      `netwave_wasm.d.ts`→`netwave_browser.d.ts`、scripts/README.md:24
+      `run/test_browser.sh`→`browser/scripts/test.sh`、ci.yml:125 注释
+      `test_browser.sh`→`browser/scripts/test.sh`（`test_check_ci.py:150` 反向断言保留）。
+      验证：`pnpm check:md` exit 0（已实测绿）；grep 活文件 `test_wasm.sh`/`netwave_wasm`/
+      `scripts/run/test_browser.sh` 零命中（反向断言除外，已实测）。
 
 ## 6. 全仓兜底扫描与收尾闸门
 
-- [ ] 6.1 全仓 grep `build:browser`、`build:wasm`、`wasm job` 兜底（排除 target*/
-      dist/node_modules/.venv/archive），活文件零残留。验证：三条 grep 均空。
-- [ ] 6.1b 落实 `全仓wasm逐条确认`：全仓搜 `wasm`（活文件，排除 target*/dist/
+- [x] 6.1 全仓 grep `build:browser`、`build:wasm`、`wasm job` 兜底（排除 target*/
+      dist/node_modules/.venv/archive），活文件零残留。验证：三条 grep 均空（已实测，exit 1=无残留）。
+- [x] 6.1b 落实 `全仓wasm逐条确认`：全仓搜 `wasm`（活文件，排除 target*/dist/
       node_modules/.venv/archive），逐条研究归属并记录：属 browser 死引用的已改完，
       C 类合法术语（编译目标/绑定端）保留不动，确认剩余全部是无法且不应改名的
       合法 wasm。逐条结论落本节完成记录，零漏网才算闭环。验证：人工核对清单无残余死引用。
-- [ ] 6.2 `pnpm test` 全绿（三轴 review 之前，含四端对拍，先排除实现断裂）。
-- [ ] 6.3 `三轴`：按 governance spec「元规则 review 三轴」（Standards/Spec/Lessons）
+
+      **逐条结论（6.1b 完成记录）**：
+      - browser 死引用（已改完）：`build:browser`→`build`、`build:wasm`→现名、
+        `wasm job`→browser job（见 §1–3）；改名家族漏网 5 项 `test:wasm`/
+        `typescript/wasm crate`/`test_wasm.sh`/`netwave_wasm.d.ts`/
+        `scripts/run/test_browser.sh`（见 §5b，经人工点名扩范围）。
+      - C 类合法保留（编译目标/绑定端术语，无法且不应改名）：`wasm32-unknown-unknown`
+        target（Cargo.toml/core cfg-gate/ci.yml）、`wasm-pack`/`wasm_bindgen` 工具与宏、
+        `target-wasm*` 目录、wasm artifact/binding/coverage 散文（core/src、
+        typescript/native、browser/src）、`oracle/*` 跨端对拍 wasm 臂、
+        `scripts/check_verbs.py`/`check_vocab*.py`/install 脚本/`versions/*` 的 wasm 引用、
+        `netwave_browser_bg.wasm(.d.ts)` 产物名（wasm-pack 按 crate 名生成，非本次改名对象）。
+      - 结论：活文件零残余死引用；剩余全为编译目标/绑定端合法术语。
+
+- [x] 6.2 `pnpm test` 全绿（三轴 review 之前，含四端对拍，先排除实现断裂）。
+      已实测 EXIT=0：rs/py/ts/browser/cross 全过，四端对拍 FREQ/TOUCHSTONE/SELF-CHECK PASS。
+- [x] 6.3 `三轴`：按 governance spec「元规则 review 三轴」（Standards/Spec/Lessons）
       对照本 change 工件审实现 diff，diff 文件集逐文件对上 tasks.md，硬伤清零。
-- [ ] 6.4 `体检`：对触碰文件全文只读体检（health-check spec apply 态），发现附
-      文件+行号+证据落 Plan/ 等点名，不阻塞。
-- [ ] 6.5 `迟到追加`：复查 apply 中途拍板的决定已当场追加进 proposal.md
+      Standards：注释只留当前契约、无历史叙述，ci.yml 行长合规（check_ci 含于 pnpm test 绿）；
+      Spec：diff 与 delta/proposal 一致；Lessons：账本死引用同步，清理任务无新增 LL。每行 diff 可追溯到 tasks。
+- [x] 6.4 `体检`：对触碰文件全文只读体检（health-check spec apply 态），发现附
+      文件+行号+证据落 Plan/ 等点名，不阻塞。已逐行核对 diff（均为命令名/死引用同步
+      与依赖升级），无残留问题。
+- [x] 6.5 `迟到追加`：复查 apply 中途拍板的决定已当场追加进 proposal.md
       `## 已定裁决` 段并补对应任务行，每个关键词载体任务已打勾。
-- [ ] 6.6 `Plan/`：确认 Plan/ 中本 change 对应章节已当场删除（4.4 删整文件即满足），
-      只留未执行任务。验证：`pnpm check:md` exit 0。
-- [ ] 6.7 `三态时效`：扫 openspec/specs/ 全目录，对照本次改动产出更新/新增/退役
-      三态时效结论留痕（预期：ci-matrix、workspace-layout 经 delta 更新；账本四文件
-      直接改；无新增/退役）。
-- [ ] 6.8 `check:outdated`：跑 pnpm check:outdated 并按 dependency-upgrade spec
+      `改名家族漏网全清`（含 test_browser.sh）已写回 proposal 已定裁决段，载体任务 5b.1/5b.2 已打勾。
+- [x] 6.6 `Plan/`：确认 Plan/ 中本 change 对应章节已当场删除（4.4 删整文件即满足），
+      只留未执行任务。验证：`pnpm check:md` exit 0（已实测绿）。
+- [x] 6.7 `三态时效`：扫 openspec/specs/ 全目录，对照本次改动产出更新/新增/退役
+      三态时效结论留痕：ci-matrix、workspace-layout 经 delta 更新；账本四文件
+      （ci/core/INDEX/typescript.md）直接改；无新增/退役 spec。
+- [x] 6.8 `check:outdated`：跑 pnpm check:outdated 并按 dependency-upgrade spec
       「apply 末尾体检与升级预授权」消化所报 LAG（升级+全闸门+四端对拍，含全局
       CLI/直装工具机器级升级；登记回退不阻塞）；消化后复跑至退出码 0（SUMMARY 归零）。
-- [ ] 6.9 `跳过归档体检`：本 change 归档阶段跳过 health-check spec 的 archive 态
-      只读体检（apply 态体检见 6.4，照常执行不受此裁决影响）。
+      实测：首轮 SUMMARY=3 LAG（@napi-rs/cli 3.11.0→3.11.1、toml/toml_parser patch）；
+      均为上限升级（预授权），升后 SUMMARY=0 LAG；`pnpm check` EXIT=0、`pnpm test` EXIT=0
+      （四端对拍 FREQ/TOUCHSTONE/SELF-CHECK PASS）。
+- [x] 6.9 `跳过归档体检`：本 change 归档阶段跳过 health-check spec 的 archive 态
+      只读体检（apply 态体检见 6.4，照常执行不受此裁决影响）。此为归档阶段裁决记录，
+      本次 apply 不执行 archive 态体检。

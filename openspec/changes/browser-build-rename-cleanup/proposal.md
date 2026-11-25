@@ -124,3 +124,13 @@ change 完全吸收的 `Plan/browser资产彻底归位.md`。
   wasm（编译目标/绑定端术语），逐条结论留痕，零漏网才算闭环。
 - `跳过归档体检`：本 change 归档阶段跳过 health-check spec 的 **archive 态**只读体检
   （非 apply 态——apply 态体检 task 6.4 照常执行）。
+- `改名家族漏网全清`：apply 中全仓扫描发现改名家族另有 5 个漏网死引用（实测对应
+  命令/文件/目录均已不存在），经人工点名扩范围一并清理——`test:wasm`（ci-matrix
+  spec:227 scenario 标题、:487，实际聚合用 `test:browser`）、`typescript/wasm crate`
+  （ci-matrix spec:396，实际 wasm rust 覆盖来自 `browser/` netwave-browser crate）、
+  `test_wasm.sh`（ci.md 账本 :28/:248/:404，现为 `browser/scripts/test.sh`）、
+  `netwave_wasm.d.ts`（typescript.md 账本 :51，现为 `netwave_browser.d.ts`）、
+  `scripts/run/test_browser.sh`（scripts/README.md:24、ci.yml:125 注释、ci-matrix
+  spec:481/488/495，现为 `browser/scripts/test.sh`；`test_check_ci.py:150` 反向断言
+  保留不动）。spec 正文/scenario 标题属当前事实错误必改；账本历史叙述里的死文件名
+  同步为现存名以免误导。
