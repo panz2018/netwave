@@ -80,13 +80,19 @@
       归属、start 钩子、fetch 注入、99→100、发包除外），删后跑 `pnpm check:md`。
 - [ ] 7.2 `三态时效`：扫 `openspec/specs/` 全目录，对照本 change 产出
       api-contract/ci-matrix/workspace-layout 的更新/新增/退役三态结论留痕。
-- [ ] 7.3 `旧名清零`：全仓 grep 旧标识符（`gen_constants`、`constants.generated`、
-      `core/src/resources.rs`、`cov-drive` feature 名），确认活文件引用已同步现名、
-      零残留（排除 target*/dist/node_modules/.venv/archive）。
+- [ ] 7.3 `旧名清零`（含 `旧名清零扩散文`）：从 git diff 列出本次改/移/删文件与消失的旧标识符清单
+      （含 `gen_constants`、`constants.generated`、`core/src/resources.rs`、
+      `cov-drive` feature 名，及被搬空/改名的 core/browser 文件）；全仓 grep
+      这些旧标识符（排除 target*/dist/node_modules/.venv/archive）确认活文件
+      引用已同步现名、零残留；对每个被改/移/删文件，grep 全仓 spec 与文档中
+      描述其位置/职责的散文（如「句柄表住在 core」「wasm 导出含 FrequencyUnit」）
+      逐条确认已随改动更新，死引用即改。完成记录列旧名清单 + 已核对散文位置。
 - [ ] 7.4 `三轴`：按 governance spec「元规则 review 三轴」（Standards/Spec/Lessons）
       对照本 change 工件审实现 diff，diff 文件集逐文件对上 tasks.md，硬伤清零。
 - [ ] 7.5 `体检`：对触碰文件全文只读体检（health-check spec apply 态：语义考古维
       + 四维），发现附文件+行号+证据落 Plan/ 等点名，不阻塞。
+- [ ] 7.5b `跳过归档体检`：本 change 归档（archive）态只读体检按已定裁决跳过
+      （跳过 2026-11-25）；仅指 archive 态，apply 态体检见 7.5 照常执行。
 - [ ] 7.6 `迟到追加`：apply 中途拍板的决定当场追加进 proposal.md `## 已定裁决`
       并补对应任务行，收尾复查每个关键词载体任务已打勾。
 - [ ] 7.7 `check:outdated`：跑 `pnpm check:outdated` 并按 dependency-upgrade spec

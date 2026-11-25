@@ -107,3 +107,9 @@ change `extract-browser-package` 完成，本 change 把残留的 browser 绑定
   常量+两枚举；worker JS / types.ts 零改动。
 - `promise在browser`：fromUrl 的 Promise 包装 + fetch 全在 browser arm；core native
   `from_url`(reqwest) 不动。
+- `跳过归档体检`：本 change 归档（archive）态的只读体检跳过；apply 态体检（tasks
+  收尾 `体检` 锚点）不受影响，照常执行。
+- `旧名清零扩散文`：governance 规则升级——`config.yaml` 的 `旧名清零` 锚点从「只
+  grep 旧标识符」扩为「列 diff 改/移/删文件清单 + grep 描述其位置/职责的散文逐条
+  核对」，堵死文档/spec 里事实陈述变陈旧的死引用；本 change tasks `旧名清零` 任务
+  同步扩。
