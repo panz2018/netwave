@@ -34,7 +34,7 @@
     "cross-dump": "node scripts/dump.mjs ../oracle/tmp"
   },
   "devDependencies": {
-    "@napi-rs/cli": "3.11.0",
+    "@napi-rs/cli": "3.11.1",
     "@types/node": "^26.6.6",
     "@vitest/coverage-v8": "^5.1.1",
     "netwave-browser": "workspace:*",
