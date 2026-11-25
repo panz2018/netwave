@@ -76,7 +76,7 @@ typescript/native 的 report MUST 带 `--target <triple>`——napi `--platform`
 python 的 maturin 不带 `--target`，对象落 host `target/debug`，report 无需 `--target`），
 报告以 `--ignore-filename-regex` 剔除 core 路径后独立阅卷——core 行归
 core 报告、胶水行归胶水报告，互不重复计分；绑定 crate 由 show-env/report
-外部驱动采集度量。typescript/wasm crate 的 rust 行覆盖率 MUST 以 minicov runtime +
+外部驱动采集度量。browser crate（netwave-browser）的 rust 行覆盖率 MUST 以 minicov runtime +
 `RUSTC_BOOTSTRAP=1` 解锁 `-Zno-profiler-runtime` 在钉死 stable 上编插桩 wasm，
 由真浏览器 job（chromium Worker）采集——core 的 fetch 后端仅在真实浏览器
 global scope 上解析，node harness 的 fakeSelf 恒落「无 fetch 能力 scope」臂，
