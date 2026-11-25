@@ -19,7 +19,7 @@ if ! command -v wasm-opt >/dev/null 2>&1; then
 fi
 # rustup target list follows the rust-toolchain.toml override, so this probe
 # checks the ACTIVE (pinned) toolchain — not @stable. It assumes CI added the
-# target to that toolchain (the wasm job's "target for the pinned toolchain"
+# target to that toolchain (the browser job's "target for the pinned toolchain"
 # step runs a bare `rustup target add`, which acts on the active toolchain).
 if ! rustup target list --installed 2>/dev/null | grep -q '^wasm32-unknown-unknown$'; then
   echo "wasm32-unknown-unknown target not installed — add it with: rustup target add wasm32-unknown-unknown" >&2
@@ -77,7 +77,7 @@ fi
 # survives.
 python3 scripts/run/clean_stray_profraw.py
 
-pnpm -C browser build:browser
+pnpm -C browser build
 # Node-driven wasm suite (unit-test nature): the same test/unit code the browser
 # job runs, here proving the wasm artifact loads and passes on this node version.
 # TS-only v8 coverage — rust coverage is measured by the browser job below (the

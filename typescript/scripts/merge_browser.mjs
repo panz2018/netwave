@@ -11,9 +11,7 @@ import { join, resolve } from "node:path";
 
 const browserDist = resolve("..", "browser", "dist");
 if (!existsSync(browserDist)) {
-  console.error(
-    `browser dist not found at ${browserDist} — build it first: pnpm -C browser build:browser`,
-  );
+  console.error(`browser dist not found at ${browserDist} — build it first: pnpm -C browser build`);
   process.exit(1);
 }
 

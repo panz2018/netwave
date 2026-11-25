@@ -4,7 +4,7 @@
 node_modules/
 dist/
 coverage/
-# wasm-pack cargo target dir (the .wasm/object intermediates build:browser
+# wasm-pack cargo target dir (the .wasm/object intermediates build
 # produces). All intermediates — never commit.
 target-wasm/
 # instrumented wasm coverage build: cargo target dir for the rust coverage

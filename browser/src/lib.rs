@@ -13,7 +13,7 @@
 extern crate netwave;
 
 // Coverage dump entry points for the wasm rust coverage chain, compiled only
-// under the `coverage` feature so production `build:wasm` exports none of
+// under the `coverage` feature so production `build` exports none of
 // them. minicov keeps the counters in this instance's linear memory and has
 // no atexit, so the test harness calls `__cov_dump` from the worker context,
 // then reads the captured profraw back out via `__cov_ptr`/`__cov_len`.
@@ -67,7 +67,7 @@ mod __cov {
     /// the public API: build a sweep, drop it in place (the object survives,
     /// only its data is freed), then call every getter and the namespace copy
     /// path so each guard and error arm executes. Coverage-chain only;
-    /// production `build:wasm` compiles none of this.
+    /// production `build` compiles none of this.
     #[wasm_bindgen::prelude::wasm_bindgen]
     pub fn __cov_drive() {
         use netwave::frequency::{Frequency, FrequencyUnit, WavelengthUnit};

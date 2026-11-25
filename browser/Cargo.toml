@@ -25,6 +25,6 @@ minicov = { version = "0.3", optional = true }
 default = []
 # Instrumented build for the browser rust coverage chain: links minicov, exports
 # the dump entry points, and enables core's cov-drive entry so the defensive
-# dispatch-violation arms count. Off by default — production `build:browser`
+# dispatch-violation arms count. Off by default — production `build`
 # never compiles it.
 coverage = ["dep:minicov", "netwave/cov-drive"]

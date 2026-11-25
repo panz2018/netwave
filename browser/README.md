@@ -8,13 +8,13 @@ constants, and the type declarations.
 
 ## Commands (run from the repo root)
 
-| Command                         | What it does                                                                                                                                    |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `pnpm -C browser build:browser` | Build every browser artifact: generate constants, `wasm-pack build --target web`, bundle the shells, publish shell                              |
-| `pnpm -C browser test`          | Full browser test chain: toolchain probes, build, node-driven unit suite, instrumented real-browser rust coverage chain, real-browser e2e suite |
-| `pnpm -C browser test:unit`     | vitest unit suite (v8 coverage)                                                                                                                 |
-| `pnpm -C browser test:e2e`      | vitest real-browser (playwright chromium) suite (v8 coverage)                                                                                   |
-| `pnpm -C browser typecheck`     | `tsc --noEmit` type gate                                                                                                                        |
+| Command                     | What it does                                                                                                                                    |
+| --------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pnpm -C browser build`     | Build every browser artifact: generate constants, `wasm-pack build --target web`, bundle the shells, publish shell                              |
+| `pnpm -C browser test`      | Full browser test chain: toolchain probes, build, node-driven unit suite, instrumented real-browser rust coverage chain, real-browser e2e suite |
+| `pnpm -C browser test:unit` | vitest unit suite (v8 coverage)                                                                                                                 |
+| `pnpm -C browser test:e2e`  | vitest real-browser (playwright chromium) suite (v8 coverage)                                                                                   |
+| `pnpm -C browser typecheck` | `tsc --noEmit` type gate                                                                                                                        |
 
 ## Local toolchain installers
 

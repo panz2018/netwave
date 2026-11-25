@@ -1,7 +1,7 @@
 // dts glue typing gate: tsdown silently emits `any` for re-exported verbs when
 // a generated glue (napi or browser wasm) is missing at dts time. Fail fast instead
 // of shipping degraded types. Checks the published shell declarations for
-// any-typed exports. Run after build:wasm + build:native (the glues must exist).
+// any-typed exports. Run after build + build:native (the glues must exist).
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";

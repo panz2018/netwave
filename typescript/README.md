@@ -60,7 +60,7 @@ wasm module's footprint to shrink after drops.
 
 Run from this directory (or `pnpm -C typescript <script>` from the root). The
 browser artifacts come from the `netwave-browser` package — build it first with
-`pnpm -C browser build:browser`, then the merge step below copies them in.
+`pnpm -C browser build`, then the merge step below copies them in.
 
 ```bash
 pnpm install                # workspace install (root package.json pins pnpm)

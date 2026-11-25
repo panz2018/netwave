@@ -66,7 +66,7 @@ pnpm test:ts                      # typescript tests: browser build + native glu
                                     # (scripts/run/test_ts.sh; needs cargo-llvm-cov +
                                     # wasm-pack + binaryen + wasm32 target)
 pnpm -C typescript build:native   # napi .node addon (+ merge browser dist)
-pnpm -C browser build:browser     # wasm-bindgen artifacts (browser package)
+pnpm -C browser build             # wasm-bindgen artifacts (browser package)
 uv sync --project python          # Python env (uv)
 (cd python && uv run maturin develop)  # required after touching core
 pnpm test:browser                 # browser tests: instrumented wasm build + node-driven

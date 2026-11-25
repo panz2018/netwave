@@ -13,7 +13,7 @@ concurrency:
 env:
   CARGO_TERM_COLOR: always
 
-# Jobs are ordered cheap-first: docs (seconds) -> rust -> wasm ->
+# Jobs are ordered cheap-first: docs (seconds) -> rust -> browser ->
 # python -> node -> bench (most expensive). One job per language/
 # toolchain; platforms expand inside each job. A step that only applies
 # to one matrix cell uses a step-level `if` — cheaper than a separate
@@ -59,7 +59,7 @@ jobs:
           pnpm check
 
   # Rust matrix: native platforms only (macOS covers Apple Silicon).
-  # wasm32 lives in its own `wasm` job below: it shares no step
+  # wasm32 lives in its own `browser` job below: it shares no step
   # with the native cells (no cargo test; needs wasm target + wasm-pack +
   # pnpm), so keeping it here would need an `if` on nearly every step.
   rust:
@@ -86,7 +86,7 @@ jobs:
       - name: install cargo-llvm-cov (latest official binary)
         # cargo install compiles for minutes; official prebuilt tarballs.
         # Every platform cell installs and smoke-tests the binary.
-        # GITHUB_TOKEN: authenticated API calls (see wasm job).
+        # GITHUB_TOKEN: authenticated API calls (see browser job).
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/install_cargo_llvm_cov.sh
@@ -122,7 +122,7 @@ jobs:
         # rust-toolchain.toml pins the ACTIVE toolchain; the setup above adds
         # the target to @stable, not to the pinned one (rustup auto-installs
         # the pinned toolchain bare). Add it to whichever toolchain is active
-        # so the browser build and test_browser.sh's target probe resolve. Mirrors the
+        # so the browser build and browser/scripts/test.sh's target probe resolve. Mirrors the
         # lint job's "components for the pinned toolchain" step. llvm-tools
         # (llc/llvm-profdata/llvm-cov) grades the wasm rust coverage chain.
         run: |
@@ -152,7 +152,7 @@ jobs:
       - name: install wasm rust coverage toolchain (wasi-sdk clang + wasm-bindgen)
         # wasi-sdk clang compiles minicov's wasm32 C runtime; wasm-bindgen-cli
         # turns the instrumented cdylib into the web glue the worker loads
-        # (wasm-pack cannot build instrumented output). Both no sudo. The wasm
+        # (wasm-pack cannot build instrumented output). Both no sudo. The browser
         # job owns the rust coverage chain: fetch backends resolve only against
         # a real browser global scope, so the lcov denominator is collected here.
         env:
@@ -160,10 +160,10 @@ jobs:
         run: |
           bash browser/scripts/install_wasi_sdk.sh
           bash browser/scripts/install_wasm_bindgen_cli.sh
-      - name: browser test entry (build:browser + node unit suite + real browser)
+      - name: browser test entry (browser build + node unit suite + real browser)
         # Command details live once in browser/scripts/test.sh — the same file
         # local `pnpm test:browser` calls via `pnpm -C browser test` (toolchain
-        # probes, build:browser, node-driven unit suite, instrumented browser
+        # probes, browser build, node-driven unit suite, instrumented browser
         # rust coverage chain, real-browser suite). The --coverage flag is baked
         # into browser/package.json's test:unit/test:e2e, not repeated here.
         shell: bash
@@ -257,7 +257,7 @@ jobs:
         # Own step: the installers append to GITHUB_PATH, which only
         # takes effect for *later* steps — the browser build must not share
         # this step (its PATH export dies with the bash subprocess).
-        # GITHUB_TOKEN: authenticated API calls (see wasm job).
+        # GITHUB_TOKEN: authenticated API calls (see browser job).
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |

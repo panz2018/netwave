@@ -30,12 +30,12 @@ fi
 
 python3 scripts/run/clean_stray_profraw.py
 
-# build:browser first: build:native ends with tsdown, whose dts pass resolves BOTH
+# browser build first: build:native ends with tsdown, whose dts pass resolves BOTH
 # generated glues (napi + browser wasm). Building browser first keeps the browser
 # shell's dts fully typed (a missing wasm glue makes tsdown emit `any` for the
 # re-exported verbs). wasm-pack uses CARGO_TARGET_DIR=./target-wasm, so this
 # build is not instrumented and is unaffected by the show-env below.
-pnpm -C browser build:browser
+pnpm -C browser build
 
 # show-env, clean, instrumented build, vitest and report MUST share one process —
 # the instrumentation env does not cross processes. debug build (not release):
