@@ -34,3 +34,4 @@
 - [ ] 4.5 `体检`：三轴 review 之后、check:outdated 之前，对被触碰文件全文只读体检（health-check spec apply 态），发现附文件+行号+证据落 Plan/ 等点名，不阻塞
 - [ ] 4.6 `迟到追加`：apply 中途拍板的决定当场追加进 proposal.md `## 已定裁决` 段并补对应任务行，收尾复查每个关键词载体任务已打勾
 - [ ] 4.7 `check:outdated`：最后一项跑 `pnpm check:outdated` 并按 dependency-upgrade spec「apply 末尾体检与升级预授权」消化所报 LAG，消化后复跑至退出码 0（SUMMARY 归零）才算完成
+- [ ] 4.8 `归档体检跳过`：本 change 归档时跳过 health-check spec 的 archive 态只读体检（仅 archive 态，apply 态被触碰文件体检照常）

@@ -23,12 +23,12 @@ API），搬后自身零改动。
 
 ## 引用面清单（搬迁同批必改）
 
-| 文件 | 位置 | 改动 |
-| --- | --- | --- |
-| `browser/scripts/test.sh` | L66/L70 | 探测提示命令路径加 `browser/` 前缀 |
-| `.github/workflows/ci.yml` | L161/L162 | 安装步命令加 `browser/` 前缀（checkout 在根） |
-| `scripts/README.md` | L18/L19 | 删两脚本表格行（说明迁 `browser/README.md`） |
-| `openspec/specs/ci-matrix/spec.md` | 三处 requirement | 经 delta 更新路径字符串 |
+| 文件                               | 位置             | 改动                                          |
+| ---------------------------------- | ---------------- | --------------------------------------------- |
+| `browser/scripts/test.sh`          | L66/L70          | 探测提示命令路径加 `browser/` 前缀            |
+| `.github/workflows/ci.yml`         | L161/L162        | 安装步命令加 `browser/` 前缀（checkout 在根） |
+| `scripts/README.md`                | L18/L19          | 删两脚本表格行（说明迁 `browser/README.md`）  |
+| `openspec/specs/ci-matrix/spec.md` | 三处 requirement | 经 delta 更新路径字符串                       |
 
 实证不受影响：`scripts/tests/test_test_browser_wiring.py` L116-117 用文件名正则
 （不带路径前缀），探测提示改新路径后断言仍命中。

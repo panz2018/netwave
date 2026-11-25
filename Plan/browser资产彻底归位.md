@@ -1,5 +1,3 @@
- 
-
 # browser 资产彻底归位（待拍板）
 
 判据：删掉 `browser/` 子项目后必须跟着删的文件，就是 browser 的资产，不该散落在
@@ -8,15 +6,15 @@ browser 包内命令更名（`build:browser`→`build`）。
 
 ## 1. 判据扫描结果
 
-| 文件                                          | 删 browser 后是否必须删                                  | 处置                  |
-| --------------------------------------------- | -------------------------------------------------------- | --------------------- |
-| `scripts/tests/test_test_browser_wiring.py` | 是（测 `browser/scripts/test.sh` + worker 产物纯净度） | 搬进 browser          |
-| `scripts/install_wasi_sdk.sh`               | 是（ci.yml 仅 browser job 引用，实证 161 行）            | 搬进 browser          |
-| `scripts/install_wasm_bindgen_cli.sh`       | 是（ci.yml 仅 browser job 引用，实证 162 行）            | 搬进 browser          |
+| 文件                                        | 删 browser 后是否必须删                                | 处置                |
+| ------------------------------------------- | ------------------------------------------------------ | ------------------- |
+| `scripts/tests/test_test_browser_wiring.py` | 是（测 `browser/scripts/test.sh` + worker 产物纯净度） | 搬进 browser        |
+| `scripts/install_wasi_sdk.sh`               | 是（ci.yml 仅 browser job 引用，实证 161 行）          | 搬进 browser        |
+| `scripts/install_wasm_bindgen_cli.sh`       | 是（ci.yml 仅 browser job 引用，实证 162 行）          | 搬进 browser        |
 | `scripts/install_wasm_pack.sh`              | 否（node `test_ts.sh` 也用）                           | 共享，留 `scripts/` |
 | `scripts/install_binaryen.sh`               | 否（node `test_ts.sh` 也用）                           | 共享，留 `scripts/` |
-| `scripts/coverage_gate.py`                  | 否（rs/py/ts/browser 四端都用）                          | 共享，留 `scripts/` |
-| `scripts/run/clean_stray_profraw.py`        | 否（四端都用）                                           | 共享，留 `scripts/` |
+| `scripts/coverage_gate.py`                  | 否（rs/py/ts/browser 四端都用）                        | 共享，留 `scripts/` |
+| `scripts/run/clean_stray_profraw.py`        | 否（四端都用）                                         | 共享，留 `scripts/` |
 
 ## 2. 待搬清单（三项）
 
@@ -80,21 +78,21 @@ build 命令，再叫 `build:browser` 即"在 browser 包里构建 browser"，�
 
 改名波及面（当前名 `build:browser`，归档目录 `openspec/changes/archive/**` 不动）：
 
-| 文件                                          | 位置         | 改什么                              |
-| --------------------------------------------- | ------------ | ----------------------------------- |
-| `browser/package.json`                      | L21          | 定义 `build:browser` → `build` |
-| `browser/scripts/test.sh`                   | L80          | 调用命令名                          |
-| `scripts/run/test_ts.sh`                    | L33,38       | 注释 + 调用命令名                   |
-| `scripts/tests/test_test_browser_wiring.py` | L36          | skip 提示里的命令名                 |
-| `typescript/scripts/merge_browser.mjs`      | L15          | 报错提示里的命令名                  |
-| `typescript/scripts/check_dts_any.mjs`      | L4           | 注释里的命令名（兼死引用，见下）    |
-| `typescript/README.md`                      | L63          | 命令名                              |
-| `CONTRIBUTING.md`                           | L69          | 命令名                              |
-| `.github/workflows/ci.yml`                  | L163,166     | 步骤名 + 注释里的命令名             |
-| `browser/.gitignore`                        | L7           | 注释里的命令名                      |
-| `browser/Cargo.toml`                        | L28          | 注释里的命令名                      |
-| `openspec/specs/ci-matrix/spec.md`          | L124,403,470 | 命令名                              |
-| `openspec/specs/workspace-layout/spec.md`   | L78          | 命令名                              |
+| 文件                                        | 位置         | 改什么                           |
+| ------------------------------------------- | ------------ | -------------------------------- |
+| `browser/package.json`                      | L21          | 定义 `build:browser` → `build`   |
+| `browser/scripts/test.sh`                   | L80          | 调用命令名                       |
+| `scripts/run/test_ts.sh`                    | L33,38       | 注释 + 调用命令名                |
+| `scripts/tests/test_test_browser_wiring.py` | L36          | skip 提示里的命令名              |
+| `typescript/scripts/merge_browser.mjs`      | L15          | 报错提示里的命令名               |
+| `typescript/scripts/check_dts_any.mjs`      | L4           | 注释里的命令名（兼死引用，见下） |
+| `typescript/README.md`                      | L63          | 命令名                           |
+| `CONTRIBUTING.md`                           | L69          | 命令名                           |
+| `.github/workflows/ci.yml`                  | L163,166     | 步骤名 + 注释里的命令名          |
+| `browser/.gitignore`                        | L7           | 注释里的命令名                   |
+| `browser/Cargo.toml`                        | L28          | 注释里的命令名                   |
+| `openspec/specs/ci-matrix/spec.md`          | L124,403,470 | 命令名                           |
+| `openspec/specs/workspace-layout/spec.md`   | L78          | 命令名                           |
 
 同批清理的死引用（上一轮 `build:wasm`→`build:browser` 未改净的残留，活文件里的
 死事实）：

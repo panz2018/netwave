@@ -79,3 +79,5 @@
 - `提交粒度`：T1（typescript 清理）独立一笔；T2+T3（两脚本搬迁，波及同批相邻文件）
   合并一笔，避免 ci.yml/README/spec 的半搬中间态。
 - `change承载`：单开本 change 装 T1-T3，命名 `relocate-browser-install-scripts`。
+- `归档体检跳过`：本 change 归档时跳过 health-check spec 的 archive 态只读体检
+  （全项目存量维），仅指 archive 态，不含 apply 态被触碰文件体检（后者照常执行）。
