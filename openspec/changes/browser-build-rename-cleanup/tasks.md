@@ -98,6 +98,11 @@
 
 - [x] 6.2 `pnpm test` 全绿（三轴 review 之前，含四端对拍，先排除实现断裂）。
       已实测 EXIT=0：rs/py/ts/browser/cross 全过，四端对拍 FREQ/TOUCHSTONE/SELF-CHECK PASS。
+- [x] 6.2b `旧名清零`：全仓 grep 本次改名/删除的旧标识符（排除 target*/dist/
+      node_modules/.venv/archive），逐条确认活文件引用已同步为现名、零残留。
+      旧名清单：`build:browser`/`build:wasm`/`wasm job`/`test:wasm`/
+      `typescript/wasm crate`/`test_wasm.sh`/`netwave_wasm.d.ts`/
+      `scripts/run/test_browser.sh`——均活文件零残留（见 6.1/6.1b/5b 逐条结论）。
 - [x] 6.3 `三轴`：按 governance spec「元规则 review 三轴」（Standards/Spec/Lessons）
       对照本 change 工件审实现 diff，diff 文件集逐文件对上 tasks.md，硬伤清零。
       Standards：注释只留当前契约、无历史叙述，ci.yml 行长合规（check_ci 含于 pnpm test 绿）；
