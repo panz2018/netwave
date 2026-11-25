@@ -1,49 +1,24 @@
 # browser 资产彻底归位（待拍板）
 
 判据：删掉 `browser/` 子项目后必须跟着删的文件，就是 browser 的资产，不该散落在
-仓库各处。按此判据扫 `scripts/`，发现三类该搬未搬 + 一类共享须留；另含一项
-browser 包内命令更名（`build:browser`→`build`）。
+仓库各处。按此判据扫 `scripts/`，发现一项该搬未搬（wiring 测试）+ 一类共享须留；
+另含一项 browser 包内命令更名（`build:browser`→`build`）。
+
+（两个 browser 专用安装脚本 `install_wasi_sdk.sh`、`install_wasm_bindgen_cli.sh`
+与 `typescript/` wasm 残留已由 change `relocate-browser-install-scripts` 归位/清理，
+结论入 ci-matrix spec，本 Plan 不再留存。）
 
 ## 1. 判据扫描结果
 
 | 文件                                        | 删 browser 后是否必须删                                | 处置                |
 | ------------------------------------------- | ------------------------------------------------------ | ------------------- |
 | `scripts/tests/test_test_browser_wiring.py` | 是（测 `browser/scripts/test.sh` + worker 产物纯净度） | 搬进 browser        |
-| `scripts/install_wasi_sdk.sh`               | 是（ci.yml 仅 browser job 引用，实证 161 行）          | 搬进 browser        |
-| `scripts/install_wasm_bindgen_cli.sh`       | 是（ci.yml 仅 browser job 引用，实证 162 行）          | 搬进 browser        |
 | `scripts/install_wasm_pack.sh`              | 否（node `test_ts.sh` 也用）                           | 共享，留 `scripts/` |
 | `scripts/install_binaryen.sh`               | 否（node `test_ts.sh` 也用）                           | 共享，留 `scripts/` |
 | `scripts/coverage_gate.py`                  | 否（rs/py/ts/browser 四端都用）                        | 共享，留 `scripts/` |
 | `scripts/run/clean_stray_profraw.py`        | 否（四端都用）                                         | 共享，留 `scripts/` |
 
-## 2. 待搬清单（三项）
-
-- `scripts/install_wasi_sdk.sh` → `browser/scripts/install_wasi_sdk.sh`
-  - 波及：`browser/scripts/test.sh` 探测提示路径、`ci.yml` browser job 安装步。
-- `scripts/install_wasm_bindgen_cli.sh` → `browser/scripts/install_wasm_bindgen_cli.sh`
-  - 波及：同上。
-    | `scripts/tests/test_test_browser_wiring.py` | browser 内（见第 4 节，含改名与
-    语言选择）。
-
-## 3. typescript/ wasm 残留清理（待拍板）
-
-wasm 构建已住 `browser/`（`build:browser` 的 wasm-pack 在 `browser/` 下以
-`CARGO_TARGET_DIR=./target-wasm` 产出 `browser/dist/wasm/`），但 `typescript/`
-里仍留着 wasm 时代（该包自产 wasm、crate 名 `netwave-wasm`）的残留：
-
-- `typescript/target-wasm/`、`typescript/target-wasm-cov/`：未被 git 跟踪的本地
-  死目录，构建产物内仍引用已不存在的 `netwave-wasm` crate 与 `typescript/wasm/`
-  路径。现无任何命令在 `typescript/` 下产出这两目录，直接删。
-- `typescript/.gitignore` 的 `target-wasm/`、`target-wasm-cov/` 两条：随上一条
-  同死的规则——wasm 构建迁走后 `typescript/` 不再产生这两目录，条目删。
-- `typescript/scripts/check_dts_any.mjs` L4 注释里的死命令名 `build:wasm`，
-  归第 6 节改名波及面处理，此处不重复。
-
-实证：`git check-ignore typescript/target-wasm typescript/target-wasm-cov` 命中
-（仅靠 `typescript/.gitignore` 那两条遮住，根 `.gitignore` 不含 `target-wasm`）；
-删条目须先删目录，否则两目录转为未跟踪出现在 `git status`。
-
-## 4. wiring 测试的归属与形态（核心待拍板）
+## 2. wiring 测试的归属与形态（核心待拍板）
 
 现状：`scripts/tests/test_test_browser_wiring.py` 是 Python，由根 pytest
 （`testpaths = ["scripts/tests"]`）跑，读 `browser/scripts/test.sh` 文本、
@@ -63,13 +38,13 @@ wasm 构建已住 `browser/`（`build:browser` 的 wasm-pack 在 `browser/` 下�
   - 倾向：改 TS 进 `browser/test/`，把"读 ci.yml 接线"那部分断言一并迁入——
     browser 自包含优先于"家族聚合"。
 
-## 5. 不在本 Plan 范围（共享，明确留下）
+## 3. 不在本 Plan 范围（共享，明确留下）
 
 `coverage_gate.py`、`clean_stray_profraw.py`、`install_wasm_pack.sh`、
 `install_binaryen.sh`——多端共用，搬进 browser 反而让 node/python/rust 链依赖
 browser 包，制造反向耦合。
 
-## 6. build:browser 命令更名（待拍板）
+## 4. build:browser 命令更名（待拍板）
 
 `browser/package.json` 的 `build:browser` 是历史遗留名——该命令原住 `typescript/`
 包，与 `build:native` 当邻居才需后缀区分；现独立成 `browser/` 包后全包只有这一个
@@ -102,16 +77,15 @@ build 命令，再叫 `build:browser` 即"在 browser 包里构建 browser"，�
 - 账本 `openspec/specs/lessons-learned/`（ci.md、core.md、INDEX.md LL-034、
   typescript.md）：规则正文仍用 `build:wasm` 描述当前 CI 顺序，须同步为现名。
 
-## 7. 落地前置
+## 5. 落地前置
 
 - 单开 change（不在已归档/收尾的 `extract-browser-test-chain` 里塞）。
-- 搬安装脚本需同步 `browser/scripts/test.sh` 探测提示与 `ci.yml` browser job。
 - wiring 测试若改 TS，需给 `browser/test/` 配 vitest include，并确认根 pytest
   覆盖率地板不受影响（该文件从 `scripts/tests/` 移出后，根 coverage source 不再含它）。
 - `build:browser`→`build` 改名波及 spec/CI/注释，须同步改全并跑 `pnpm check:md`、
   `pnpm check`；账本死引用同步属 LL-034 波及面。
 
-## 8. 全仓 wasm 扫描兜底（最后一步，待拍板）
+## 6. 全仓 wasm 扫描兜底（最后一步，待拍板）
 
 前面各节按已知线索逐项清理，可能仍有遗漏。收尾前做一遍穷举扫描兜底：
 
