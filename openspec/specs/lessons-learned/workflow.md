@@ -346,3 +346,20 @@
   有含同关键词的任务行，apply 收尾全勾态下载体任务亦须打勾，缺项即红并指名
   关键词；`pnpm check:meta` 命中即本条复发（规则本体见 governance spec
   「元规则 决定捕获进 change」）
+
+### LL-113 改 config.yaml apply-guidance 锚点须跑全量 check，不能只跑门禁脚本
+
+- 犯过：给 `openspec/config.yaml` 的 `operations.apply.guidance` 加第 7 个锚点
+  `旧名清零` 时，只跑了门禁脚本 `check_proposal.py`（绿）便提交，CI lint job 的
+  `pnpm check:py` 报红——`scripts/tests/test_check_proposal.py` 的 `ALL` fixture
+  与绊线测试 `test_anchors_mirrored_in_config_yaml` 硬编码了锚点列表，未同步
+  （2026-11-24）
+- 根因：门禁脚本与其测试夹具是两个独立工件，门禁绿 ≠ 测试绿；锚点列表在
+  config.yaml（真相源）与测试夹具两处镜像，绊线测试正是为拦「加锚点忘同步」而设，
+  只跑门禁等于绕过了绊线。本条是 LL-034「改动波及面必须改全」的具体实例
+  （改了门禁脚本、漏改它的测试夹具）
+- 规则：增删改名 `config.yaml` 的 apply-guidance 锚点（或任何被门禁脚本与测试
+  双向镜像的事实）时，MUST 跑 `pnpm check`（含 `check:py` 的锚点绊线测试），
+  MUST NOT 只跑 `check_proposal.py` 门禁脚本本身
+- 复发检测：改 config.yaml 锚点后 CI lint job 的 `test_anchors_mirrored_in_config_yaml`
+  报红即本条复发；本地提交前 `pnpm check` 全绿可拦截
