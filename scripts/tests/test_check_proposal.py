@@ -16,6 +16,7 @@ import pytest
 ALL = [
     "- [ ] 4.5 Plan/ 瘦身：本 change 结论若涉及 `Plan/` 对应章节则当场删除。",
     "- [ ] 4.4 三态时效检查：扫 `openspec/specs/` 全目录，产出更新/新增/退役结论。",
+    "- [ ] 4.9 旧名清零：全仓 grep 本次改名/删除的旧标识符，活文件零残留。",
     "- [ ] 4.2 三轴 review：按 governance「元规则 review 三轴」审实现 diff。",
     "- [ ] 4.3 apply 态体检：对 diff 触碰文件全文只读体检。",
     "- [ ] 4.7 apply 中途迟到追加的决定已当场写回已定裁决段并补任务。",
@@ -64,10 +65,11 @@ def test_repeated_anchor_still_covered(tmp_path: Path) -> None:
 
 def test_anchors_mirrored_in_config_yaml() -> None:
     # The gate reads anchors from config.yaml at runtime; assert it finds the
-    # six expected ones in guidance order (no second hardcoded list to drift).
+    # seven expected ones in guidance order (no second hardcoded list to drift).
     assert check_proposal.guidance_anchors() == [
         "Plan/",
         "三态时效",
+        "旧名清零",
         "三轴",
         "体检",
         "迟到追加",
