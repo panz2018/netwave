@@ -4,10 +4,6 @@
 仓库各处。按此判据扫 `scripts/`，发现一项该搬未搬（wiring 测试）+ 一类共享须留；
 另含一项 browser 包内命令更名（`build:browser`→`build`）。
 
-（两个 browser 专用安装脚本 `install_wasi_sdk.sh`、`install_wasm_bindgen_cli.sh`
-与 `typescript/` wasm 残留已由 change `relocate-browser-install-scripts` 归位/清理，
-结论入 ci-matrix spec，本 Plan 不再留存。）
-
 ## 1. 判据扫描结果
 
 | 文件                                        | 删 browser 后是否必须删                                | 处置                |

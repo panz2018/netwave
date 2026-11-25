@@ -38,4 +38,4 @@
   - 复查：五个已定裁决关键词（`搬迁范围`/`Cargo.lock修正`/`README承接`/`提交粒度`/`change承载`）载体任务均已打勾；`归档体检跳过` 属 archive 态，留待归档阶段执行。
 - [x] 4.7 `check:outdated`：最后一项跑 `pnpm check:outdated` 并按 dependency-upgrade spec「apply 末尾体检与升级预授权」消化所报 LAG，消化后复跑至退出码 0（SUMMARY 归零）才算完成
   - 消化：cargo 4 LAG（clap/clap_builder→4.6.10、zerocopy/zerocopy-derive→0.8.65，`cargo update`）+ 全局 CLI 2 LAG（uv→0.13.10、openspec→2.2.0）；复跑 SUMMARY 0 LAG，`pnpm check` 绿、`pnpm test:cross` 四端对拍绿。
-- [ ] 4.8 `归档体检跳过`：本 change 归档时跳过 health-check spec 的 archive 态只读体检（仅 archive 态，apply 态被触碰文件体检照常）
+- [x] 4.8 `归档体检跳过`：本 change 归档时跳过 health-check spec 的 archive 态只读体检（仅 archive 态，apply 态被触碰文件体检照常）
