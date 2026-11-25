@@ -206,8 +206,8 @@ browser rust 覆盖率链），且 MUST `set -euo pipefail` 并纳入 `pnpm test
 - **WHEN** 本地缺 llvm-tools 三件套（`llc`/`llvm-profdata`/`llvm-cov`）、
   wasi-sdk clang 或 `wasm-bindgen` 之一时运行 `pnpm test:browser`
 - **THEN** 脚本在插桩构建前以非零码退出，stderr 打印对应安装指引
-  （`rustup component add llvm-tools` / `scripts/install_wasi_sdk.sh` /
-  `scripts/install_wasm_bindgen_cli.sh`），不发起自动安装
+  （`rustup component add llvm-tools` / `browser/scripts/install_wasi_sdk.sh` /
+  `browser/scripts/install_wasm_bindgen_cli.sh`），不发起自动安装
 
 #### Scenario: wasm 入口缺工具或缺浏览器报错可行动
 
@@ -399,7 +399,7 @@ core 报告、胶水行归胶水报告，互不重复计分；绑定 crate 由 s
 global scope 上解析，node harness 的 fakeSelf 恒落「无 fetch 能力 scope」臂，
 故这些行 MUST NOT 由 node 驱动 vitest 采集（采不到即漏分母）：minicov 的
 wasm32 C runtime MUST 由能编 wasm32 的 clang（wasi-sdk 自带，`CC` 指向
-`scripts/install_wasi_sdk.sh` 装到 `~/.local` 的 clang）编译（gcc 无 wasm32
+`browser/scripts/install_wasi_sdk.sh` 装到 `~/.local` 的 clang）编译（gcc 无 wasm32
 后端），插桩构建走独立 target dir（不覆盖生产 `build:browser` 产物），dump 导出
 MUST 以 `#[cfg(feature = "coverage")]` 门控（生产产物零污染），profraw MUST
 由浏览器测试末尾经 worker 控制消息调 dump 倒出、以 base64 经 vitest browser
@@ -474,18 +474,18 @@ core browser-gated 代码，以 `--ignore-filename-regex` 剔除 `.cargo/registr
 ### Requirement: wasm 覆盖率链的编译与阅卷工具均无需 sudo
 
 wasm rust 覆盖率链分两段取工具，均 MUST NOT 依赖 sudo：编译期 minicov 的
-wasm32 C runtime MUST 由 wasi-sdk 自带的标准 clang 编译（`scripts/install_wasi_sdk.sh`
+wasm32 C runtime MUST 由 wasi-sdk 自带的标准 clang 编译（`browser/scripts/install_wasi_sdk.sh`
 下 tarball 解压到 `~/.local/opt/wasi-sdk`，仿 install_binaryen.sh）；阅卷期
 `llc`/`llvm-profdata`/`llvm-cov` MUST 取自钉版 rust 工具链自带的 `llvm-tools`
 组件（写进 `rust-toolchain.toml` 的 `components`，rustup 激活工具链时自动装）。
 `scripts/run/test_browser.sh` MUST 从 `$(rustc --print sysroot)` 下的 llvm-tools bin
 目录取阅卷三件套，MUST 探测 wasi-sdk clang、缺失时提示跑
-`scripts/install_wasi_sdk.sh` 并以非零退出。
+`browser/scripts/install_wasi_sdk.sh` 并以非零退出。
 
 #### Scenario: 缺 wasi-sdk clang 时本地测试入口可行动报错
 
 - **WHEN** 本机未装 wasi-sdk clang 时运行 `pnpm test:wasm`
-- **THEN** `test_browser.sh` 探测段打印跑 `scripts/install_wasi_sdk.sh` 的指引并以非零退出，
+- **THEN** `test_browser.sh` 探测段打印跑 `browser/scripts/install_wasi_sdk.sh` 的指引并以非零退出，
   不发起自动安装
 
 #### Scenario: llvm-tools 组件随工具链自动就位
