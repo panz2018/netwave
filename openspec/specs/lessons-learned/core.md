@@ -15,7 +15,7 @@
 
 - 犯过：未重建即对拍，比到陈旧产物
 - 规则：改 core 后先 `maturin develop` + `pnpm -C typescript build:native`
-  - `build:wasm`，再跑任何 cross-binding 比较
+  - `pnpm -C browser build`，再跑任何 cross-binding 比较
 - 复发检测：`pnpm test:cross` 前置于对拍；review 核对重建步骤
 
 ### LL-020 `#[coverage(off)]` 是 nightly-only

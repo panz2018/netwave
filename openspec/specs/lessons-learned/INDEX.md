@@ -28,7 +28,7 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-028 | docs       | archive 自带 sync，手动 sync 后须去重                                                                   |
 | LL-029 | docs       | 第三方许可表：GPL 源禁抄代码，只读思想                                                                  |
 | LL-032 | docs       | 持久文档禁写临时名称与无意义日期，只留最终结论，追溯靠 git log                                          |
-| LL-034 | ci         | tsdown dts 需双 glue 先建：CI 先 build:wasm 再 build:native                                             |
+| LL-034 | ci         | tsdown dts 需双 glue 先建：CI 先 pnpm -C browser build 再 build:native                                  |
 | LL-036 | ci         | 改完 TS 必跑 typecheck，`pnpm check` 不含类型门禁                                                       |
 | LL-040 | ci         | 合并只走 PR 禁直推 main；PR 用 git credential helper 建                                                 |
 | LL-041 | ci         | 钉版 toolchain 后组件与目标要补装到激活工具链（component/target add）                                   |

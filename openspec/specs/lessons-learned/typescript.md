@@ -17,12 +17,12 @@
   （`netwave-{os}-{arch}`）发布时才创建，脚手架期禁列进
   `optionalDependencies`（未发布名破坏 frozen-lockfile）
 - 规则：按上列约束实现；napi 升级后重查旗标
-- 复发检测：`pnpm -C typescript build:native && build:wasm` + vitest 双套件
+- 复发检测：`pnpm -C typescript build:native && pnpm -C browser build` + vitest 双套件
 
 ### LL-024 改 core 后重建 node/wasm
 
 - 犯过：未重建即测试/对拍，比到陈旧产物
-- 规则：`pnpm build:native` + `build:wasm` 先于任何测试/对拍
+- 规则：`pnpm build:native` + `pnpm -C browser build` 先于任何测试/对拍
 - 复发检测：`pnpm test:cross` 前置重建
 
 ### LL-025 覆盖率豁免用 v8 ignore 且逐条附理由
@@ -47,8 +47,8 @@
   产出的 `.js`/`.d.ts` 导出面为空（worker 全部命令 unknown）
 - 规则：入口全在 core 时，glue `lib.rs` MUST 保留 `extern crate netwave;`
   强制链接，否则 core 的 `#[wasm_bindgen]` 导出全部丢失
-- 复发检测：`pnpm -C typescript build:wasm` 后 grep glue 的
-  `netwave_wasm.d.ts` 含 `network_upload` 等入口；worker 往返测试即红
+- 复发检测：`pnpm -C browser build` 后 grep glue 的
+  `netwave_browser.d.ts` 含 `network_upload` 等入口；worker 往返测试即红
 
 ### LL-051 napi `usize` 映射 bigint 破坏三端类型平价
 

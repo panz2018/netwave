@@ -23,9 +23,9 @@
   `dtolnay/rust-toolchain@stable` + `components: rustfmt, clippy` 只装到
   @stable，rustup 裸装激活的 1.98.1 不含组件，CI 报
   `'cargo-fmt' is not installed for the toolchain '1.98.1'`（本地无此坑，
-  因为本地激活工具链早已带组件）。同机制复发于 target：wasm job 的
+  因为本地激活工具链早已带组件）。同机制复发于 target：browser job 的
   `dtolnay/rust-toolchain@stable` + `target: wasm32-unknown-unknown` 只把
-  target 装进 @stable，钉版工具链不含，`test_wasm.sh` 的
+  target 装进 @stable，钉版工具链不含 ，`browser/scripts/test.sh` 的
   `rustup target list --installed` 探测跟随 override 查的是激活（钉版）
   工具链，报 target 未装而退出（本地无此坑，因两个工具链都装了 target）
 - 规则：钉版后凡用 `@stable`/`@1.x` 形式 setup 的 job，后续必须补一步裸
@@ -87,12 +87,12 @@
 ### LL-034 tsdown dts 需双 glue 先建
 
 - 犯过：ts-source-rewrite 把 tsdown 挂进 `build:native` 末尾，但 CI node job
-  里 `build:native` 跑在 `build:wasm` 之前——tsdown dts 生成时 wasm-web glue
+  里 `build:native` 跑在 browser 产物构建之前——tsdown dts 生成时 wasm-web glue
   缺失，`index.browser.d.mts` 的 re-export 动词静默退化为 `any`
   （tsdown 只 warn "Module not found, treating as external"，exit 0 不拦）
-- 规则：CI node job 先 `build:wasm` 再 `build:native`（含 tsdown）——
+- 规则：CI node job 先 `pnpm -C browser build` 再 `build:native`（含 tsdown）——
   tsdown 构建不变式 = 双 glue（napi + wasm-web）均已落 `dist/`
-- 复发检测：可门禁化——CI 审查 node job 步骤顺序（build:wasm 必须先于
+- 复发检测：可门禁化——CI 审查 node job 步骤顺序（`pnpm -C browser build` 必须先于
   build:native）；构建后 grep `dist/index.browser.d.mts` 无 `: any` 即绿
 
 ### LL-036 改完 TS 必跑 typecheck，勿只跑 pnpm check
@@ -245,7 +245,7 @@
   `[\\/]` 同时兼容两种分隔符，禁写裸 `/`；spec 写 regex 同理；
   平台特有形态（路径分隔符、换行、ABI）不得假设跨端一致，本地模拟
   声明"每格已验"时须注明哪些面只有 CI 真跑才能覆盖
-- 复发（2026-11-22，三轮才中）：`test_wasm.sh` 定位插桩 `.ll` 的 grep -rlE
+- 复发（2026-11-22，三轮才中）：`browser/scripts/test.sh` 定位插桩 `.ll` 的 grep -rlE
   匹配不到 Windows → llc 循环零次 → 无 `.o` → llvm-cov no such file；
   ubuntu（正斜杠）过、windows 挂，单 OS 复现不了。**前两轮归因都错**：
   第一轮补 `[\\/]`（误判为分隔符），第二轮去前导引号锚（误判为绝对路径
@@ -401,7 +401,7 @@
 
 ### LL-112 llc target 名须映射 rustc host arch：x86_64→x86-64
 
-- 犯过：`test_wasm.sh` 把 rustc host triple 第一段（`x86_64`，下划线）直接喂
+- 犯过：`browser/scripts/test.sh` 把 rustc host triple 第一段（`x86_64`，下划线）直接喂
   `llc --march`，CI ubuntu/windows（x86_64 host）报 llc invalid target
   x86_64；本机 aarch64 两边同名（aarch64==aarch64）本地全绿，单 OS 模拟复现
   不了（同族 LL-096）
