@@ -72,11 +72,14 @@ operations:
       - apply 全部任务完成后、三轴 review 之前 MUST `pnpm test` 全绿
         （全量测试含四端对拍，先于 review 排除实现断裂）
       - 本次改动若含删除/改名/移动文件或公开符号，apply 收尾（三轴 review
-        之前）MUST 全仓 grep 这些旧标识符（排除 target*/dist/node_modules/
-        .venv/archive），逐条确认活文件引用已同步为现名、零残留，完成记录
-        列出旧名清单；涉及公开概念时顺带扫相关散文描述；纯新增无改名删除
-        移动时记「不适用」。本条是 AGENTS.md「改动波及面必须改全」在 apply
-        期的可执行化（锚点 `旧名清零`）
+        之前）MUST：(1) 从 git diff 列出本次改/移/删的文件与消失的旧标识符
+        清单；(2) 全仓 grep 这些旧标识符（排除 target*/dist/node_modules/
+        .venv/archive），逐条确认活文件引用已同步为现名、零残留；(3) 对清单里
+        每个被改/移/删的文件，grep 全仓 spec 与文档中描述该文件位置/职责的
+        散文（如「住在 core」「导出含 X」），逐条确认已随改动更新——事实陈述
+        变陈旧即死引用，MUST 改。完成记录列出旧名清单与已核对的散文位置；
+        纯新增无改名删除移动时记「不适用」。本条是 AGENTS.md「改动波及面必须
+        改全」在 apply 期的可执行化（锚点 `旧名清零`）
       - apply 收尾（check:outdated 之前）MUST 按 governance spec
         「元规则 review 三轴」对照本 change 工件（proposal/specs/design/
         tasks）审实现 diff，diff 文件集逐文件对上 tasks.md，对不上即越权、
