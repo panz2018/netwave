@@ -63,11 +63,11 @@ for tool in llc llvm-profdata llvm-cov; do
 done
 WASI_SDK_CLANG="$HOME/.local/opt/wasi-sdk/bin/clang"
 if [ ! -x "$WASI_SDK_CLANG" ]; then
-  echo "wasi-sdk clang not found at $WASI_SDK_CLANG — install it with: bash scripts/install_wasi_sdk.sh" >&2
+  echo "wasi-sdk clang not found at $WASI_SDK_CLANG — install it with: bash browser/scripts/install_wasi_sdk.sh" >&2
   exit 1
 fi
 if ! command -v wasm-bindgen >/dev/null 2>&1; then
-  echo "wasm-bindgen not found — install it with: bash scripts/install_wasm_bindgen_cli.sh" >&2
+  echo "wasm-bindgen not found — install it with: bash browser/scripts/install_wasm_bindgen_cli.sh" >&2
   exit 1
 fi
 

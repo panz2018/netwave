@@ -13,7 +13,7 @@
 # release asset name, not assumed, because the tag (wasi-sdk-34) and the file
 # version (34.0) differ.
 #
-# Usage: scripts/install_wasi_sdk.sh
+# Usage: browser/scripts/install_wasi_sdk.sh
 # In CI, the install dir is also appended to $GITHUB_PATH when present.
 set -euo pipefail
 

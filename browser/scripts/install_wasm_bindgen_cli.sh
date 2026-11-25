@@ -17,15 +17,16 @@
 # only when no tarball exists for this platform (dependency-upgrade spec:
 # latest-by-default does not apply here — the crate pin is the ceiling).
 #
-# Usage: scripts/install_wasm_bindgen_cli.sh
+# Usage: browser/scripts/install_wasm_bindgen_cli.sh
 # In CI, the install dir is also appended to $GITHUB_PATH when present.
 set -euo pipefail
 
 say() { echo "[install_wasm_bindgen_cli] $*"; }
 
-# The crate version is the single source of truth for the CLI version.
+# The crate version is the single source of truth for the CLI version. The
+# workspace has a single root Cargo.lock, two levels above this script.
 version=$(sed -n '/^name = "wasm-bindgen"$/{n;s/^version = "\([^"]*\)".*/\1/p;}' \
-  "$(dirname "$0")/../Cargo.lock" | head -1)
+  "$(dirname "$0")/../../Cargo.lock" | head -1)
 if [ -z "$version" ]; then
   echo "could not read wasm-bindgen version from Cargo.lock" >&2
   exit 1

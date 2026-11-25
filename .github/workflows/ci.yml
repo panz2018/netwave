@@ -158,8 +158,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          bash scripts/install_wasi_sdk.sh
-          bash scripts/install_wasm_bindgen_cli.sh
+          bash browser/scripts/install_wasi_sdk.sh
+          bash browser/scripts/install_wasm_bindgen_cli.sh
       - name: browser test entry (build:browser + node unit suite + real browser)
         # Command details live once in browser/scripts/test.sh — the same file
         # local `pnpm test:browser` calls via `pnpm -C browser test` (toolchain
