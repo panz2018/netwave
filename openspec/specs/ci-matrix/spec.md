@@ -242,7 +242,11 @@ browser rust 覆盖率链），且 MUST `set -euo pipefail` 并纳入 `pnpm test
 使本地单命令复现 CI node job 的跨绑定对拍面，且 MUST `set -euo pipefail`。
 该脚本 MUST 承载原 ci.yml node job 内联的全部前置，CI MUST NOT 再保留这段内联前置
 （缩成一行 `bash scripts/run/test_cross.sh`）。本地跑绿 MUST 等价于 CI node job
-同口径通过。脚本 MUST 在 dump 前探测四端产物存在性，缺则行动化报错而非自行构建。
+同口径通过。脚本 MUST 在 dump 前探测四端产物存在性，缺则行动化报错而非自行构建；
+browser 端产物的探测对象 MUST 是 `browser/dist/`（源头构建产物），缺失时提示
+`pnpm -C browser build`，MUST NOT 以 typescript/dist 的发布副本作为探测或消费对象。
+dump MUST 按端拆为两条命令：node 端 `typescript/scripts/dump.node.mjs`、browser 端
+`browser/scripts/dump.mjs`（真浏览器 harness，见 zero-copy-roundtrip spec）。
 
 容差：存在性与退出码闸门，无数值阈值；四端数值容差沿用 `oracle/manifest.json`
 现有定义，本条不新增数值。
@@ -255,9 +259,9 @@ browser rust 覆盖率链），且 MUST `set -euo pipefail` 并纳入 `pnpm test
 
 #### Scenario: cross 入口缺产物报错可行动
 
-- **WHEN** napi 原生产物或 wasm 产物缺失时运行 `pnpm test:cross`
-- **THEN** 脚本在 dump 执行前以非零码退出，stderr 打印 `pnpm test:ts`，
-  不发起构建或网络安装
+- **WHEN** napi 原生产物或 browser 端 wasm 产物缺失时运行 `pnpm test:cross`
+- **THEN** 脚本在 dump 执行前以非零码退出，napi 缺失打印 `pnpm test:ts`、
+  browser 产物缺失打印 `pnpm -C browser build`，不发起构建或网络安装
 
 #### Scenario: cross 本地与 CI 同脚本
 

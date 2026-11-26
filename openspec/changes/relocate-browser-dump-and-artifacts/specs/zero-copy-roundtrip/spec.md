@@ -13,9 +13,9 @@
 `oracle/tmp/<end>/<sample>/<field>.bin`。dump 脚本 MUST 按端自我完整：node 端
 住 `typescript/scripts/dump.node.mjs`，browser 端住 `browser/scripts/dump.mjs`。
 浏览器端 dump MUST 经真浏览器 harness（playwright + Chromium：静态服务器挂
-`browser/dist/` 与 `oracle/samples/`，经 File 上传、真壳 `fromFile`/`toFile`、
-anchor 下载落盘）执行，MUST NOT 以 node 伪造 worker 作用域替代；浏览器路径的
-验收 MUST 在真浏览器完成（不以 node 模拟替代）。scaffold 图案对拍
+`browser/dist/` 与 `oracle/samples/`，经 File 上传喂真壳 `fromFile`、经壳 getter
+`s`/`z0`/`version` 取主数据回传落盘）执行，MUST NOT 以 node 伪造 worker 作用域
+替代；浏览器路径的验收 MUST 在真浏览器完成（不以 node 模拟替代）。scaffold 图案对拍
 （`core.bin`/`python.bin`/`node.bin`/`wasm.bin`，源自 `fill_pattern`）
 不存在，anti-tautology 自检扰分层布局下的 Touchstone S bin。
 

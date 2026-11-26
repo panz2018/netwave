@@ -5,7 +5,7 @@ published package. Cross-binding grading lives in
 [`oracle/compare_cross.py`](../oracle/compare_cross.py). A dump that serves a
 single subproject lives in that subproject's `scripts/`
 (`core/scripts/dump.rs`, `python/scripts/dump.py`,
-`typescript/scripts/dump.mjs`).
+`typescript/scripts/dump.node.mjs`, `browser/scripts/dump.mjs`).
 
 ## Scripts
 

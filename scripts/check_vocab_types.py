@@ -38,7 +38,7 @@ CANONICAL = {
 # not a wasm export, so its members are read from values.generated.d.mts.
 PYI = ROOT / "python" / "netwave" / "_netwave.pyi"
 NODE_DTS = ROOT / "typescript" / "dist" / "index.node.generated.d.mts"
-BROWSER_VALUES = ROOT / "typescript" / "dist" / "values.generated.d.mts"
+BROWSER_VALUES = ROOT / "browser" / "dist" / "values.generated.d.mts"
 
 
 def strip_comments(src: str) -> str:

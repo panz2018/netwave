@@ -1,7 +1,7 @@
 # oracle
 
 Numeric reference and grading for netwave cross-validation. All cross-end
-comparison happens here; each binding (core/python/node/wasm) only dumps its
+comparison happens here; each binding (core/python/node/browser) only dumps its
 own computed results into `tmp/` (gitignored).
 
 ## Layout

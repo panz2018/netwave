@@ -91,8 +91,9 @@ pnpm check:ts             # Biome lint+format (build-free; the tsc type gate
 pnpm fix:ts               # Biome auto-fix
 ```
 
-Cross-binding dump (node + wasm ends; run from the repo root):
+Cross-binding dump (node end; the browser end dumps via `pnpm -C browser dump`;
+run from the repo root):
 
 ```bash
-node typescript/scripts/dump.mjs oracle/tmp
+node typescript/scripts/dump.node.mjs oracle/tmp
 ```

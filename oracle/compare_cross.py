@@ -10,7 +10,8 @@ as 0 and loses the sign bit, making bit-exact comparison impossible.
 
 Rules (oracle-harness / zero-copy-roundtrip specs):
   - the three native ends (core/python/node) match bit-exactly
-  - wasm within relative tolerance < oracle/manifest.json core_tol
+  - browser (the wasm implementation) within relative tolerance <
+    oracle/manifest.json core_tol
   - anti-tautology self-check: every run perturbs an in-memory copy of
     each non-reference end's Touchstone data and requires the comparator to
     detect it (undetected -> fail); .bin files on disk are never modified
@@ -24,7 +25,7 @@ import struct
 import sys
 from pathlib import Path
 
-ENDS = ("core", "python", "node", "wasm")
+ENDS = ("core", "python", "node", "browser")
 # Input samples, as file names under oracle/samples/. The directory name
 # used for dumps is the same name with spaces sanitized to underscores.
 SAMPLES = ("dut.s1p", "dut.s2p", "dut.s4p")
@@ -54,11 +55,11 @@ def compare(ref: list, ends: dict, tol: float):
         for i, (a, b) in enumerate(zip(ref, ends[name], strict=True)):
             if bits(a) != bits(b):
                 return (name, i, f"bit-exact core vs {name} idx {i}: {a!r} vs {b!r}")
-    # wasm: relative tolerance.
-    for i, (a, b) in enumerate(zip(ref, ends["wasm"], strict=True)):
+    # browser (wasm implementation): relative tolerance.
+    for i, (a, b) in enumerate(zip(ref, ends["browser"], strict=True)):
         denom = abs(a) if a != 0 else 1.0
         if abs(a - b) / denom >= tol:
-            return ("wasm", i, f"tol core vs wasm idx {i}: {a!r} vs {b!r}")
+            return ("browser", i, f"tol core vs browser idx {i}: {a!r} vs {b!r}")
     return None
 
 
@@ -73,7 +74,7 @@ def main() -> int:
 
     # λ↔f round-trip axis: each end dumps its
     # f -> wavelength -> f axis; native ends must match core bit-exact,
-    # wasm within tol (the same decision path as the S-matrix compare).
+    # browser within tol (the same decision path as the S-matrix compare).
     freq = {name: load_f64s(root / name / "freq.bin") for name in ENDS}
     if len(freq["core"]) != 3:
         print(f"FAIL: core freq axis {len(freq['core'])} != 3 points")
@@ -82,11 +83,11 @@ def main() -> int:
     if fresult is not None:
         print(f"FAIL freq round-trip: {fresult[2]}")
         return 1
-    print("FREQ ROUND-TRIP PASS: core==python==node bit-exact, wasm within tol")
+    print("FREQ ROUND-TRIP PASS: core==python==node bit-exact, browser within tol")
 
     # Touchstone cross-compare: each end parses the same shared samples and
     # dumps the S master data (interleaved f64) + z0 + version. Native ends
-    # must match core bit-exact, wasm within tol; version is a string
+    # must match core bit-exact, browser within tol; version is a string
     # compared verbatim.
     ts_s = {}
     for sample in SAMPLES:
@@ -112,7 +113,7 @@ def main() -> int:
             print(f"FAIL ts {sample} version: {vers}")
             return 1
         ts_s[sample] = s
-    print("TOUCHSTONE PASS: core==python==node bit-exact, wasm within tol")
+    print("TOUCHSTONE PASS: core==python==node bit-exact, browser within tol")
 
     # Anti-tautology self-check: perturb an in-memory copy of each
     # non-reference end's Touchstone S data at a RANDOM sample and RANDOM
@@ -122,7 +123,7 @@ def main() -> int:
     # elsewhere would mean the perturbation was not what tripped it). core
     # is never a target: tampering the reference is indistinguishable from
     # tampering any native end.
-    for end in ("python", "node", "wasm"):
+    for end in ("python", "node", "browser"):
         sample = random.choice(SAMPLES)
         ref = ts_s[sample]["core"]
         idx = random.randrange(len(ref))

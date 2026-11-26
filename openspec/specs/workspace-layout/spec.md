@@ -179,7 +179,10 @@ core MUST 是纯数学库：源码 MUST NOT 含任何 `wasm_bindgen`/`js_sys`/`w
 依赖或 `browser`/`browser-http`/`cov-drive` feature。句柄表、字符串 dispatch、
 `#[wasm_bindgen(start)]` 注册钩子、browser fetch 后端与绑定测试 MUST 全部住在
 `browser/` crate。browser 对 core 的依赖 MUST 零 feature（仅消费 core 纯数学
-公开 API），使 core 可作为零绑定依赖库独立发布。
+公开 API），使 core 可作为零绑定依赖库独立发布。browser 的跨端 dump 脚本 MUST
+住 `browser/scripts/`；门禁与测试消费 browser 构建产物（wasm glue、worker 壳、
+生成 dts）MUST 从 `browser/dist/` 读取，MUST NOT 依赖 typescript/dist 的发布
+副本——该副本仅在 typescript 打包发布时由复制步骤生成。
 
 #### Scenario: core grep 不到 wasm 符号
 
@@ -202,3 +205,10 @@ core MUST 是纯数学库：源码 MUST NOT 含任何 `wasm_bindgen`/`js_sys`/`w
 - **WHEN** 检查 `browser/src/` 与 `browser/` 测试目录
 - **THEN** 句柄表、frequency/touchstone dispatch、start 钩子、coverage 驱动
   入口与句柄表测试均在 `browser/` 内，core 不再持有
+
+#### Scenario: browser 产物消费读源头目录
+
+- **WHEN** 检查 `scripts/run/test_cross.sh` 探针、`scripts/check_verbs.py`、
+  `scripts/check_vocab_types.py` 引用的 browser 产物路径
+- **THEN** 全部指向 `browser/dist/`，无一处读 typescript/dist 下的 browser
+  产物副本；browser 端 dump 脚本位于 `browser/scripts/`

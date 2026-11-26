@@ -15,8 +15,8 @@ browser 包独立化战役（`extract-browser-package` → `extract-browser-bind
 
 - **BREAKING**（内部脚本位置/命名）：`typescript/scripts/dump.mjs` 拆两端——node(napi)
   段留 typescript 改名 `dump.node.mjs`；browser 段重写为真浏览器 harness（独立
-  playwright 脚本：静态服务器挂 `browser/dist/` + `oracle/samples/` → File 上传 →
-  真壳 `fromFile`/`toFile` → anchor 下载 `saveAs` 落盘），迁至
+  playwright 脚本：静态服务器挂 `browser/dist/` + `oracle/samples/` → File 上传喂
+  真壳 `fromFile` → 壳 getter `s`/`z0`/`version` 取主数据回传落盘），迁至
   `browser/scripts/dump.mjs`（目录内命名不带 wasm/browser）。
 - **BREAKING**（消费路径）：`scripts/run/test_cross.sh` 探针改读 `browser/dist/`
   （wasm glue 缺失提示 `pnpm -C browser build`）；`scripts/check_verbs.py`、
@@ -117,8 +117,8 @@ browser 包独立化战役（`extract-browser-package` → `extract-browser-bind
 - `dump拆分`：node 段留 typescript 改名 `dump.node.mjs`；browser 段迁
   `browser/scripts/dump.mjs`，命名去 wasm/browser。
 - `真harness`：browser 段重写为独立 playwright 脚本（静态服务器挂 dist/+samples/
-  → File 上传 → 真壳 fromFile/toFile → anchor 下载 saveAs）；实证失败退路
-  `file.arrayBuffer()` 经 evaluate 回传。
+  → File 上传喂真壳 fromFile → 壳 getter s/z0/version 取主数据经 evaluate 回传落盘）；
+  取数走 getter，不依赖未落地的 to_file/writeFile 文本导出路径。
 - `端名`：oracle 端标识 `wasm` → `browser`（ENDS、答卷目录名、manifest note、
   README）；真技术名保留。
 - `答卷`：dump 答卷仍落 `oracle/tmp/browser/`——oracle 阅卷材料，非 browser 包

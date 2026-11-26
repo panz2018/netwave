@@ -5,6 +5,6 @@
     "status": "placeholder",
     "relative": 1e-12,
     "python_relative": 0.0,
-    "note": "wasm 跨实现相对容差占位；测试基础设施中按 benchmark 正式化。python_relative=0：同一块内存读回，逐 bit 相等。"
+    "note": "browser（wasm 实现）跨实现相对容差占位；测试基础设施中按 benchmark 正式化。python_relative=0：同一块内存读回，逐 bit 相等。"
   }
 }

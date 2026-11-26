@@ -88,7 +88,7 @@ FORBIDDEN = {"free", "release", "writeTouchstone"}
 
 PYI = ROOT / "python" / "netwave" / "_netwave.pyi"
 NODE_DTS = ROOT / "typescript" / "dist" / "index.node.generated.d.mts"
-BROWSER_DTS = ROOT / "typescript" / "dist" / "index.browser.d.mts"
+BROWSER_DTS = ROOT / "browser" / "dist" / "index.browser.d.mts"
 # The wasm glue is the raw wasm-bindgen output: the single generic `call` is
 # the ONLY dispatch entry, plus the `register_resources` start hook (a
 # registration entry, not a verb — wasm-bindgen exports the `start` fn by name
@@ -96,7 +96,7 @@ BROWSER_DTS = ROOT / "typescript" / "dist" / "index.browser.d.mts"
 # `FrequencyUnit`/`WavelengthUnit` enums cross to the browser as build-time
 # generated values (values.generated.mjs), never as wasm exports. Any per-verb
 # `#[wasm_bindgen]` export reappearing here is the relapse this pin detects.
-WASM_GLUE_DTS = ROOT / "typescript" / "dist" / "wasm" / "netwave_browser.d.ts"
+WASM_GLUE_DTS = ROOT / "browser" / "dist" / "wasm" / "netwave_browser.d.ts"
 WASM_GLUE_EXPORTS = {"call", "register_resources"}
 # The build-time generated values file: the shared constants plus the two
 # vocabulary enums (member name -> declaration-order ordinal).

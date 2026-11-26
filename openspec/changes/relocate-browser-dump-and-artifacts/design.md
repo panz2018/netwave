@@ -18,13 +18,14 @@
 3. **λ↔f 轴**：壳 API `Frequency.fromF → wavelength → fromWavelength → f`，
    结果经 `page.evaluate` 回传 node，写 `<out>/browser/freq.bin`。
 4. **Touchstone**：node 读样本字节 → `page.evaluate` 内构造 `File` →
-   `Touchstone.fromFile`（真文件入口，覆盖浏览器 I/O 路径）→ `toFile` 返回
-   `{filename, bytes}`（已定 I/O 契约）→ 字节经 evaluate 回传 node 落盘
-   `<out>/browser/<sample>/{s.bin,z0.bin,version.txt}`。
-5. **落盘方式**：首选 anchor 点击下载 + `download.saveAs`（Plan 已定方向）；
-   **实施第一步先实证** headless shell 的 download 事件 + saveAs 可用；失败即切
-   退路——`toFile` 的 bytes 直接经 `page.evaluate` 返回（仅换字节回传方式，
-   计算路径不变）。两版共用 1-4 步。
+   `Touchstone.fromFile`（真文件入口，覆盖浏览器 I/O 路径）→ 经壳 getter
+   `ts.s`/`ts.z0`/`ts.version()` 取交错 f64 主数据、z0、版本串，经
+   `page.evaluate` 回传 node 落盘 `<out>/browser/<sample>/{s.bin,z0.bin,version.txt}`。
+   取数走 getter（历来 dump 正解），MUST NOT 依赖尚未落地的 `to_file`/`writeFile`
+   文本导出路径——dump 要的是核心主数据，非渲染文本。
+5. **取数回传**：结构化字段经 `page.evaluate` 直接回传 node 落盘。1.1 spike 已实证
+   "静态服务器 + 真壳 + File 上传 + anchor 下载 saveAs"通路可用（结论留 tasks 1.1
+   打勾），但 dump 取字段用 getter，不走 anchor 下载；`to_file` 落地属另一条延后线。
 
 ## 端名改名面（wasm → browser）
 
