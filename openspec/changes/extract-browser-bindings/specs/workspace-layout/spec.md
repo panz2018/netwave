@@ -28,5 +28,5 @@ core MUST 是纯数学库：源码 MUST NOT 含任何 `wasm_bindgen`/`js_sys`/`w
 #### Scenario: 句柄表与绑定测试住 browser
 
 - **WHEN** 检查 `browser/src/` 与 `browser/` 测试目录
-- **THEN** 句柄表、frequency/touchstone dispatch、start 钩子、cov-drive 驱动
+- **THEN** 句柄表、frequency/touchstone dispatch、start 钩子、coverage 驱动
   入口与句柄表测试均在 `browser/` 内，core 不再持有

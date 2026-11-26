@@ -395,9 +395,9 @@ python 的 maturin 不带 `--target`，对象落 host `target/debug`，report �
 core 报告、胶水行归胶水报告，互不重复计分；绑定 crate 由 show-env/report
 外部驱动采集度量。browser crate（netwave-browser）的 rust 行覆盖率 MUST 以 minicov runtime +
 `RUSTC_BOOTSTRAP=1` 解锁 `-Zno-profiler-runtime` 在钉死 stable 上编插桩 wasm，
-由真浏览器 job（chromium Worker）采集——core 的 fetch 后端仅在真实浏览器
-global scope 上解析，node harness 的 fakeSelf 恒落「无 fetch 能力 scope」臂，
-故这些行 MUST NOT 由 node 驱动 vitest 采集（采不到即漏分母）：minicov 的
+由真浏览器 job（chromium Worker）采集——browser crate 的 fetch 后端把 global
+scope 做成参数注入，生产传真实 global、测试传无 fetch 能力的假 scope，故
+「无 fetch 能力 scope」臂 MUST 由单元测试驱动命中（不再真不可达）：minicov 的
 wasm32 C runtime MUST 由能编 wasm32 的 clang（wasi-sdk 自带，`CC` 指向
 `browser/scripts/install_wasi_sdk.sh` 装到 `~/.local` 的 clang）编译（gcc 无 wasm32
 后端），插桩构建走独立 target dir（不覆盖生产 `build` 产物），dump 导出
@@ -409,12 +409,12 @@ MUST 用 `llvm-profdata merge` 加 `-sparse`，合并后以 `llc` 把 `.ll`（�
 `--emit=llvm-ir` 产出）编成宿主对象文件，再调 `llvm-cov export --format=lcov`
 （llvm-cov 读不了 wasm 符号，故须先 `llc` 编宿主 `.o`；llvm-cov 无 `--codecov`
 flag，那是 cargo-llvm-cov 的，散装 `.o` 无独立 codecov 入口）。报告 MUST 度量
-core browser-gated 代码，以 `--ignore-filename-regex` 剔除 `.cargo/registry`
-第三方后独立阅卷，落 `coverage/coverage-browser.lcov` 并以
-`scripts/coverage_gate.py ... 99` 阅卷（该脚本 MUST 支持 lcov tracefile 输入，
-把每条 `DA:<行>,<命中>` 视作 OR 合并后的行级命中；浏览器端 rust 地板为 99 而非
-100——fetch「无 fetch-capable scope」臂读 `js_sys::global()` 真实全局、无参数
-注入点，任何测试或 mock 均不可达）。
+browser crate 的绑定代码（句柄表、dispatch、fetch），以 `--ignore-filename-regex`
+剔除 `.cargo/registry` 第三方后独立阅卷，落 `coverage/coverage-browser.lcov` 并以
+`scripts/coverage_gate.py ... 100` 阅卷（该脚本 MUST 支持 lcov tracefile 输入，
+把每条 `DA:<行>,<命中>` 视作 OR 合并后的行级命中；浏览器端 rust 地板为 100，
+与其他链同地板——fetch「无 fetch-capable scope」臂经 global 参数注入消解后
+可被单元测试命中，不再是地板降到 99 的理由）。
 浏览器端 rust 覆盖率链前后 MUST 各执行 `clean_stray_profraw.py`。浏览器端 rust
 覆盖率 MUST 仅在真浏览器 job 单采（node matrix 格的浏览器套件维持 TS-only v8，不产
 浏览器 lcov）。浏览器端 TS 层 vitest 100% 门槛不变。
@@ -446,24 +446,24 @@ core browser-gated 代码，以 `--ignore-filename-regex` 剔除 `.cargo/registr
 
 #### Scenario: wasm browser-gated 代码未测即红
 
-- **WHEN** `core/src/` 中 `#[cfg(feature = "browser")]` 门控的
-  `#[wasm_bindgen]` 代码新增一行未被真浏览器 wasm 套件任何用例执行
+- **WHEN** `browser/src/` 的句柄表/dispatch/fetch 代码新增一行未被真浏览器
+  wasm 套件或单元测试任何用例执行
 - **THEN** `coverage_gate.py` 对 `coverage/coverage-browser.lcov` 阅卷失败
   （exit ≠ 0），PR 不可合并
 
 #### Scenario: wasm 覆盖率报告须含 core browser 路径且命中大于零
 
 - **WHEN** 生成 `coverage/coverage-browser.lcov`
-- **THEN** 报告 MUST 含 `core/src/` 路径行且命中数 > 0（仅命令 exit 0
+- **THEN** 报告 MUST 含 `browser/src/` 路径行且命中数 > 0（仅命令 exit 0
   不算通，LL-093）；缺目标路径行或全零命中即判链未生效、阅卷失败
 
 #### Scenario: wasm 豁免须先经人工确认清单
 
-- **WHEN** `coverage/coverage-browser.lcov` 出现未达 99% 地板的行
+- **WHEN** `coverage/coverage-browser.lcov` 出现未达 100% 地板的行
 - **THEN** MUST NOT 直接豁免；先列「真不可达」候选清单（逐条附文件+行号+
-  不可达理由）交人工确认，确认后方可按 stable 通道标注豁免或计入 99 地板
-  容差；未确认者 MUST 补单元测试至达标（fetch「无 fetch-capable scope」臂
-  经人工确认属真不可达，是 99 地板的由来）
+  不可达理由）交人工确认，确认后方可按 stable 通道标注豁免；未确认者 MUST
+  补单元测试至达标（fetch「无 fetch-capable scope」臂经 global 参数注入后
+  MUST 由单元测试命中，不再计入地板容差）
 
 #### Scenario: 生产 wasm 产物不含覆盖率导出
 

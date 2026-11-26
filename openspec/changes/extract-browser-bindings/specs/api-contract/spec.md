@@ -36,14 +36,13 @@ MUST 维持单常驻 worker 拓扑；多 worker 分桶 MUST 推迟到绑定高�
 - **THEN** 发出的消息是 `{handle:"touchstone", method:"fromData", args:[...]}`
 - **AND** 协议中不存在以 `handle==0` 等哨兵值表达构造的形态
 
-#### Scenario: wasm 导出面恰为 call + 常量枚举
+#### Scenario: wasm 导出面恰为 call + 注册钩子
 
 - **WHEN** 解析 wasm glue `.d.ts` 的顶层导出集合
 - **THEN** 导出恰为 `call` + `register_resources`（+ wasm-pack 生成的 init/默认
   导出；`register_resources` 是 `#[wasm_bindgen(start)]` 注册钩子，wasm-bindgen
   无视 Rust 可见性必按名导出——它是注册入口不是动词，钉死的本意是"无逐动词
-  入口"；`FrequencyUnit`/`WavelengthUnit` 不再由 wasm glue 导出，改由构建期
-  生成物提供）
+  入口"；`FrequencyUnit`/`WavelengthUnit` 由构建期生成物提供，不经 wasm glue）
 - **AND** 无任何逐动词入口（`touchstone_from_data`/`frequency_npoints` 等）
 - **AND** 无任何自由函数直导出（`frequency_units`/`live_count` 经命名空间路由）
 - **AND** `check_verbs.py` 钉死该集合，多一个少一个即红
