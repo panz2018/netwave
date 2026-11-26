@@ -13,11 +13,12 @@
 // linter's "unused" is a false positive here — the reference is the test.
 /** biome-ignore-all lint/correctness/noUnusedVariables: GC-root variable, write-only by design */
 import { beforeAll, describe, expect, it } from "vitest";
-// FrequencyUnit is a plain numeric-constant object in the glue; importing it
-// never instantiates wasm and never touches Worker (ironclad rule 8), so it
-// is safe at module-eval time — unlike the shell, whose top level builds the
-// worker (imported dynamically below, after the harness installs a fake).
-import { FrequencyUnit } from "../../dist/wasm/netwave_browser.js";
+// FrequencyUnit is a plain numeric-constant object in the build-time generated
+// values; importing it never instantiates wasm and never touches Worker
+// (ironclad rule 8), so it is safe at module-eval time — unlike the shell,
+// whose top level builds the worker (imported dynamically below, after the
+// harness installs a fake).
+import { FrequencyUnit } from "../../dist/values.generated.mjs";
 import type { Frequency } from "../../src/index.browser.ts";
 import { type Harness, installResidentWorkerHarness } from "./harness.ts";
 

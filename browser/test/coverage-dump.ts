@@ -48,15 +48,19 @@ export function dumpCoverage(
  * global at call time (`arg0.fetch(...)` in the glue), so replacing it here is
  * observed by wasm. `reject` makes `Response.text()` reject (the text-await
  * error arm); `nonstring` resolves it to a number (the non-utf8 arm — Rust's
- * `as_string()` yields None). Coverage-chain only: production never calls it. */
-export function installFetchStub(mode: "textthrow" | "reject" | "nonstring"): void {
+ * `as_string()` yields None); `invalid` resolves a string that is not valid
+ * Touchstone (the parse-error arm — core's `from_text` rejects it). Coverage-chain
+ * only: production never calls it. */
+export function installFetchStub(mode: "textthrow" | "reject" | "nonstring" | "invalid"): void {
   const scope = globalThis as unknown as { fetch: typeof fetch };
   // web_sys maps a synchronous throw from `text()` to Rust `Err` (the
   // `resp.text().map_err` arm); a rejected Promise maps to the await error
-  // arm; a non-string resolve makes Rust `as_string()` yield None (non-utf8).
+  // arm; a non-string resolve makes Rust `as_string()` yield None (non-utf8);
+  // an invalid Touchstone string makes core's `from_text` reject (parse arm).
   const text = () => {
     if (mode === "textthrow") throw new Error("stub text throw");
     if (mode === "reject") return Promise.reject(new Error("stub text reject"));
+    if (mode === "invalid") return Promise.resolve("not a touchstone file");
     return Promise.resolve(12345);
   };
   scope.fetch = (() => Promise.resolve({ ok: true, status: 200, text })) as unknown as typeof fetch;

@@ -56,8 +56,9 @@ export type ControlRequest =
  * `textthrow` makes `Response.text()` throw synchronously (drives the
  * `resp.text().map_err` arm); `reject` makes it return a rejected Promise
  * (drives the await error arm); `nonstring` resolves it to a non-string
- * (drives the non-utf8 arm). */
-export type FetchStubMode = "textthrow" | "reject" | "nonstring";
+ * (drives the non-utf8 arm); `invalid` resolves a string that is not valid
+ * Touchstone (drives the parse-error arm in `fromUrl`). */
+export type FetchStubMode = "textthrow" | "reject" | "nonstring" | "invalid";
 
 /** Coverage-chain reply payload: the raw profraw bytes (structuredClone
  * carries them across the worker boundary; the base64 encoding is only for

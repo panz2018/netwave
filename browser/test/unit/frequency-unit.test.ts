@@ -36,4 +36,14 @@ describe("browser frequency unit vocabulary", () => {
     // carries the real member set, not `any`).
     expect(m.FrequencyUnit.Hzz).toBeUndefined();
   });
+
+  it("FrequencyUnit ordinals equal core from_ordinal (declaration order)", async () => {
+    const m = await import("../../src/index.browser.ts");
+    // core's `from_ordinal` is `iter().nth(i)`, so a unit's ordinal IS its
+    // declaration index. The generated object must assign each name that same
+    // index, or the worker would decode a unit to the wrong variant.
+    CANONICAL.forEach((name, ordinal) => {
+      expect(m.FrequencyUnit[name as keyof typeof m.FrequencyUnit]).toBe(ordinal);
+    });
+  });
 });

@@ -13,7 +13,9 @@ beforeAll(async () => {
 });
 
 /** Ask the resident worker to install a fetch stub and await its ack. */
-async function stubWorkerFetch(mode: "textthrow" | "reject" | "nonstring"): Promise<void> {
+async function stubWorkerFetch(
+  mode: "textthrow" | "reject" | "nonstring" | "invalid",
+): Promise<void> {
   const w = (globalThis as unknown as { __netwaveWorker?: Worker }).__netwaveWorker;
   if (!w) throw new Error("shell did not register the singleton worker");
   await new Promise<void>((resolve) => {
@@ -49,5 +51,14 @@ describe("real browser: fetch error arms", () => {
     await stubWorkerFetch("nonstring");
     const url = new URL("/test/fixtures/filter.s1p", location.href).href;
     await expect(m.Touchstone.fromUrl(url)).rejects.toThrow(/fetch failed/);
+  });
+
+  it("a fetched body that is not valid Touchstone rejects at parse", async () => {
+    const m = await import("../../src/index.browser.ts");
+    // The fetch resolves OK with a non-Touchstone string, so the parse arm in
+    // `fromUrl` (core's `from_text` rejecting the body) is what surfaces.
+    await stubWorkerFetch("invalid");
+    const url = new URL("/test/fixtures/filter.s1p", location.href).href;
+    await expect(m.Touchstone.fromUrl(url)).rejects.toThrow();
   });
 });

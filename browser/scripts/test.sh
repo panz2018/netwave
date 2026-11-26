@@ -84,7 +84,7 @@ pnpm -C browser build
 # node harness's global() is a fakeSelf, so fetch arms never fire there).
 pnpm -C browser test:unit
 
-# Wasm rust coverage chain (browser-driven): measures core's browser-gated code
+# Wasm rust coverage chain (browser-driven): measures the browser glue crate
 # under the wasm target in a REAL browser. The fetch backends (web_sys::fetch on
 # Window/WorkerGlobalScope) only resolve against a real browser global scope —
 # the node harness's fakeSelf hits the "no fetch-capable scope" arm instead, so
@@ -97,7 +97,7 @@ pnpm -C browser test:unit
 # is the lcov report (LL-093: a broken chain shows 0 hits, not a missing profraw).
 # Floor 100: unmet lines are listed for human triage, never silently exempted.
 # The ignore regex drops third-party crates so the denominator is netwave's own
-# core/src only.
+# browser/src glue only (core's lines are graded by the native coverage chain).
 WASM_COV_DIR="$PWD/browser/target-wasm-cov"
 mkdir -p "$WASM_COV_DIR/profraw" coverage
 # Start the dump dir empty: the merge below globs profraw/*.profraw, so a stale
@@ -128,18 +128,20 @@ NETWAVE_WASM_DIR="$PWD/browser/dist/wasm-cov" \
 # never runs the x86 cell cannot catch this (LL-096).
 HOST_ARCH="$(rustc -vV | sed -n 's/^host: //p' | cut -d- -f1)"
 case "$HOST_ARCH" in x86_64) HOST_ARCH="x86-64" ;; esac
-# Locate the instrumented core CGU .ll by its source mapping, not its hash name.
-# The path separator inside the .ll debug info differs per host: Linux writes a
-# single forward slash (core/src/...), Windows escapes backslashes in the LLVM
-# string literal so the file bytes are core\\src\\... (double backslash). Match
-# ONE-OR-MORE separators ([\\/]+) so every form works without guessing which the
-# host emits — a single-separator class silently matches zero files on Windows,
-# yielding no .o and a cryptic llvm-cov "no such file" (LL-096, three-round fix).
-COV_LL="$(grep -rlE 'core[\\/]+src[\\/]+(frequency|resources|touchstone)\.rs' \
+# Locate the instrumented browser CGU .ll by its source mapping, not its hash
+# name. The path separator inside the .ll debug info differs per host: Linux
+# writes a single forward slash (browser/src/...), Windows escapes backslashes in
+# the LLVM string literal so the file bytes are browser\\src\\... (double
+# backslash). Match ONE-OR-MORE separators ([\\/]+) so every form works without
+# guessing which the host emits — a single-separator class silently matches zero
+# files on Windows, yielding no .o and a cryptic llvm-cov "no such file" (LL-096,
+# three-round fix). Only the browser glue CGUs are graded here; core's lines are
+# covered by the native chain, so its .ll files stay out of this denominator.
+COV_LL="$(grep -rlE 'browser[\\/]+src[\\/]+(lib|resources|frequency_glue|touchstone_glue)\.rs' \
   "$WASM_COV_DIR" --include='*.ll')"
 if [ -z "$COV_LL" ]; then
-  echo "no instrumented core .ll matched under $WASM_COV_DIR — coverage chain broken" >&2
-  echo "(expected core/src/{frequency,resources,touchstone}.rs source mappings in .ll)" >&2
+  echo "no instrumented browser .ll matched under $WASM_COV_DIR — coverage chain broken" >&2
+  echo "(expected browser/src/{lib,resources,frequency_glue,touchstone_glue}.rs source mappings in .ll)" >&2
   exit 1
 fi
 i=0
@@ -156,10 +158,11 @@ done <<< "$COV_LL"
 "$LLVM_BIN/llvm-cov" export --format=lcov "$WASM_COV_DIR"/cgu*.o \
   -instr-profile="$WASM_COV_DIR/merged.profdata" \
   --ignore-filename-regex='\.cargo[\\/]+registry' > coverage/coverage-browser.lcov
-# Floor 99 (not 100): the fetch "no fetch-capable scope" arm reads
-# js_sys::global() with no injection point, so it is unreachable by any test or
-# mock (decision wasm地板99). All other chains keep a 100 floor.
-python3 scripts/coverage_gate.py coverage/coverage-browser.lcov 99
+# Floor 100: the fetch "no fetch-capable scope" arm now takes the global as a
+# parameter (resolve_fetch_scope), so the coverage driver reaches it by passing a
+# non-scope global — no arm is unreachable, so the floor is 100 like every other
+# chain (decision wasm地板100).
+python3 scripts/coverage_gate.py coverage/coverage-browser.lcov 100
 
 # Production browser suite (TS-only v8 coverage, 100% threshold): the chain run
 # above disables v8 (the instrumented dispatch branch skips the production
