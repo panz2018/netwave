@@ -382,3 +382,22 @@
   （如 `引用归位` 行须含 git diff --name-status HEAD 报出的每个 R/D 文件路径）
 - 复发检测：某 apply 步骤被跳过而门禁仍绿，即本条复发——查该步是否与其他步
   共用锚点；新写 guidance 时一个 `（锚点 X）` 覆盖多种独立失败即打回
+
+### LL-115 新增文件后没重跑全量 pnpm check 就连提多个 commit，带病推上远端
+
+- 犯过：`f0465d6`（browser dump 归位）新增 `browser/scripts/dump.mjs` 与
+  `browser/vitest.e2e.config.ts`，带 biome error（未用导入、import 未排序）
+  连提多个 commit 推远端，CI run #235 lint job 红（`pnpm check` → `check:ts`
+  退出码 1）；同轮排查又暴露 `check:py` 覆盖率回归（被 biome 先红短路掩盖）
+- 根因：AGENTS.md「闸门自动执行」规定提交前必跑 `pnpm check`，但全靠 agent
+  自觉；新增文件后未重跑即提交，与 LL-036/LL-102 同族（改完没跑对应闸门），
+  告示式纪律已复发三次拦不住
+- 规则：提交前必跑全量 `pnpm check`（不只改动的子集）；本仓已由版本化
+  `.githooks/pre-commit` 强制——它原样调 `pnpm check`，失败即拦下提交，
+  经根 `package.json` 的 `prepare` 脚本随 `pnpm install` 自动装
+  （`git config core.hooksPath .githooks`）。钩子只拦不修、不动暂存区；
+  `git commit -n` 可绕但 CI lint job 同口径兜底。biome warn 级诊断经
+  `check:ts` 的 `--error-on-warnings` 一并阻断，消除"编辑器报警、闸门放行"分裂
+- 复发检测：CI lint job 因 `pnpm check` 子命令红而 FAIL，即本条复发——查该
+  提交是否绕过钩子（`-n`）或钩子未装（`git config core.hooksPath` 为空）；
+  新机器/新 agent 环境首次提交前核对 hooksPath 指向 `.githooks`

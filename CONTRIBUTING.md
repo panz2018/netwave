@@ -26,7 +26,12 @@ Plan/         Unexecuted planning docs only; lifecycle rules live in
 
 - **Lint/format/type**: `pnpm check` (md + ts + rs + py), auto-fix
   `pnpm fix`. Root `package.json` scripts are the single source of truth
-  for command details — never restate them elsewhere.
+  for command details — never restate them elsewhere. A versioned
+  `.githooks/pre-commit` runs `pnpm check` before each commit and blocks on
+  failure; it is installed automatically by the root `package.json` `prepare`
+  script on `pnpm install` (sets `core.hooksPath`). It only blocks — never
+  auto-fixes. `git commit -n` bypasses it, but the CI lint job runs the same
+  `pnpm check` and still fails a broken tree.
 - **Coverage floor**: thresholds are defined in the ci-matrix and
   project-governance specs (iron rule 7). Core rust is measured by
   `cargo llvm-cov -p netwave` on every native platform; the python and
