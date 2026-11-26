@@ -2,7 +2,7 @@
 // package's already-built dist artifacts into this package's dist/ so the
 // published `netwave` package is self-contained (single npm package, exports
 // conditions select node vs browser). The browser package owns and builds every
-// browser artifact (shell, standalone, worker, wasm binary + glue, constants,
+// browser artifact (shell, standalone, worker, wasm binary + glue, values,
 // dts); this step only copies — it never rebuilds or rewrites them. The public
 // dts hubs (index.d.ts / index.d.mts) are emitted by publish_shell, so the
 // browser package's own index.d.ts hub is not copied here.
@@ -22,8 +22,8 @@ const files = [
   "index.browser.d.mts",
   "standalone.js",
   "netwave.worker.js",
-  "constants.generated.mjs",
-  "constants.generated.d.mts",
+  "values.generated.mjs",
+  "values.generated.d.mts",
 ];
 
 for (const name of files) {

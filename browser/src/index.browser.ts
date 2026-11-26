@@ -14,19 +14,19 @@
 // Singleton: `getWorker()` registers the worker on `globalThis`, so
 // multiple imports, multiple shells, or even duplicate library copies on
 // one page structurally share ONE worker (never a second one).
-// `FrequencyUnit` is re-exported straight from the glue: it is a plain JS
-// numeric-constant object, so importing it never instantiates wasm
-// (ironclad rule 8 holds — only worker commands touch wasm).
+// `FrequencyUnit`/`WavelengthUnit` are re-exported straight from the build-time
+// generated values: they are plain JS numeric-constant objects, so importing
+// them never instantiates wasm (ironclad rule 8 holds — only worker commands
+// touch wasm).
 // `frequencyUnits()`/`liveCount()` DO run wasm, so they go through the
 // worker's `"frequency"` namespace like every other verb — the list is
 // built in Rust, the shell never derives it.
 
-import { SPEED_OF_LIGHT } from "../dist/constants.generated.mjs";
 import type {
   FrequencyUnit as FrequencyUnitType,
   WavelengthUnit as WavelengthUnitType,
-} from "../dist/wasm/netwave_browser.js";
-import { FrequencyUnit, WavelengthUnit } from "../dist/wasm/netwave_browser.js";
+} from "../dist/values.generated.mjs";
+import { FrequencyUnit, SPEED_OF_LIGHT, WavelengthUnit } from "../dist/values.generated.mjs";
 import type { Handle, WorkerRequest, WorkerResponse } from "./types.js";
 
 export { FrequencyUnit, SPEED_OF_LIGHT, WavelengthUnit };

@@ -1,12 +1,12 @@
 // tsdown config: compiles the browser shells in src/ into dist/ (ESM + dts).
-// The generated wasm-pack glue and constants are never bundled — they are
+// The generated wasm-pack glue and values are never bundled — they are
 // build artifacts of the Rust pipeline and stay external. publish_shell.mjs
 // rewrites the "../dist/" glue specifiers to "./" after this build.
 import { defineConfig } from "tsdown";
 
 // Relative specifiers of the generated glue (kept external).
 const glue = (id: string) =>
-  id.includes("constants.generated") || id.includes("wasm/netwave_browser.js");
+  id.includes("values.generated") || id.includes("wasm/netwave_browser.js");
 
 export default defineConfig([
   {

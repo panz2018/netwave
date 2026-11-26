@@ -18,15 +18,15 @@
     "./worker": "./dist/netwave.worker.js"
   },
   "scripts": {
-    "build": "pnpm gen:constants && cross-env CARGO_TARGET_DIR=./target-wasm wasm-pack build --target web --out-dir dist/wasm && tsdown && node scripts/publish_shell.mjs",
-    "gen:constants": "node scripts/gen_constants.mjs",
+    "build": "pnpm gen:values && cross-env CARGO_TARGET_DIR=./target-wasm wasm-pack build --target web --out-dir dist/wasm && tsdown && node scripts/publish_shell.mjs",
+    "gen:values": "node scripts/gen_values.mjs",
     "test": "bash scripts/test.sh",
     "typecheck": "tsc --noEmit",
     "test:unit": "vitest run --config vitest.unit.config.ts --coverage",
     "test:e2e": "vitest run --config vitest.e2e.config.ts --coverage"
   },
   "devDependencies": {
-    "@types/node": "^26.6.6",
+    "@types/node": "^26.6.7",
     "@vitest/browser": "^5.1.1",
     "@vitest/browser-playwright": "5.1.1",
     "@vitest/coverage-v8": "^5.1.1",
