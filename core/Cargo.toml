@@ -19,38 +19,24 @@ thiserror = "2"
 pyo3 = { version = "0.30", features = ["abi3-py310"], optional = true }
 napi = { version = "3", features = ["napi9"], optional = true }
 napi-derive = { version = "3", optional = true }
-wasm-bindgen = { version = "0.2", optional = true }
-# The generic dispatch entry unpacks Float64Array arguments from JsValue.
-js-sys = { version = "0.3", optional = true }
 pyo3-stub-gen = { version = "0.23", optional = true }
-# from_url backends, cfg-gated by target so the wasm artifact never links
-# reqwest (CI asserts the wasm32 dependency tree).
+# from_url backend, cfg-gated by target so the wasm artifact never links reqwest
+# (CI asserts the wasm32 dependency tree). The browser reaches from_url through
+# its own fetch glue and calls core's from_text, so core has no wasm HTTP path.
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 reqwest = { version = "0.13", default-features = false, features = ["rustls"], optional = true }
 tokio = { version = "1", optional = true }
-[target.'cfg(target_arch = "wasm32")'.dependencies]
-web-sys = { version = "0.3", features = ["Window", "WorkerGlobalScope", "Response", "Request", "RequestInit", "Headers"], optional = true }
-wasm-bindgen-futures = { version = "0.4", optional = true }
 
 [features]
 python = ["dep:pyo3"]
 node = ["dep:napi", "dep:napi-derive"]
-browser = ["dep:wasm-bindgen", "dep:js-sys"]
 # Native HTTP for from_url (reqwest + rustls, no system OpenSSL).
 native-http = ["dep:reqwest", "dep:tokio"]
-# Browser HTTP for from_url (fetch on the global scope, wasm target only;
-# js-sys reads the global, which is a WorkerGlobalScope inside the worker).
-browser-http = ["dep:web-sys", "dep:wasm-bindgen-futures", "dep:js-sys"]
 # Test-only: httpmock server for from_url unit tests (native).
 test-http = ["native-http"]
 # Stub annotations ride the same items as the pyclass/pyfunction attributes,
 # so enabling stub generation implies the python binding attributes.
 pyo3-stub-gen = ["python", "dep:pyo3-stub-gen"]
-# Coverage-chain driver entry (wasm rust coverage only): compiles a pub fn
-# that reaches the private convert_to_s/s_to_domain dispatch-violation arms,
-# which no public API can trigger. Enabled transitively by the wasm glue's
-# `coverage` feature; production builds exclude it.
-cov-drive = []
 
 [lints.rust]
 # cargo-llvm-cov auto-sets cfg(coverage); the binding attributes gate on

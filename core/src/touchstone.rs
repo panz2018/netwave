@@ -21,14 +21,6 @@ use std::sync::Arc;
 use num_complex::Complex64;
 use strum::{AsRefStr, EnumIter};
 
-// Browser dispatch (cfg=browser): the worker forwards `{handle, method,
-// args}` to the single generic `resources::call`; this module owns the
-// name→function `match`es (Rust has no reflection — the arm list IS the
-// method table). Adding a method = one arm here; `resources.rs`, the
-// worker, the shells and `types.ts` never change.
-#[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
-use wasm_bindgen::prelude::*;
-
 /// Re-exported so callers can invoke `iter()` without adding a direct
 /// `strum` dependency (the trait must be in scope for method call syntax).
 pub use strum::IntoEnumIterator;
@@ -479,14 +471,11 @@ impl Touchstone {
     }
 
     /// Fetch Touchstone text over HTTP and parse it via [`Touchstone::from_text`].
-    /// The I/O backend is selected inside core by target (iron rule 11):
-    /// native uses reqwest (rustls), browser uses `web_sys::fetch` — the
-    /// wasm artifact never links reqwest. The URL's last path segment feeds
-    /// the name pipeline (nports inference + stem).
-    #[cfg(any(
-        all(not(target_arch = "wasm32"), feature = "native-http"),
-        all(target_arch = "wasm32", feature = "browser-http")
-    ))]
+    /// Native-only: the I/O backend is reqwest (rustls). The browser reaches
+    /// `from_url` through its own fetch glue and calls [`Touchstone::from_text`]
+    /// with the fetched body, so core never links a wasm HTTP stack. The URL's
+    /// last path segment feeds the name pipeline (nports inference + stem).
+    #[cfg(all(not(target_arch = "wasm32"), feature = "native-http"))]
     pub async fn from_url(url: &str) -> Result<Self, TouchstoneError> {
         let text = Self::fetch_text(url).await?;
         let path = Self::url_filename(url);
@@ -497,13 +486,10 @@ impl Touchstone {
     /// `https://host/d/filter.s1p?v=2` still names `filter` / infers 1,
     /// then take the last path segment. A bare path (`/`) or empty URL has
     /// no filename — `None`, so nports cannot be inferred from it.
-    // Same cfg as its only caller `from_url`: without an HTTP backend there
-    // is no URL to name, so the helper is dead code in the default build.
-    #[cfg(any(
-        all(not(target_arch = "wasm32"), feature = "native-http"),
-        all(target_arch = "wasm32", feature = "browser-http")
-    ))]
-    fn url_filename(url: &str) -> Option<String> {
+    ///
+    /// Pure string logic with no I/O, so it is public and unconditional: both
+    /// core's native `from_url` and the browser fetch glue reuse it.
+    pub fn url_filename(url: &str) -> Option<String> {
         let clean = url.split(['?', '#']).next().unwrap_or(url);
         let name = Self::filename_from_path(clean);
         if name.is_empty() { None } else { Some(name) }
@@ -528,55 +514,6 @@ impl Touchstone {
         resp.text().await.map_err(|e| TouchstoneError::Fetch {
             url: url.to_owned(),
             reason: e.to_string(),
-        })
-    }
-
-    /// Browser HTTP backend: `fetch` on the global scope (Promise; the main
-    /// thread never runs wasm during I/O — fetch runs in the worker). A
-    /// dedicated worker has no `window`: the fetch lives on `self`
-    /// (`WorkerGlobalScope`), so the global is cast to whichever scope the
-    /// call site runs in. Non-OK status surfaces verbatim.
-    #[cfg(all(target_arch = "wasm32", feature = "browser-http"))]
-    async fn fetch_text(url: &str) -> Result<String, TouchstoneError> {
-        let global = js_sys::global();
-        let pending = if let Some(w) = global.dyn_ref::<web_sys::Window>() {
-            w.fetch_with_str(url)
-        } else if let Some(w) = global.dyn_ref::<web_sys::WorkerGlobalScope>() {
-            w.fetch_with_str(url)
-        } else {
-            return Err(TouchstoneError::Fetch {
-                url: url.to_owned(),
-                reason: "no fetch-capable global scope".to_owned(),
-            });
-        };
-        let resp: web_sys::Response = wasm_bindgen_futures::JsFuture::from(pending)
-            .await
-            .map_err(|e| TouchstoneError::Fetch {
-                url: url.to_owned(),
-                reason: format!("{e:?}"),
-            })?
-            .into();
-        let ok: bool = resp.ok();
-        let status = resp.status();
-        if !ok {
-            return Err(TouchstoneError::Fetch {
-                url: url.to_owned(),
-                reason: status.to_string(),
-            });
-        }
-        let text_promise = resp.text().map_err(|e| TouchstoneError::Fetch {
-            url: url.to_owned(),
-            reason: format!("{e:?}"),
-        })?;
-        let text = wasm_bindgen_futures::JsFuture::from(text_promise)
-            .await
-            .map_err(|e| TouchstoneError::Fetch {
-                url: url.to_owned(),
-                reason: format!("{e:?}"),
-            })?;
-        text.as_string().ok_or_else(|| TouchstoneError::Fetch {
-            url: url.to_owned(),
-            reason: "non-utf8 body".to_owned(),
         })
     }
 
@@ -1284,27 +1221,23 @@ impl Touchstone {
         &self.z0
     }
 
-    /// Build the full write path (private: a property cannot take a
-    /// parameter, and the native branch hides `is_dir()` disk I/O; the
-    /// public `name`/`parameter`/`nports` already let users compose the
-    /// name themselves). `parameter` is the domain actually being written
-    /// (the write verb's argument), so the extension always matches the
-    /// file's real content. Four shapes:
+    /// Build the full write path: a property cannot take a parameter, so this
+    /// composes the output filename from `name`/`parameter`/`nports`.
+    /// `parameter` is the domain actually being written (the write verb's
+    /// argument), so the extension always matches the file's real content.
+    /// Four shapes:
     /// - empty → `name.{P}Np`
     /// - directory → `dir/name.{P}Np` (native `is_dir()` probe)
     /// - dir+name → append `.{P}Np`
     /// - dir+name+extension → grammar-strip, rebuild the correct extension
     ///   (domain letter = real written parameter, n = real nports — a wrong
     ///   extension is mechanically impossible).
-    // Compiled only where a caller exists: native `write_file` (any non-wasm
-    // target) or the browser dispatch `writeFile` arm. A wasm coverage build
-    // compiles neither caller, so this helper is excluded with them (a private
-    // fn with no caller in the active cfg set would otherwise trip dead-code).
-    #[cfg(any(
-        not(target_arch = "wasm32"),
-        all(feature = "browser", not(feature = "node"), not(coverage))
-    ))]
-    fn write_path(&self, path: Option<&str>, parameter: TouchstoneParameter) -> String {
+    ///
+    /// Pure string logic with one optional native `is_dir()` probe (harmless on
+    /// wasm, where a trailing slash is the directory signal), so it is public
+    /// and unconditional: both core's native `write_file` and the browser
+    /// `writeFile` glue reuse it.
+    pub fn write_path(&self, path: Option<&str>, parameter: TouchstoneParameter) -> String {
         // Lowercase extension (`.z2p`): the closed grammar `\.[ghsyz]\d+p`
         // in its canonical written form, matching the spec scenarios.
         let ext = format!(
@@ -1524,18 +1457,6 @@ impl Touchstone {
     }
 }
 
-/// Coverage-chain driver: reach the private `convert_to_s`/`s_to_domain`
-/// dispatch-violation arms. No public API can pass `S` to those helpers (the
-/// accessors answer S from storage first), so the wasm coverage binary — which
-/// cannot run core's crate-internal `#[cfg(test)]` tests — calls them directly
-/// here to count the arms. Compiled only under `cov-drive`; production builds
-/// exclude it. Mirrors the native `*_rejects_s_as_dispatch_violation` tests.
-#[cfg(feature = "cov-drive")]
-pub fn drive_dispatch_violations() {
-    let _ = Touchstone::convert_to_s(&[0.0; 8], TouchstoneParameter::S, 2, &[50.0, 50.0]);
-    let _ = Touchstone::s_to_domain(&[0.0, 0.0], TouchstoneParameter::S, 1, &[50.0]);
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1607,10 +1528,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(any(
-        all(not(target_arch = "wasm32"), feature = "native-http"),
-        all(target_arch = "wasm32", feature = "browser-http")
-    ))]
     fn url_filename_strips_query_and_detects_empty() {
         assert_eq!(
             Touchstone::url_filename("http://h/d/filter.s1p?v=2").as_deref(),
@@ -1645,214 +1562,4 @@ mod tests {
             "{err}"
         );
     }
-}
-
-/// Wrap an owned f64 block as a `Float64Array` for the worker reply
-/// (structured-cloned across the realm boundary).
-#[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
-fn f64_array(v: &[f64]) -> JsValue {
-    js_sys::Float64Array::from(v).into()
-}
-
-/// Read a domain/format keyword from a JS string argument (core `FromStr`
-/// quotes the offending token in the error).
-#[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
-fn js_ts_kw<T: FromStr>(v: &JsValue) -> Result<T, JsValue>
-where
-    T::Err: std::fmt::Display,
-{
-    v.as_string()
-        .ok_or_else(|| crate::resources::js("argument must be a string"))
-        .and_then(|s| T::from_str(&s).map_err(|e| crate::resources::js(e.to_string())))
-}
-
-/// Read an optional keyword argument (`undefined`/`null` → `None`; a string
-/// goes through core `FromStr`, which quotes the offending token).
-#[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
-fn js_ts_kw_opt<T: FromStr>(v: Option<&JsValue>) -> Result<Option<T>, JsValue>
-where
-    T::Err: std::fmt::Display,
-{
-    match v {
-        Some(v) if !v.is_undefined() && !v.is_null() => js_ts_kw(v).map(Some),
-        _ => Ok(None),
-    }
-}
-
-/// Instance dispatch: the numeric-handle half of the shell's `Touchstone`.
-/// `drop` never reaches here — the dispatcher intercepts it (removing the
-/// table entry is the table's own operation).
-#[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
-impl crate::resources::Resource for Touchstone {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn call(&mut self, method: &str, args: &[JsValue]) -> Result<JsValue, JsValue> {
-        use crate::resources::{js, js_object, unknown_method};
-        let n = self.nports() as usize;
-        match method {
-            "s" => Ok(f64_array(self.s())),
-            "z" => Ok(f64_array(&self.z())),
-            "y" => Ok(f64_array(&self.y())),
-            "g" => self
-                .g()
-                .map(|v| f64_array(&v))
-                .map_err(|e| js(e.to_string())),
-            "h" => self
-                .h()
-                .map(|v| f64_array(&v))
-                .map_err(|e| js(e.to_string())),
-            "f" => Ok(f64_array(&self.f())),
-            "z0" => Ok(f64_array(self.z0())),
-            "nports" => Ok(JsValue::from_f64(self.nports() as f64)),
-            "name" => Ok(JsValue::from_str(self.name())),
-            "comments" => Ok(JsValue::from_str(self.comments())),
-            "version" => Ok(JsValue::from_str(self.version())),
-            "parameter" => Ok(JsValue::from_str(self.parameter().as_ref())),
-            "data" => {
-                let p = js_ts_kw(args.first().ok_or_else(|| js("parameter required"))?)?;
-                let f = js_ts_kw(args.get(1).ok_or_else(|| js("format required"))?)?;
-                let nf = self.f().len();
-                let cow = self.data(p, f).map_err(|e| js(e.to_string()))?;
-                // JS has no complex type: every format crosses as flat
-                // interleaved pairs, so the shape always ends in 2.
-                let shape = js_sys::Array::of4(
-                    &JsValue::from_f64(nf as f64),
-                    &JsValue::from_f64(n as f64),
-                    &JsValue::from_f64(n as f64),
-                    &JsValue::from_f64(2.0),
-                );
-                Ok(js_object(&[
-                    ("values", f64_array(&cow)),
-                    ("shape", shape.into()),
-                ]))
-            }
-            "toText" => {
-                let p = js_ts_kw(args.first().ok_or_else(|| js("parameter required"))?)?;
-                let f = js_ts_kw(args.get(1).ok_or_else(|| js("format required"))?)?;
-                self.to_text(p, f)
-                    .map(|t| JsValue::from_str(&t))
-                    .map_err(|e| js(e.to_string()))
-            }
-            // Byte-boundary output: encode in core (JS TextEncoder only
-            // speaks UTF-8) and hand the bytes back as a Uint8Array
-            // (structured clone; output direction never transfers,
-            // ironclad rule 8).
-            "toBytes" => {
-                let p = js_ts_kw(args.first().ok_or_else(|| js("parameter required"))?)?;
-                let f = js_ts_kw(args.get(1).ok_or_else(|| js("format required"))?)?;
-                let enc = js_ts_kw_opt::<TouchstoneEncoding>(args.get(2))?;
-                let bytes = self.to_bytes(p, f, enc).map_err(|e| js(e.to_string()))?;
-                Ok(js_sys::Uint8Array::from(bytes.as_slice()).into())
-            }
-            // The browser has no filesystem: render in core and hand
-            // `{text, filename}` back (structured clone); the shell's Blob +
-            // `<a download>` is the platform glue (ironclad rule 8/11).
-            "writeFile" => {
-                let p = js_ts_kw(args.first().ok_or_else(|| js("parameter required"))?)?;
-                let f = js_ts_kw(args.get(1).ok_or_else(|| js("format required"))?)?;
-                let path = crate::resources::arg_opt_str(args, 2);
-                let text = self.to_text(p, f).map_err(|e| js(e.to_string()))?;
-                let filename = self.write_path(path.as_deref(), p);
-                Ok(js_object(&[
-                    ("text", JsValue::from_str(&text)),
-                    ("filename", JsValue::from_str(&filename)),
-                ]))
-            }
-            _ => Err(unknown_method("touchstone", method)),
-        }
-    }
-}
-
-/// Namespace dispatch: the `"touchstone"` namespace's factories and the name
-/// pipeline (mechanical camelCase of the core snake names).
-#[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
-pub fn call_namespace(method: &str, args: &[JsValue]) -> Result<JsValue, JsValue> {
-    use crate::resources::{arg_opt_str, arg_str, insert, js, unknown_method};
-    match method {
-        "fromText" => {
-            let text = arg_str(args, 0)?;
-            let nports = args.get(1).and_then(|v| v.as_f64()).map(|v| v as usize);
-            let path = arg_opt_str(args, 2);
-            let ts = Touchstone::from_text(&text, nports, path.as_deref())
-                .map_err(|e| js(e.to_string()))?;
-            Ok(JsValue::from_f64(insert(Box::new(ts)) as f64))
-        }
-        // The bytes arrive transferred from the shell (`fromFile(file)` or
-        // the public `fromBytes`); the filename rides along for the name
-        // pipeline. Decoding (guess chain / explicit whitelist) lives in
-        // core — the same `from_bytes` every other surface uses.
-        "fromBytes" => {
-            let bytes = args
-                .get(0)
-                .and_then(|v| v.dyn_ref::<js_sys::Uint8Array>())
-                .map(js_sys::Uint8Array::to_vec)
-                .ok_or_else(|| js("argument 0 must be a Uint8Array"))?;
-            let nports = args.get(1).and_then(|v| v.as_f64()).map(|v| v as usize);
-            let path = arg_opt_str(args, 2);
-            let enc = js_ts_kw_opt::<TouchstoneEncoding>(args.get(3))?;
-            let ts = Touchstone::from_bytes(&bytes, nports, path.as_deref(), enc)
-                .map_err(|e| js(e.to_string()))?;
-            Ok(JsValue::from_f64(insert(Box::new(ts)) as f64))
-        }
-        // Pure-data factory: arg 0 is the handle of an already-hosted
-        // `Frequency` (the shell reads `frequency.handle` internally — the
-        // user only ever passes the object). The table entry is type-
-        // erased, so `as_any` downcasts it back to `Frequency` (core-
-        // internal, never surfaces on a binding). The hosted axis is read
-        // out as owned Hz (the lock is not reentrant, so the new
-        // `Frequency` is rebuilt after `with_any` returns — same pattern
-        // as the `frequency`/`copy` arm). `data` arrives moved via the
-        // shell's transfer list (the `upload` replacement).
-        "fromData" => {
-            let freq_handle = crate::resources::arg_u32(args, 0)?;
-            let data = crate::resources::arg_f64_vec(args, 1)?;
-            let z0 = crate::resources::arg_f64_vec(args, 2)?;
-            let parameter = js_ts_kw(args.get(3).ok_or_else(|| js("parameter required"))?)?;
-            let name = crate::resources::arg_opt_str(args, 4).unwrap_or_default();
-            let comments = crate::resources::arg_opt_str(args, 5).unwrap_or_default();
-            let axis_hz = crate::resources::with_any(freq_handle, |any| {
-                any.downcast_ref::<crate::frequency::Frequency>()
-                    .and_then(|f| f.f().ok())
-            })
-            .map_err(js)?
-            .ok_or_else(|| js("handle is not a live Frequency"))?;
-            let frequency =
-                crate::frequency::Frequency::from_f(axis_hz, crate::frequency::FrequencyUnit::Hz);
-            let ts = Touchstone::from_data(&frequency, &data, &z0, parameter, &name, &comments)
-                .map_err(|e| js(e.to_string()))?;
-            Ok(JsValue::from_f64(insert(Box::new(ts)) as f64))
-        }
-        // Async in core (web_sys::fetch): the worker awaits the Promise
-        // before posting the reply, so the main thread never runs wasm.
-        #[cfg(feature = "browser-http")]
-        "fromUrl" => {
-            let url = arg_str(args, 0)?;
-            let promise = wasm_bindgen_futures::future_to_promise(async move {
-                Touchstone::from_url(&url)
-                    .await
-                    .map(|ts| JsValue::from_f64(insert(Box::new(ts)) as f64))
-                    .map_err(|e| js(e.to_string()))
-            });
-            Ok(promise.into())
-        }
-        "filenameFromPath" => Ok(JsValue::from_str(&Touchstone::filename_from_path(
-            &arg_str(args, 0)?,
-        ))),
-        "nameFromFilename" => Ok(JsValue::from_str(&Touchstone::name_from_filename(
-            &arg_str(args, 0)?,
-        ))),
-        "nportsFromFilename" => Touchstone::nports_from_filename(&arg_str(args, 0)?)
-            .map(|n| JsValue::from_f64(n as f64))
-            .map_err(|e| js(e.to_string())),
-        _ => Err(unknown_method("touchstone", method)),
-    }
-}
-
-/// Mount the `"touchstone"` namespace. Called once from the
-/// `#[wasm_bindgen(start)]` hook in `lib.rs`.
-#[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
-pub fn register() {
-    crate::resources::register_namespace("touchstone", call_namespace);
 }

@@ -21,17 +21,10 @@ use pyo3_stub_gen::derive::{gen_stub_pyclass_enum, gen_stub_pyfunction};
 
 // With the `node` feature the same items carry napi attributes; the enum
 // becomes a numeric JS enum (units cross the worker boundary as numbers).
-// `not(browser)` avoids the clippy --workspace macro collision between the
-// napi and wasm-bindgen derive macros; `not(coverage)` drops the
-// JS-registration glue (pytest/vitest cover the binding surface).
-#[cfg(all(feature = "node", not(feature = "browser"), not(coverage)))]
+// `not(coverage)` drops the JS-registration glue (pytest/vitest cover the
+// binding surface).
+#[cfg(all(feature = "node", not(coverage)))]
 use napi_derive::napi;
-
-// With the `browser` feature the same items carry wasm-bindgen attributes;
-// the enum becomes a numeric JS constant object in the glue, so importing a
-// unit name never instantiates the wasm module.
-#[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
-use wasm_bindgen::prelude::*;
 
 /// Re-exported so callers can invoke [`FrequencyUnit::iter`] without adding
 /// a direct `strum` dependency (the trait must be in scope for method call
@@ -103,15 +96,9 @@ impl FromStr for FrequencyUnit {
 )]
 #[cfg_attr(all(feature = "python", not(coverage)), pyclass)]
 // `not(coverage)` drops the runtime-only registration glue (pytest/vitest
-// cover the binding surface); `not(browser)`/`not(node)` avoid the clippy
-// --workspace macro collision between the napi and wasm-bindgen derive
-// macros. A real glue build enables exactly one of node/browser, so the
-// enum is exported there either way.
-#[cfg_attr(all(feature = "node", not(feature = "browser"), not(coverage)), napi)]
-#[cfg_attr(
-    all(feature = "browser", not(feature = "node"), not(coverage)),
-    wasm_bindgen
-)]
+// cover the binding surface). The browser enum is generated at build time
+// from this definition (gen_values), so core carries no wasm attribute.
+#[cfg_attr(all(feature = "node", not(coverage)), napi)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, AsRefStr, EnumIter)]
 pub enum FrequencyUnit {
     /// Hertz, 10^0 — the canonical storage unit of the frequency axis.
@@ -186,11 +173,7 @@ impl FromStr for WavelengthUnit {
     gen_stub_pyclass_enum(module = "netwave._netwave")
 )]
 #[cfg_attr(all(feature = "python", not(coverage)), pyclass)]
-#[cfg_attr(all(feature = "node", not(feature = "browser"), not(coverage)), napi)]
-#[cfg_attr(
-    all(feature = "browser", not(feature = "node"), not(coverage)),
-    wasm_bindgen
-)]
+#[cfg_attr(all(feature = "node", not(coverage)), napi)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, AsRefStr, EnumIter)]
 pub enum WavelengthUnit {
     /// Metre, 10^0 — the canonical SI unit of wavelength.
@@ -246,11 +229,7 @@ impl WavelengthUnit {
     gen_stub_pyfunction(module = "netwave._netwave")
 )]
 #[cfg_attr(all(feature = "python", not(coverage)), pyfunction)]
-#[cfg_attr(all(feature = "node", not(feature = "browser"), not(coverage)), napi)]
-// Browser: NOT wasm_bindgen-exported. The browser reaches it through the
-// `"frequency"` namespace (`call_namespace`), so the wasm export surface
-// stays the single generic `call` plus the `FrequencyUnit` constant — the
-// shell never computes the list itself (ironclad rule 11).
+#[cfg_attr(all(feature = "node", not(coverage)), napi)]
 pub fn frequency_units() -> Vec<String> {
     FrequencyUnit::iter()
         .map(|u| u.as_ref().to_owned())
@@ -278,9 +257,7 @@ static LIVE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0)
     gen_stub_pyfunction(module = "netwave._netwave")
 )]
 #[cfg_attr(all(feature = "python", not(coverage)), pyfunction)]
-#[cfg_attr(all(feature = "node", not(feature = "browser"), not(coverage)), napi)]
-// Browser: NOT wasm_bindgen-exported — reached through the `"frequency"`
-// namespace so the wasm export surface stays `call` + `FrequencyUnit`.
+#[cfg_attr(all(feature = "node", not(coverage)), napi)]
 pub fn live_count() -> u32 {
     LIVE.load(std::sync::atomic::Ordering::SeqCst)
 }
@@ -304,7 +281,7 @@ pub fn live_count() -> u32 {
 ///   observed through [`live_count`], not by watching memory size.
 // The Rust type is plain (no binding attributes): the wasm/napi class
 // wrappers live in the glue crates, where each binding's macro decorates the
-// impl its own way (wasm_bindgen marks the impl block, napi marks each
+// impl its own way (the wasm macro marks the impl block, napi marks each
 // method — they cannot share one cfg_attr'd impl).
 pub struct Frequency {
     /// Frequency points in hertz (canonical storage unit, governance rule 1).
@@ -532,234 +509,4 @@ impl std::fmt::Debug for Frequency {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         std::fmt::Display::fmt(self, f)
     }
-}
-
-// ---------------------------------------------------------------------------
-// Browser dispatch (cfg=browser): the worker forwards `{handle, method,
-// args}` to the single generic `resources::call`; this module owns the
-// name→function `match`es (Rust has no reflection — the arm list IS the
-// method table). Adding a method = one arm here; `resources.rs`, the
-// worker, the shells and `types.ts` never change.
-// ---------------------------------------------------------------------------
-
-/// Instance dispatch: the numeric-handle half of the shell's `Frequency`.
-/// `drop` never reaches here — the dispatcher intercepts it.
-// Read a unit argument that is either a numeric enum ordinal or a string
-// (case-insensitive, core FromStr quotes the offending input). Inlined here
-// (not in resources.rs) so the generic dispatcher stays unit-agnostic.
-#[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
-fn js_freq_unit(v: &JsValue) -> Result<FrequencyUnit, JsValue> {
-    use std::str::FromStr;
-    if let Some(s) = v.as_string() {
-        return FrequencyUnit::from_str(&s).map_err(|e| crate::resources::js(e.to_string()));
-    }
-    let n = v
-        .as_f64()
-        .ok_or_else(|| crate::resources::js("unit must be a number or a string"))?
-        as u8;
-    FrequencyUnit::from_ordinal(n).ok_or_else(|| crate::resources::js("invalid unit ordinal"))
-}
-
-#[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
-fn js_wl_unit(v: &JsValue) -> Result<WavelengthUnit, JsValue> {
-    use std::str::FromStr;
-    if let Some(s) = v.as_string() {
-        return WavelengthUnit::from_str(&s).map_err(|e| crate::resources::js(e.to_string()));
-    }
-    let n = v
-        .as_f64()
-        .ok_or_else(|| crate::resources::js("unit must be a number or a string"))?
-        as u8;
-    WavelengthUnit::from_ordinal(n).ok_or_else(|| crate::resources::js("invalid unit ordinal"))
-}
-
-/// Wrap an owned f64 axis as a `Float64Array` for the worker reply. The
-/// worker's `postMessage` structured-clones it (a copy across the realm
-/// boundary — matching the `f` copy semantics; the wasm buffer is not
-/// transferred, so the high-water mark is the live-object peak, see docs).
-#[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
-fn f64_array(v: &[f64]) -> JsValue {
-    js_sys::Float64Array::from(v).into()
-}
-
-#[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
-impl crate::resources::Resource for Frequency {
-    fn as_any(&self) -> &dyn std::any::Any {
-        self
-    }
-
-    fn call(&mut self, method: &str, args: &[JsValue]) -> Result<JsValue, JsValue> {
-        use crate::resources::{js, unknown_method};
-        match method {
-            // Post-drop access errors here — core is the single source of
-            // the contract (no binding re-implements the check).
-            "npoints" => self
-                .npoints()
-                .map(|n| JsValue::from_f64(n as u32 as f64))
-                .map_err(|e| js(e.to_string())),
-            "f" => self
-                .f()
-                .map(|v| f64_array(&v))
-                .map_err(|e| js(e.to_string())),
-            "fScaled" => self
-                .f_scaled()
-                .map(|v| f64_array(&v))
-                .map_err(|e| js(e.to_string())),
-            "w" => self
-                .w()
-                .map(|v| f64_array(&v))
-                .map_err(|e| js(e.to_string())),
-            "unit" => self
-                .unit()
-                .map(|u| JsValue::from_f64(u as u32 as f64))
-                .map_err(|e| js(e.to_string())),
-            "setUnit" => {
-                let u = args
-                    .first()
-                    .map(js_freq_unit)
-                    .ok_or_else(|| js("unit argument required"))??;
-                self.set_unit(u);
-                Ok(JsValue::NULL)
-            }
-            "wavelength" => {
-                let wu = args
-                    .first()
-                    .map(js_wl_unit)
-                    .ok_or_else(|| js("wl_unit argument required"))??;
-                let n = args
-                    .get(1)
-                    .and_then(|v| v.as_f64())
-                    .ok_or_else(|| js("n must be a number"))?;
-                self.wavelength(wu, n)
-                    .map(|v| f64_array(&v))
-                    .map_err(|e| js(e.to_string()))
-            }
-            // `copy` is NOT dispatched here: it must allocate a NEW handle
-            // via `insert`, which re-locks the registry that instance
-            // dispatch already holds (std Mutex is not reentrant -> panic).
-            // `copy` is a factory, so it rides the namespace channel below.
-            "toString" => Ok(JsValue::from_str(&self.to_string())),
-            _ => Err(unknown_method("frequency", method)),
-        }
-    }
-}
-
-/// Namespace dispatch: the `"frequency"` namespace's factory and free
-/// functions. `live_count` lives here because it counts `Frequency`
-/// instances (the witness is defined in this module) — no separate
-/// diagnostic namespace.
-#[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
-pub fn call_namespace(method: &str, args: &[JsValue]) -> Result<JsValue, JsValue> {
-    use crate::resources::{arg_f64_vec, arg_u32, insert, instance_call, js, unknown_method};
-    match method {
-        // `unit` is a plain ordinal: the glue enum is numeric and the
-        // feature-merge build must not put the enum in an FFI signature.
-        "fromF" => {
-            let view = arg_f64_vec(args, 0)?;
-            let unit = args
-                .get(1)
-                .map(js_freq_unit)
-                .ok_or_else(|| js("unit argument required"))??;
-            let f = Frequency::from_f(view, unit);
-            Ok(JsValue::from_f64(insert(Box::new(f)) as f64))
-        }
-        "fromWavelength" => {
-            let view = arg_f64_vec(args, 0)?;
-            let wl_unit = args
-                .get(1)
-                .map(js_wl_unit)
-                .ok_or_else(|| js("wl_unit argument required"))??;
-            let n = args
-                .get(2)
-                .and_then(|v| v.as_f64())
-                .ok_or_else(|| js("n must be a number"))?;
-            let f = Frequency::from_wavelength(view, wl_unit, n);
-            Ok(JsValue::from_f64(insert(Box::new(f)) as f64))
-        }
-        // `copy` is a factory (it allocates a new handle), so it lives on
-        // the namespace channel: the axis + unit are read back through
-        // `instance_call` (each briefly locks and releases the registry),
-        // then re-hosted verbatim — never re-locked while held (the
-        // instance-dispatch path would deadlock here).
-        "copy" => {
-            let handle = arg_u32(args, 0)?;
-            let axis = instance_call(handle, "f", &[]).map_err(js)?;
-            let unit = instance_call(handle, "unit", &[]).map_err(js)?;
-            let arr = axis
-                .dyn_ref::<js_sys::Float64Array>()
-                .ok_or_else(|| js("expected Float64Array"))?;
-            let u = FrequencyUnit::from_ordinal(
-                unit.as_f64().ok_or_else(|| js("unit must be a number"))? as u8,
-            )
-            .ok_or_else(|| js("invalid unit ordinal"))?;
-            // The axis read back is Hz, so `from_f` with unit Hz stores it
-            // bit-verbatim (multiplier 1e0); the display unit is then set
-            // as metadata only.
-            let mut f = Frequency::from_f(arr.to_vec(), FrequencyUnit::Hz);
-            f.set_unit(u);
-            Ok(JsValue::from_f64(insert(Box::new(f)) as f64))
-        }
-        "frequencyUnits" => {
-            let units = frequency_units();
-            let arr = js_sys::Array::new();
-            for u in units {
-                arr.push(&JsValue::from_str(&u));
-            }
-            Ok(arr.into())
-        }
-        "liveCount" => Ok(JsValue::from_f64(live_count() as f64)),
-        _ => Err(unknown_method("frequency", method)),
-    }
-}
-
-/// Mount the `"frequency"` namespace. Called once from the
-/// `#[wasm_bindgen(start)]` hook in `lib.rs`.
-#[cfg(all(feature = "browser", not(feature = "node"), not(coverage)))]
-pub fn register() {
-    crate::resources::register_namespace("frequency", call_namespace);
-}
-
-/// Coverage-chain driver: reach the `copy` factory's two malformed-source
-/// arms. No real `Frequency` returns a non-array `f()` or an out-of-range
-/// `unit()`, so the wasm coverage binary hosts a fake resource that does, and
-/// runs `copy` over it to count the `expected Float64Array` and
-/// `invalid unit ordinal` arms. Compiled only under `cov-drive`; production
-/// builds exclude it.
-#[cfg(all(feature = "cov-drive", feature = "browser"))]
-pub fn drive_copy_arms() {
-    use crate::resources::{Resource, insert, instance_call};
-    use wasm_bindgen::prelude::JsValue;
-
-    // A source whose `f`/`unit` read back malformed: `axis_ok` picks whether
-    // `f` is a valid Float64Array (so copy reaches the unit arm) or a plain
-    // number (so copy fails at the axis arm).
-    struct Malformed {
-        axis_ok: bool,
-    }
-    impl Resource for Malformed {
-        fn as_any(&self) -> &dyn std::any::Any {
-            self
-        }
-        fn call(&mut self, method: &str, _args: &[JsValue]) -> Result<JsValue, JsValue> {
-            match method {
-                "f" if self.axis_ok => Ok(js_sys::Float64Array::from(&[1e9][..]).into()),
-                "f" => Ok(JsValue::from_f64(1.0)),
-                // A valid ordinal would succeed; 99 is out of range.
-                "unit" => Ok(JsValue::from_f64(99.0)),
-                _ => Ok(JsValue::UNDEFINED),
-            }
-        }
-    }
-
-    // axis malformed → copy fails at `expected Float64Array`. The direct
-    // as_any call and the unknown-method dispatch cover this driver's own
-    // trait arms so the mock adds no uncovered lines of its own.
-    let bad_axis = Malformed { axis_ok: false };
-    let _ = bad_axis.as_any();
-    let h1 = insert(Box::new(bad_axis));
-    let _ = instance_call(h1, "unknown", &[]);
-    let _ = call_namespace("copy", &[JsValue::from_f64(h1 as f64)]);
-    // axis valid but unit ordinal out of range → copy fails at `invalid unit`.
-    let h2 = insert(Box::new(Malformed { axis_ok: true }));
-    let _ = call_namespace("copy", &[JsValue::from_f64(h2 as f64)]);
 }
