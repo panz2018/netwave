@@ -13,9 +13,14 @@ license-file = "../LICENSE-MIT"
 crate-type = ["cdylib"]
 
 [dependencies]
-netwave = { path = "../core", features = ["browser", "browser-http"] }
+# Core is a pure math library: zero features, no wasm/binding deps. The browser
+# crate owns all wasm glue (fetch, dispatch, handle table) and the HTTP path.
+netwave = { path = "../core" }
 js-sys = { version = "0.3", features = ["std"] }
 wasm-bindgen = "0.2"
+wasm-bindgen-futures = "0.4"
+# fromUrl fetches over HTTP on the worker's global scope (WorkerGlobalScope).
+web-sys = { version = "0.3", features = ["WorkerGlobalScope", "Response", "Request", "RequestInit", "Headers"] }
 # LLVM profiling runtime for the browser rust coverage chain (no_std,
 # self-contained). Pulled in only by the `coverage` feature, so production
 # builds exclude it.
@@ -23,8 +28,7 @@ minicov = { version = "0.3", optional = true }
 
 [features]
 default = []
-# Instrumented build for the browser rust coverage chain: links minicov, exports
-# the dump entry points, and enables core's cov-drive entry so the defensive
-# dispatch-violation arms count. Off by default — production `build`
-# never compiles it.
-coverage = ["dep:minicov", "netwave/cov-drive"]
+# Instrumented build for the browser rust coverage chain: links minicov and
+# exports the dump entry points. Off by default — production `build` never
+# compiles it.
+coverage = ["dep:minicov"]

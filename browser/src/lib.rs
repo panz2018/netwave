@@ -1,16 +1,29 @@
 //! netwave wasm binding (wasm-bindgen).
 //!
-//! The glue crate is intentionally empty: every wasm entry lives in core
-//! (`frequency.rs` / `touchstone.rs` / `resources.rs`, cfg-gated browser) and
-//! wasm-bindgen exports the whole crate graph into this binary. Handles are
-//! plain `u32` crossing the boundary; no wasm class floats up to JS, so
-//! wasm-bindgen's generated `free()` has no call site anywhere — the single
-//! reclamation command is core `drop(handle)` → `remove` → Rust `Drop`.
+//! This crate owns the entire browser binding surface: the handle table +
+//! generic dispatch (`resources.rs`), the per-namespace `match`es
+//! (`frequency_glue.rs` / `touchstone_glue.rs`) and the browser fetch backend.
+//! core is a pure math library with zero wasm symbols; this crate depends on
+//! it one-directionally. Handles are plain `u32` crossing the boundary; no
+//! wasm class floats up to JS, so wasm-bindgen's generated `free()` has no call
+//! site anywhere — the single reclamation command is `drop(handle)` → `remove`
+//! → Rust `Drop`.
 
-// Force-link core: its `#[wasm_bindgen]` entries are the entire wasm
-// surface, and an unreferenced crate is not linked into the cdylib. This
-// single line is the glue crate's whole job.
-extern crate netwave;
+pub mod frequency_glue;
+pub mod resources;
+pub mod touchstone_glue;
+
+/// wasm instantiation hook: mount every resource namespace into the handle
+/// table once, before any worker message arrives. Adding a new resource TYPE =
+/// one line here (plus the new glue module's own `match`es); adding a METHOD
+/// to an existing resource touches only that module — never this hook, never
+/// the worker, never the shells (worker generic dispatch and single-resident
+/// topology).
+#[wasm_bindgen::prelude::wasm_bindgen(start)]
+fn register_resources() {
+    frequency_glue::register();
+    touchstone_glue::register();
+}
 
 // Coverage dump entry points for the wasm rust coverage chain, compiled only
 // under the `coverage` feature so production `build` exports none of
@@ -70,8 +83,8 @@ mod __cov {
     /// production `build` compiles none of this.
     #[wasm_bindgen::prelude::wasm_bindgen]
     pub fn __cov_drive() {
+        use crate::resources::{insert, instance_call};
         use netwave::frequency::{Frequency, FrequencyUnit, WavelengthUnit};
-        use netwave::resources::{insert, instance_call};
 
         // A dropped-but-still-owned sweep: every getter takes its
         // `if self.dropped { return Err(Dropped) }` arm, and formatting the
@@ -112,7 +125,7 @@ mod __cov {
 
         // The namespace `copy` factory reads the source through instance_call;
         // a dropped source makes its `.map_err(js)?` arm fire.
-        let _ = netwave::frequency::call_namespace(
+        let _ = crate::frequency_glue::call_namespace(
             "copy",
             &[wasm_bindgen::JsValue::from_f64(handle as f64)],
         );
@@ -120,11 +133,12 @@ mod __cov {
         // The `copy` factory's malformed-source arms: a fake resource whose
         // f()/unit() read back invalid drives the expected-Float64Array and
         // invalid-unit-ordinal arms no real Frequency can produce.
-        netwave::frequency::drive_copy_arms();
+        crate::frequency_glue::drive_copy_arms();
 
-        // The private convert_to_s/s_to_domain dispatch-violation arms: no
-        // public API passes S to them, so core's cov-drive entry calls them
-        // directly (the wasm binary cannot run core's crate-internal tests).
-        netwave::touchstone::drive_dispatch_violations();
+        // The "no fetch-capable global scope" arm: a non-scope global makes
+        // resolve_fetch_scope error synchronously, so the instrumented wasm
+        // counts that arm (the dependency-injection point replacing core's old
+        // unreachable fetch arm).
+        crate::touchstone_glue::drive_fetch_reject_arm();
     }
 }
