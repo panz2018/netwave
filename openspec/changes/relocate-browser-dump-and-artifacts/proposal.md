@@ -126,3 +126,5 @@ browser 包独立化战役（`extract-browser-package` → `extract-browser-bind
 - `merge_browser`：`typescript/scripts/merge_browser.mjs` 保留原位原样，纯发布
   步骤。
 - `一个change`：产物归位 + dump 拆分重写 + 端名改名一次做完，不拆批次。
+- `跳过归档体检`：本 change 归档（archive）态的只读体检跳过；apply 态体检
+  （tasks 收尾 `体检` 锚点）不受影响，照常执行。

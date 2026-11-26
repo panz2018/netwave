@@ -58,6 +58,9 @@
       工件审实现 diff，逐文件对上 tasks.md，硬伤清零（锚点 `三轴`）
 - [ ] 5.5 体检：对触碰文件全文做 apply 态只读体检（health-check spec，发现落
       Plan/ 等点名不阻塞）（锚点 `体检`）
+- [ ] 5.5b `跳过归档体检`：本 change 归档（archive）态只读体检按已定裁决跳过
+      （打勾时同行注明 跳过 + ISO 日期）；仅指 archive 态，apply 态体检见 5.5
+      照常执行
 - [ ] 5.6 迟到追加复查：proposal `## 已定裁决` 每关键词载体任务已打勾，未打勾即红
       （锚点 `迟到追加`）
 - [ ] 5.7 delta specs 同步进主 spec（sync-specs），`openspec validate --strict`
