@@ -103,3 +103,8 @@
 - `跳过归档体检`：本 change 归档时跳过 health-check spec 的 archive 态只读
   体检（archive guidance 第 2 条）；apply 态被触碰文件体检（tasks 4.7）不受
   影响照常执行。
+- `引用归位门禁修CJK`：apply 中发现 `check_proposal.py` 的
+  `renamed_or_deleted_files` 用默认 `git diff --name-status` 取 R/D 清单，
+  git 对非 ASCII 路径八进制转义并加引号（`core.quotePath` 默认 true），
+  致删除 CJK 名文件时门禁永远匹配不上任务行——`git -c core.quotePath=false`
+  修之（LL-108 同族：解析命令输出须对真实输出实测）。

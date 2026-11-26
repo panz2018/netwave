@@ -32,10 +32,12 @@ clippy 冷缓存耗时未实测。
 - **warn 阻断走 CLI 开关而非 biome.jsonc severity**：`--error-on-warnings`
   一行改动封死现在与将来全部 warn 规则；逐条 severity 只挡点名规则，
   biome 升级新增 warn 规则会再漏（Plan 立项文件实测的口径分裂即此）。
-- **非空断言修复 = 显式判空收窄类型**：`vitest.e2e.config.ts` 的
-  `covDir!`/`covOut!` 所在分支由环境变量开关守卫，改为在分支入口显式
-  `if (!covDir) throw`（配置加载期 fail-fast），TS 自然收窄，不碰覆盖率
-  链行为。
+- **非空断言修复 = 判别式对象收窄类型**：`vitest.e2e.config.ts` 的
+  `covDir!`/`covOut!` 所在分支由"两个环境变量同时设置"守卫。把布尔
+  `chainOn` 改为判别式对象 `chain`（两变量都在时取 `{ wasmDir, out }`，
+  否则 `undefined`），下游三处引用 `chain.wasmDir`/`chain.out` 由 TS
+  自然收窄，无需 `!` 也无需 throw；比"分支入口 throw fail-fast"更贴合
+  既有三元结构，不碰覆盖率链行为。
 
 ## Risks / Trade-offs
 
