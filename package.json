@@ -23,7 +23,7 @@
     "test:cross": "bash scripts/run/test_cross.sh"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.6.8",
+    "@biomejs/biome": "^2.6.9",
     "markdownlint-cli2": "0.24.2",
     "prettier": "^3.10.1"
   }
