@@ -100,3 +100,6 @@
   `Plan/biome警告升级为错误.md` 被本 change 吸收后同轮删除。
 - `单change承载`：钩子 + warn 升级 + 存量清零 + 覆盖率补测四项合入本 change
   `tighten-lint-gates`，不拆分。
+- `跳过归档体检`：本 change 归档时跳过 health-check spec 的 archive 态只读
+  体检（archive guidance 第 2 条）；apply 态被触碰文件体检（tasks 4.7）不受
+  影响照常执行。

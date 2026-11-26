@@ -58,3 +58,5 @@
       已打勾，未打勾即红
 - [ ] 4.9 `check:outdated`：跑 `pnpm check:outdated` 并按 dependency-upgrade
       spec 消化所报 LAG，复跑至退出码 0（SUMMARY 归零）
+- [x] 4.10 `跳过归档体检`：本 change 归档时跳过 health-check spec 的 archive
+      态只读体检——人工点名跳过 2026-11-26（apply 态体检见 4.7，照常执行）
