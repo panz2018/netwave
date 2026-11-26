@@ -33,10 +33,12 @@ CANONICAL = {
     "WavelengthUnit": ["m", "cm", "mm", "um", "nm"],
 }
 
-# Generated type artifacts, relative to repo root.
+# Generated type artifacts, relative to repo root. The browser end carries the
+# vocabulary enums as build-time generated values (a const object + type alias),
+# not a wasm export, so its members are read from values.generated.d.mts.
 PYI = ROOT / "python" / "netwave" / "_netwave.pyi"
 NODE_DTS = ROOT / "typescript" / "dist" / "index.node.generated.d.mts"
-WASM_DTS = ROOT / "typescript" / "dist" / "wasm" / "netwave_browser.d.ts"
+BROWSER_VALUES = ROOT / "typescript" / "dist" / "values.generated.d.mts"
 
 
 def strip_comments(src: str) -> str:
@@ -55,6 +57,19 @@ def ts_members(src: str, enum: str) -> list[str]:
         raise ValueError(f"{enum} enum not found")
     body = code[match.start() : code.index("}", match.start())]
     return re.findall(r"^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=", body, flags=re.MULTILINE)
+
+
+def ts_const_object_members(src: str, enum: str) -> list[str]:
+    """TS const-object members: the `readonly Name: <ordinal>;` lines inside
+    the `export declare const <enum>: { ... }` block (delimited by braces). The
+    browser end emits its vocabulary enums this way (build-time generated
+    values), not as a wasm `enum` export."""
+    code = strip_comments(src)
+    match = re.search(r"export declare const " + re.escape(enum) + r"\s*:\s*\{", code)
+    if not match:
+        raise ValueError(f"{enum} const object not found")
+    body = code[match.start() : code.index("}", match.start())]
+    return re.findall(r"readonly\s+([A-Za-z_][A-Za-z0-9_]*)\s*:", body, flags=re.MULTILINE)
 
 
 def py_members(src: str, enum: str) -> list[str]:
@@ -95,16 +110,22 @@ def main() -> int:
         try:
             pyi = py_members(read(PYI), enum)
             node = ts_members(read(NODE_DTS), enum)
-            wasm = ts_members(read(WASM_DTS), enum)
+            browser = ts_const_object_members(read(BROWSER_VALUES), enum)
         except (FileNotFoundError, ValueError) as exc:
             print(f"VOCAB TYPES: {enum}: {exc}", file=sys.stderr)
             return 1
-        for label, members in (("python .pyi", pyi), ("node .d.mts", node), ("wasm .d.ts", wasm)):
+        for label, members in (
+            ("python .pyi", pyi),
+            ("node .d.mts", node),
+            ("browser values .d.mts", browser),
+        ):
             if members != canonical:
                 print(f"VOCAB TYPES: {enum} {label} members {members} != {canonical}")
                 bad += 1
-        if not bad and not (node == pyi == wasm):
-            print(f"VOCAB TYPES: {enum} artifacts disagree: pyi={pyi} node={node} wasm={wasm}")
+        if not bad and not (node == pyi == browser):
+            print(
+                f"VOCAB TYPES: {enum} artifacts disagree: pyi={pyi} node={node} browser={browser}"
+            )
             bad += 1
         else:
             print(f"vocab types OK: {enum} all three artifacts carry {canonical}")

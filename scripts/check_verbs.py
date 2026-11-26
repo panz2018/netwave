@@ -90,13 +90,18 @@ PYI = ROOT / "python" / "netwave" / "_netwave.pyi"
 NODE_DTS = ROOT / "typescript" / "dist" / "index.node.generated.d.mts"
 BROWSER_DTS = ROOT / "typescript" / "dist" / "index.browser.d.mts"
 # The wasm glue is the raw wasm-bindgen output: the single generic `call` is
-# the ONLY dispatch entry, plus the `FrequencyUnit` constant enum, the
-# `register_resources` start hook (a registration entry, not a verb —
-# wasm-bindgen exports the `start` fn by name regardless of Rust visibility),
-# and the wasm-pack generated init/default. Any per-verb `#[wasm_bindgen]`
-# export reappearing here is the relapse this pin detects.
+# the ONLY dispatch entry, plus the `register_resources` start hook (a
+# registration entry, not a verb — wasm-bindgen exports the `start` fn by name
+# regardless of Rust visibility), and the wasm-pack generated init/default. The
+# `FrequencyUnit`/`WavelengthUnit` enums cross to the browser as build-time
+# generated values (values.generated.mjs), never as wasm exports. Any per-verb
+# `#[wasm_bindgen]` export reappearing here is the relapse this pin detects.
 WASM_GLUE_DTS = ROOT / "typescript" / "dist" / "wasm" / "netwave_browser.d.ts"
-WASM_GLUE_EXPORTS = {"call", "FrequencyUnit", "WavelengthUnit", "register_resources"}
+WASM_GLUE_EXPORTS = {"call", "register_resources"}
+# The build-time generated values file: the shared constants plus the two
+# vocabulary enums (member name -> declaration-order ordinal).
+VALUES_GENERATED = ROOT / "browser" / "dist" / "values.generated.mjs"
+VOCAB_ENUMS = {"FrequencyUnit", "WavelengthUnit"}
 
 
 def camel(name: str) -> str:
@@ -173,10 +178,10 @@ def ts_free_verbs(src: str) -> set:
 
 def wasm_glue_exports(src: str) -> set:
     """Top-level export names of the wasm-bindgen glue d.ts. wasm-bindgen
-    emits plain `export function`/`export enum` (no `declare`); the wasm-pack
+    emits plain `export function`/`export class` (no `declare`); the wasm-pack
     init (`export default` / `export function initSync`) is tool-generated and
-    excluded; everything else MUST be the single `call`, the `FrequencyUnit`
-    constant enum, and the `register_resources` start hook."""
+    excluded; everything else MUST be the single `call` and the
+    `register_resources` start hook."""
     code = strip_comments(src)
     names = set(re.findall(r"^export function\s+([A-Za-z_]\w*)", code, flags=re.MULTILINE))
     names |= set(re.findall(r"^export enum\s+([A-Za-z_]\w*)", code, flags=re.MULTILINE))
@@ -257,8 +262,7 @@ def main() -> int:
                 bad += 1
 
     # The wasm glue export set is pinned: the single generic `call` plus the
-    # `FrequencyUnit` constant enum and the start hook — no per-verb entry may
-    # reappear (relapse detector).
+    # start hook — no per-verb entry may reappear (relapse detector).
     try:
         glue = read(WASM_GLUE_DTS)
     except FileNotFoundError as exc:
@@ -273,6 +277,18 @@ def main() -> int:
             f" (extra={extra} missing={missing})"
         )
         bad += 1
+
+    # The two vocabulary enums live in the build-time generated values file
+    # (their only browser home).
+    try:
+        values = read(VALUES_GENERATED)
+    except FileNotFoundError as exc:
+        print(f"VERBS: {exc}", file=sys.stderr)
+        return 1
+    for enum in sorted(VOCAB_ENUMS):
+        if not re.search(r"^export const " + re.escape(enum) + r"\s*=\s*\{", values, re.MULTILINE):
+            print(f"VERBS: {VALUES_GENERATED.name} missing enum {enum}")
+            bad += 1
 
     # Ironclad rule 15 (construction entry): public construction is `fromX`
     # factories only. The gate scans the SOURCE (not the generated d.ts):
