@@ -39,6 +39,7 @@ Usage: python3 scripts/check_proposal.py   (wired into pnpm check:meta)
 """
 
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -71,6 +72,91 @@ CONFIG_YAML = ROOT / "openspec" / "config.yaml"
 DECISION_SECTION = "已定裁决"
 DECISION_KEYWORD = re.compile(r"^-\s*`([^`]+)`：")
 TASK_LINE = re.compile(r"^\s*-\s*\[([ xX])\]")
+
+# Reference-relocation rule: when a change renames/deletes/moves files, the
+# `引用归位` closing task must list every such file so its prose references in
+# specs/docs get updated. The authoritative file set is `git diff --name-status
+# HEAD` (R/D entries; pure content edits M are out of scope — they change no
+# reference). The gate checks list completeness only; whether the prose was
+# actually updated is a semantic judgement left to review. This couples the gate
+# to git state, so the step must run before commit (after commit `git diff HEAD`
+# is empty and there is nothing to cross-check).
+RELOCATE_ANCHOR = "引用归位"
+NOT_APPLICABLE = {"不适用", "不适用。", "不适用."}
+
+
+def renamed_or_deleted_files():
+    """Return the set of file paths git reports as renamed or deleted against
+    HEAD (R/D entries; renames contribute both old and new paths). Empty when
+    git is unavailable, the tree is clean, or only adds/modifies exist — in
+    those cases there is nothing for the `引用归位` step to list."""
+    try:
+        out = subprocess.run(
+            ["git", "diff", "--name-status", "HEAD"],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return set()
+    paths = set()
+    for line in out.splitlines():
+        parts = line.split("\t")
+        status = parts[0]
+        if status.startswith("R") and len(parts) >= 3:
+            paths.add(parts[1])
+            paths.add(parts[2])
+        elif status.startswith("D") and len(parts) >= 2:
+            paths.add(parts[1])
+    return paths
+
+
+def _checked_item_texts(lines, anchor):
+    """Concatenated text of every checked task item (a `- [x]` line plus its
+    indented continuation lines) whose text carries `anchor`. Long task text
+    wraps across lines, so the anchor and the listed paths may sit on any of
+    them; only checked items count."""
+    items = []
+    cur = None
+    for ln in lines:
+        if TASK_LINE.match(ln):
+            if cur is not None:
+                items.append(cur)
+            checked = TASK_LINE.match(ln).group(1) in "xX"
+            cur = ln if checked else None
+        elif cur is not None and ln.strip():
+            cur += "\n" + ln
+    if cur is not None:
+        items.append(cur)
+    return [it for it in items if anchor in it]
+
+
+def check_reference_relocation(change_dir):
+    """Return errors for the `引用归位` rule on one change. Active only when
+    config.yaml declares the anchor. When git reports renamed/deleted files, a
+    checked `引用归位` task line must list every one of them (or declare
+    不适用); a missing path means a moved/renamed file's references were not
+    accounted for."""
+    if RELOCATE_ANCHOR not in guidance_anchors():
+        return []
+    rel = _rel(change_dir)
+    tasks = change_dir / "tasks.md"
+    if not tasks.is_file():
+        return []
+    items = _checked_item_texts(tasks.read_text(encoding="utf-8").splitlines(), RELOCATE_ANCHOR)
+    if not items:
+        return []  # anchor coverage (existence) is graded by check_guidance_coverage
+    blob = "\n".join(items)
+    if any(na in blob for na in NOT_APPLICABLE):
+        return []
+    missing = [p for p in sorted(renamed_or_deleted_files()) if p not in blob]
+    return [
+        f"{rel}: '引用归位' task does not list renamed/deleted file '{p}' "
+        "(every R/D file from `git diff --name-status HEAD` must appear in the "
+        "checked 引用归位 task, or it must declare 不适用)"
+        for p in missing
+    ]
 
 
 def guidance_anchors():
@@ -279,6 +365,7 @@ def main() -> int:
             )
         if (change_dir / "proposal.md").is_file():
             errors.extend(check_decision_capture(change_dir))
+        errors.extend(check_reference_relocation(change_dir))
     if errors:
         for e in errors:
             print(f"::error::{e}", file=sys.stderr)

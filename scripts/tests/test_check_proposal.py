@@ -17,6 +17,7 @@ ALL = [
     "- [ ] 4.5 Plan/ 瘦身：本 change 结论若涉及 `Plan/` 对应章节则当场删除。",
     "- [ ] 4.4 三态时效检查：扫 `openspec/specs/` 全目录，产出更新/新增/退役结论。",
     "- [ ] 4.9 旧名清零：全仓 grep 本次改名/删除的旧标识符，活文件零残留。",
+    "- [ ] 4.9b 引用归位：逐个改名/删除/移动文件核对 spec/文档位置职责散文。",
     "- [ ] 4.2 三轴 review：按 governance「元规则 review 三轴」审实现 diff。",
     "- [ ] 4.3 apply 态体检：对 diff 触碰文件全文只读体检。",
     "- [ ] 4.7 apply 中途迟到追加的决定已当场写回已定裁决段并补任务。",
@@ -65,11 +66,12 @@ def test_repeated_anchor_still_covered(tmp_path: Path) -> None:
 
 def test_anchors_mirrored_in_config_yaml() -> None:
     # The gate reads anchors from config.yaml at runtime; assert it finds the
-    # seven expected ones in guidance order (no second hardcoded list to drift).
+    # eight expected ones in guidance order (no second hardcoded list to drift).
     assert check_proposal.guidance_anchors() == [
         "Plan/",
         "三态时效",
         "旧名清零",
+        "引用归位",
         "三轴",
         "体检",
         "迟到追加",
@@ -321,3 +323,90 @@ def test_main_decision_missing_is_error(tmp_path: Path, monkeypatch) -> None:
     # proposal without 已定裁决 section
     _make_change(tmp_path, "bad", VALID_PROPOSAL, _valid_tasks())
     assert check_proposal.main() == 1
+
+
+# --- 引用归位 reference-relocation rule ------------------------------------
+
+
+def _relocate_change(tmp_path: Path, relocate_line: str) -> Path:
+    change = tmp_path / "c"
+    change.mkdir()
+    (change / "tasks.md").write_text("# Tasks\n\n" + relocate_line + "\n", encoding="utf-8")
+    return change
+
+
+def test_relocate_lists_all_rd_files_passes(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(
+        check_proposal, "renamed_or_deleted_files", lambda: {"a/old.py", "a/new.py"}
+    )
+    change = _relocate_change(
+        tmp_path,
+        "- [x] 9.0 引用归位：`a/old.py` → `a/new.py` 散文已核。",
+    )
+    assert check_proposal.check_reference_relocation(change) == []
+
+
+def test_relocate_missing_rd_file_is_error(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(
+        check_proposal, "renamed_or_deleted_files", lambda: {"a/old.py", "a/new.py"}
+    )
+    change = _relocate_change(tmp_path, "- [x] 9.0 引用归位：只提 `a/new.py`。")
+    errs = check_proposal.check_reference_relocation(change)
+    assert any("a/old.py" in e for e in errs)
+
+
+def test_relocate_not_applicable_passes(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(check_proposal, "renamed_or_deleted_files", lambda: {"a/old.py"})
+    change = _relocate_change(tmp_path, "- [x] 9.0 引用归位：不适用。")
+    assert check_proposal.check_reference_relocation(change) == []
+
+
+def test_relocate_no_checked_line_defers_to_coverage(tmp_path: Path, monkeypatch) -> None:
+    # No checked 引用归位 task -> existence is graded elsewhere; no relocation error.
+    monkeypatch.setattr(check_proposal, "renamed_or_deleted_files", lambda: {"a/old.py"})
+    change = _relocate_change(tmp_path, "- [ ] 9.0 引用归位：待办。")
+    assert check_proposal.check_reference_relocation(change) == []
+
+
+def test_relocate_no_rd_files_passes(tmp_path: Path, monkeypatch) -> None:
+    # Clean tree (no R/D): a checked 引用归位 line with no paths is fine.
+    monkeypatch.setattr(check_proposal, "renamed_or_deleted_files", lambda: set())
+    change = _relocate_change(tmp_path, "- [x] 9.0 引用归位：无改名删除移动。")
+    assert check_proposal.check_reference_relocation(change) == []
+
+
+def test_relocate_no_tasks_file_returns_empty(tmp_path: Path, monkeypatch) -> None:
+    monkeypatch.setattr(check_proposal, "renamed_or_deleted_files", lambda: {"a.py"})
+    change = tmp_path / "c"
+    change.mkdir()  # no tasks.md
+    assert check_proposal.check_reference_relocation(change) == []
+
+
+def test_relocate_inactive_when_anchor_absent(tmp_path: Path, monkeypatch) -> None:
+    # config.yaml does not declare 引用归位 -> the rule is dormant.
+    monkeypatch.setattr(check_proposal, "guidance_anchors", lambda: ["旧名清零"])
+    monkeypatch.setattr(check_proposal, "renamed_or_deleted_files", lambda: {"a.py"})
+    change = _relocate_change(tmp_path, "- [x] 9.0 引用归位：未列 a.py。")
+    assert check_proposal.check_reference_relocation(change) == []
+
+
+def test_renamed_or_deleted_files_parses_r_and_d(monkeypatch) -> None:
+    class _Result:
+        stdout = "R100\tsrc/old.py\tsrc/new.py\nD\tgone.py\nM\tmod.py\n"
+
+    monkeypatch.setattr(check_proposal.subprocess, "run", lambda *a, **k: _Result())
+    assert check_proposal.renamed_or_deleted_files() == {
+        "src/old.py",
+        "src/new.py",
+        "gone.py",
+    }
+
+
+def test_renamed_or_deleted_files_swallows_git_error(monkeypatch) -> None:
+    import subprocess
+
+    def _boom(*a, **k):
+        raise subprocess.CalledProcessError(128, ["git"])
+
+    monkeypatch.setattr(check_proposal.subprocess, "run", _boom)
+    assert check_proposal.renamed_or_deleted_files() == set()

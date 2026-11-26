@@ -51,10 +51,17 @@
 
 - [x] 5.1 `pnpm test` 全绿（先于 review 排除实现断裂）
 - [x] 5.2 旧名清零：从 git diff 列消失旧标识符（`dump.mjs` 旧路径、`cross-dump`、
-      oracle 端名 `wasm`），全仓 grep 确认活文件与描述散文零残留（锚点 `旧名清零`）。
+      oracle 端名 `wasm`），全仓 grep 确认活文件零残留（锚点 `旧名清零`）。
       核对：`dump.mjs`/`cross-dump` 仅余于本 change 工件（描述本次移动）；oracle
       `"wasm"` 端名活文件零残留；剩余 `wasm` 均真技术名（wasm 产物/memory.grow/
       dist/wasm）或 lessons-learned 账本（不动）
+- [x] 5.2b 引用归位：本次改名/删除/移动文件 `typescript/scripts/dump.mjs` →
+      `typescript/scripts/dump.node.mjs`（git R 项），grep 全仓 spec/文档中描述
+      该文件位置/职责的散文并核对已更新——`scripts/README.md`、
+      `typescript/README.md`、`openspec/specs/ci-matrix/spec.md`、
+      `openspec/specs/zero-copy-roundtrip/spec.md`、
+      `openspec/specs/workspace-layout/spec.md` 均已改述新路径，无陈旧「住在
+      typescript/scripts/dump.mjs」描述残留（锚点 `引用归位`）
 - [x] 5.3 三态时效：扫 openspec/specs/ 全目录出更新/新增/退役结论留痕本文件
       （锚点 `三态时效`）。更新：ci-matrix、oracle-harness、zero-copy-roundtrip、
       workspace-layout（四件已 sync）；新增：无；退役：无

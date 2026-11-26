@@ -46,8 +46,8 @@ rules:
       CI 底线格）等人工发起。消化完成后 MUST 复跑 pnpm check:outdated
       至退出码 0（SUMMARY 归零）才算本项完成，防漏消化
     - 写 tasks.md 时收尾打勾任务 MUST 逐条覆盖本文件 operations.apply.guidance
-      的七条锚点（`Plan/`、`三态时效`、`旧名清零`、`三轴`、`体检`、`迟到追加`、
-      `check:outdated`），
+      的八条锚点（`Plan/`、`三态时效`、`旧名清零`、`引用归位`、`三轴`、`体检`、
+      `迟到追加`、`check:outdated`），
       每条锚点至少出现在一个 `- [ ]`/`- [x]` 行；明示跳过者写成同行含锚点 +
       "跳过" + ISO 日期（YYYY-MM-DD）的打勾行（门禁 scripts/check_proposal.py
       同口径判定，只查存在性不数次数）
@@ -74,12 +74,18 @@ operations:
       - 本次改动若含删除/改名/移动文件或公开符号，apply 收尾（三轴 review
         之前）MUST：(1) 从 git diff 列出本次改/移/删的文件与消失的旧标识符
         清单；(2) 全仓 grep 这些旧标识符（排除 target*/dist/node_modules/
-        .venv/archive），逐条确认活文件引用已同步为现名、零残留；(3) 对清单里
-        每个被改/移/删的文件，grep 全仓 spec 与文档中描述该文件位置/职责的
-        散文（如「住在 core」「导出含 X」），逐条确认已随改动更新——事实陈述
-        变陈旧即死引用，MUST 改。完成记录列出旧名清单与已核对的散文位置；
-        纯新增无改名删除移动时记「不适用」。本条是 AGENTS.md「改动波及面必须
-        改全」在 apply 期的可执行化（锚点 `旧名清零`）
+        .venv/archive），逐条确认活文件引用已同步为现名、零残留。完成记录列出
+        旧名清单；纯新增无改名删除移动时记「不适用」。本条是 AGENTS.md
+        「改动波及面必须改全」在 apply 期的可执行化（锚点 `旧名清零`）
+      - 本次改动若含改名/删除/移动文件（git diff --name-status HEAD 报出的
+        R/D 项；纯内容修改 M 不在此列、无需改引用），apply 收尾（三轴 review
+        之前）MUST 对每个这样的文件 grep 全仓 spec 与文档中描述该文件位置/
+        职责的散文（如「住在 core」「导出含 X」），逐条确认已随改动更新——
+        事实陈述变陈旧即死引用，MUST 改。完成记录 MUST 列出 git diff
+        --name-status HEAD 报出的每个 R/D 文件路径（门禁 scripts/check_proposal.py
+        同口径核对清单完整性，散文是否真更新属语义留 review）；纯新增/纯内容
+        修改无 R/D 时记「不适用」。本步 MUST 在 commit 之前跑（commit 后
+        git diff HEAD 变空，门禁无从核对）（锚点 `引用归位`）
       - apply 收尾（check:outdated 之前）MUST 按 governance spec
         「元规则 review 三轴」对照本 change 工件（proposal/specs/design/
         tasks）审实现 diff，diff 文件集逐文件对上 tasks.md，对不上即越权、

@@ -90,3 +90,4 @@ scope 分片。条目格式四要素：编号 / scope / 犯过证据 / 规则+�
 | LL-111 | ci         | 正确性闸门复用上游覆盖率步骤的插桩产物，运行即写 profraw 污染下一入口：先 LLVM_PROFILE_FILE=/dev/null       |
 | LL-112 | ci         | llc target 名须映射 rustc host arch：x86_64→x86-64（连字符），单 OS 复现不了                                |
 | LL-113 | workflow   | 改 config.yaml apply-guidance 锚点须跑全量 `pnpm check`（含 check:py 绊线测试），只跑门禁脚本会漏改测试夹具 |
+| LL-114 | workflow   | 一条 guidance 多子步骤共用一锚点=门禁只认存在性=子步骤软约束必漏：一锚点只授一种可检测失败                  |
