@@ -91,8 +91,11 @@ def renamed_or_deleted_files():
     git is unavailable, the tree is clean, or only adds/modifies exist — in
     those cases there is nothing for the `引用归位` step to list."""
     try:
+        # core.quotePath=false so non-ASCII paths print as raw UTF-8 (git's
+        # default octal-quotes+wraps them in quotes, which would never match
+        # the plain path a task line lists).
         out = subprocess.run(
-            ["git", "diff", "--name-status", "HEAD"],
+            ["git", "-c", "core.quotePath=false", "diff", "--name-status", "HEAD"],
             cwd=ROOT,
             capture_output=True,
             text=True,

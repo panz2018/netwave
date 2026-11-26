@@ -346,6 +346,19 @@ def test_relocate_lists_all_rd_files_passes(tmp_path: Path, monkeypatch) -> None
     assert check_proposal.check_reference_relocation(change) == []
 
 
+def test_relocate_rd_path_on_continuation_line_is_carrier(tmp_path: Path, monkeypatch) -> None:
+    # The 引用归位 item wraps across lines (the R/D path sits on an indented
+    # continuation) and a later task line follows. Exercises _checked_item_texts's
+    # continuation-append branch (cur += ...) and its flush-on-next-task branch
+    # (items.append when a new task line arrives while cur is set).
+    monkeypatch.setattr(check_proposal, "renamed_or_deleted_files", lambda: {"a/old.py"})
+    change = _relocate_change(
+        tmp_path,
+        "- [x] 9.0 引用归位：R/D 清单见下行\n      `a/old.py` 散文已核。\n- [ ] 9.1 其他任务。",
+    )
+    assert check_proposal.check_reference_relocation(change) == []
+
+
 def test_relocate_missing_rd_file_is_error(tmp_path: Path, monkeypatch) -> None:
     monkeypatch.setattr(
         check_proposal, "renamed_or_deleted_files", lambda: {"a/old.py", "a/new.py"}

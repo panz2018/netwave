@@ -17,10 +17,12 @@ import { playwright } from "@vitest/browser-playwright";
 import { defineConfig } from "vitest/config";
 
 // The chain is active only when the driver points the worker at an
-// instrumented build AND names where profraw lands. Both must be set.
+// instrumented build AND names where profraw lands. Both must be set; when
+// they are, `chain` carries the two paths narrowed to string so downstream
+// uses need no non-null assertion. Unset (production browser run) => undefined.
 const covDir = process.env.NETWAVE_WASM_DIR;
 const covOut = process.env.NETWAVE_COV_OUT;
-const chainOn = Boolean(covDir && covOut);
+const chain = covDir && covOut ? { wasmDir: covDir, out: covOut } : undefined;
 
 export default defineConfig({
   // Coverage-chain flag: fill `true` so the worker's guarded coverage code
@@ -32,16 +34,20 @@ export default defineConfig({
   // makes the worker load instrumented wasm in the browser too. The glue
   // fetches its own .wasm relative to its URL, so the alias also redirects
   // the binary — no worker source change needed.
-  resolve: chainOn
+  resolve: chain
     ? {
         alias: {
-          "../dist/wasm/netwave_browser.js": resolve(__dirname, covDir!, "netwave_browser.js"),
+          "../dist/wasm/netwave_browser.js": resolve(
+            __dirname,
+            chain.wasmDir,
+            "netwave_browser.js",
+          ),
         },
       }
     : undefined,
   test: {
     include: ["test/unit/**/*.test.ts", "test/e2e/**/*.test.ts"],
-    ...(chainOn ? { setupFiles: ["./test/e2e/coverage-dump.ts"] } : {}),
+    ...(chain ? { setupFiles: ["./test/e2e/coverage-dump.ts"] } : {}),
     browser: {
       enabled: true,
       headless: true,
@@ -53,12 +59,12 @@ export default defineConfig({
       // write it to node's disk for `llvm-profdata merge`. The caller passes a
       // signature + per-dump UUID name so concurrent test files sharing one
       // module signature never overwrite one another before merge.
-      ...(chainOn
+      ...(chain
         ? {
             commands: {
               writeProfraw: async (_ctx, b64: string, signature: string) => {
                 const bytes = Buffer.from(b64, "base64");
-                await writeFile(resolve(covOut!, `browser-${signature}.profraw`), bytes);
+                await writeFile(resolve(chain.out, `browser-${signature}.profraw`), bytes);
                 return bytes.length;
               },
             },

@@ -13,8 +13,8 @@
 // Emits <out>/browser/freq.bin and <out>/browser/<sample>/s.bin|z0.bin|
 // version.txt (raw little-endian f64, re/im interleaved — binary not JSON so
 // the sign bit survives; oracle/compare_cross.py grades against the native ends).
+import { mkdirSync, writeFileSync } from "node:fs";
 import { createServer } from "node:http";
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { extname, join, resolve } from "node:path";
 import { chromium } from "playwright";
 

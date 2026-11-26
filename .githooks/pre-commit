@@ -1,0 +1,18 @@
+#!/bin/sh
+# Pre-commit gate: run the full root lint/format/type/test-meta chain before a
+# commit is allowed. The command definition lives only in root package.json —
+# this hook calls `pnpm check` verbatim and MUST NOT duplicate its subcommands (a copy
+# here would drift from CI, which runs the same `pnpm check` in its lint job).
+#
+# Install: automatic via root package.json `prepare` (runs on `pnpm install`,
+# sets core.hooksPath to this directory). No manual step.
+#
+# This hook only BLOCKS — it never auto-fixes or touches the staging area, so a
+# commit never carries changes you did not make. On failure, run `pnpm fix` to
+# auto-repair what is fixable (or fix by hand), re-stage, and commit again.
+# Bypass with `git commit -n` only when you know better; the CI lint job runs
+# the same `pnpm check` and will still fail a broken tree.
+
+set -e
+cd "$(git rev-parse --show-toplevel)"
+pnpm check
