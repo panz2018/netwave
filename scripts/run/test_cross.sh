@@ -1,16 +1,16 @@
 #!/usr/bin/env bash
-# Cross-binding test entry: python glue build + stub_gen + four-end dump +
-# grading + cross-end vocabulary gates. Single source of truth for cross-binding
-# test command details — local `pnpm test:cross` and the CI node job both call
-# this file, so parameters cannot drift apart.
+# Cross-binding test entry: four-end dump + grading + cross-end vocabulary
+# gates. Single source of truth for cross-binding test command details — local
+# `pnpm test:cross` and the CI node job both call this file, so parameters
+# cannot drift apart. The python/napi/browser glues are built by their own
+# entries (python/scripts/build.sh, test_ts.sh); this entry only probes artifacts.
 set -euo pipefail
 
 cd "$(dirname "$0")/../.."
 
 # Toolchain probe: uv missing prints the install hint and exits non-zero —
 # never auto-install (machine side effect; CI has its own install steps).
-# maturin needs no separate probe: it comes from the python project env that
-# `uv sync` below resolves.
+# uv is needed to run the python-end dump below against the built glue.
 if ! command -v uv >/dev/null 2>&1; then
   echo "uv not found — install it with: curl -LsSf https://astral.sh/uv/install.sh | sh" >&2
   exit 1
@@ -28,15 +28,12 @@ if [ ! -f browser/dist/wasm/netwave_browser_bg.wasm ]; then
   echo "browser wasm glue missing under browser/dist/wasm/ — build it with: pnpm -C browser build" >&2
   exit 1
 fi
-
-uv sync --project python
-(cd python && uv run maturin develop)
-
-# stub_gen dynamically links libpython (pyo3 auto mode): the loader must find
-# uv's libpython, so export its LIBDIR before generating the .pyi that
-# check_vocab_types.py compares across ends.
-export LD_LIBRARY_PATH="$(uv run --project python python -c "import sysconfig; print(sysconfig.get_config_var('LIBDIR'))")${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
-(cd python && uv run --no-sync cargo run --features stub-gen --bin stub_gen)
+# The python end dumps from its built abi3 extension and generated stub; this
+# entry never rebuilds them (build logic lives once in python/scripts/build.sh).
+if [ ! -f python/netwave/_netwave.abi3.so ] || [ ! -f python/netwave/_netwave.pyi ]; then
+  echo "python glue missing under python/netwave/ — build it with: bash python/scripts/build.sh" >&2
+  exit 1
+fi
 
 # Four-end dump + grading (native ends bit-exact, browser within manifest
 # tolerance), the built-in anti-tautology tamper self-check, then the cross-end

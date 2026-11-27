@@ -79,8 +79,9 @@ pnpm test:browser                 # browser tests: instrumented wasm build + nod
                                     # (browser/scripts/test.sh; needs wasm-pack + binaryen +
                                     # wasm32 target + playwright chromium)
 pnpm test:cross                   # four-end dump + compare
-                                    # (scripts/run/test_cross.sh; needs uv + maturin;
-                                    # requires napi/wasm artifacts — run pnpm test:ts first)
+                                    # (scripts/run/test_cross.sh; needs uv; requires
+                                    # napi/wasm/python artifacts — run pnpm test:ts and
+                                    # bash python/scripts/build.sh first)
 ```
 
 ## Development workflow
