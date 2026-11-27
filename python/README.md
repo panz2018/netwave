@@ -57,3 +57,15 @@ root):
 ```bash
 uv run --project python python python/scripts/dump.py oracle/tmp
 ```
+
+## Test and build entry scripts
+
+The aggregate entries live in this directory and are called from the repo root
+(local `pnpm test:py` and the CI python job both run them, so parameters cannot
+drift apart). They probe for `cargo-llvm-cov`/`uv` and print the install command
+and fail when one is missing — they never auto-install.
+
+| Script                    | What it does                                                                                                                              |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `python/scripts/test.sh`  | python test entry: rust-glue coverage chain (`show-env` + `clean --workspace` + maturin develop + pytest + floor) + profraw drain         |
+| `python/scripts/build.sh` | python glue build entry: uv sync + maturin develop + stub_gen (with the uv libpython `LD_LIBRARY_PATH` export); called by `test_cross.sh` |
