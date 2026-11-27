@@ -111,83 +111,16 @@ fn arg_wavelength_unit(obj: &Bound<'_, PyAny>) -> PyResult<CoreWavelengthUnit> {
 #[cfg(feature = "stub-gen")]
 use pyo3_stub_gen::define_stub_info_gatherer;
 #[cfg(feature = "stub-gen")]
-use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pyclass_enum, gen_stub_pymethods};
+use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 
-/// A frequency unit: SI prefix + hertz. Mirrors core `FrequencyUnit` (the
-/// single vocabulary source) as a `#[pyclass]` so Python users get a real enum
-/// (`FrequencyUnit.kHz`) with IDE-checked members; the orphan rule forbids
-/// attaching `#[pyclass]` to core's type, so the binding owns a parallel enum
-/// and converts through the infallible mappings below. The member set is pinned
-/// against core by `check_vocab_types.py` and the per-end pytest cases.
-#[cfg_attr(
-    feature = "stub-gen",
-    gen_stub_pyclass_enum(module = "netwave._netwave")
-)]
-#[pyclass]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(non_camel_case_types)]
-pub enum FrequencyUnit {
-    Hz,
-    kHz,
-    MHz,
-    GHz,
-    THz,
-}
-
-impl FrequencyUnit {
-    /// Map to core's enum (exhaustive, infallible).
-    fn to_core(self) -> CoreFrequencyUnit {
-        match self {
-            FrequencyUnit::Hz => CoreFrequencyUnit::Hz,
-            FrequencyUnit::kHz => CoreFrequencyUnit::kHz,
-            FrequencyUnit::MHz => CoreFrequencyUnit::MHz,
-            FrequencyUnit::GHz => CoreFrequencyUnit::GHz,
-            FrequencyUnit::THz => CoreFrequencyUnit::THz,
-        }
-    }
-}
-
-impl From<CoreFrequencyUnit> for FrequencyUnit {
-    /// Map from core's enum (exhaustive, infallible).
-    fn from(value: CoreFrequencyUnit) -> Self {
-        match value {
-            CoreFrequencyUnit::Hz => FrequencyUnit::Hz,
-            CoreFrequencyUnit::kHz => FrequencyUnit::kHz,
-            CoreFrequencyUnit::MHz => FrequencyUnit::MHz,
-            CoreFrequencyUnit::GHz => FrequencyUnit::GHz,
-            CoreFrequencyUnit::THz => FrequencyUnit::THz,
-        }
-    }
-}
-
-/// A wavelength unit: SI prefix + metre. Mirrors core `WavelengthUnit`.
-#[cfg_attr(
-    feature = "stub-gen",
-    gen_stub_pyclass_enum(module = "netwave._netwave")
-)]
-#[pyclass]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[allow(non_camel_case_types)]
-pub enum WavelengthUnit {
-    m,
-    cm,
-    mm,
-    um,
-    nm,
-}
-
-impl WavelengthUnit {
-    /// Map to core's enum (exhaustive, infallible).
-    fn to_core(self) -> CoreWavelengthUnit {
-        match self {
-            WavelengthUnit::m => CoreWavelengthUnit::m,
-            WavelengthUnit::cm => CoreWavelengthUnit::cm,
-            WavelengthUnit::mm => CoreWavelengthUnit::mm,
-            WavelengthUnit::um => CoreWavelengthUnit::um,
-            WavelengthUnit::nm => CoreWavelengthUnit::nm,
-        }
-    }
-}
+// The Python-side `FrequencyUnit`/`WavelengthUnit` pyclasses are generated at
+// build time from core's enum definitions (see `build.rs`) — a mechanical
+// extraction, never a hand-copied table (core is the single vocabulary source).
+// They live in a dedicated module (`enums`) so the generated code's coverage
+// attribution stays out of this file; the binding converts between them and
+// core's enums through the infallible `to_core`/`From` mappings generated there.
+mod enums;
+use enums::{FrequencyUnit, WavelengthUnit};
 
 /// A frequency sweep. `from_f`/`from_wavelength` are the data entries
 /// (static factories, core names verbatim); the accessors are read-only
