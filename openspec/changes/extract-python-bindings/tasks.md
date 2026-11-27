@@ -38,7 +38,8 @@
       `test:py` 改指 `bash python/scripts/test.sh`；python/ 不加 package.json（见
       `python 不加 package.json`、`脚本搬进 python/`）。
 - [x] 3.2 新增 `python/scripts/build.sh`：承载 `uv sync`/`maturin develop`/`stub_gen`；
-      `scripts/run/test_cross.sh` 改为产物缺失则提示先跑 build（对齐 browser 端只查产物）。
+      `scripts/run/test_cross.sh` 在 dump 前自调 build.sh 建 python（见 `cross 自构建 python`），
+      napi/browser 仍只探测产物。
 - [x] 3.3 `.github/workflows/ci.yml`：python job 路径同步为 `bash python/scripts/test.sh`。
 - [x] 3.4 验证：`pnpm test:cross` 全绿（四端对拍 + 词汇/动词闸门）。
 

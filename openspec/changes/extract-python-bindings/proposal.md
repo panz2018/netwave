@@ -98,3 +98,6 @@ core 现为纯数学库（wasm 侧已清零），但 python 绑定仍往 core �
 - `脚本搬进 python/`：test_py.sh→python/scripts/test.sh，构建步骤抽 python/scripts/build.sh。
 - `不变式写 workspace-layout`：「core 零绑定符号」不变式写进 workspace-layout spec。
 - `单 change 不拆`：core 去绑定化 + python codegen + 脚本搬迁一个 change 全包。
+- `cross 自构建 python`：python 胶水在 node job 无构建者，test_cross.sh 在 dump 前自调
+  `python/scripts/build.sh` 建 python（命令细节只在 build.sh 一处，不复制）；napi/browser
+  由 test_ts.sh 建、test_cross.sh 只探测；CI node job 不为 python 构建留独立步骤。
