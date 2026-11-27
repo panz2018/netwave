@@ -64,8 +64,8 @@ impl FromStr for FrequencyUnit {
 ///
 /// The variant name IS the canonical spelling (`kHz` = kilo + hertz,
 /// multiplier 10^3). This enum is the only place any unit name appears in
-/// the repository; bindings expose it by reflection, never by copying a
-/// name list.
+/// the repository; each binding's enum (pyclass / napi) is generated
+/// mechanically from this definition, never by copying a name list.
 /// Multipliers are exact powers of ten (10^3n), representable bit-exactly
 /// in f64 — see [`FrequencyUnit::multiplier`].
 // `kHz` is the correct SI spelling (lowercase prefix k); the Rust naming
@@ -95,7 +95,8 @@ impl FrequencyUnit {
     /// 10^6, giga 10^9, tera 10^12); every value here is a power of ten
     /// exactly representable in f64, so conversions are bit-exact and no
     /// tolerance is ever needed. Internal helper: deliberately NOT exposed
-    /// to py/ts — bindings see names via reflection and never numeric tables.
+    /// to py/ts — bindings read variant names from this enum, never numeric
+    /// tables.
     ///
     /// The `match` is exhaustive on purpose: adding an enum variant without
     /// a multiplier here fails to compile, so a name can never ship without
@@ -137,7 +138,7 @@ impl FromStr for WavelengthUnit {
 
 /// A wavelength unit: SI prefix + metre.
 ///
-/// Mirrors [`FrequencyUnit`] exactly (same reflection shape, same helper
+/// Mirrors [`FrequencyUnit`] exactly (same generation shape, same helper
 /// set). The variant name IS the canonical spelling; this enum is the only
 /// place a wavelength unit name appears. Scoped to the wavelength API and
 /// deliberately NOT named `LengthUnit` — in RF contexts "length" means
@@ -165,7 +166,7 @@ impl WavelengthUnit {
     /// 10^-2 … nano 10^-9); the decimal literals here are the nearest f64
     /// and every comparison in the suite uses the same literal, so the
     /// contract is bit-exact (ironclad rule 3). Internal helper: NOT
-    /// exposed to py/ts — bindings see names via reflection only.
+    /// exposed to py/ts — bindings read variant names from this enum only.
     ///
     /// The `match` is exhaustive on purpose: adding a variant without a
     /// multiplier fails to compile.

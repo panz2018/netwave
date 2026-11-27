@@ -51,13 +51,14 @@ py/ts，仅供 `Frequency.f_scaled` 内部消费。倍率是精确常量而非�
 
 ### Requirement: 跨端零手抄暴露
 
-`FrequencyUnit` MUST 经绑定宏从 core enum 自我发现地暴露到三端：Python 由 pyo3
-反射成员、Node 与浏览器由构建期生成的 `.d.ts` 提供成员名。三端 MUST NOT 手写成员
-列表、倍率或校验逻辑。py/ts 用户以 `FrequencyUnit.kHz` 形态访问，IDE MUST 能对
-不存在的成员（如 `FrequencyUnit.Hzz`）报类型错误。浏览器端：`FrequencyUnit` 成员
-是 glue JS 里的数字常量对象，从 glue 直接 re-export（import 常量不实例化 wasm，
-铁律八不破）；需执行 wasm 的 `frequencyUnits()` MUST 经常驻 worker 命令暴露
-（async，同 `fromData` 形态），主线程 MUST NOT 执行 wasm。
+`FrequencyUnit` MUST 从 core enum 自我发现地暴露到三端，三端 MUST NOT 手写成员
+列表、倍率或校验逻辑：Python 由 `python/build.rs` 在构建期读 core enum 定义生成带
+`#[pyclass]` 的枚举（机械提取，非手抄表）；Node 与浏览器由构建期生成的 `.d.ts`
+提供成员名。py/ts 用户以 `FrequencyUnit.kHz` 形态访问，IDE MUST 能对不存在的成员
+（如 `FrequencyUnit.Hzz`）报类型错误。core enum 与 python 生成 enum 是两个 Rust
+类型，绑定层内部 MUST 经 core 已有的 `as_ref()`/`FromStr` 转换，该转换 MUST NOT
+出现在 Python 用户可见面。浏览器端成员是 glue JS 数字常量对象，从 glue 直接
+re-export（import 常量不实例化 wasm，铁律八不破）。
 
 #### Scenario: 三端成员集合相等
 

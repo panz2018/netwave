@@ -75,7 +75,8 @@ job 同口径通过。
 
 ### Requirement: python 测试入口本地与 CI 同脚本
 
-根 `package.json` MUST 提供 `test:py` 入口，薄调用 `scripts/run/test_py.sh`；
+根 `package.json` MUST 提供 `test:py` 入口，薄调用 `python/scripts/test.sh`
+（python 子项目自持的测试脚本，对齐 browser 端 `browser/scripts/test.sh`）；
 该脚本 MUST 依次执行：profraw 前置清扫、`cargo-llvm-cov` 与 `uv` 存在性探测
 （缺则打印对应安装命令并非零退出，MUST NOT 自动安装）、
 `cargo llvm-cov show-env`、`cargo llvm-cov clean --workspace`、`python/` 内
@@ -244,8 +245,12 @@ browser rust 覆盖率链），且 MUST `set -euo pipefail` 并纳入 `pnpm test
 （缩成一行 `bash scripts/run/test_cross.sh`）。本地跑绿 MUST 等价于 CI node job
 同口径通过。脚本 MUST 在 dump 前探测四端产物存在性，缺则行动化报错而非自行构建；
 browser 端产物的探测对象 MUST 是 `browser/dist/`（源头构建产物），缺失时提示
-`pnpm -C browser build`，MUST NOT 以 typescript/dist 的发布副本作为探测或消费对象。
-dump MUST 按端拆为两条命令：node 端 `typescript/scripts/dump.node.mjs`、browser 端
+`pnpm -C browser build`，MUST NOT 以 typescript/dist 的发布副本作为探测或消费对象；
+python 端产物的探测对象 MUST 是 `python/netwave/`（build.sh 构建产物），缺失时提示
+`bash python/scripts/build.sh`。python 胶水构建（uv sync、maturin develop、stub_gen）
+MUST NOT 在 test_cross.sh 内执行，由 `python/scripts/build.sh` 单独承载；CI node job
+MUST 在 cross 步骤之前显式调用 `bash python/scripts/build.sh`。dump MUST 按端拆为
+两条命令：node 端 `typescript/scripts/dump.node.mjs`、browser 端
 `browser/scripts/dump.mjs`（真浏览器 harness，见 zero-copy-roundtrip spec）。
 
 容差：存在性与退出码闸门，无数值阈值；四端数值容差沿用 `oracle/manifest.json`
@@ -254,20 +259,23 @@ dump MUST 按端拆为两条命令：node 端 `typescript/scripts/dump.node.mjs`
 #### Scenario: cross 入口本地全链绿
 
 - **WHEN** 开发者在仓库根运行 `pnpm test:cross` 且四端产物齐备
-- **THEN** 脚本依次执行 `uv sync`、`maturin develop`、`stub_gen`、四端 dump、
-  `compare_cross.py` 阅卷、词汇类型与动词集合闸门，全部通过则 exit 0
+- **THEN** 脚本依次执行四端 dump、`compare_cross.py` 阅卷、词汇类型与动词集合闸门，
+  全部通过则 exit 0
 
 #### Scenario: cross 入口缺产物报错可行动
 
-- **WHEN** napi 原生产物或 browser 端 wasm 产物缺失时运行 `pnpm test:cross`
+- **WHEN** napi 原生产物、browser 端 wasm 产物或 python 端 abi3/pyi 产物缺失时运行
+  `pnpm test:cross`
 - **THEN** 脚本在 dump 执行前以非零码退出，napi 缺失打印 `pnpm test:ts`、
-  browser 产物缺失打印 `pnpm -C browser build`，不发起构建或网络安装
+  browser 产物缺失打印 `pnpm -C browser build`、python 产物缺失打印
+  `bash python/scripts/build.sh`，不发起构建或网络安装
 
 #### Scenario: cross 本地与 CI 同脚本
 
 - **WHEN** 对比本地 `pnpm test:cross` 与 ci.yml node job 的 cross 步骤
-- **THEN** 两端都只调用 `scripts/run/test_cross.sh`，uv sync/maturin/stub_gen/
-  LD_LIBRARY_PATH/dump/阅卷的参数只在该脚本内定义一处
+- **THEN** 两端都只调用 `scripts/run/test_cross.sh`，dump/阅卷的参数只在该脚本内
+  定义一处；python 构建参数（uv sync/maturin/stub_gen/LD_LIBRARY_PATH）只在
+  `python/scripts/build.sh` 内定义一处
 
 ### Requirement: 根 test 总聚合入口
 
@@ -631,14 +639,14 @@ Prettier，YAML、JavaScript、TypeScript、JSON 归 biome。认领关系 MUST �
 CI MUST 与本地同流程：每个构建插桩代码的 job MUST 在测试步骤**之前与之后**
 各有一道清理，扫描全仓 `target/` 外的 `*.profraw`，语义与 harness 钩子一致
 （先删后报错）；rust job 的清扫由 `scripts/run/test_rs.sh` 内置，python job 的
-清扫由 `scripts/run/test_py.sh` 内置，node job 的清理步骤 MUST 调用
+清扫由 `python/scripts/test.sh` 内置，node job 的清理步骤 MUST 调用
 `python3 scripts/run/clean_stray_profraw.py`；未插桩的 job（不产 profraw）
 MUST NOT 加此步骤。
 
 `scripts/run/test_rs.sh` MUST 在覆盖率步骤之前与之后各删除一次
 `target/llvm-cov-target/` 整目录，MUST NOT 依赖 `cargo llvm-cov clean`——
 该命令在 `CACHEDIR.TAG` 缺失时静默 no-op（exit 0 但不删），残留的旧插桩
-二进制会按旧行号污染新报告。`scripts/run/test_py.sh` MUST 在覆盖率链之前与
+二进制会按旧行号污染新报告。`python/scripts/test.sh` MUST 在覆盖率链之前与
 之后各执行一次 `cargo llvm-cov clean --workspace`——python 胶水的插桩对象落
 host `target/debug`，`clean --workspace` 是其适用的清理命令。两个脚本的后置
 清理块 MUST 以 profraw 清扫（`clean_stray_profraw.py`）开头、插桩清理其后：
@@ -687,7 +695,7 @@ manifest key）。
 - **THEN** 测试步骤之前与之后各有一道清理，扫描 `target/` 外的 `*.profraw`，
   发现即先删后以非零码失败并列出文件名与个数
 - **AND** rust job 的清理在 `scripts/run/test_rs.sh` 内、python job 的清理在
-  `scripts/run/test_py.sh` 内，node job 的清理步骤调用
+  `python/scripts/test.sh` 内，node job 的清理步骤调用
   `python3 scripts/run/clean_stray_profraw.py`
 - **AND** 未插桩的 job（wasm、lint、bench）无此步骤
 
@@ -700,13 +708,13 @@ manifest key）。
 
 #### Scenario: python 入口前后各清一次插桩
 
-- **WHEN** 查看 `scripts/run/test_py.sh` 的命令序列
+- **WHEN** 查看 `python/scripts/test.sh` 的命令序列
 - **THEN** `cargo llvm-cov clean --workspace` 在覆盖率链之前与之后各出现一次
 - **AND** 后置清理块中 `clean_stray_profraw.py` 排在 `clean --workspace` 之前
 
 #### Scenario: 后置块清扫先于插桩清理
 
-- **WHEN** 查看 `scripts/run/test_rs.sh` 与 `scripts/run/test_py.sh` 的后置清理块
+- **WHEN** 查看 `scripts/run/test_rs.sh` 与 `python/scripts/test.sh` 的后置清理块
 - **THEN** 两脚本后置块均以 `clean_stray_profraw.py` 开头、插桩清理命令其后，
   带检测职责的清扫不被后置追加的命令挤到末尾
 

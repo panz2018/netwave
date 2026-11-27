@@ -37,40 +37,40 @@
 - [x] 3.1 `scripts/run/test_py.sh` → `python/scripts/test.sh`；根 `package.json`
       `test:py` 改指 `bash python/scripts/test.sh`；python/ 不加 package.json（见
       `python 不加 package.json`、`脚本搬进 python/`）。
-- [ ] 3.2 新增 `python/scripts/build.sh`：承载 `uv sync`/`maturin develop`/`stub_gen`；
+- [x] 3.2 新增 `python/scripts/build.sh`：承载 `uv sync`/`maturin develop`/`stub_gen`；
       `scripts/run/test_cross.sh` 改为产物缺失则提示先跑 build（对齐 browser 端只查产物）。
 - [x] 3.3 `.github/workflows/ci.yml`：python job 路径同步为 `bash python/scripts/test.sh`。
-- [ ] 3.4 验证：`pnpm test:cross` 全绿（四端对拍 + 词汇/动词闸门）。
+- [x] 3.4 验证：`pnpm test:cross` 全绿（四端对拍 + 词汇/动词闸门）。
 
 ## 4. spec 与文档同步
 
-- [ ] 4.1 `openspec/specs/workspace-layout/spec.md`：把「core 零绑定依赖」不变式从
+- [x] 4.1 `openspec/specs/workspace-layout/spec.md`：把「core 零绑定依赖」不 变式从
       browser-only 扩到 python（见 `不变式写 workspace-layout`），与本 change delta 一致。
-- [ ] 4.2 `openspec/specs/frequency-unit/spec.md`：「跨端零手抄暴露」Python 侧机制改为
+- [x] 4.2 `openspec/specs/frequency-unit/spec.md`：「跨端零手抄暴露」Python 侧机制改为
       build.rs 生成，与 delta 一致。
-- [ ] 4.3 `core/src/frequency.rs` 顶部「绑定靠反射注册」注释改写为「core 是词汇真相源，
+- [x] 4.3 `core/src/frequency.rs` 顶部「绑定靠反射注册」注释改写为「core 是词汇真相源，
       各端 pyclass/napi enum 由 build.rs/gen_values 机械生成」。
 - [x] 4.4 `scripts/README.md`：test_py.sh 路径同步为 python/scripts/test.sh。
-- [ ] 4.5 本 change 单 change 全包不拆（见 `单 change 不拆`）。
+- [x] 4.5 本 change 单 change 全包不拆（见 `单 change 不拆`）。
 
 ## 5. 收尾闸门与打勾（逐锚点）
 
-- [ ] 5.1 `pnpm test` 全绿（全量含四端对拍，先于 review）。
-- [ ] 5.2 `Plan/`：删除 `Plan/绑定放置重构.md` §4 python 半边已完成章节，跑 `pnpm check:md`
+- [x] 5.1 `pnpm test` 全绿（全量含四端对拍，先于 review）。
+- [x] 5.2 `Plan/`：删除 `Plan/绑定放置重构.md` §4 python 半边已完成章节，跑 `pnpm check:md`
       （锚点 `Plan/`）。
-- [ ] 5.3 三态时效：扫 `openspec/specs/` 全目录，对照本次产出更新/新增/退役结论留痕
+- [x] 5.3 三态时效：扫 `openspec/specs/` 全目录，对照本次产出更新/新增/退役结论留痕
       （锚点 `三态时效`）。
-- [ ] 5.4 旧名清零：从 git diff 列消失的旧标识符/文件（test_py.sh 路径等），全仓 grep
+- [x] 5.4 旧名清零：从 git diff 列消失的旧标识符/文件（test_py.sh 路径等），全仓 grep
       确认活文件引用已同步、零残留（锚点 `旧名清零`）。
-- [ ] 5.5 引用归位：对 git diff --name-status HEAD 报出的 R/D 文件，grep 全仓描述其
+- [x] 5.5 引用归位：对 git diff --name-status HEAD 报出的 R/D 文件，grep 全仓描述其
       位置/职责的散文（含铁律十一「core 绑定宏段」）逐条更新，列 R/D 清单（锚点 `引用归位`）。
-- [ ] 5.6 三轴 review：按 governance spec「元规则 review 三轴」对照本 change 工件审实现
+- [x] 5.6 三轴 review：按 governance spec「元规则 review 三轴」对照本 change 工件审实现
       diff，diff 文件集逐文件对上 tasks.md，硬伤清零（锚点 `三轴`）。
-- [ ] 5.7 体检：对触碰文件全文只读体检（health-check spec apply 态），发现落 Plan/
+- [x] 5.7 体检：对触碰文件全文只读体检（health-check spec apply 态），发现落 Plan/
       等点名，不阻塞（锚点 `体检`）。
-- [ ] 5.8 迟到追加：复查 proposal.md `## 已定裁决` 每个关键词载体任务已打勾，未打勾即红
+- [x] 5.8 迟到追加：复查 proposal.md `## 已定裁决` 每个关键词载体任务已打勾，未打勾即红
       （锚点 `迟到追加`）。
-- [ ] 5.9 `pnpm check:md` 全绿（改任何 .md 后必跑）。
-- [ ] 5.10 最后一项：跑 `pnpm check:outdated` 并按 dependency-upgrade spec「apply 末尾
+- [x] 5.9 `pnpm check:md` 全绿（改任何 .md 后必跑）。
+- [x] 5.10 最后一项：跑 `pnpm check:outdated` 并按 dependency-upgrade spec「apply 末尾
       体检与升级预授权」消化所报 LAG（升级 + 全闸门 + 四端对拍），复跑至退出码 0
       （SUMMARY 归零）（锚点 `check:outdated`）。
