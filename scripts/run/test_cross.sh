@@ -2,8 +2,9 @@
 # Cross-binding test entry: four-end dump + grading + cross-end vocabulary
 # gates. Single source of truth for cross-binding test command details — local
 # `pnpm test:cross` and the CI node job both call this file, so parameters
-# cannot drift apart. The python/napi/browser glues are built by their own
-# entries (python/scripts/build.sh, test_ts.sh); this entry only probes artifacts.
+# cannot drift apart. The napi/browser glues are built by test_ts.sh (probed
+# here, never rebuilt); the python glue has no builder in this job, so this
+# entry builds it via python/scripts/build.sh before dumping.
 set -euo pipefail
 
 cd "$(dirname "$0")/../.."
@@ -28,12 +29,10 @@ if [ ! -f browser/dist/wasm/netwave_browser_bg.wasm ]; then
   echo "browser wasm glue missing under browser/dist/wasm/ — build it with: pnpm -C browser build" >&2
   exit 1
 fi
-# The python end dumps from its built abi3 extension and generated stub; this
-# entry never rebuilds them (build logic lives once in python/scripts/build.sh).
-if [ ! -f python/netwave/_netwave.abi3.so ] || [ ! -f python/netwave/_netwave.pyi ]; then
-  echo "python glue missing under python/netwave/ — build it with: bash python/scripts/build.sh" >&2
-  exit 1
-fi
+# The python glue has no builder in this job (unlike napi/browser, which
+# test_ts.sh built), so build it here via its single-source entry before the
+# dump. uv was probed above; build.sh re-probes it and never auto-installs.
+bash python/scripts/build.sh
 
 # Four-end dump + grading (native ends bit-exact, browser within manifest
 # tolerance), the built-in anti-tautology tamper self-check, then the cross-end

@@ -288,21 +288,16 @@ jobs:
         # The browser-end cross-binding dump drives a real browser (playwright +
         # chromium); test_cross.sh probes the cache and never auto-installs.
         run: pnpm -C browser exec playwright install --only-shell chromium
-      - name: python glue build (uv sync + maturin develop + stub_gen)
-        # Command details live once in python/scripts/build.sh — the same file a
-        # local one-off build calls. test_cross.sh only probes the resulting
-        # artifacts, so the python build lives in exactly one place.
-        shell: bash
-        run: bash python/scripts/build.sh
       - name: cross-binding test entry (four-end dump + grading + cross-end
           vocabulary gates)
         # Command details live once in scripts/run/test_cross.sh — the same file
-        # local `pnpm test:cross` calls (four-end dump, compare_cross.py
-        # grading with the built-in anti-tautology tamper self-check,
-        # check_vocab_types.py, check_verbs.py). The napi artifacts the dumps
-        # read are built by the test_ts.sh step above; the browser wasm glue by
-        # `pnpm -C browser build` (inside test_ts.sh); the python glue by the
-        # build.sh step above.
+        # local `pnpm test:cross` calls (python glue build via python/scripts/
+        # build.sh, four-end dump, compare_cross.py grading with the built-in
+        # anti-tautology tamper self-check, check_vocab_types.py, check_verbs.py).
+        # The napi artifacts the dumps read are built by the test_ts.sh step
+        # above; the browser wasm glue by `pnpm -C browser build` (inside
+        # test_ts.sh). The python glue has no builder in this job, so
+        # test_cross.sh builds it itself via build.sh.
         shell: bash
         run: bash scripts/run/test_cross.sh
 
