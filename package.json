@@ -18,7 +18,7 @@
     "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true",
     "test": "pnpm test:rs && pnpm test:py && pnpm test:ts && pnpm test:browser && pnpm test:cross",
     "test:rs": "bash scripts/run/test_rs.sh",
-    "test:py": "bash scripts/run/test_py.sh",
+    "test:py": "bash python/scripts/test.sh",
     "test:ts": "bash scripts/run/test_ts.sh",
     "test:browser": "pnpm -C browser test",
     "test:cross": "bash scripts/run/test_cross.sh"

@@ -71,6 +71,27 @@ def test_multi_segment_name_maps_by_first_segment(tmp_path: Path) -> None:
     assert check_ci.check(root) == []
 
 
+def test_subproject_bash_script_wired_passes(tmp_path: Path) -> None:
+    # A root `test:<seg>` whose value is a `bash <path>.sh` at a non-scripts/run
+    # path (a subproject's own script, e.g. python/scripts/test.sh) must be
+    # wired by its exact command string appearing in ci.yml.
+    root = _root(
+        tmp_path,
+        {"test:py": "bash python/scripts/test.sh"},
+        "jobs:\n  python:\n    steps:\n      - run: bash python/scripts/test.sh\n",
+    )
+    assert check_ci.check(root) == []
+
+
+def test_subproject_bash_script_missing_is_reported(tmp_path: Path) -> None:
+    root = _root(
+        tmp_path,
+        {"test:py": "bash python/scripts/test.sh"},
+        "jobs:\n  lint:\n    steps: []\n",
+    )
+    assert check_ci.check(root) == ["test:py"]
+
+
 def test_delegated_pnpm_command_wired_passes(tmp_path: Path) -> None:
     # A root `test:<seg>` whose value is a `pnpm -C <pkg> <cmd>` delegation has
     # no scripts/run/test_<seg>.sh file; the gate must instead require that

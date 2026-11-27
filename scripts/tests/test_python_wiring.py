@@ -1,5 +1,5 @@
 """Wiring smoke test for the python test entry: root package.json must expose
-`test:py`, ci.yml's python job must call scripts/run/test_py.sh (not inline the
+`test:py`, ci.yml's python job must call python/scripts/test.sh (not inline the
 chain), and both rust and python test scripts must put the stray-profraw drain
 first in their post-run cleanup block so a later-appended command cannot push the
 detection step to the end."""
@@ -13,17 +13,17 @@ from lib.repository import ROOT
 PKG = ROOT / "package.json"
 CI = ROOT / ".github" / "workflows" / "ci.yml"
 TEST_RS = ROOT / "scripts" / "run" / "test_rs.sh"
-TEST_PY = ROOT / "scripts" / "run" / "test_py.sh"
+TEST_PY = ROOT / "python" / "scripts" / "test.sh"
 
 
 def test_root_package_exposes_test_py() -> None:
     scripts = json.loads(PKG.read_text(encoding="utf-8"))["scripts"]
-    assert scripts["test:py"] == "bash scripts/run/test_py.sh"
+    assert scripts["test:py"] == "bash python/scripts/test.sh"
 
 
 def test_ci_python_job_calls_test_py_script() -> None:
     ci = CI.read_text(encoding="utf-8")
-    assert "bash scripts/run/test_py.sh" in ci
+    assert "bash python/scripts/test.sh" in ci
 
 
 def test_test_py_script_exists() -> None:

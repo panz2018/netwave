@@ -209,13 +209,13 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: bash scripts/install_cargo_llvm_cov.sh
       - name: python test entry (glue coverage + python pytest + profraw drain)
-        # Command details live once in scripts/run/test_py.sh — the same file
+        # Command details live once in python/scripts/test.sh — the same file
         # local `pnpm test:py` calls (show-env, clean --workspace, maturin
         # develop, pytest, coverage_gate floor 100, pre/post stray-profraw
         # drain). show-env/clean/build/test/report share the script's single
         # process, so the instrumentation env never crosses a step boundary.
         shell: bash
-        run: bash scripts/run/test_py.sh
+        run: bash python/scripts/test.sh
       - name: upload python glue coverage report
         uses: actions/upload-artifact@v7
         with:

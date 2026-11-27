@@ -57,7 +57,7 @@ pnpm -C browser build
 # so a shared local target/ that a prior `maturin develop` instrumented would pull
 # python/src/lib.rs into the native report at 0% (CI's fresh-checkout node job has
 # no python object, so the exclusion is a no-op there). The native report is the
-# native glue's coverage; python rows belong to coverage-python.json (test_py.sh).
+# native glue's coverage; python rows belong to coverage-python.json (python/scripts/test.sh).
 mkdir -p coverage
 eval "$(cargo llvm-cov show-env --sh --no-cfg-coverage)"
 export NODE_OPTIONS=--expose-gc

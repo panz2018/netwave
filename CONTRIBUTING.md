@@ -39,7 +39,7 @@ Plan/         Unexecuted planning docs only; lifecycle rules live in
   `cargo llvm-cov show-env` + pytest/vitest + `report` (external-driver
   collection). Each report is graded independently by
   `scripts/coverage_gate.py`. The rust chain is carried by
-  `scripts/run/test_rs.sh`, the python chain by `scripts/run/test_py.sh`, and the
+  `scripts/run/test_rs.sh`, the python chain by `python/scripts/test.sh`, and the
   typescript chain (wasm build + native glue coverage + typecheck + dts any +
   wasm suite) by `scripts/run/test_ts.sh` (local `pnpm test:rs` / `pnpm test:py` /
   `pnpm test:ts` and the matching CI job call the same file).
@@ -63,7 +63,7 @@ pnpm install                        # JS dev tooling (biome, prettier, markdownl
 pnpm test:rs                      # Rust core tests + coverage + build watchdog
                                     # (scripts/run/test_rs.sh; needs cargo-llvm-cov)
 pnpm test:py                      # Python binding tests + rust glue coverage
-                                    # (scripts/run/test_py.sh; needs cargo-llvm-cov + uv;
+                                    # (python/scripts/test.sh; needs cargo-llvm-cov + uv;
                                     # first run compiles maturin — for a fast loop use
                                     # `(cd python && uv run pytest)`, run test:py before commit)
 pnpm test:ts                      # typescript tests: browser build + native glue

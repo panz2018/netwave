@@ -2,44 +2,44 @@
 
 ## 1. core 去 python 绑定（保留 napi）
 
-- [ ] 1.1 `core/src/frequency.rs`：删所有 `#[cfg_attr(feature="python"/"pyo3-stub-gen", ...)]`
+- [x] 1.1 `core/src/frequency.rs`：删所有 `#[cfg_attr(feature="python"/"pyo3-stub-gen", ...)]`
       属性与 `use pyo3::prelude::*`/`use pyo3_stub_gen::derive::*` 导入；`FrequencyUnit`/
       `WavelengthUnit` 变纯 Rust enum，`frequency_units()`/`live_count()` 变纯 `pub fn`
       （逻辑留 core，见 `frequency_units/live_count 留 core`）。napi 属性本次保留。
-- [ ] 1.2 `core/src/frequency.rs`：删从未生效的 `not(coverage)` gating（见
+- [x] 1.2 `core/src/frequency.rs`：删从未生效的 `not(coverage)` gating（见
       `删 not(coverage) gating`）。
-- [ ] 1.3 `core/Cargo.toml`：删 `pyo3`、`pyo3-stub-gen` 依赖与 `python`、`pyo3-stub-gen`
+- [x] 1.3 `core/Cargo.toml`：删 `pyo3`、`pyo3-stub-gen` 依赖与 `python`、`pyo3-stub-gen`
       feature；保留 `native-http`（见 `native-http 保留`）与 napi/napi-derive。
-- [ ] 1.4 验证：`cargo tree -p netwave`（默认 feature）只剩 num-complex/strum/thiserror，
+- [x] 1.4 验证：`cargo tree -p netwave`（默认 feature）只剩 num-complex/strum/thiserror，
       无 pyo3；`cargo check -p netwave` 通过。
 
 ## 2. python crate 自持绑定（codegen + wrapper）
 
-- [ ] 2.1 新增 `python/build.rs`：构建期读 `../core/src/frequency.rs`，正则提取
+- [x] 2.1 新增 `python/build.rs`：构建期读 `../core/src/frequency.rs`，正则提取
       `FrequencyUnit`/`WavelengthUnit` unit-variant 名，生成 `OUT_DIR/enums.rs`（带
       `#[pyclass]`/derive），实现 `build.rs 生成 pyclass enum`（复用 browser
       `browser/scripts/gen_values.mjs` 模式）。
-- [ ] 2.2 `python/src/lib.rs`：`include!` 生成的枚举；保留 Python 端 `FrequencyUnit.GHz`
+- [x] 2.2 `python/src/lib.rs`：`include!` 生成的枚举；保留 Python 端 `FrequencyUnit.GHz`
       枚举类形态（见 `保留枚举类`）；newtype `Frequency`/方法签名处用 core 已有
       `as_ref()`/`FromStr` 做 core↔python 枚举转换（见 `as_ref/FromStr 转换`）。
-- [ ] 2.3 `python/src/lib.rs`：加 `#[pyfunction] fn frequency_units()`/`live_count()`
+- [x] 2.3 `python/src/lib.rs`：加 `#[pyfunction] fn frequency_units()`/`live_count()`
       wrapper 调用 core 纯函数；stub-gen 注解（`gen_stub_pyclass_enum`/`gen_stub_pyfunction`）
       贴到 python crate 的生成枚举与 wrapper（见 `stub-gen 随绑定走`）。
-- [ ] 2.4 `python/Cargo.toml`：删对 core 的 `features=["python"]`（保留 `native-http`）；
+- [x] 2.4 `python/Cargo.toml`：删对 core 的 `features=["python"]`（保留 `native-http`）；
       pyo3-stub-gen 改直接依赖。
-- [ ] 2.5 先写失败测试再补实现：`python/tests/` 逐 variant 加 `FrequencyUnit`/
+- [x] 2.5 先写失败测试再补实现：`python/tests/` 逐 variant 加 `FrequencyUnit`/
       `WavelengthUnit` 传入用例，使枚举 pyclass 进 python 覆盖率分母后仍达 100%（见
       `补 pytest 覆盖率`）。
-- [ ] 2.6 验证：`pnpm test:py` 全绿（glue 覆盖率链 + pytest）。
+- [x] 2.6 验证：`pnpm test:py` 全绿（glue 覆盖率链 + pytest）。
 
 ## 3. 脚本与 CI 自我完整搬迁
 
-- [ ] 3.1 `scripts/run/test_py.sh` → `python/scripts/test.sh`；根 `package.json`
+- [x] 3.1 `scripts/run/test_py.sh` → `python/scripts/test.sh`；根 `package.json`
       `test:py` 改指 `bash python/scripts/test.sh`；python/ 不加 package.json（见
       `python 不加 package.json`、`脚本搬进 python/`）。
 - [ ] 3.2 新增 `python/scripts/build.sh`：承载 `uv sync`/`maturin develop`/`stub_gen`；
       `scripts/run/test_cross.sh` 改为产物缺失则提示先跑 build（对齐 browser 端只查产物）。
-- [ ] 3.3 `.github/workflows/ci.yml`：python job 路径同步为 `bash python/scripts/test.sh`。
+- [x] 3.3 `.github/workflows/ci.yml`：python job 路径同步为 `bash python/scripts/test.sh`。
 - [ ] 3.4 验证：`pnpm test:cross` 全绿（四端对拍 + 词汇/动词闸门）。
 
 ## 4. spec 与文档同步
@@ -50,7 +50,7 @@
       build.rs 生成，与 delta 一致。
 - [ ] 4.3 `core/src/frequency.rs` 顶部「绑定靠反射注册」注释改写为「core 是词汇真相源，
       各端 pyclass/napi enum 由 build.rs/gen_values 机械生成」。
-- [ ] 4.4 `scripts/README.md`：test_py.sh 路径同步为 python/scripts/test.sh。
+- [x] 4.4 `scripts/README.md`：test_py.sh 路径同步为 python/scripts/test.sh。
 - [ ] 4.5 本 change 单 change 全包不拆（见 `单 change 不拆`）。
 
 ## 5. 收尾闸门与打勾（逐锚点）

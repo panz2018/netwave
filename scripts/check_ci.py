@@ -1,17 +1,16 @@
 #!/usr/bin/env python3
 """CI gate completeness (root scope): every `test:*` script in the ROOT
-package.json must be wired into .github/workflows/ci.yml — either through its
-run-script file `scripts/run/test_<name>.sh`, or, when the script delegates to a
-package (`pnpm -C <pkg> <cmd>`), through that delegated command string.
+package.json must be wired into .github/workflows/ci.yml — its exact command
+value (a `bash <path>.sh` run-script or a `pnpm -C <pkg> <cmd>` delegation)
+must appear verbatim as a CI step.
 
 Why: a suite that never runs in CI is not a gate (LL-037). The previous rule
 checked the typescript package's `test:<name>` literals against ci.yml; once the
 node job calls the root `scripts/run/test_ts.sh` instead of inlining
 `typescript test:native`, that literal disappears and the old rule misfires. This
-rule lifts the source of truth to the root package.json: each root `test:*` maps
-to `scripts/run/test_<name>.sh` (multi-segment names like `test:rs:cov` map by
-their first segment), and that script path must appear in ci.yml — unless the
-script's value is a `pnpm -C` delegation, in which case that command must appear.
+rule lifts the source of truth to the root package.json: each root `test:*`'s
+command value must appear in ci.yml, wherever the script lives (root
+`scripts/run/` or a subproject's own `scripts/`).
 
 Usage: python3 scripts/check_ci.py
 """
@@ -42,11 +41,12 @@ def check(root: Path) -> list[str]:
             if value not in ci:
                 missing.append(name)
             continue
-        segment = name.split(":")[1]
-        # Match the `bash scripts/run/test_<seg>.sh` invocation form, not the bare
-        # path: a comment mentioning the path must not satisfy the gate (the gate
-        # proves the command runs, not that the path is named).
-        call = f"bash scripts/run/test_{segment}.sh"
+        # Match the script's exact invocation command (e.g. `bash
+        # scripts/run/test_ts.sh` or a subproject's `bash python/scripts/
+        # test.sh`), not a reconstructed path: the gate proves that command
+        # runs in CI, wherever the script lives. A comment mentioning the path
+        # must not satisfy it (the value string is what the step runs).
+        call = value
         if call not in ci:
             missing.append(name)
     return missing
@@ -57,11 +57,7 @@ def main() -> int:
     pkg = json.loads((ROOT / "package.json").read_text(encoding="utf-8"))
     for name in missing:
         value = pkg["scripts"][name]
-        if value.startswith("pnpm -C "):
-            expected = f"`{value}`"
-        else:
-            segment = name.split(":")[1]
-            expected = f"`scripts/run/test_{segment}.sh`"
+        expected = f"`{value}`"
         print(
             f"::error::ci.yml never runs {expected} (root script `{name}`)",
             file=sys.stderr,
