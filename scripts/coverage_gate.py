@@ -54,6 +54,12 @@ import sys
 #: never-merging region (pyo3 `#[pymethods]`, napi `#[napi]`/`#[napi(...)]`).
 _MACRO_ATTR = re.compile(r"^#\[(?:pymethods|napi\b)")
 
+#: `#[pyclass]` on an enum carries the same never-merging region as the
+#: impl-block attribute (rustc#79651): pyo3 generates a wrapper whose instance
+#: count never merges back to the attribute line. The struct form is reported
+#: ABSENT (no region) so it never reaches the grader; only `pub enum` does.
+_PYCLASS_ATTR = re.compile(r"^#\[pyclass\b")
+
 #: constructors whose `Result` cannot fail for inputs the glue itself derives
 #: (the shape argument is computed from the data, so it always matches; the
 #: tokio runtime builds unless the OS is out of resources). Their `.map_err`
@@ -125,6 +131,10 @@ _MACRO_REASON = (
     "impl-block macro attribute: llvm-cov counts the attribute line as a "
     "region that never merges back from the generated wrappers, rustc#79651"
 )
+_PYCLASS_ENUM_REASON = (
+    "pyclass-on-enum macro attribute: llvm-cov counts the #[pyclass] line as a "
+    "region that never merges back from the generated enum wrappers, rustc#79651"
+)
 _DEFENSIVE_REASON = (
     "defensive map_err on an always-succeeds constructor: the shape/runtime "
     "argument is derived from the data so the error arm is unreachable"
@@ -140,6 +150,8 @@ def _exemption_reason(lines: list[str], lineno: int, hits: dict[int, int]) -> st
     stripped = lines[lineno - 1].strip()
     if _MACRO_ATTR.match(stripped) and _next_code_line(lines, lineno - 1).startswith("impl"):
         return _MACRO_REASON
+    if _PYCLASS_ATTR.match(stripped) and _next_code_line(lines, lineno - 1).startswith("pub enum"):
+        return _PYCLASS_ENUM_REASON
     if _is_defensive_err(lines, lineno):
         return _DEFENSIVE_REASON
     if _is_continuation_artifact(lines, lineno, hits):

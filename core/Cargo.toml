@@ -14,12 +14,10 @@ strum = { version = "0.28", features = ["derive"] }
 thiserror = "2"
 # Optional binding deps: core attaches #[cfg_attr(feature = ...)] macros to its
 # own types so bindings are registered at link time with zero glue-crate code.
-# pyo3 must stay on the same minor as python/Cargo.toml (two pyo3 majors in
-# one link = conflicts; paired deps upgrade together).
-pyo3 = { version = "0.30", features = ["abi3-py310"], optional = true }
+# (python bindings live in the python crate; only napi remains here pending
+# the node extraction change.)
 napi = { version = "3", features = ["napi9"], optional = true }
 napi-derive = { version = "3", optional = true }
-pyo3-stub-gen = { version = "0.23", optional = true }
 # from_url backend, cfg-gated by target so the wasm artifact never links reqwest
 # (CI asserts the wasm32 dependency tree). The browser reaches from_url through
 # its own fetch glue and calls core's from_text, so core has no wasm HTTP path.
@@ -28,20 +26,11 @@ reqwest = { version = "0.13", default-features = false, features = ["rustls"], o
 tokio = { version = "1", optional = true }
 
 [features]
-python = ["dep:pyo3"]
 node = ["dep:napi", "dep:napi-derive"]
 # Native HTTP for from_url (reqwest + rustls, no system OpenSSL).
 native-http = ["dep:reqwest", "dep:tokio"]
 # Test-only: httpmock server for from_url unit tests (native).
 test-http = ["native-http"]
-# Stub annotations ride the same items as the pyclass/pyfunction attributes,
-# so enabling stub generation implies the python binding attributes.
-pyo3-stub-gen = ["python", "dep:pyo3-stub-gen"]
-
-[lints.rust]
-# cargo-llvm-cov auto-sets cfg(coverage); the binding attributes gate on
-# not(coverage) to drop runtime-only glue from the coverage build.
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)'] }
 
 [dev-dependencies]
 criterion = { version = "0.8", features = ["html_reports"] }

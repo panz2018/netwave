@@ -1226,8 +1226,6 @@ dependencies = [
  "napi",
  "napi-derive",
  "num-complex",
- "pyo3",
- "pyo3-stub-gen",
  "reqwest",
  "strum",
  "thiserror",

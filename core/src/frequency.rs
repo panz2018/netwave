@@ -5,25 +5,9 @@ use std::str::FromStr;
 
 use strum::{AsRefStr, EnumIter};
 
-// With the `python` feature the enum/function below carry pyo3 attributes so
-// the binding crate registers them by reflection (zero hand-copied names).
-// `not(coverage)` drops the pyo3 registration glue (pytest covers the Python
-// surface); the python glue crate gates its add_class/wrap_pyfunction calls
-// the same way so the coverage build still compiles.
-#[cfg(all(feature = "python", not(coverage)))]
-use pyo3::prelude::*;
-
-// With `pyo3-stub-gen` the same items also carry stub annotations so the
-// .pyi generator discovers them (the annotations ride the pyclass/pyfunction
-// items, so this feature implies `python`).
-#[cfg(feature = "pyo3-stub-gen")]
-use pyo3_stub_gen::derive::{gen_stub_pyclass_enum, gen_stub_pyfunction};
-
 // With the `node` feature the same items carry napi attributes; the enum
 // becomes a numeric JS enum (units cross the worker boundary as numbers).
-// `not(coverage)` drops the JS-registration glue (pytest/vitest cover the
-// binding surface).
-#[cfg(all(feature = "node", not(coverage)))]
+#[cfg(feature = "node")]
 use napi_derive::napi;
 
 /// Re-exported so callers can invoke [`FrequencyUnit::iter`] without adding
@@ -87,18 +71,9 @@ impl FromStr for FrequencyUnit {
 // `kHz` is the correct SI spelling (lowercase prefix k); the Rust naming
 // convention cannot apply to unit symbols.
 #[allow(non_camel_case_types)]
-// A unit is passed by its enum member, never coerced from an arbitrary
-// Python object (that would bypass FromStr validation); pyo3 generates no
-// FromPyObject for a pyclass unless one is derived.
-#[cfg_attr(
-    feature = "pyo3-stub-gen",
-    gen_stub_pyclass_enum(module = "netwave._netwave")
-)]
-#[cfg_attr(all(feature = "python", not(coverage)), pyclass)]
-// `not(coverage)` drops the runtime-only registration glue (pytest/vitest
-// cover the binding surface). The browser enum is generated at build time
-// from this definition (gen_values), so core carries no wasm attribute.
-#[cfg_attr(all(feature = "node", not(coverage)), napi)]
+// The node/browser enum is generated at build time from this definition
+// (napi derive / gen_values), so core carries no python or wasm attribute.
+#[cfg_attr(feature = "node", napi)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, AsRefStr, EnumIter)]
 pub enum FrequencyUnit {
     /// Hertz, 10^0 — the canonical storage unit of the frequency axis.
@@ -168,12 +143,7 @@ impl FromStr for WavelengthUnit {
 /// deliberately NOT named `LengthUnit` — in RF contexts "length" means
 /// transmission-line length, a different quantity.
 #[allow(non_camel_case_types)]
-#[cfg_attr(
-    feature = "pyo3-stub-gen",
-    gen_stub_pyclass_enum(module = "netwave._netwave")
-)]
-#[cfg_attr(all(feature = "python", not(coverage)), pyclass)]
-#[cfg_attr(all(feature = "node", not(coverage)), napi)]
+#[cfg_attr(feature = "node", napi)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, AsRefStr, EnumIter)]
 pub enum WavelengthUnit {
     /// Metre, 10^0 — the canonical SI unit of wavelength.
@@ -224,12 +194,7 @@ impl WavelengthUnit {
 /// This is the only self-discovery channel for bindings to enumerate units.
 /// (`String` rather than `&'static str`: strum's generated `as_ref` borrows
 /// `&self`, so owned strings are the cheapest honest signature.)
-#[cfg_attr(
-    feature = "pyo3-stub-gen",
-    gen_stub_pyfunction(module = "netwave._netwave")
-)]
-#[cfg_attr(all(feature = "python", not(coverage)), pyfunction)]
-#[cfg_attr(all(feature = "node", not(coverage)), napi)]
+#[cfg_attr(feature = "node", napi)]
 pub fn frequency_units() -> Vec<String> {
     FrequencyUnit::iter()
         .map(|u| u.as_ref().to_owned())
@@ -252,12 +217,7 @@ static LIVE: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0)
 ///
 /// Read-only diagnostic probe: holds no data, no side effects. Always
 /// compiled (see [`LIVE`]).
-#[cfg_attr(
-    feature = "pyo3-stub-gen",
-    gen_stub_pyfunction(module = "netwave._netwave")
-)]
-#[cfg_attr(all(feature = "python", not(coverage)), pyfunction)]
-#[cfg_attr(all(feature = "node", not(coverage)), napi)]
+#[cfg_attr(feature = "node", napi)]
 pub fn live_count() -> u32 {
     LIVE.load(std::sync::atomic::Ordering::SeqCst)
 }

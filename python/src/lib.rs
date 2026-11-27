@@ -9,8 +9,8 @@
 use std::str::FromStr;
 
 use netwave::frequency::Frequency as CoreFrequency;
-use netwave::frequency::FrequencyUnit;
-use netwave::frequency::WavelengthUnit;
+use netwave::frequency::FrequencyUnit as CoreFrequencyUnit;
+use netwave::frequency::WavelengthUnit as CoreWavelengthUnit;
 use netwave::touchstone::Touchstone as CoreTouchstone;
 use netwave::touchstone::TouchstoneEncoding;
 use netwave::touchstone::TouchstoneFormat;
@@ -24,6 +24,11 @@ use pyo3::types::PyByteArray;
 use pyo3::types::PyByteArrayMethods;
 use pyo3::types::PyBytes;
 use pyo3::types::PyMemoryView;
+
+// Stub annotations ride the same item as the pyfunction/pyclass attribute
+// (feature `stub-gen` implies it).
+#[cfg(feature = "stub-gen")]
+use pyo3_stub_gen::derive::gen_stub_pyfunction;
 
 /// Map a core `TouchstoneError` to `PyValueError` quoting the offending
 /// input verbatim (the error Display carries it, single-source in core).
@@ -79,27 +84,25 @@ fn arg_f64_vec(obj: &Bound<'_, PyAny>) -> PyResult<Vec<f64>> {
     Ok(vec![obj.extract::<f64>()?])
 }
 
-/// Read a `FrequencyUnit` from an enum member OR a string (case-insensitive,
-/// core `FromStr` carries the offending input in the error).
-// `not(coverage)`: core drops the pyclass attribute under cfg(coverage),
-// so the cast below cannot compile there (two-sided glue sync).
-#[cfg(not(coverage))]
-fn arg_frequency_unit(obj: &Bound<'_, PyAny>) -> PyResult<FrequencyUnit> {
+/// Read a frequency unit from an enum member OR a string, returning core's
+/// `FrequencyUnit`. The enum arm maps through the infallible conversion; the
+/// string arm goes to core `FromStr` (which carries the offending input in
+/// the error — the binding's only fallible unit step).
+fn arg_frequency_unit(obj: &Bound<'_, PyAny>) -> PyResult<CoreFrequencyUnit> {
     if let Ok(u) = obj.cast::<FrequencyUnit>() {
-        return Ok(*u.borrow());
+        return Ok(u.borrow().to_core());
     }
-    FrequencyUnit::from_str(&obj.extract::<String>()?)
+    CoreFrequencyUnit::from_str(&obj.extract::<String>()?)
         .map_err(|e| PyValueError::new_err(e.to_string()))
 }
 
-/// Read a `WavelengthUnit` from an enum member OR a string (same shape as
-/// [`arg_frequency_unit`]).
-#[cfg(not(coverage))]
-fn arg_wavelength_unit(obj: &Bound<'_, PyAny>) -> PyResult<WavelengthUnit> {
+/// Read a wavelength unit from an enum member OR a string (same shape as
+/// [`arg_frequency_unit`]), returning core's `WavelengthUnit`.
+fn arg_wavelength_unit(obj: &Bound<'_, PyAny>) -> PyResult<CoreWavelengthUnit> {
     if let Ok(u) = obj.cast::<WavelengthUnit>() {
-        return Ok(*u.borrow());
+        return Ok(u.borrow().to_core());
     }
-    WavelengthUnit::from_str(&obj.extract::<String>()?)
+    CoreWavelengthUnit::from_str(&obj.extract::<String>()?)
         .map_err(|e| PyValueError::new_err(e.to_string()))
 }
 
@@ -108,7 +111,83 @@ fn arg_wavelength_unit(obj: &Bound<'_, PyAny>) -> PyResult<WavelengthUnit> {
 #[cfg(feature = "stub-gen")]
 use pyo3_stub_gen::define_stub_info_gatherer;
 #[cfg(feature = "stub-gen")]
-use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
+use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pyclass_enum, gen_stub_pymethods};
+
+/// A frequency unit: SI prefix + hertz. Mirrors core `FrequencyUnit` (the
+/// single vocabulary source) as a `#[pyclass]` so Python users get a real enum
+/// (`FrequencyUnit.kHz`) with IDE-checked members; the orphan rule forbids
+/// attaching `#[pyclass]` to core's type, so the binding owns a parallel enum
+/// and converts through the infallible mappings below. The member set is pinned
+/// against core by `check_vocab_types.py` and the per-end pytest cases.
+#[cfg_attr(
+    feature = "stub-gen",
+    gen_stub_pyclass_enum(module = "netwave._netwave")
+)]
+#[pyclass]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(non_camel_case_types)]
+pub enum FrequencyUnit {
+    Hz,
+    kHz,
+    MHz,
+    GHz,
+    THz,
+}
+
+impl FrequencyUnit {
+    /// Map to core's enum (exhaustive, infallible).
+    fn to_core(self) -> CoreFrequencyUnit {
+        match self {
+            FrequencyUnit::Hz => CoreFrequencyUnit::Hz,
+            FrequencyUnit::kHz => CoreFrequencyUnit::kHz,
+            FrequencyUnit::MHz => CoreFrequencyUnit::MHz,
+            FrequencyUnit::GHz => CoreFrequencyUnit::GHz,
+            FrequencyUnit::THz => CoreFrequencyUnit::THz,
+        }
+    }
+}
+
+impl From<CoreFrequencyUnit> for FrequencyUnit {
+    /// Map from core's enum (exhaustive, infallible).
+    fn from(value: CoreFrequencyUnit) -> Self {
+        match value {
+            CoreFrequencyUnit::Hz => FrequencyUnit::Hz,
+            CoreFrequencyUnit::kHz => FrequencyUnit::kHz,
+            CoreFrequencyUnit::MHz => FrequencyUnit::MHz,
+            CoreFrequencyUnit::GHz => FrequencyUnit::GHz,
+            CoreFrequencyUnit::THz => FrequencyUnit::THz,
+        }
+    }
+}
+
+/// A wavelength unit: SI prefix + metre. Mirrors core `WavelengthUnit`.
+#[cfg_attr(
+    feature = "stub-gen",
+    gen_stub_pyclass_enum(module = "netwave._netwave")
+)]
+#[pyclass]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(non_camel_case_types)]
+pub enum WavelengthUnit {
+    m,
+    cm,
+    mm,
+    um,
+    nm,
+}
+
+impl WavelengthUnit {
+    /// Map to core's enum (exhaustive, infallible).
+    fn to_core(self) -> CoreWavelengthUnit {
+        match self {
+            WavelengthUnit::m => CoreWavelengthUnit::m,
+            WavelengthUnit::cm => CoreWavelengthUnit::cm,
+            WavelengthUnit::mm => CoreWavelengthUnit::mm,
+            WavelengthUnit::um => CoreWavelengthUnit::um,
+            WavelengthUnit::nm => CoreWavelengthUnit::nm,
+        }
+    }
+}
 
 /// A frequency sweep. `from_f`/`from_wavelength` are the data entries
 /// (static factories, core names verbatim); the accessors are read-only
@@ -120,11 +199,6 @@ use pyo3_stub_gen::derive::{gen_stub_pyclass, gen_stub_pymethods};
 #[pyclass]
 pub struct Frequency(CoreFrequency);
 
-// `not(coverage)`: the method signatures reference core's
-// FrequencyUnit/WavelengthUnit, whose pyclass attributes core drops under
-// cfg(coverage) — the pymethods cannot compile there (two-sided glue sync;
-// the class registration in the module is gated the same way).
-#[cfg(not(coverage))]
 #[cfg_attr(feature = "stub-gen", gen_stub_pymethods)]
 #[pymethods]
 impl Frequency {
@@ -191,9 +265,11 @@ impl Frequency {
     /// rule 10 deviation, filed in design.md).
     #[getter]
     fn unit(&self) -> PyResult<FrequencyUnit> {
-        self.0
+        let unit = self
+            .0
             .unit()
-            .map_err(|e| PyValueError::new_err(e.to_string()))
+            .map_err(|e| PyValueError::new_err(e.to_string()))?;
+        Ok(unit.into())
     }
 
     /// Set the display unit (enum | str, case-insensitive; illegal string
@@ -283,10 +359,6 @@ impl Touchstone {
     }
 }
 
-// `not(coverage)`: the method signatures reference core's plain
-// TouchstoneParameter/TouchstoneFormat enums parsed from strings; the class
-// registration is gated the same way as the other pyclasses.
-#[cfg(not(coverage))]
 #[cfg_attr(feature = "stub-gen", gen_stub_pymethods)]
 #[pymethods]
 impl Touchstone {
@@ -601,28 +673,35 @@ fn domain_array<'py>(
         .map_err(|e| PyValueError::new_err(e.to_string()))
 }
 
+/// List every frequency unit in canonical spelling, definition order — a thin
+/// wrapper over core's pure `frequency_units()` (the vocabulary single-source
+/// lives in core; this carries only the binding registration).
+#[cfg_attr(feature = "stub-gen", gen_stub_pyfunction(module = "netwave._netwave"))]
+#[pyfunction]
+fn frequency_units() -> Vec<String> {
+    netwave::frequency::frequency_units()
+}
+
+/// How many `Frequency` instances are alive — a thin wrapper over core's pure
+/// `live_count()` (test witness; logic lives in core).
+#[cfg_attr(feature = "stub-gen", gen_stub_pyfunction(module = "netwave._netwave"))]
+#[pyfunction]
+fn live_count() -> u32 {
+    netwave::frequency::live_count()
+}
+
 #[pymodule]
 #[pyo3(name = "_netwave")]
 fn netwave_module(m: &Bound<'_, PyModule>) -> PyResult<()> {
     // Physical constant re-exported from core (ironclad rules 11/12: the
     // value is defined once in core::constants, never hand-copied here).
     m.add("SPEED_OF_LIGHT", netwave::constants::SPEED_OF_LIGHT)?;
-    #[cfg(not(coverage))]
     m.add_class::<Frequency>()?;
-    #[cfg(not(coverage))]
     m.add_class::<Touchstone>()?;
-    #[cfg(not(coverage))]
-    m.add_function(wrap_pyfunction!(netwave::frequency::live_count, m)?)?;
-    // Gated with not(coverage): core drops the pyclass/pyfunction attributes
-    // under cfg(coverage), so these registrations cannot compile there. The
-    // coverage build excludes this glue crate anyway; pytest exercises the
-    // Python surface in a normal (non-coverage) build.
-    #[cfg(not(coverage))]
-    m.add_class::<netwave::frequency::FrequencyUnit>()?;
-    #[cfg(not(coverage))]
-    m.add_class::<netwave::frequency::WavelengthUnit>()?;
-    #[cfg(not(coverage))]
-    m.add_function(wrap_pyfunction!(netwave::frequency::frequency_units, m)?)?;
+    m.add_class::<FrequencyUnit>()?;
+    m.add_class::<WavelengthUnit>()?;
+    m.add_function(wrap_pyfunction!(frequency_units, m)?)?;
+    m.add_function(wrap_pyfunction!(live_count, m)?)?;
     Ok(())
 }
 

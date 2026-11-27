@@ -12,7 +12,9 @@ name = "_netwave"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
-netwave = { path = "../core", features = ["python", "native-http"] }
+# Core is a pure math library: zero binding features. The python crate owns all
+# pyo3 code (including the unit enums that mirror core's) and stub annotations.
+netwave = { path = "../core", features = ["native-http"] }
 pyo3 = { version = "0.30", features = ["abi3-py310"] }
 numpy = "0.30"
 # from_url is async in core; the sync Python verb blocks on a
@@ -21,17 +23,12 @@ tokio = { version = "1", features = ["rt"] }
 pyo3-stub-gen = { version = "0.23", optional = true }
 
 [features]
-# Enables .pyi generation: pulls the stub annotations into core and the
-# gatherer into this crate. Off for normal wheel builds, so the shipped
-# .so carries no stub runtime.
-stub-gen = ["dep:pyo3-stub-gen", "netwave/pyo3-stub-gen"]
+# Enables .pyi generation: pulls the stub annotations and the gatherer into
+# this crate. Off for normal wheel builds, so the shipped .so carries no stub
+# runtime. Stub annotations now live here (not in core).
+stub-gen = ["dep:pyo3-stub-gen"]
 
 [[bin]]
 name = "stub_gen"
 path = "src/bin/stub_gen.rs"
 required-features = ["stub-gen"]
-
-[lints.rust]
-# cargo-llvm-cov auto-sets cfg(coverage); the frequency registrations gate on
-# not(coverage) to match core dropping the pyclass/pyfunction attributes there.
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(coverage)'] }

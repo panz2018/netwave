@@ -121,6 +121,39 @@ class TestMacroAttributeExemption:
         assert "1/1 = 100.00%" in out
         assert f"exempted {src}: [1]" in out
 
+    def test_pyclass_before_pub_enum_is_exempted(self, tmp_path, capsys):
+        # A `#[pyclass]` on an enum carries one llvm-cov region whose count
+        # never merges back from the generated wrappers (rustc#79651, same
+        # class as #[pymethods]); the struct form is ABSENT so it never
+        # reaches here. Exemption requires the next code line to be `pub enum`.
+        src = _src(
+            tmp_path,
+            "glue.rs",
+            ["#[pyclass]", "pub enum FrequencyUnit {", "    Hz,", "}"],
+        )
+        files = {src: {"1": "0/1", "2": "1/1"}}
+        path = _report(tmp_path, "coverage-glue.json", files)
+        assert coverage_gate.main([path, "100"]) == 0
+        out = capsys.readouterr().out
+        assert "2/2 = 100.00%" in out
+        assert f"exempted {src}: [1]" in out
+
+    def test_pyclass_before_struct_stays_red(self, tmp_path, capsys):
+        # The exemption is narrow to enums (the only form that produces the
+        # non-merging region); a missed pyclass over a struct is unexplained
+        # and must stay red rather than be silently exempted.
+        src = _src(
+            tmp_path,
+            "glue.rs",
+            ["#[pyclass]", "pub struct Frequency(S);", "}"],
+        )
+        files = {src: {"1": "0/1", "2": "1/1"}}
+        path = _report(tmp_path, "coverage-glue.json", files)
+        assert coverage_gate.main([path, "100"]) == 1
+        out = capsys.readouterr().out
+        assert f"missed {src}: [1]" in out
+        assert "exempted" not in out
+
     def test_macro_attribute_before_fn_stays_red(self, tmp_path, capsys):
         # A macro attribute on a plain fn is a real untested line: the
         # exemption requires the next code line to be `impl`.
